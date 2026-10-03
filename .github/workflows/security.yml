@@ -1,0 +1,44 @@
+name: Build, test & scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 9 * * 1' # weekly scan, Mondays
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: npm audit (fail on high)
+        run: npm audit --audit-level=high
+      - name: Database security tests (RLS + server functions)
+        run: npm install --no-save @electric-sql/pglite && node supabase/tests/rls.test.mjs | tee rls.txt && ! grep -q '^FAIL' rls.txt
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+          NEXT_TELEMETRY_DISABLED: 1
+
+  osv-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Install OSV-Scanner
+        run: go install github.com/google/osv-scanner/v2/cmd/osv-scanner@latest
+      - name: Scan dependencies against osv.dev
+        run: ~/go/bin/osv-scanner scan source -L package-lock.json

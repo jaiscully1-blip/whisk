@@ -48,6 +48,7 @@ export default function RecipeSheet({ recipe, savedId = null, pantryNames = [], 
         <div className="row">
           <span className="chip">{total} min</span><span className="chip">Serves {recipe.servings}</span>
           <span className="chip xp">+50 XP</span>
+          {recipe.nutrition?.calories ? <span className="chip" title="Estimated, per serving">~{Math.round(recipe.nutrition.calories)} kcal · {Math.round(recipe.nutrition.protein_g || 0)}g protein</span> : null}
           {missing.length ? <span className="chip need">{missing.length} missing</span> : <span className="chip have">You have everything</span>}
         </div>
         {recipe.equipment?.length > 0 && <p className="muted" style={{ margin: 0, fontSize: 14 }}>Uses: {recipe.equipment.join(', ')}</p>}
@@ -92,7 +93,7 @@ export default function RecipeSheet({ recipe, savedId = null, pantryNames = [], 
           <button type="button" className="btn" style={{ flex: '1 1 160px' }} onClick={() => setLogging(true)}>I cooked it</button>
         </div>
       </div>
-      {logging && <LogMealSheet title={recipe.title} cuisine={recipe.cuisine} recipeId={saved} onClose={() => { setLogging(false); onClose?.(); }} />}
+      {logging && <LogMealSheet title={recipe.title} cuisine={recipe.cuisine} recipeId={saved} nutrition={recipe.nutrition} onClose={() => { setLogging(false); onClose?.(); }} />}
     </div>
   );
 }

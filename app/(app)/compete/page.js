@@ -37,10 +37,17 @@ export default function Compete() {
   const [buying, setBuying] = useState(null);
   const [logging, setLogging] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [bingo, setBingo] = useState(null);
 
   async function load() {
     const [c, i, v] = await Promise.all([supabase.rpc('get_weekly_challenges'), supabase.from('items').select('id, slot, name, rarity, price, sort').order('sort'), supabase.from('inventory').select('item_id')]);
     setChallenges(c.data || []); setItems(i.data || []); setOwned(new Set((v.data || []).map((x) => x.item_id)));
+    const b = await supabase.rpc('get_bingo'); if (!b.error) setBingo(b.data);
+  }
+  async function claimBingo() {
+    const { data, error } = await supabase.rpc('claim_bingo');
+    if (error) { say('Get 4 in a row first.'); return; }
+    setBingo((b) => ({ ...b, claimed: true })); say(`BINGO! +${data?.xp ?? 200} XP`); refreshProfile();
   }
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -78,6 +85,27 @@ export default function Compete() {
           </div>
         );
       })}
+
+      {bingo && (
+        <section className="stack" style={{ gap: 10 }} aria-labelledby="bingo-h">
+          <div className="row" style={{ justifyContent: 'space-between' }}><h2 id="bingo-h" style={{ fontSize: 22 }}>Cuisine bingo</h2><span className="chip xp">+200 XP</span></div>
+          <p className="muted" style={{ margin: 0, fontSize: 13 }}>Cook a dish from each cuisine this week. Four in a row (across, down or diagonal) wins.</p>
+          <div role="grid" aria-label="Bingo card" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
+            {bingo.cells.map((cell, i) => {
+              const on = bingo.marks?.[i];
+              return (
+                <div key={i} role="gridcell" aria-label={`${cell}${on ? ', cooked' : ''}`} style={{ aspectRatio: '1', borderRadius: 14, display: 'grid', placeItems: 'center', textAlign: 'center', padding: 4, fontSize: 12.5, fontWeight: 800, lineHeight: 1.1,
+                  background: on ? 'var(--accent)' : 'var(--card)', color: on ? 'var(--btn-ink)' : 'var(--fg)', border: `1.5px solid ${on ? 'var(--accent)' : 'var(--line)'}` }}>
+                  {on ? <span><Icon name="check" size={16} /><br />{cell}</span> : cell}
+                </div>
+              );
+            })}
+          </div>
+          {bingo.claimed ? <span className="row" style={{ color: 'var(--fresh)', fontWeight: 800 }}><Icon name="check" />Bingo claimed · new card Monday</span>
+            : bingo.lines > 0 ? <button className="btn" onClick={claimBingo}>Claim BINGO · +200 XP</button>
+            : <span className="muted" style={{ fontWeight: 800, fontSize: 13 }}>{(bingo.marks || []).filter(Boolean).length}/16 cooked</span>}
+        </section>
+      )}
 
       <h2 id="shop" style={{ fontSize: 22, marginTop: 10 }}>Shop</h2>
       <div style={{ position: 'relative' }}>

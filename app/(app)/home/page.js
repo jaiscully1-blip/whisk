@@ -4,24 +4,41 @@ import Link from 'next/link';
 import { useWhisk } from '@/components/AppShell';
 import RecipeSheet from '@/components/RecipeSheet';
 import Icon, { Coin } from '@/components/Icon';
-import { levelFor, freshness, inPantry, norm, fmt } from '@/lib/game';
+import { levelFor, freshness, inPantry, norm, fmt, weekStart, HOME_MEAL_COST } from '@/lib/game';
+
+function Ring({ value, goal }) {
+  const pct = Math.min(1, goal ? value / goal : 0), r = 30, c = 2 * Math.PI * r;
+  return (
+    <svg width="76" height="76" viewBox="0 0 76 76" role="img" aria-label={`${value} of ${goal} meals this week`} style={{ flex: 'none' }}>
+      <circle cx="38" cy="38" r={r} fill="none" stroke="var(--track)" strokeWidth="9" />
+      <circle cx="38" cy="38" r={r} fill="none" stroke="var(--accent)" strokeWidth="9" strokeLinecap="round" strokeDasharray={`${pct * c} ${c}`} transform="rotate(-90 38 38)" />
+      <text x="38" y="44" textAnchor="middle" style={{ font: '700 20px var(--f-display)', fill: 'var(--fg)' }}>{value}/{goal}</text>
+    </svg>
+  );
+}
 
 export default function Home() {
-  const { supabase, profile } = useWhisk();
+  const { supabase, profile, refreshProfile, say } = useWhisk();
   const [pantry, setPantry] = useState(null);
   const [recipes, setRecipes] = useState([]);
   const [challenges, setChallenges] = useState([]);
   const [open, setOpen] = useState(null);
+  const [quest, setQuest] = useState(null);
+  const [counts, setCounts] = useState({ week: 0, total: 0 });
   const lvl = levelFor(profile?.xp);
 
   useEffect(() => {
     (async () => {
-      const [p, r, c] = await Promise.all([
+      const [p, r, c, q, wk, all] = await Promise.all([
         supabase.from('pantry_items').select('id, name, category, status, expires_on').order('expires_on', { ascending: true, nullsFirst: false }),
         supabase.from('recipes').select('id, title, cuisine, data').order('created_at', { ascending: false }).limit(50),
-        supabase.rpc('get_weekly_challenges')
+        supabase.rpc('get_weekly_challenges'),
+        supabase.rpc('get_daily_quest'),
+        supabase.from('meals').select('id', { count: 'exact', head: true }).gte('cooked_at', weekStart().toISOString()),
+        supabase.from('meals').select('id', { count: 'exact', head: true })
       ]);
       setPantry(p.data || []); setRecipes(r.data || []); setChallenges(c.data || []);
+      setQuest(q.error ? null : q.data); setCounts({ week: wk.count || 0, total: all.count || 0 });
     })();
   }, [supabase]);
 
@@ -33,6 +50,13 @@ export default function Home() {
   }), [recipes, names]);
   const ready = scored.filter((r) => r.missing.length === 0);
   const almost = scored.filter((r) => r.missing.length >= 1).sort((a, b) => a.missing.length - b.missing.length)[0];
+  async function claimQuest() {
+    const { data, error } = await supabase.rpc('claim_daily_quest');
+    if (error) { say('Finish the quest first.'); return; }
+    setQuest((q) => ({ ...q, claimed: true })); say(`Quest done · +${data?.xp ?? 30} XP`); refreshProfile();
+  }
+  const goal = profile?.weekly_goal || 4;
+  const saved = Math.max(0, counts.total * (Number(profile?.takeout_price ?? 15) - HOME_MEAL_COST));
   const expiring = (pantry || []).map((i) => ({ ...i, f: freshness(i) })).filter((i) => i.f && i.f.pct <= 40 && i.status !== 'out').slice(0, 3);
 
   return (
@@ -44,6 +68,28 @@ export default function Home() {
           <div className="bar" style={{ height: 10, marginTop: 5 }}><i style={{ width: `${lvl.pct}%` }} /></div>
         </div>
       </div>
+
+      <div className="card row" style={{ gap: 14, flexWrap: 'nowrap' }}>
+        <Ring value={counts.week} goal={goal} />
+        <div style={{ flex: 1 }}>
+          <b style={{ fontSize: 16 }}>{counts.week >= goal ? 'Weekly goal hit!' : `${goal - counts.week} more meal${goal - counts.week === 1 ? '' : 's'} this week`}</b>
+          <div className="muted" style={{ fontSize: 13 }}>Change your goal on the Me tab</div>
+          {counts.total > 0 && <div style={{ fontSize: 13, fontWeight: 800, marginTop: 4, color: 'var(--fresh)' }}>~${fmt(Math.round(saved))} saved vs takeout <span className="muted" style={{ fontWeight: 600 }}>(estimate)</span></div>}
+        </div>
+      </div>
+
+      {quest && (
+        <div className="card stack" style={{ gap: 8, background: quest.claimed ? 'var(--card)' : 'var(--gold-soft)' }}>
+          <div className="row" style={{ justifyContent: 'space-between' }}><span className="eyebrow">Daily quest</span><span className="chip xp">+30 XP</span></div>
+          <b style={{ fontSize: 16 }}>{quest.label}</b>
+          <div className="row" style={{ flexWrap: 'nowrap' }}>
+            <div className="bar" style={{ flex: 1 }}><i style={{ width: `${Math.round((quest.progress / quest.target) * 100)}%` }} /></div>
+            <span style={{ fontWeight: 800, fontSize: 13 }}>{quest.progress}/{quest.target}</span>
+          </div>
+          {quest.claimed ? <span className="muted" style={{ fontWeight: 800, fontSize: 13 }}>✓ Claimed · new quest tomorrow</span>
+            : quest.progress >= quest.target ? <button className="btn" onClick={claimQuest}>Claim +30 XP</button> : null}
+        </div>
+      )}
 
       <div className="card row" style={{ gap: 14, flexWrap: 'nowrap' }}>
         <span style={{ fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 42, lineHeight: 1, color: 'var(--accent)' }}>{pantry === null ? '–' : ready.length}</span>

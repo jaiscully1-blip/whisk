@@ -10,6 +10,7 @@ About 20 minutes. Do the steps in order. **Never paste keys into chat, screensho
 2. **Run the SQL.** Left menu → **SQL Editor** → **New query**.
    - Open `supabase/migrations/0001_whisk_schema.sql` from the repo on GitHub, copy all of it, paste, click **Run**. You should see "Success. No rows returned".
    - New query again → paste all of `supabase/migrations/0002_whisk_seed.sql` → **Run**. This adds the 105 shop items and 26 challenge meals.
+   - New query again → paste all of `supabase/migrations/0003_whisk_features.sql` → **Run**. This adds daily quests, cuisine bingo, streak freezes, the weekly goal, takeout price and meal nutrition. (Already ran 0001 and 0002? Just run 0003. It is safe to run more than once.)
    - Check: **Table Editor** shows `items` with 105 rows.
 3. **Email confirmation.** **Authentication → Sign In / Providers → Email**: make sure **Confirm email** is ON (it's on by default).
 4. **Passwords.** **Authentication → Policies / Passwords** (the name varies): minimum length **8**. If you see **Leaked password protection**, turn it on.

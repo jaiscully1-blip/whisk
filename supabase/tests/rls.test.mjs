@@ -36,10 +36,12 @@ alter default privileges in schema public grant execute on functions to anon, au
 
 const schema = fs.readFileSync('./supabase/migrations/0001_whisk_schema.sql', 'utf8').replace('create extension if not exists pgcrypto;', '');
 const seed = fs.readFileSync('./supabase/migrations/0002_whisk_seed.sql', 'utf8');
+const features = fs.readFileSync('./supabase/migrations/0003_whisk_features.sql', 'utf8');
 try { await db.exec(schema); check('schema migration runs', true); } catch (e) { check('schema migration runs', false, e.message); console.log(results); process.exit(1); }
 try { await db.exec(seed); check('seed runs', true); } catch (e) { check('seed runs', false, e.message); }
+try { await db.exec(features); check('0003 features migration runs', true); } catch (e) { check('0003 features migration runs', false, e.message); console.log(results); process.exit(1); }
 // run twice: migrations should be re-runnable
-try { await db.exec(schema); await db.exec(seed); check('migration is re-runnable', true); } catch (e) { check('migration is re-runnable', false, e.message); }
+try { await db.exec(schema); await db.exec(seed); await db.exec(features); check('migration is re-runnable', true); } catch (e) { check('migration is re-runnable', false, e.message); }
 
 await db.exec(`insert into auth.users (id, email) values ('${A}', 'a@x.com'), ('${B}', 'b@x.com');`);
 const prof = await db.query(`select coins, xp from public.profiles where id = '${A}'`);
@@ -141,6 +143,62 @@ check('A sees only own loadout', loA.rows.length === 1 && loA.rows[0].user_id ==
 await expectFail('A cannot upload into B folder', A, `insert into storage.objects (bucket_id, name) values ('meal-photos', '${B}/evil.jpg')`);
 const aObjs = await as(A, () => db.query(`select name from storage.objects`));
 check('A only lists own photos', aObjs.rows.every((r) => r.name.startsWith(A)), aObjs.rows.map((r) => r.name).join(','));
+
+
+// --- 0003: settings, streak freeze, nutrition, daily quest, bingo ---
+const C = '33333333-3333-3333-3333-333333333333';
+await db.exec(`insert into auth.users (id, email) values ('${C}', 'c@x.com');`);
+await expectFail('C cannot set own streak_freezes', C, `update profiles set streak_freezes = 3 where id = '${C}'`);
+await as(C, () => db.query(`update profiles set weekly_goal = 6, takeout_price = 18.5 where id = '${C}'`));
+const cs = (await db.query(`select weekly_goal, takeout_price from profiles where id = '${C}'`)).rows[0];
+check('C can set weekly goal + takeout price', cs.weekly_goal === 6 && Number(cs.takeout_price) === 18.5, JSON.stringify(cs));
+await expectFail('weekly goal must be 1–14', C, `update profiles set weekly_goal = 99 where id = '${C}'`);
+
+for (let i = 1; i <= 6; i++) await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${C}/c${i}.jpg')`);
+// streak freeze: last meal 2 days ago, freeze available → streak continues
+await db.exec(`update profiles set streak_days = 5, streak_last_date = (now() at time zone 'utc')::date - 2, streak_freezes = 1, streak_freeze_week = date_trunc('week', now() at time zone 'utc')::date where id = '${C}'`);
+const f1 = await as(C, () => db.query(`select public.log_meal('Tacos', '${C}/c1.jpg', null, null, 'Mexican', null, 650, 32, 60, 28) as r`));
+check('streak freeze keeps a 5-day streak alive after 1 missed day', f1.rows[0].r.streak === 6 && f1.rows[0].r.used_freeze === true, JSON.stringify(f1.rows[0].r));
+const nut = (await db.query(`select calories, protein_g from meals where photo_path = '${C}/c1.jpg'`)).rows[0];
+check('nutrition saved with the meal', nut.calories === 650 && nut.protein_g === 32);
+await db.exec(`update profiles set streak_days = 6, streak_last_date = (now() at time zone 'utc')::date - 2 where id = '${C}'`);
+const f2 = await as(C, () => db.query(`select public.log_meal('Pasta', '${C}/c2.jpg', null, null, 'Italian') as r`));
+check('no freeze left → streak resets to 1', f2.rows[0].r.streak === 1 && f2.rows[0].r.used_freeze === false, JSON.stringify(f2.rows[0].r));
+
+// daily quest
+const q1 = await as(C, () => db.query(`select public.get_daily_quest() as r`));
+check('daily quest is created', ['pantry_add', 'cook', 'recipe_save'].includes(q1.rows[0].r.kind), JSON.stringify(q1.rows[0].r));
+await expectFail('players cannot write daily_quests', C, `update daily_quests set claimed_at = now()`);
+const qk = q1.rows[0].r.kind;
+if (qk === 'pantry_add') for (let i = 0; i < 3; i++) await as(C, () => db.query(`insert into pantry_items (name) values ('q${i}')`));
+if (qk === 'recipe_save') await as(C, () => db.query(`insert into recipes (title, data) values ('Q', '{}'::jsonb)`));
+// 'cook' already satisfied by meals above
+const q2 = await as(C, () => db.query(`select public.get_daily_quest() as r`));
+check('quest progress reaches target', q2.rows[0].r.progress === q2.rows[0].r.target, JSON.stringify(q2.rows[0].r));
+const xq0 = (await db.query(`select xp from profiles where id = '${C}'`)).rows[0].xp;
+const qc = await as(C, () => db.query(`select public.claim_daily_quest() as r`));
+const xq1 = (await db.query(`select xp from profiles where id = '${C}'`)).rows[0].xp;
+check('claiming the quest gives +30 XP', qc.rows[0].r.xp === 30 && xq1 - xq0 === 30);
+await expectFail('quest can only be claimed once', C, `select public.claim_daily_quest()`);
+
+// bingo
+const b1 = await as(C, () => db.query(`select public.get_bingo() as r`));
+check('bingo card has 16 cuisines', b1.rows[0].r.cells.length === 16 && b1.rows[0].r.marks.length === 16);
+await expectFail('no bingo claim without a line', C, `select public.claim_bingo()`).catch(() => {});
+const row = b1.rows[0].r.cells.slice(0, 4);
+for (let i = 0; i < 4; i++) await as(C, () => db.query(`select public.log_meal('Row ${i}', '${C}/c${i + 3 > 6 ? 6 : i + 3}.jpg', null, null, '${row[i]}') as r`)).catch(async () => {
+  await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${C}/row${i}.jpg')`);
+  await as(C, () => db.query(`select public.log_meal('Row ${i}', '${C}/row${i}.jpg', null, null, '${row[i]}')`));
+});
+const b2 = await as(C, () => db.query(`select public.get_bingo() as r`));
+check('cooking the top row marks 4 cells and makes a line', b2.rows[0].r.lines >= 1 && b2.rows[0].r.marks.slice(0, 4).every(Boolean), JSON.stringify(b2.rows[0].r.marks));
+const bc = await as(C, () => db.query(`select public.claim_bingo() as r`));
+check('bingo pays +200 XP', bc.rows[0].r.xp === 200);
+await expectFail('bingo pays once a week', C, `select public.claim_bingo()`);
+await expectFail('players cannot rewrite their bingo card', C, `update weekly_bingo set cells = cells`);
+await expectFail('players cannot call _bingo_marks', C, `select public._bingo_marks('${A}', current_date, array['a'])`);
+const cMeals = await as(A, () => db.query(`select * from meals where user_id = '${C}'`));
+check('A cannot see C meals', cMeals.rows.length === 0);
 
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));

@@ -12,7 +12,14 @@ async function compress(file) {
   return await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.85));
 }
 
-export default function LogMealSheet({ title: initialTitle = '', cuisine = '', recipeId = null, challenge = null, onClose, onDone }) {
+const num = (v, max) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Math.max(0, Math.min(max, Math.round(Number(v)))) : null);
+// Per-serving estimates from the recipe, if there is one.
+function nutritionArgs(n) {
+  if (!n) return {};
+  return { p_calories: num(n.calories, 5000), p_protein: num(n.protein_g, 500), p_carbs: num(n.carbs_g, 800), p_fat: num(n.fat_g, 400) };
+}
+
+export default function LogMealSheet({ title: initialTitle = '', cuisine = '', recipeId = null, challenge = null, nutrition = null, onClose, onDone }) {
   const { supabase, profile, refreshProfile, showPopup, say } = useWhisk();
   const [title, setTitle] = useState(initialTitle);
   const [notes, setNotes] = useState('');
@@ -38,13 +45,13 @@ export default function LogMealSheet({ title: initialTitle = '', cuisine = '', r
       const path = `${profile.id}/${crypto.randomUUID()}.jpg`;
       const up = await supabase.storage.from('meal-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
       if (up.error) throw up.error;
-      const { data, error } = await supabase.rpc('log_meal', { p_title: title.trim().slice(0, 120), p_photo_path: path, p_recipe_id: recipeId, p_challenge_id: challenge?.id || null, p_cuisine: cuisine || null, p_notes: notes.trim().slice(0, 500) || null });
+      const { data, error } = await supabase.rpc('log_meal', { p_title: title.trim().slice(0, 120), p_photo_path: path, p_recipe_id: recipeId, p_challenge_id: challenge?.id || null, p_cuisine: cuisine || null, p_notes: notes.trim().slice(0, 500) || null, ...nutritionArgs(nutrition) });
       if (error) throw error;
       await refreshProfile();
       onDone?.(data);
       onClose?.();
       showPopup('cooked');
-      say(`+${data.xp} XP${data.coins ? ` · +${data.coins} coins` : ''}`);
+      say(`+${data.xp} XP${data.coins ? ` · +${data.coins} coins` : ''}${data.used_freeze ? ' · streak freeze used' : ''}`);
     } catch (err) {
       setError(err?.message?.includes('photo') ? 'The photo didn’t upload. Try again.' : (err?.message || 'Could not save that meal.'));
     } finally { setBusy(false); }

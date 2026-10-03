@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import Icon, { Coin, Flame } from './Icon';
 import WhiskStage, { outfitFrom } from './WhiskStage';
-import { fmt } from '@/lib/game';
+import { fmt, levelFor } from '@/lib/game';
+import LevelUp from './LevelUp';
 
 const Ctx = createContext(null);
 export const useWhisk = () => useContext(Ctx);
@@ -21,11 +22,18 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
   const [popup, setPopup] = useState(null);
   const [toast, setToast] = useState('');
   const toastTimer = useRef(0);
+  const [levelUp, setLevelUp] = useState(null);
+  const lastLevel = useRef(levelFor(initialProfile?.xp).level);
   const logged = useRef(false);
 
   const refreshProfile = useCallback(async () => {
-    const { data } = await supabase.from('profiles').select('id, display_name, theme_pref, xp, coins, streak_days, login_count, first_login_at, last_meal_at').eq('id', initialProfile.id).single();
-    if (data) setProfile(data);
+    const { data } = await supabase.from('profiles').select('id, display_name, theme_pref, xp, coins, streak_days, streak_freezes, login_count, first_login_at, last_meal_at, weekly_goal, takeout_price').eq('id', initialProfile.id).single();
+    if (data) {
+      setProfile(data);
+      const lv = levelFor(data.xp);
+      if (lv.level > lastLevel.current) setLevelUp(lv);
+      lastLevel.current = lv.level;
+    }
     return data;
   }, [supabase, initialProfile.id]);
   const refreshLoadout = useCallback(async () => {
@@ -82,6 +90,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
           </div>
         )}
         {toast && <div className="toast" role="status">{toast}</div>}
+        {levelUp && !popup && <LevelUp level={levelUp} onClose={() => setLevelUp(null)} />}
       </div>
     </Ctx.Provider>
   );

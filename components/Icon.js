@@ -12,6 +12,9 @@ const P = {
   timer: 'M12 8v5l3 2M9 2h6M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16z',
   chevron: 'M9 6l6 6-6 6',
   gift: 'M3 9h18v4H3zM5 13h14v8H5zM12 9v12M12 9c-2-5-7-4-6-1s6 1 6 1zM12 9c2-5 7-4 6-1s-6 1-6 1z',
+  receipt: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3',
+  barcode: 'M4 5v14M7 5v14M11 5v14M14 5v14M17 5v14M20 5v14',
+  star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',
   moon: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z'
 };
 export default function Icon({ name, size = 20, stroke = 2, ...rest }) {

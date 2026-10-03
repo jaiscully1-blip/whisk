@@ -32,7 +32,8 @@ const Recipe = z.object({
   steps: z.array(z.object({ text: z.string().max(500), timer_minutes: z.number().int().min(0).max(600).nullable() })).min(1).max(20),
   substitutions: z.array(z.object({ for: z.string().max(60), use: z.string().max(120) })).max(8),
   tips: z.string().max(400),
-  leftovers: z.string().max(300)
+  leftovers: z.string().max(300),
+  nutrition: z.object({ calories: z.number().int().min(0).max(5000), protein_g: z.number().int().min(0).max(500), carbs_g: z.number().int().min(0).max(800), fat_g: z.number().int().min(0).max(400) })
 });
 const Out = z.object({ recipes: z.array(Recipe).min(1).max(3) });
 
@@ -47,7 +48,7 @@ const TOOL = {
         type: 'array', minItems: 1, maxItems: 3,
         items: {
           type: 'object',
-          required: ['title', 'cuisine', 'summary', 'prep_minutes', 'cook_minutes', 'servings', 'technique', 'prep_level', 'precision', 'equipment', 'ingredients', 'steps', 'substitutions', 'tips', 'leftovers'],
+          required: ['title', 'cuisine', 'summary', 'prep_minutes', 'cook_minutes', 'servings', 'technique', 'prep_level', 'precision', 'equipment', 'ingredients', 'steps', 'substitutions', 'tips', 'leftovers', 'nutrition'],
           properties: {
             title: { type: 'string' }, cuisine: { type: 'string' }, summary: { type: 'string', description: 'One sentence.' },
             prep_minutes: { type: 'integer' }, cook_minutes: { type: 'integer' }, servings: { type: 'integer' },
@@ -58,7 +59,8 @@ const TOOL = {
             ingredients: { type: 'array', items: { type: 'object', required: ['item', 'amount', 'from_pantry'], properties: { item: { type: 'string' }, amount: { type: 'string', description: 'US units with metric in parentheses, e.g. "1 cup (240 ml)"' }, from_pantry: { type: 'boolean' } } } },
             steps: { type: 'array', items: { type: 'object', required: ['text', 'timer_minutes'], properties: { text: { type: 'string' }, timer_minutes: { type: ['integer', 'null'] } } } },
             substitutions: { type: 'array', items: { type: 'object', required: ['for', 'use'], properties: { for: { type: 'string' }, use: { type: 'string' } } } },
-            tips: { type: 'string' }, leftovers: { type: 'string', description: 'How to turn leftovers into tomorrow’s lunch.' }
+            tips: { type: 'string' }, leftovers: { type: 'string', description: 'How to turn leftovers into tomorrow’s lunch.' },
+            nutrition: { type: 'object', description: 'Estimated per serving.', required: ['calories', 'protein_g', 'carbs_g', 'fat_g'], properties: { calories: { type: 'integer' }, protein_g: { type: 'integer' }, carbs_g: { type: 'integer' }, fat_g: { type: 'integer' } } }
           }
         }
       }

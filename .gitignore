@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+# next
+.next/
+out/
+# env files — NEVER commit real keys
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+# vercel / supabase local state
+.vercel/
+supabase/.temp/
+supabase/.branches/
+# misc
+.DS_Store
+*.log
+npm-debug.log*
+coverage/

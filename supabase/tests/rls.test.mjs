@@ -325,6 +325,17 @@ const g7c = await as(C, () => db.query(`select public.get_bingo() as r`));
 check('meals from an earlier round do not mark the new card', g7c.rows[0].r.marks.every((m) => !m));
 await expectFail('players cannot call _bingo_marks', C, `select public._bingo_marks('${C}', current_date, array['Thai'])`);
 
+// ================= 0008: passport countries =================
+try { await db.exec(fs.readFileSync('./supabase/migrations/0005_web_recipes_seed.sql', 'utf8')); await db.exec(fs.readFileSync('./supabase/migrations/0008_passport_countries.sql', 'utf8')); await db.exec(fs.readFileSync('./supabase/migrations/0008_passport_countries.sql', 'utf8')); check('0008 runs (twice)', true); }
+catch (e) { check('0008 runs (twice)', false, e.message); }
+const mc = (await db.query(`select m.country, w.data->>'country' as want from meals m join web_recipes w on w.id = m.web_recipe_id`)).rows;
+check('logged meals get their recipe country (backfilled)', mc.length > 0 && mc.every((r) => r.country === r.want), JSON.stringify(mc.slice(0, 3)));
+await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${C}/ctry.jpg')`);
+await as(C, () => db.query(`select public.log_meal('www-budgetbytes-com-picadillo', '${C}/ctry.jpg')`));
+check('new meal country comes from the recipe', (await db.query(`select country from meals where photo_path = '${C}/ctry.jpg'`)).rows[0]?.country === 'CU');
+await expectFail('players cannot change a meal country', C, `update meals set country = 'FR' where photo_path = '${C}/ctry.jpg'`);
+check('country stays put', (await db.query(`select country from meals where photo_path = '${C}/ctry.jpg'`)).rows[0]?.country === 'CU');
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

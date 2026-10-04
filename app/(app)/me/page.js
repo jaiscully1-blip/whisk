@@ -6,7 +6,9 @@ import Icon, { Coin } from '@/components/Icon';
 import GetCoinsSheet from '@/components/GetCoinsSheet';
 import Passport from '@/components/Passport';
 import ResetSheet from '@/components/ResetSheet';
-import { levelFor, fmt, CUISINES, cuisineMatch, weekStart, HOME_MEAL_COST } from '@/lib/game';
+import RecipeSheet from '@/components/RecipeSheet';
+import { usePantry } from '@/components/usePantry';
+import { levelFor, fmt, weekStart, HOME_MEAL_COST } from '@/lib/game';
 
 const SLOTS = [['top', 'Top', 'shirt'], ['hat', 'Hat', 'hat'], ['glasses', 'Glasses', 'glasses'], ['shoes', 'Shoes', 'shoe'], ['acc', 'Accessory', 'spoon']];
 const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
@@ -27,6 +29,8 @@ export default function Me() {
   const [editing, setEditing] = useState(false);
   const [editTakeout, setEditTakeout] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [recipe, setRecipe] = useState(null);
+  const [pantry] = usePantry();
   const [nameDraft, setNameDraft, clearName] = useDraft('nm', profile?.display_name || '');
   const [takeout, setTakeout, clearTakeout] = useDraft('takeout', String(profile?.takeout_price ?? 15));
   const outfit = outfitFrom(loadout);
@@ -40,7 +44,7 @@ export default function Me() {
         supabase.from('items').select('id, slot, name, rarity, price, sort').order('sort'),
         supabase.from('inventory').select('item_id'),
         supabase.from('meals').select('id, title, photo_path, cooked_at, rating').order('cooked_at', { ascending: false }).limit(12),
-        supabase.from('meals').select('cuisine, cooked_at, calories, protein_g, carbs_g, fat_g').order('cooked_at', { ascending: false }).limit(1000)
+        supabase.from('meals').select('cuisine, country, cooked_at, calories, protein_g, carbs_g, fat_g').order('cooked_at', { ascending: false }).limit(1000)
       ]);
       setItems(it.data || []); setOwned(new Set((inv.data || []).map((r) => r.item_id)));
       setHistory(h.data || []);
@@ -69,7 +73,7 @@ export default function Me() {
   }, [inSlot]);
 
   const byId = useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
-  const cuisineCounts = useMemo(() => new Map(CUISINES.map((c) => [c, history.filter((m) => cuisineMatch(m.cuisine, c)).length])), [history]);
+  const countryCounts = useMemo(() => { const m = new Map(); history.forEach((x) => { if (x.country) m.set(x.country, (m.get(x.country) || 0) + 1); }); return m; }, [history]);
   const macros = useMemo(() => {
     const since = Date.now() - 7 * 864e5;
     const wk = history.filter((m) => new Date(m.cooked_at).getTime() >= since && m.calories != null);
@@ -174,7 +178,7 @@ export default function Me() {
         </div>
       </div>
 
-      <Passport counts={cuisineCounts} />
+      <Passport counts={countryCounts} onOpenRecipe={setRecipe} />
 
       <section className="card stack" style={{ gap: 8 }}>
         <div className="row" style={{ justifyContent: 'space-between' }}><h3>Last 7 days</h3><span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>From the recipe pages</span></div>
@@ -236,6 +240,7 @@ export default function Me() {
       </div>
       <button onClick={() => setResetting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, color: 'var(--muted)', fontSize: 11, textDecoration: 'underline', padding: 8, minHeight: 32 }}>Reset game</button>
       {resetting && <ResetSheet onClose={() => setResetting(false)} />}
+      {recipe && <RecipeSheet recipe={recipe} pantry={pantry || []} onClose={() => setRecipe(null)} />}
       {buying && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setBuying(null); }}>
           <div className="sheet stack" role="dialog" aria-modal="true" aria-label={`Buy ${buying.name}`} style={{ alignItems: 'center', textAlign: 'center' }}>

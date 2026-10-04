@@ -4,16 +4,16 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import PullToRefresh from './PullToRefresh';
+import { timerApi } from '@/lib/timers';
 import Icon, { Coin, Flame } from './Icon';
 import WhiskStage, { outfitFrom } from './WhiskStage';
 import { fmt, levelFor } from '@/lib/game';
 import LevelUp from './LevelUp';
-import WrappedPopup from './WrappedPopup';
 
 const Ctx = createContext(null);
 export const useWhisk = () => useContext(Ctx);
 
-const TITLES = { cooked: 'Cooked it!', back: 'We’re so back!', late: 'Late night snack...' };
+const TITLES = { cooked: 'Cooked it!', welcome: 'Welcome back!' };
 const NAV = [['/home', 'Home', 'home'], ['/pantry', 'Pantry', 'pantry'], ['/cook', 'Cook', 'cook'], ['/compete', 'Compete', 'compete'], ['/me', 'Me', 'me']];
 const PROFILE_COLS = 'id, display_name, theme_pref, xp, coins, streak_days, streak_freezes, login_count, first_login_at, last_meal_at, weekly_goal, takeout_price, last_device, ui_state';
 const UI_LOCAL = 'whisk-ui';
@@ -52,7 +52,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
     const remote = initialProfile?.ui_state || null;
     return (local && (!remote || (local.at || 0) > (remote.at || 0)) ? local : remote) || { drafts: {}, scroll: {} };
   });
-  const uiRef = useRef(ui); uiRef.current = ui;
+  const uiRef = useRef(ui); if ((ui.at || 0) >= (uiRef.current.at || 0)) uiRef.current = ui;
   const uiTimer = useRef(0);
   const flushUi = useCallback(async () => {
     clearTimeout(uiTimer.current); uiTimer.current = 0;
@@ -61,12 +61,22 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
     setSaveState(error ? 'error' : 'saved');
   }, [supabase, initialProfile.id]);
   const setUi = useCallback((patch) => {
-    setUiState((cur) => {
+    setUiState(() => {
+      const cur = uiRef.current;   // includes quiet saves (scroll spots) made since the last render
       const next = { ...cur, ...(typeof patch === 'function' ? patch(cur) : patch), at: Date.now() };
+      uiRef.current = next;
       try { localStorage.setItem(UI_LOCAL, JSON.stringify(next)); } catch {}
       return next;
     });
     clearTimeout(uiTimer.current); uiTimer.current = setTimeout(() => flushUi(), 400);
+  }, [flushUi]);
+  const getUi = useCallback(() => uiRef.current, []);
+  // Saves without re-rendering the app (scroll spots, album page): nothing on screen depends on these.
+  const setUiQuiet = useCallback((patch) => {
+    const next = { ...uiRef.current, ...(typeof patch === 'function' ? patch(uiRef.current) : patch), at: Date.now() };
+    uiRef.current = next;
+    try { localStorage.setItem(UI_LOCAL, JSON.stringify(next)); } catch {}
+    clearTimeout(uiTimer.current); uiTimer.current = setTimeout(() => flushUi(), 800);
   }, [flushUi]);
   useEffect(() => {
     const onHide = () => { if (document.visibilityState === 'hidden' && uiTimer.current) flushUi(); };
@@ -83,10 +93,10 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
       if (pathname === '/home' && last && last !== '/home' && NAV.some(([h]) => last.startsWith(h))) { router.replace(last); return; }
     }
     setUi({ path: pathname });
-    const y = ui.scroll?.[pathname] || 0;
+    const y = uiRef.current.scroll?.[pathname] || 0;
     const t = setTimeout(() => window.scrollTo(0, y), 60);
     let st = 0;
-    const onScroll = () => { clearTimeout(st); st = setTimeout(() => setUi((c) => ({ scroll: { ...(c.scroll || {}), [pathname]: Math.round(window.scrollY) } })), 400); };
+    const onScroll = () => { clearTimeout(st); st = setTimeout(() => setUiQuiet((c) => ({ scroll: { ...(c.scroll || {}), [pathname]: Math.round(window.scrollY) } })), 300); };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => { clearTimeout(t); window.removeEventListener('scroll', onScroll); };
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -125,9 +135,9 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
       .then(({ data, error }) => {
         if (error || !data) return;
         if (data.last_device || data.last_seen_at) setLastPlayed({ device: data.last_device, at: data.last_seen_at, here: data.last_device === device });
-        if (data.last_seen_at && data.new_session) say(`Welcome back · picked up where you left off${data.last_device && data.last_device !== device ? ` on ${data.last_device}` : ''}`);
         if (data.gift_coins) refreshProfile();
-        (data.popups || []).forEach(showPopup);
+        // Opening the app shows one thing: a welcome.
+        showPopup({ kind: 'welcome', first: !data.last_seen_at, gift: data.gift_coins || 0 });
       });
   }, [supabase, say, showPopup, refreshProfile]);
 
@@ -139,6 +149,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
 
   const popup = popups[0] || null;
   const kind = popup && typeof popup === 'object' ? popup.kind : popup;
+  const title = kind === 'welcome' && popup.first ? 'Welcome to Whisk!' : TITLES[kind];
   const closePopup = () => { setPopups((q) => q.slice(1)); setRating(null); bump(); };
   async function rate(v) {
     const next = rating === v ? null : v; setRating(next);
@@ -150,8 +161,8 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
     await Promise.all([refreshProfile(), refreshLoadout?.(), new Promise((r) => setTimeout(r, 450))]);
     bump(); setRefreshKey((k) => k + 1);
   }, [refreshProfile, refreshLoadout, bump]);
-  const value = useMemo(() => ({ profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, lastPlayed, saveState, dataVersion, bump }),
-    [profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, lastPlayed, saveState, dataVersion, bump]);
+  const value = useMemo(() => ({ profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, setUiQuiet, getUi, lastPlayed, saveState, dataVersion, bump }),
+    [profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, setUiQuiet, getUi, lastPlayed, saveState, dataVersion, bump]);
   const outfit = outfitFrom(loadout);
 
   return (
@@ -161,6 +172,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
           <div className="hud-in">
             <Link href="/home" className="brand" aria-label="Whisk home"><img src="/icon.svg" alt="" />whisk</Link>
             <div className="pills">
+              <RunningTimer />
               <span className="pill" title="Cooking streak"><Flame />{profile?.streak_days || 0}d</span>
               <Link href="/me#shop" className="pill" title="Coins" style={{ textDecoration: 'none' }}><Coin />{fmt(profile?.coins)}</Link>
             </div>
@@ -174,13 +186,14 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
             ))}
           </div>
         </nav>
-        {kind === 'wrapped' && <WrappedPopup outfit={outfit} onClose={closePopup} />}
-        {kind && kind !== 'wrapped' && (
+        {kind && (
           <div className="popup-scrim" role="presentation" onClick={(e) => { if (kind !== 'cooked' && e.target === e.currentTarget) closePopup(); }}>
-            <div className="popup" role="dialog" aria-modal="true" aria-label={TITLES[kind]}>
+            <div className="popup" role="dialog" aria-modal="true" aria-label={title}>
               {kind !== 'cooked' && <button className="x" type="button" aria-label="Close" onClick={closePopup}><Icon name="x" /></button>}
-              <WhiskStage pose={kind} outfit={outfit} interactive={false} height={kind === 'cooked' ? 250 : 300} zoom={1.15} label={`Whisk: ${TITLES[kind]}`} />
-              <h2>{TITLES[kind]}</h2>
+              <WhiskStage pose={kind === 'cooked' ? 'cooked' : 'default'} outfit={outfit} interactive={false} height={kind === 'cooked' ? 250 : 300} zoom={1.15} label={`Whisk: ${title}`} />
+              <h2>{title}</h2>
+              {kind === 'welcome' && popup.gift > 0 && <p style={{ margin: '4px 0 0', fontWeight: 800 }}><Coin /> +{fmt(popup.gift)} coins, a gift from Whisk</p>}
+              {kind === 'welcome' && <button className="btn wide" style={{ marginTop: 10 }} onClick={closePopup} autoFocus>Let’s cook</button>}
               {kind === 'cooked' && (
                 <>
                   <p className="muted" style={{ margin: '4px 0 0', fontWeight: 800 }}>How was it?</p>
@@ -209,4 +222,14 @@ export function useDraft(key, initial = '') {
   const set = useCallback((v) => setUi((c) => ({ drafts: { ...(c.drafts || {}), [key]: v } })), [key, setUi]);
   const clear = useCallback(() => setUi((c) => { const d = { ...(c.drafts || {}) }; delete d[key]; return { drafts: d }; }), [key, setUi]);
   return [value, set, clear];
+}
+
+/** Shows the next cooking timer in the top bar while one is running, so you can close the recipe. */
+function RunningTimer() {
+  const [, force] = useState(0);
+  useEffect(() => timerApi.subscribe(() => force((n) => n + 1)), []);
+  const next = timerApi.next();
+  if (!next) return null;
+  const left = Math.max(0, Math.ceil((next.end - Date.now()) / 1000));
+  return <span className="pill" title={next.label} aria-label={`Timer: ${Math.floor(left / 60)} minutes ${left % 60} seconds left`}><Icon name="timer" size={16} />{Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}</span>;
 }

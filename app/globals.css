@@ -160,3 +160,50 @@ html { overscroll-behavior-y: contain; }
 @keyframes ptrspin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ptr-dot.spin { animation: none; } }
 .away-h { font-size: 15px; font-family: var(--f-body); font-weight: 900; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); margin: 10px 0 0; }
+
+/* ---------- passport stamp album ---------- */
+.album { background: #FBF7EC; border: 1px solid #E8DFC8; border-radius: 22px; padding: 16px 14px 14px; box-shadow: 0 2px 0 #E8DFC8; color: #2A2433; }
+.album .count { font-weight: 900; color: #B5651D; }
+.album-pages { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; margin: 10px -14px 0; -webkit-overflow-scrolling: touch; outline: none; }
+.album-pages::-webkit-scrollbar { display: none; }
+.album-page { flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; padding: 4px 14px 0; contain: layout paint; }
+.album-range { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #8A7F66; text-align: center; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.album-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 8px; }
+.album-num { text-align: center; font-family: var(--f-display); font-weight: 700; color: #8A7F66; margin-top: 12px; font-size: 14px; }
+.album-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.album-nav .btn { width: 40px; padding: 0; font-size: 22px; }
+.album-dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.album-dots button { width: 9px; height: 9px; min-height: 0; padding: 0; border-radius: 99px; border: 0; background: #D9CFB6; transition: width .2s, background .2s; }
+.album-dots button[aria-selected="true"] { width: 22px; background: #B5651D; }
+.stamp { position: relative; border: 0; padding: 0; background: none; width: 100%; transform: rotate(var(--tilt)); transition: transform .15s ease; -webkit-tap-highlight-color: transparent; }
+.stamp:active { transform: rotate(var(--tilt)) scale(.95); }
+.stamp-paper { position: relative; display: flex; flex-direction: column; align-items: center; aspect-ratio: 4 / 5; padding: 9px 6px 6px; background: var(--paper);
+  filter: drop-shadow(0 1.5px 1.5px rgba(60, 40, 10, .22));
+  -webkit-mask: radial-gradient(circle, #0000 3px, #000 3.4px) -5px -5px / 10px 10px round, linear-gradient(#000 0 0) 5px 5px / calc(100% - 10px) calc(100% - 10px) no-repeat;
+  mask: radial-gradient(circle, #0000 3px, #000 3.4px) -5px -5px / 10px 10px round, linear-gradient(#000 0 0) 5px 5px / calc(100% - 10px) calc(100% - 10px) no-repeat; }
+.stamp-paper::before { content: ''; position: absolute; inset: 7px; border: 1.5px solid rgba(42, 36, 51, .18); border-radius: 3px; pointer-events: none; }
+.stamp-flag { position: absolute; top: 9px; left: 9px; width: 14px; height: 14px; }
+.stamp-art { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; position: relative; min-height: 0; }
+.stamp-art img { width: 58%; height: auto; }
+.stamp-art.n2 img:first-child { width: 52%; transform: translate(-14%, 6%); position: relative; z-index: 1; }
+.stamp-art.n2 img:last-child { width: 42%; position: absolute; right: 6%; top: 2%; }
+.stamp-name { font-size: 9.5px; font-weight: 900; line-height: 1.05; text-transform: uppercase; letter-spacing: .02em; text-align: center; max-width: 100%; overflow-wrap: normal; word-break: keep-all; hyphens: none; min-height: 2.1em; display: flex; align-items: center; justify-content: center; }
+.stamp-count { font-size: 9px; font-weight: 800; color: #8A7F66; }
+.stamp:not(.done) .stamp-paper { background: #F1EEE6; }
+.stamp:not(.done) .stamp-art img, .stamp:not(.done) .stamp-flag { filter: grayscale(1); opacity: .55; }
+.stamp:not(.done) .stamp-name { color: #9A9384; }
+.postmark { position: absolute; right: -4px; bottom: 18%; padding: 3px 6px; border: 2px solid rgba(178, 34, 52, .78); border-radius: 99px; color: rgba(178, 34, 52, .85); font-size: 8.5px; font-weight: 900; letter-spacing: .12em; transform: rotate(-18deg); background: rgba(255, 255, 255, .25); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .stamp, .album-dots button { transition: none; } }
+.theme-night .album { background: #2A2B22; border-color: #3B3C30; color: #EDE8D8; box-shadow: none; }
+.theme-night .album-range, .theme-night .album-num { color: #B9AE92; }
+.stamp-name { color: #2A2433; }
+.timer { touch-action: manipulation; font-variant-numeric: tabular-nums; }
+.timer.running { border-color: var(--accent); color: var(--accent); }
+.timer.done { background: var(--btn); color: var(--btn-ink); animation: tpulse 1s ease-in-out 3; }
+@keyframes tpulse { 50% { transform: scale(1.06); } }
+
+/* ---------- snappy taps ---------- */
+button, a, [role="button"], [role="tab"], select, input { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.btn, button.card, .chip, .pill, .nav a, .social { transition: transform .08s ease, filter .08s ease; }
+.btn:active:not(:disabled), button.card:active, button.chip:active, .nav a:active, .social:active { transform: scale(.96); filter: brightness(.96); }
+@media (prefers-reduced-motion: reduce) { .btn, button.card, .chip, .pill, .nav a, .social { transition: none; } }

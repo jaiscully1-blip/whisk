@@ -94,7 +94,7 @@ export default function Cook() {
         {CHANNELS.map((c, i) => (
           <div key={c.name} className="card row" style={{ flexWrap: 'nowrap', gap: 10 }}>
             <span className="rank" aria-hidden="true">{i + 1}</span>
-            <span style={{ flex: 1, minWidth: 0 }}><b>{c.name}</b><span className="desc" style={{ display: 'block' }}>{c.about}</span></span>
+            <b style={{ flex: 1, minWidth: 0 }}>{c.name}</b>
             <a className="social yt" href={c.youtube} target="_blank" rel="noopener noreferrer" aria-label={`${c.name} on YouTube`}><Icon name="yt" size={22} /></a>
             <a className="social ig" href={c.instagram} target="_blank" rel="noopener noreferrer" aria-label={`${c.name} on Instagram`}><Icon name="ig" size={22} /></a>
           </div>

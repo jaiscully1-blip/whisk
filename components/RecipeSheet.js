@@ -6,14 +6,23 @@ import LogMealSheet from './LogMealSheet';
 import ThawBanner from './ThawBanner';
 import { checkRecipe, searchLinks } from '@/lib/recipes/match';
 import { guessCategory } from '@/lib/game';
+import { timerApi } from '@/lib/timers';
 
-function StepTimer({ minutes }) {
-  const [left, setLeft] = useState(null);
-  const t = useRef(0);
-  useEffect(() => () => clearInterval(t.current), []);
-  const start = () => { clearInterval(t.current); setLeft(minutes * 60); t.current = setInterval(() => setLeft((s) => { if (s <= 1) { clearInterval(t.current); try { navigator.vibrate?.(400); } catch {} return 0; } return s - 1; }), 1000); };
-  const label = left === null ? `${minutes} min` : left === 0 ? 'Done!' : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
-  return <button type="button" className="btn ghost sm" onClick={start} style={left === 0 ? { background: 'var(--btn)', color: 'var(--btn-ink)' } : undefined}><Icon name="timer" size={16} />{label}</button>;
+// Tap once to start. Double-tap quickly to stop and reset. Keeps running if you close the recipe.
+function StepTimer({ id, minutes, label }) {
+  const [, force] = useState(0);
+  const lastTap = useRef(0);
+  useEffect(() => timerApi.subscribe(() => force((n) => n + 1)), []);
+  const { end, done } = timerApi.get(id);
+  const left = end ? Math.max(0, Math.ceil((end - Date.now()) / 1000)) : null;
+  const tap = () => {
+    const now = Date.now(); const dbl = now - lastTap.current < 380; lastTap.current = now;
+    if (dbl) { timerApi.stop(id); lastTap.current = 0; return; }
+    if (!end && !done) timerApi.start(id, minutes, label);
+    else if (done) timerApi.stop(id);
+  };
+  const text = done ? 'Done!' : left === null ? `${minutes} min` : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+  return <button type="button" className={`btn ghost sm timer ${end ? 'running' : ''} ${done ? 'done' : ''}`} onClick={tap} aria-label={end ? `Timer ${text} left. Double-tap to stop.` : done ? 'Timer done. Tap to reset.' : `Start a ${minutes} minute timer`}><Icon name="timer" size={16} />{text}</button>;
 }
 
 // A real recipe from the web: summary here, full recipe on the source page.
@@ -62,7 +71,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         <h3>Steps <span className="muted" style={{ fontSize: 13, fontFamily: 'var(--f-body)' }}>(summary · full recipe on {r.source})</span></h3>
         <ol className="stack" style={{ gap: 10, paddingLeft: 20, margin: 0 }}>
           {r.steps.map(([text, mins], i) => (
-            <li key={i}><div>{text}</div>{mins ? (mins <= 120 ? <div style={{ marginTop: 6 }}><StepTimer minutes={mins} /></div> : <span className="chip" style={{ marginTop: 6 }}>{Math.round(mins / 6) / 10} hr</span>) : null}</li>
+            <li key={i}><div>{text}</div>{mins ? (mins <= 120 ? <div style={{ marginTop: 6 }}><StepTimer id={`${r.id}:${i}`} minutes={mins} label={`${r.title} · step ${i + 1}`} /></div> : <span className="chip" style={{ marginTop: 6 }}>{Math.round(mins / 6) / 10} hr</span>) : null}</li>
           ))}
         </ol>
         <div className="links">

@@ -24,3 +24,7 @@ npm run dev
 - `supabase/migrations`: schema, RLS, server functions, storage policies, seed
 - `supabase/tests/rls.test.mjs`: 120 database security and logic checks (runs in CI)
 - `e2e/`: local Supabase/Anthropic stand-in plus a Playwright walk through every screen (45 checks)
+
+## Credits
+
+Passport stamp art is [Twemoji](https://github.com/jdecked/twemoji) (graphics licensed CC-BY 4.0), served from `public/stamps/`. Country dishes and symbols: Wikipedia "National dish" and national cuisine pages.

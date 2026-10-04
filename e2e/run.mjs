@@ -46,7 +46,9 @@ await step('log in', async () => {
   await page.fill('#email', 'cook@whisk.test'); await page.fill('#password', 'whisk-e2e-pass');
   await page.click('button[type=submit]'); await page.waitForURL('**/home', { timeout: 15000 });
   check('log in lands on /home', true);
-  await page.waitForTimeout(1500); await closePopups();
+  await page.getByRole('heading', { name: /^Welcome (back!|to Whisk!)$/ }).waitFor({ timeout: 8000 });
+  check('opening the app shows only the welcome popup', (await page.locator('.popup-scrim').count()) === 1 && (await page.getByText('Late night snack').count()) === 0 && (await page.getByText('We’re so back').count()) === 0);
+  await page.getByRole('button', { name: 'Let’s cook' }).click(); await page.waitForTimeout(400); await closePopups();
 });
 await step('home', async () => {
   await page.getByRole('heading', { name: 'Almost ready' }).waitFor();
@@ -83,6 +85,7 @@ await step('cook', async () => {
   const n = await page.locator('main button.card:has(.chip.have)').count();
   check('cook shows web recipes the pantry can make', n >= 5, `${n} recipes`);
   check('no "Find more online" searches', (await page.getByText('Find more online').count()) === 0 && (await page.getByText('Only real recipes').count()) === 0);
+  check('no description under channel names', (await page.locator('.card:has(a.social) .desc').count()) === 0);
   check('top 10 cooking channels with YouTube + Instagram links', (await page.locator('a.social.yt[href^="https://www.youtube.com/@"]').count()) === 10 && (await page.locator('a.social.ig[href^="https://www.instagram.com/"]').count()) === 10);
   check('saved recipes moved off Cook', (await page.getByText('Your saved recipes').count()) === 0);
   await page.click('text=Fridge Raid (surprise me)');
@@ -92,6 +95,14 @@ await step('cook', async () => {
   await page.getByRole('button', { name: /Poor Man's Burrito Bowls/ }).click();
   await page.getByText('Recipe from').waitFor();
   check('recipe sheet links to Budget Bytes', (await page.locator('[role=dialog] .src a').first().getAttribute('href')).includes('budgetbytes.com'));
+  const tmr = page.locator('[role=dialog] button.timer').first();
+  if (await tmr.count()) {
+    await tmr.click(); await page.waitForTimeout(1300);
+    check('one tap starts the step timer', /\d+:\d\d/.test(await tmr.innerText()) && (await tmr.getAttribute('class')).includes('running'));
+    check('a running timer shows in the top bar', (await page.locator('header .pill').count()) === 3);
+    await tmr.dblclick(); await page.waitForTimeout(300);
+    check('double-tap stops and resets the timer', /min$/.test((await tmr.innerText()).trim()) && (await page.locator('header .pill').count()) === 2);
+  } else check('recipe has a step timer', false);
   await page.click('[role=dialog] >> text=Save · +5 XP');
   await page.getByText(/Saved to your cookbook/).waitFor();
   await page.click('[role=dialog] >> text=I cooked it');
@@ -129,12 +140,21 @@ await step('compete', async () => {
 });
 await step('me', async () => {
   await nav('Me');
-  await page.getByText('Cuisine passport').waitFor();
+  await page.getByRole('heading', { name: 'Passport' }).waitFor();
   check('no pose buttons on Me', (await page.getByRole('button', { name: 'We’re so back!' }).count()) === 0);
   check('closet slots are outline icons', (await page.locator('.slotbar [role=tab] svg').count()) === 5);
-  check('passport shows x/10 under each cuisine', (await page.locator('.sticker .tally').count()) === 20 && !/Mexican, 0 of/.test(await page.locator('[aria-label^="Mexican, "]').getAttribute('aria-label')));
-  check('stickers stay grey until 10 cooks', (await page.locator('.sticker.off').count()) === 20);
-  check('Thai sticker is pad thai', (await page.locator('[aria-label^="Thai,"] svg ellipse').count()) >= 2);
+  check('album has all 193 UN members, 20 a page', (await page.locator('.album .stamp').count()) === 193 && (await page.locator('.album-page').count()) === 10 && (await page.locator('.album-page').first().locator('.stamp').count()) === 20);
+  check('pages are numbered', (await page.locator('.album-num').first().innerText()).includes('1'));
+  check('stamps stay grey until 10 meals', (await page.locator('.album .stamp.done').count()) === 0);
+  check('cooking Mexican counts toward the Mexico stamp', /Mexico, [1-9] of 10/.test(await page.locator('[aria-label^="Mexico, "]').getAttribute('aria-label')));
+  const x0 = await page.locator('.album-pages').evaluate((e) => e.scrollLeft);
+  await page.getByRole('button', { name: 'Next page' }).click(); await page.waitForTimeout(900);
+  check('next page swipes the album across', (await page.locator('.album-pages').evaluate((e) => e.scrollLeft)) > x0 && (await page.locator('.album-dots [aria-selected=true]').getAttribute('aria-label')) === 'Page 2');
+  await page.locator('[aria-label^="Mexico, "]').scrollIntoViewIfNeeded().catch(() => {});
+  await page.getByRole('button', { name: 'Previous page' }).click(); await page.waitForTimeout(900);
+  const stampImg = await page.locator('.album-page').first().locator('.stamp-art img').first().getAttribute('src');
+  const ok = await page.evaluate(async (u) => (await fetch(u)).ok, stampImg);
+  check('stamp art loads', ok, stampImg);
   check('shop is on Me: every item shown, locked ones greyed with a price', (await page.locator('.closet-grid .locked').count()) >= 5 && /\d/.test(await page.locator('.closet-grid .locked .tprice').first().innerText()));
   await page.getByRole('button', { name: 'Get coins' }).waitFor();
   check('Get coins is on Me', true);
@@ -149,7 +169,7 @@ await step('compete layout', async () => {
   const yB = (await page.getByRole('heading', { name: 'Cuisine bingo' }).boundingBox()).y, yQ = (await page.getByText('Daily quest').boundingBox()).y;
   check('cuisine bingo is at the top of Compete', yB < yQ, `${yB} < ${yQ}`);
   check('bingo card resets every 5 days', /resets in [1-5]d/.test(await page.locator('section[aria-labelledby=bingo-h] p').first().innerText()));
-  await nav('Me'); await page.getByText('Cuisine passport').waitFor();
+  await nav('Me'); await page.getByRole('heading', { name: 'Passport' }).waitFor();
 });
 await step('buy coins with bitcoin', async () => {
   const before = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));

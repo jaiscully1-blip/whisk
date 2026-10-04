@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { useWhisk } from '@/components/AppShell';
+import { useWhisk, useDraft } from '@/components/AppShell';
+import { isFrozenMeat, thawState, THAW_HOURS } from '@/lib/recipes/match';
 import Icon from '@/components/Icon';
 import { CATEGORIES, freshness, guessCategory } from '@/lib/game';
 import ScanSheet from '@/components/ScanSheet';
@@ -9,13 +10,19 @@ const NEXT_STATUS = { stocked: 'low', low: 'out', out: 'stocked' };
 const STATUS_LABEL = { stocked: 'Stocked', low: 'Low', out: 'Out' };
 
 export default function Pantry() {
-  const { supabase, say, refreshProfile } = useWhisk();
-  const [tab, setTab] = useState('pantry');
+  const { supabase, say, refreshProfile, ui, setUi } = useWhisk();
+  const tab = ui.pantryTab || 'pantry'; const setTab = (t) => setUi({ pantryTab: t });
+  const filter = ui.pantryFilter || 'All'; const setFilter = (f) => setUi({ pantryFilter: f });
   const [items, setItems] = useState(null);
   const [list, setList] = useState(null);
-  const [form, setForm] = useState({ name: '', category: 'Produce', quantity: '', expires_on: '' });
-  const [newItem, setNewItem] = useState('');
-  const [filter, setFilter] = useState('All');
+  // Everything you type here is remembered until you add it, even across devices.
+  const [fName, setFName, clrName] = useDraft('p-name');
+  const [fCat, setFCat] = useDraft('p-cat', '');
+  const [fQty, setFQty, clrQty] = useDraft('p-qty');
+  const [fExp, setFExp, clrExp] = useDraft('p-exp');
+  const form = { name: fName, category: fCat, quantity: fQty, expires_on: fExp };
+  const setForm = (next) => { const f = typeof next === 'function' ? next(form) : next; if (f.name !== fName) setFName(f.name); if (f.category !== fCat) setFCat(f.category); if (f.quantity !== fQty) setFQty(f.quantity); if (f.expires_on !== fExp) setFExp(f.expires_on); };
+  const [newItem, setNewItem, clrNewItem] = useDraft('s-new');
   const [scan, setScan] = useState(null); // 'receipt' | 'barcode'
 
   async function load() {
@@ -30,11 +37,12 @@ export default function Pantry() {
   async function addPantry(e) {
     e.preventDefault();
     const name = form.name.trim(); if (!name) return;
-    const { data, error } = await supabase.from('pantry_items').insert({ name: name.slice(0, 60), category: form.category, quantity: form.quantity.trim().slice(0, 30) || null, expires_on: form.expires_on || null }).select().single();
+    const category = form.category || guessCategory(name);
+    const { data, error } = await supabase.from('pantry_items').insert({ name: name.slice(0, 60), category, quantity: form.quantity.trim().slice(0, 30) || null, expires_on: form.expires_on || null }).select().single();
     if (error) { say('Couldn’t add that.'); return; }
     setItems((x) => [...x, data].sort((a, b) => a.name.localeCompare(b.name)));
-    setForm((f) => ({ ...f, name: '', quantity: '', expires_on: '' }));
-    refreshProfile(); say(`Added ${data.name}`);
+    clrName(); clrQty(); clrExp();
+    refreshProfile(); say(isFrozenMeat(data) ? `Added ${data.name} · frozen meat, remember to defrost` : `Added ${data.name}`);
   }
   // From a receipt or barcode: restock what's already in the pantry, add the rest.
   async function addMany(found) {
@@ -43,7 +51,7 @@ export default function Pantry() {
     for (const f of found) { const ex = byName.get(f.name.toLowerCase()); if (ex) restock.push(ex.id); else if (!fresh.some((x) => x.name.toLowerCase() === f.name.toLowerCase())) fresh.push(f); }
     const [ins, upd] = await Promise.all([
       fresh.length ? supabase.from('pantry_items').insert(fresh.map((f) => ({ name: f.name, category: f.category, quantity: f.quantity }))) : { error: null },
-      restock.length ? supabase.from('pantry_items').update({ status: 'stocked', added_at: new Date().toISOString() }).in('id', restock) : { error: null }
+      restock.length ? supabase.from('pantry_items').update({ status: 'stocked', added_at: new Date().toISOString(), thaw_started_at: null }).in('id', restock) : { error: null }
     ]);
     if (ins.error || upd.error) { say('Some items couldn’t be added.'); }
     else say(`Added ${fresh.length}${restock.length ? ` · restocked ${restock.length}` : ''}`);
@@ -55,9 +63,16 @@ export default function Pantry() {
   }
   async function cycle(item) {
     const status = NEXT_STATUS[item.status];
-    setItems((x) => x.map((i) => (i.id === item.id ? { ...i, status } : i)));
-    await supabase.from('pantry_items').update({ status }).eq('id', item.id);
+    const patch = status === 'stocked' ? { status, thaw_started_at: null } : { status };
+    setItems((x) => x.map((i) => (i.id === item.id ? { ...i, ...patch } : i)));
+    await supabase.from('pantry_items').update(patch).eq('id', item.id);
     if (status === 'out') { await supabase.from('shopping_items').insert({ name: item.name, category: item.category }); say(`${item.name} is out · added to your list`); load(); }
+  }
+  async function startThaw(item) {
+    const at = new Date().toISOString();
+    setItems((x) => x.map((i) => (i.id === item.id ? { ...i, thaw_started_at: at } : i)));
+    const { error } = await supabase.from('pantry_items').update({ thaw_started_at: at }).eq('id', item.id);
+    say(error ? 'Couldn’t update that item.' : `${item.name} is thawing in the fridge · ready in about ${THAW_HOURS} hours`);
   }
   async function remove(item) {
     setItems((x) => x.filter((i) => i.id !== item.id));
@@ -68,14 +83,14 @@ export default function Pantry() {
     const name = newItem.trim(); if (!name) return;
     setNewItem(''); // clear right away so fast typists don't lose the next item
     const { data, error } = await supabase.from('shopping_items').insert({ name: name.slice(0, 60), category: guessCategory(name) }).select().single();
-    if (error) { say(`Couldn’t add ${name}.`); setNewItem((cur) => cur || name); return; }
+    if (error) { say(`Couldn’t add ${name}.`); setNewItem(name); return; }
     setList((l) => [...l, data]);
   }
   async function bought(it) {
     setList((l) => l.filter((x) => x.id !== it.id));
     await supabase.from('shopping_items').delete().eq('id', it.id);
     const existing = items.find((p) => p.name.toLowerCase() === it.name.toLowerCase());
-    if (existing) { await supabase.from('pantry_items').update({ status: 'stocked', added_at: new Date().toISOString() }).eq('id', existing.id); }
+    if (existing) { await supabase.from('pantry_items').update({ status: 'stocked', added_at: new Date().toISOString(), thaw_started_at: null }).eq('id', existing.id); }
     else { await supabase.from('pantry_items').insert({ name: it.name, category: CATEGORIES.includes(it.category) && it.category !== 'Other' ? it.category : guessCategory(it.name) }); }
     say(`${it.name} restocked`); refreshProfile(); load();
   }
@@ -107,12 +122,13 @@ export default function Pantry() {
           </div>
           <form className="card stack" onSubmit={addPantry}>
             <div className="grid2">
-              <div><label className="lbl" htmlFor="p-name">Item</label><input id="p-name" className="input" maxLength={60} placeholder="e.g. Chicken thighs" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-              <div><label className="lbl" htmlFor="p-cat">Category</label><select id="p-cat" className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></div>
+              <div><label className="lbl" htmlFor="p-name">Item</label><input id="p-name" className="input" maxLength={60} placeholder="e.g. Frozen chicken breast" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+              <div><label className="lbl" htmlFor="p-cat">Category</label><select id="p-cat" className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}><option value="">Auto</option>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></div>
               <div><label className="lbl" htmlFor="p-qty">Amount (optional)</label><input id="p-qty" className="input" maxLength={30} placeholder="2 lb" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
               <div><label className="lbl" htmlFor="p-exp">Expires (optional)</label><input id="p-exp" className="input" type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} /></div>
             </div>
             <button className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
+            <span className="muted" style={{ fontSize: 13 }}>Whisk reads the name: frozen meat or seafood gets a defrost reminder.</span>
           </form>
 
           <div className="row">
@@ -131,6 +147,7 @@ export default function Pantry() {
                     <div className="row" style={{ flexWrap: 'nowrap' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <b style={{ textDecoration: i.status === 'out' ? 'line-through' : 'none' }}>{i.name}</b>{i.quantity && <span className="muted"> · {i.quantity}</span>}
+                        {(() => { const t = thawState(i); if (!t) return null; return <div style={{ marginTop: 4 }}>{t.state === 'frozen' ? <button className="chip ice" onClick={() => startThaw(i)}><Icon name="snow" size={14} />Frozen meat · tap to start thawing</button> : t.state === 'thawing' ? <span className="chip ice"><Icon name="snow" size={14} />Thawing · ~{t.hoursLeft} h left</span> : <span className="chip have">Thawed · cook within 1–2 days</span>}</div>; })()}
                         {f && <div className="row" style={{ gap: 8, flexWrap: 'nowrap', marginTop: 4 }}><div className="bar" style={{ flex: 1 }}><i style={{ width: `${f.pct}%`, background: `var(--${f.tone === 'fresh' ? 'accent' : f.tone + '-bar'})` }} /></div><span style={{ fontSize: 12, fontWeight: 800, color: `var(--${f.tone})` }}>{f.label}</span></div>}
                       </div>
                       <button className="chip" style={{ border: 0, background: i.status === 'stocked' ? 'var(--fresh-soft)' : i.status === 'low' ? 'var(--warn-soft)' : 'var(--bad-soft)', color: i.status === 'stocked' ? 'var(--fresh)' : i.status === 'low' ? 'var(--warn)' : 'var(--bad)' }} onClick={() => cycle(i)} aria-label={`${i.name}: ${STATUS_LABEL[i.status]}. Tap to change.`}>{STATUS_LABEL[i.status]}</button>

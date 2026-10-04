@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed:sql": "node scripts/gen-seed.mjs"
+    "seed:sql": "node scripts/gen-seed.mjs",
+    "seed:recipes": "node scripts/gen-recipes-sql.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",

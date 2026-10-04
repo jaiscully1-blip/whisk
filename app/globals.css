@@ -99,3 +99,44 @@ label.lbl { font-size: 13px; font-weight: 800; color: var(--muted); display: blo
 .auth h1 { font-size: 30px; }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---------- web recipes, defrost, flip cards, passport, ratings ---------- */
+:root, .theme-day { --paper: #FFFDF5; --rule: #CFE0F2; --margin: #F2A8A0; --ring: #3B4A38; --ice: #2F6FA3; --ice-soft: #DDEEFB; }
+.theme-night { --ice: #8CC7F2; --ice-soft: #1C2F3D; }
+.src { font-size: 12px; font-weight: 800; color: var(--muted); }
+.src a { color: var(--fresh); }
+.links { display: flex; flex-wrap: wrap; gap: 6px; }
+.links a { display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px; border-radius: 99px; background: var(--track); color: var(--fg); font-size: 13px; font-weight: 800; text-decoration: none; }
+.thaw { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 16px; background: var(--ice-soft); color: var(--ice); font-weight: 800; }
+.thaw svg { flex: none; }
+.chip.ice { background: var(--ice-soft); color: var(--ice); font-weight: 800; border: 0; }
+.flip { perspective: 1200px; }
+.flip-in { display: grid; transition: transform .55s cubic-bezier(.2,.7,.2,1); transform-style: preserve-3d; }
+.flip.on .flip-in { transform: rotateY(180deg); }
+.face { grid-area: 1 / 1; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.face.back { transform: rotateY(180deg); }
+button.face { text-align: left; color: var(--fg); width: 100%; }
+.slotbar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.slotbar button { display: grid; place-items: center; padding: 10px 4px; }
+.slotbar svg { width: 34px; height: 34px; }
+.rate { display: flex; gap: 10px; justify-content: center; }
+.rate button { width: 64px; height: 56px; border-radius: 16px; border: 2px solid var(--line); background: var(--card); color: var(--fg); display: grid; place-items: center; }
+.rate button[aria-pressed="true"] { border-color: var(--accent); background: var(--fresh-soft); color: var(--fresh); }
+.rate button.down[aria-pressed="true"] { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); }
+.namebtn { background: none; border: 0; padding: 0; display: inline-flex; align-items: center; gap: 8px; color: var(--fg); text-align: left; }
+.namebtn h1 { overflow-wrap: anywhere; }
+.bingo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.bingo > div { aspect-ratio: 1; border-radius: 14px; display: grid; place-items: center; text-align: center; padding: 4px; font-size: clamp(10.5px, 3vw, 12.5px); font-weight: 800; line-height: 1.1; background: var(--card); border: 1.5px solid var(--line); overflow-wrap: anywhere; }
+.bingo > div.on { background: var(--accent); color: var(--btn-ink); border-color: var(--accent); }
+.notebook { position: relative; color: #23301F; border-radius: 10px 22px 22px 10px; padding: 34px 14px 20px 30px; box-shadow: 0 2px 0 #E4DCC4, 0 10px 24px rgba(30, 40, 20, .14);
+  background-image: linear-gradient(90deg, transparent 22px, var(--margin) 22px, var(--margin) 24px, transparent 24px), repeating-linear-gradient(180deg, transparent 0 31px, var(--rule) 31px 32px); background-color: var(--paper); }
+.notebook::before { content: ''; position: absolute; left: 6px; top: 18px; bottom: 18px; width: 10px; background: radial-gradient(circle at 5px 8px, var(--ring) 3.5px, transparent 4px) 0 0 / 10px 26px repeat-y; opacity: .75; }
+.notebook h2 { color: #23301F; transform: rotate(-1.5deg); }
+.notebook .count { font-family: var(--f-display); font-weight: 700; font-size: 18px; color: #C2410C; transform: rotate(2deg); }
+.stickers { display: grid; grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 14px 8px; margin-top: 10px; }
+.sticker { display: flex; flex-direction: column; align-items: center; text-align: center; transition: filter .3s, opacity .3s; }
+.sticker .art { filter: drop-shadow(2.5px 0 0 #fff) drop-shadow(-2.5px 0 0 #fff) drop-shadow(0 2.5px 0 #fff) drop-shadow(0 -2.5px 0 #fff) drop-shadow(0 3px 3px rgba(40, 30, 10, .28)); display: flex; flex-direction: column; align-items: center; }
+.sticker svg { width: 62px; height: 62px; display: block; }
+.sticker .word { font-family: var(--f-display); font-weight: 700; line-height: 1; text-transform: uppercase; }
+.sticker.off { filter: grayscale(1); opacity: .26; }
+.sticker.off .art { filter: none; }

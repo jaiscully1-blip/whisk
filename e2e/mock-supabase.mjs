@@ -29,10 +29,17 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on sequences to anon, authenticated;
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
-for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql']) {
+for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql']) {
   await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8').replace('create extension if not exists pgcrypto;', ''));
 }
 await db.exec(`insert into auth.users (id, email) values ('${E2E_USER.id}', '${E2E_USER.email}')`);
+// A realistic starting pantry (same as Whisk Play), including frozen ground beef that needs thawing.
+const START = [['Eggs', 'Dairy & Eggs'], ['Tomatoes', 'Produce'], ['Scallions', 'Produce'], ['Spaghetti', 'Carbs & Grains'], ['Garlic', 'Produce'], ['Olive oil', 'Sauces & Oils'],
+  ['Parmesan', 'Dairy & Eggs'], ['Rice', 'Carbs & Grains'], ['Black beans', 'Canned & Jarred'], ['Salsa', 'Sauces & Oils'], ['Cheddar', 'Dairy & Eggs'], ['Potatoes', 'Produce'],
+  ['Onion', 'Produce'], ['Chicken thighs', 'Proteins'], ['Soy sauce', 'Sauces & Oils'], ['Lentils', 'Canned & Jarred'], ['Chickpeas', 'Canned & Jarred'], ['Ginger', 'Produce'],
+  ['Tomato paste', 'Canned & Jarred'], ['Lemon', 'Produce'], ['Ground beef', 'Frozen'], ['Bell peppers', 'Produce'], ['Spinach', 'Produce'], ['Butter', 'Dairy & Eggs'],
+  ['Milk', 'Dairy & Eggs'], ['Flour', 'Baking'], ['Tortillas', 'Carbs & Grains'], ['Chicken broth', 'Canned & Jarred'], ['Carrots', 'Produce']];
+await db.exec(`insert into public.pantry_items (user_id, name, category) values ${START.map(([n, c]) => `('${E2E_USER.id}', '${n}', '${c}')`).join(', ')}`);
 
 // One PGlite connection → run requests one at a time.
 let chain = Promise.resolve();
@@ -153,7 +160,7 @@ async function rpc(res, uid, fn, args, wantObj) {
     for (const [k, v] of Object.entries(args || {})) {
       const i = (meta.proargnames || []).indexOf(k);
       if (i < 0) throw Object.assign(new Error(`unknown argument ${k}`), { status: 404, code: 'PGRST202' });
-      values.push(v !== null && typeof v === 'object' ? JSON.stringify(v) : v); named.push(`${id(k)} => $${values.length}::${meta.types[i]}`);
+      values.push(Array.isArray(v) && meta.types[i].endsWith('[]') ? `{${v.map((x) => `"${String(x).replace(/["\\]/g, '')}"`).join(',')}}` : v !== null && typeof v === 'object' ? JSON.stringify(v) : v); named.push(`${id(k)} => $${values.length}::${meta.types[i]}`);
     }
     const call = `public.${id(fn)}(${named.join(', ')})`;
     if (meta.proretset) return (await tx.query(`select * from ${call} t`, values)).rows;

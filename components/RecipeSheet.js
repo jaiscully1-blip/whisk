@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
 import LogMealSheet from './LogMealSheet';
-import { inPantry, norm, SEARCH_LINKS } from '@/lib/game';
+import ThawBanner from './ThawBanner';
+import { checkRecipe, searchLinks } from '@/lib/recipes/match';
+import { guessCategory } from '@/lib/game';
 
 function StepTimer({ minutes }) {
   const [left, setLeft] = useState(null);
@@ -14,87 +16,66 @@ function StepTimer({ minutes }) {
   return <button type="button" className="btn ghost sm" onClick={start} style={left === 0 ? { background: 'var(--btn)', color: 'var(--btn-ink)' } : undefined}><Icon name="timer" size={16} />{label}</button>;
 }
 
-export default function RecipeSheet({ recipe, savedId = null, pantryNames = [], onClose, onSaved }) {
-  const { supabase, say } = useWhisk();
-  const [saved, setSaved] = useState(savedId);
+// A real recipe from the web: summary here, full recipe on the source page.
+export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChanged, challenge = null }) {
+  const { supabase, say, refreshProfile } = useWhisk();
+  const [isSaved, setSaved] = useState(!!saved);
   const [logging, setLogging] = useState(false);
-  const [done, setDone] = useState({});
-  const have = (ing) => ing.from_pantry || inPantry(pantryNames, ing.item);
-  const missing = recipe.ingredients.filter((i) => !have(i));
-  const total = (recipe.prep_minutes || 0) + (recipe.cook_minutes || 0);
+  const c = checkRecipe(r, pantry);
 
   async function save() {
-    const { data, error } = await supabase.from('recipes').insert({ title: recipe.title.slice(0, 120), cuisine: recipe.cuisine?.slice(0, 40), data: recipe }).select('id').single();
+    const { data, error } = await supabase.rpc('save_recipe', { p_recipe_id: r.id });
     if (error) { say('Couldn’t save that recipe.'); return; }
-    setSaved(data.id); onSaved?.(data.id); say('Saved to your cookbook · +5 XP');
+    setSaved(true); refreshProfile(); onChanged?.(); say(data?.xp ? 'Saved to your cookbook · +5 XP' : 'Saved to your cookbook');
   }
   async function addMissing() {
-    if (!missing.length) return;
-    const { error } = await supabase.from('shopping_items').insert(missing.map((m) => ({ name: m.item.slice(0, 60) })));
-    say(error ? 'Couldn’t add to your list.' : `Added ${missing.length} to your shopping list`);
+    const { data: list } = await supabase.from('shopping_items').select('name');
+    const have = new Set((list || []).map((l) => l.name.toLowerCase()));
+    const add = c.missing.filter((m) => !have.has(m.toLowerCase()));
+    if (add.length) { const { error } = await supabase.from('shopping_items').insert(add.map((m) => ({ name: m.slice(0, 60), category: guessCategory(m) }))); if (error) { say('Couldn’t add to your list.'); return; } }
+    say(add.length ? `Added ${add.length} to your shopping list` : 'Already on your list');
   }
+  if (logging) return <LogMealSheet recipe={r} challenge={challenge} onClose={() => { setLogging(false); onClose?.(); }} onDone={onChanged} />;
 
   return (
     <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
-      <div className="sheet stack" role="dialog" aria-modal="true" aria-label={recipe.title}>
+      <div className="sheet stack" role="dialog" aria-modal="true" aria-label={r.title}>
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'nowrap' }}>
-          <div>
-            <span className="eyebrow">{recipe.cuisine}</span>
-            <h2 style={{ fontSize: 28 }}>{recipe.title}</h2>
-          </div>
+          <div><span className="eyebrow">{r.cuisine}</span><h2 style={{ fontSize: 26 }}>{r.title}</h2></div>
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
         </div>
-        <p className="muted" style={{ margin: 0 }}>{recipe.summary}</p>
+        <span className="src">Recipe from <a href={r.url} target="_blank" rel="noopener noreferrer">{r.source}</a>{r.video && <> · <a href={r.video} target="_blank" rel="noopener noreferrer">Watch the video</a></>}</span>
         <div className="row">
-          <span className="chip">{total} min</span><span className="chip">Serves {recipe.servings}</span>
-          <span className="chip xp">+50 XP</span>
-          {recipe.nutrition?.calories ? <span className="chip" title="Estimated, per serving">~{Math.round(recipe.nutrition.calories)} kcal · {Math.round(recipe.nutrition.protein_g || 0)}g protein</span> : null}
-          {missing.length ? <span className="chip need">{missing.length} missing</span> : <span className="chip have">You have everything</span>}
+          <span className="chip">{r.minutes} min</span><span className="chip">Serves {r.servings}</span><span className="chip xp">+50 XP</span>
+          {r.nutrition && <span className="chip" title="Per serving, from the recipe page">{r.nutrition.calories} kcal · {r.nutrition.protein_g}g protein</span>}
+          {c.missing.length ? <span className="chip need">{c.missing.length} missing</span> : <span className="chip have">You have everything</span>}
         </div>
-        {recipe.equipment?.length > 0 && <p className="muted" style={{ margin: 0, fontSize: 14 }}>Uses: {recipe.equipment.join(', ')}</p>}
-
-        <h3>Ingredients</h3>
-        <ul className="stack" style={{ listStyle: 'none', padding: 0, margin: 0, gap: 6 }}>
-          {recipe.ingredients.map((ing, i) => (
-            <li key={i} className="row" style={{ justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: 6, flexWrap: 'nowrap' }}>
-              <span><b style={{ fontVariantNumeric: 'tabular-nums' }}>{ing.amount}</b> {ing.item}</span>
-              <span className={`chip ${have(ing) ? 'have' : 'need'}`} style={{ flex: 'none' }}>{have(ing) ? 'Have' : 'Need'}</span>
-            </li>
-          ))}
-        </ul>
-        {missing.length > 0 && <button type="button" className="btn ghost" onClick={addMissing}><Icon name="plus" size={18} />Add {missing.length} missing to shopping list</button>}
-        {recipe.substitutions?.length > 0 && (
-          <div className="card" style={{ background: 'var(--gold-soft)', borderColor: 'transparent' }}>
-            <b>Swaps</b>
-            <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{recipe.substitutions.map((s, i) => <li key={i}>No {s.for}? Use {s.use}.</li>)}</ul>
-          </div>
-        )}
-
-        <h3>Steps</h3>
-        <ol className="stack" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {recipe.steps.map((s, i) => (
-            <li key={i} className="card" style={{ display: 'grid', gridTemplateColumns: '36px 1fr', gap: 10, opacity: done[i] ? .55 : 1 }}>
-              <button type="button" onClick={() => setDone((d) => ({ ...d, [i]: !d[i] }))} aria-pressed={!!done[i]} aria-label={`Step ${i + 1} done`} style={{ width: 34, height: 34, borderRadius: 10, border: 0, background: done[i] ? 'var(--accent)' : 'var(--fg)', color: 'var(--bg)', fontFamily: 'var(--f-display)', fontWeight: 700 }}>{done[i] ? '✓' : i + 1}</button>
-              <div className="stack" style={{ gap: 8 }}>
-                <p style={{ margin: 0, fontSize: 17 }}>{s.text}</p>
-                {s.timer_minutes ? <div><StepTimer minutes={s.timer_minutes} /></div> : null}
-              </div>
-            </li>
+        {c.frozen.length > 0 && <ThawBanner items={c.frozen} onChanged={onChanged} />}
+        <h3>Main ingredients</h3>
+        <div className="stack" style={{ gap: 6 }}>
+          {r.key.map((k) => { const ok = !c.missing.includes(k); return (
+            <div key={k} className="row" style={{ flexWrap: 'nowrap' }}><span className={`chip ${ok ? 'have' : 'need'}`} style={{ flex: 'none' }}>{ok ? 'Have' : 'Need'}</span><span><b>{k}</b> <span className="muted">{r.amounts?.[k] || ''}</span></span></div>
+          ); })}
+          {r.minor?.length > 0 && <span className="muted" style={{ fontSize: 13 }}>Also uses: {r.minor.join(', ')}. Salt, pepper and oil assumed.</span>}
+        </div>
+        {c.missing.length > 0 && <button className="btn ghost" onClick={addMissing}>Add {c.missing.length} missing to shopping list</button>}
+        <h3>Steps <span className="muted" style={{ fontSize: 13, fontFamily: 'var(--f-body)' }}>(summary · full recipe on {r.source})</span></h3>
+        <ol className="stack" style={{ gap: 10, paddingLeft: 20, margin: 0 }}>
+          {r.steps.map(([text, mins], i) => (
+            <li key={i}><div>{text}</div>{mins ? (mins <= 120 ? <div style={{ marginTop: 6 }}><StepTimer minutes={mins} /></div> : <span className="chip" style={{ marginTop: 6 }}>{Math.round(mins / 6) / 10} hr</span>) : null}</li>
           ))}
         </ol>
-        {recipe.tips && <p className="card" style={{ margin: 0 }}><b>Tip:</b> {recipe.tips}</p>}
-        {recipe.leftovers && <p className="card" style={{ margin: 0 }}><b>Tomorrow’s lunch:</b> {recipe.leftovers}</p>}
-        <div className="row">
-          <span className="muted" style={{ fontSize: 14 }}>Watch it made:</span>
-          {SEARCH_LINKS(recipe.title).map((l) => <a key={l.label} className="btn ghost sm" href={l.href} target="_blank" rel="noopener noreferrer">{l.label}</a>)}
+        <div className="links">
+          <a href={r.url} target="_blank" rel="noopener noreferrer"><Icon name="link" size={15} />Open on {r.source}</a>
+          {r.video && <a href={r.video} target="_blank" rel="noopener noreferrer"><Icon name="play" size={15} />Video</a>}
+          {searchLinks(r.title).slice(1).map(([l, h]) => <a key={l} href={h} target="_blank" rel="noopener noreferrer"><Icon name={l === 'Reddit' ? 'search' : 'play'} size={15} />{l}</a>)}
         </div>
-        <div className="row" style={{ position: 'sticky', bottom: -28, background: 'var(--bg)', padding: '12px 0', borderTop: '1px solid var(--line)' }}>
-          {!saved && <button type="button" className="btn ghost" style={{ flex: '1 1 140px' }} onClick={save}>Save recipe</button>}
-          <button type="button" className="btn" style={{ flex: '1 1 160px' }} onClick={() => setLogging(true)}>I cooked it</button>
+        <div className="row">
+          {isSaved ? <span className="chip have" style={{ flex: '1 1 140px', justifyContent: 'center', minHeight: 44 }}>Saved</span>
+            : <button className="btn ghost" style={{ flex: '1 1 140px' }} onClick={save}>Save · +5 XP</button>}
+          {c.ok && <button className="btn" style={{ flex: '1 1 160px' }} onClick={() => { if (c.frozen.length) { say(`Defrost ${c.frozen.map((p) => p.name).join(', ')} first`); return; } setLogging(true); }}>I cooked it</button>}
         </div>
       </div>
-      {logging && <LogMealSheet title={recipe.title} cuisine={recipe.cuisine} recipeId={saved} nutrition={recipe.nutrition} onClose={() => { setLogging(false); onClose?.(); }} />}
     </div>
   );
 }
-export { norm };

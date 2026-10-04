@@ -1,88 +1,106 @@
 'use client';
-import { Suspense, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { useWhisk } from '@/components/AppShell';
+import { useMemo, useState } from 'react';
+import { useWhisk, useDraft } from '@/components/AppShell';
 import RecipeSheet from '@/components/RecipeSheet';
 import Icon from '@/components/Icon';
-import { inPantry, norm } from '@/lib/game';
+import { usePantry, useSaved } from '@/components/usePantry';
+import { canon, checkRecipe, pantryCombos, searchLinks } from '@/lib/recipes/match';
 
-function CookInner() {
-  const { supabase } = useWhisk();
-  const params = useSearchParams();
-  const [pantry, setPantry] = useState([]);
-  const [saved, setSaved] = useState([]);
-  const [ideas, setIdeas] = useState([]);
-  const [raid, setRaid] = useState(null);
-  const [busy, setBusy] = useState('');
-  const [error, setError] = useState('');
+const SKIP = ['Spices & Seasonings', 'Sauces & Oils', 'Baking'];
+const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
+
+function Links({ query }) {
+  return <div className="links">{searchLinks(query).map(([l, h]) => <a key={l} href={h} target="_blank" rel="noopener noreferrer"><Icon name={l === 'Google' || l === 'Reddit' ? 'search' : 'play'} size={15} />{l}</a>)}</div>;
+}
+
+// Only real recipes from the web, and only ones your pantry can make.
+export default function Cook() {
+  const { recipes, ui, setUi } = useWhisk();
+  const [pantry, reload] = usePantry();
+  const [saved, reloadSaved] = useSaved();
+  const [dish, setDish] = useDraft('o-dish');
+  const [hand, setHand] = useState(null);
   const [open, setOpen] = useState(null);
-  const [opts, setOpts] = useState({ maxMinutes: '', servings: 2, mealPrepDays: 0, dish: '' });
+  const savedMode = ui.cookMode || null; const time = ui.cookTime || ''; const cu = ui.cookCuisine || ''; const more = ui.cookMore || 6; const cb = ui.cbFilter || 'all';
 
-  async function loadSaved() { const { data } = await supabase.from('recipes').select('id, title, cuisine, data, created_at').order('created_at', { ascending: false }).limit(60); setSaved(data || []); }
-  useEffect(() => {
-    supabase.from('pantry_items').select('name, status').then(({ data }) => setPantry(data || []));
-    loadSaved();
-    if (params.get('raid') === '1') ask('raid');
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const names = useMemo(() => pantry.filter((p) => p.status !== 'out').map((p) => norm(p.name)), [pantry]);
+  const mode = savedMode === 'raid' && !hand ? 'pantry' : savedMode;
+  const inStock = useMemo(() => (pantry || []).filter((p) => p.status !== 'out'), [pantry]);
+  const makeable = useMemo(() => (recipes && pantry ? recipes.map((r) => ({ r, c: checkRecipe(r, pantry) })).filter((x) => x.c.ok) : []), [recipes, pantry]);
+  const cuisines = useMemo(() => [...new Set((recipes || []).map((r) => r.cuisine))].sort(), [recipes]);
 
-  async function ask(mode) {
-    setBusy(mode); setError(''); setIdeas([]); setRaid(null);
-    try {
-      const body = { mode, servings: Number(opts.servings) || 2, mealPrepDays: Number(opts.mealPrepDays) || 0 };
-      if (opts.maxMinutes) body.maxMinutes = Number(opts.maxMinutes);
-      if (mode === 'named') body.dish = opts.dish.trim().slice(0, 80);
-      const res = await fetch('/api/recipes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Something went wrong.');
-      setIdeas(json.recipes); setRaid(json.raid);
-    } catch (e) { setError(e.message); } finally { setBusy(''); }
+  const results = useMemo(() => {
+    if (!mode) return null;
+    let list = makeable.filter(({ r }) => (!+time || r.minutes <= +time) && (!cu || r.cuisine === cu));
+    if (mode === 'raid' && hand) { const hc = new Set(hand.map(canon)); list = list.map((x) => ({ ...x, hits: x.r.key.filter((k) => hc.has(canon(k))).length })).filter((x) => x.hits > 0).sort((a, b) => b.hits - a.hits); }
+    if (mode === 'named') { const words = (ui.cookDish || '').toLowerCase().split(/\s+/).filter((w) => w.length > 2); list = list.filter(({ r }) => words.some((w) => `${r.title} ${r.cuisine}`.toLowerCase().includes(w.replace(/s$/, '')))); }
+    return list;
+  }, [mode, makeable, time, cu, hand, ui.cookDish]);
+
+  const names = inStock.filter((p) => !SKIP.includes(p.category)).map((p) => p.name);
+  const combos = hand ? [hand] : pantryCombos(names, new Date().getDate() * 31 + names.length, more);
+  const savedList = saved && recipes ? [...saved.values()].map((s) => ({ s, r: recipes.find((r) => r.id === s.recipe_id) })).filter((x) => x.r && (cb === 'all' || x.s.rating === cb)) : [];
+
+  function raid() {
+    const pool = [...names]; const h = [];
+    while (h.length < 4 && pool.length) h.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    setHand(h); setUi({ cookMode: 'raid' });
   }
-
-  const missingCount = (r) => r.ingredients.filter((i) => !(i.from_pantry || inPantry(names, i.item))).length;
 
   return (
     <div className="stack">
-      <div className="page-title"><h1>Cook</h1><span className="muted">{pantry.filter((p) => p.status !== 'out').length} items in your pantry</span></div>
-
+      <div className="page-title"><h1>Cook</h1><span className="muted">{inStock.length} items in your pantry</span></div>
       <div className="card stack">
         <div className="grid2">
-          <div><label className="lbl" htmlFor="o-time">Time limit</label><select id="o-time" className="input" value={opts.maxMinutes} onChange={(e) => setOpts({ ...opts, maxMinutes: e.target.value })}><option value="">Any</option><option value="15">15 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60">1 hour</option></select></div>
-          <div><label className="lbl" htmlFor="o-serv">Servings</label><select id="o-serv" className="input" value={opts.servings} onChange={(e) => setOpts({ ...opts, servings: e.target.value })}>{[1, 2, 3, 4, 6, 8].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
-          <div style={{ gridColumn: '1 / -1' }}><label className="lbl" htmlFor="o-prep">Meal prep</label><select id="o-prep" className="input" value={opts.mealPrepDays} onChange={(e) => setOpts({ ...opts, mealPrepDays: e.target.value })}><option value="0">Just tonight</option>{[2, 3, 4, 5, 6, 7].map((n) => <option key={n} value={n}>Cook for {n} days</option>)}</select></div>
+          <div><label className="lbl" htmlFor="o-time">Time limit</label><select id="o-time" className="input" value={time} onChange={(e) => setUi({ cookTime: e.target.value })}>{[['', 'Any'], ['20', '20 min'], ['30', '30 min'], ['45', '45 min'], ['60', '1 hour'], ['120', '2 hours']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
+          <div><label className="lbl" htmlFor="o-cu">Cuisine</label><select id="o-cu" className="input" value={cu} onChange={(e) => setUi({ cookCuisine: e.target.value })}><option value="">Any</option>{cuisines.map((c) => <option key={c}>{c}</option>)}</select></div>
         </div>
-        <button className="btn wide" onClick={() => ask('pantry')} disabled={!!busy}>{busy === 'pantry' ? 'Whisking up ideas…' : 'What can I make?'}</button>
-        <button className="btn ghost wide" onClick={() => ask('raid')} disabled={!!busy}><Icon name="gift" size={18} />{busy === 'raid' ? 'Raiding the fridge…' : 'Fridge Raid (surprise me)'}</button>
-        <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); if (opts.dish.trim()) ask('named'); }}>
+        <button className="btn wide" onClick={() => { setHand(null); setUi({ cookMode: 'pantry' }); }}>What can I make?</button>
+        <button className="btn ghost wide" onClick={raid}><Icon name="gift" size={18} />Fridge Raid (surprise me)</button>
+        <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); if (!dish.trim()) return; setHand(null); setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>Dish</label>
-          <input id="o-dish" className="input" maxLength={80} placeholder="Or name a dish: “birria tacos”" value={opts.dish} onChange={(e) => setOpts({ ...opts, dish: e.target.value })} />
-          <button className="btn" type="submit" disabled={!!busy || !opts.dish.trim()}>{busy === 'named' ? '…' : 'Go'}</button>
+          <input id="o-dish" className="input" placeholder="Search a dish, e.g. tacos" maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
+          <button className="btn" type="submit">Go</button>
         </form>
+        <span className="muted" style={{ fontSize: 13 }}>Only real recipes from the web, and only ones your pantry can make. Salt, pepper and oil assumed.</span>
       </div>
 
-      {error && <p className="err" role="alert" style={{ margin: 0 }}>{error}</p>}
-      {raid && <p className="ok" style={{ margin: 0 }}>Fridge Raid dealt you: {raid.join(', ')}</p>}
+      {hand && mode === 'raid' && (
+        <div className="stack" style={{ gap: 8 }}><span className="eyebrow">Fridge Raid · your hand</span>
+          <div className="grid2">{hand.map((c, i) => <div key={c} className="card" style={{ textAlign: 'center', fontWeight: 800, background: 'var(--pop-soft)', transform: `rotate(${[-3, 2, -1, 3][i % 4]}deg)` }}>{c}</div>)}</div>
+        </div>
+      )}
+      {results && (results.length ? (
+        <>
+          <span className="eyebrow">{results.length} recipe{results.length === 1 ? '' : 's'} you can make{mode === 'raid' ? ' with your hand' : ''}</span>
+          {results.map(({ r, c }) => (
+            <button key={r.id} className="card stack" style={{ gap: 8, textAlign: 'left' }} onClick={() => setOpen(r)}>
+              <span className="eyebrow">{r.cuisine} · {r.source}</span>
+              <h2 style={{ fontSize: 20 }}>{r.title}</h2>
+              <div className="row"><span className="chip">{hrs(r.minutes)}</span><span className="chip">Serves {r.servings}</span><span className="chip have">You have everything</span>{c.frozen.length > 0 && <span className="chip ice"><Icon name="snow" size={14} />Defrost first</span>}</div>
+            </button>
+          ))}
+        </>
+      ) : <div className="empty"><b>No saved web recipe fits yet</b>{mode === 'named' ? 'None of the recipes found so far match that dish and your pantry.' : 'Try the searches below. They look across the web using only what’s in your pantry.'}</div>)}
 
-      {ideas.map((r, i) => (
-        <button key={i} className="card stack" style={{ textAlign: 'left', gap: 8 }} onClick={() => setOpen({ data: r, id: null })}>
-          <span className="eyebrow">{r.cuisine}</span>
-          <h2 style={{ fontSize: 21 }}>{r.title}</h2>
-          <p className="muted" style={{ margin: 0 }}>{r.summary}</p>
-          <div className="row"><span className="chip">{r.prep_minutes + r.cook_minutes} min</span><span className="chip xp">+50 XP</span>{missingCount(r) ? <span className="chip need">{missingCount(r)} missing</span> : <span className="chip have">Have it all</span>}</div>
+      <section className="card stack" style={{ gap: 10 }}>
+        <div className="row" style={{ justifyContent: 'space-between' }}><h3>Find more online</h3><span className="muted" style={{ fontSize: 13 }}>Unlimited · uses your pantry</span></div>
+        {mode === 'named' && ui.cookDish && <div className="stack" style={{ gap: 6 }}><b>{ui.cookDish} with what you have</b><Links query={`${ui.cookDish} ${names.slice(0, 3).join(' ')}`} /></div>}
+        {combos.map((c) => <div key={c.join('|')} className="stack" style={{ gap: 6, paddingTop: 8, borderTop: '1px solid var(--line)' }}><b>{c.join(' + ')}</b><Links query={c.join(' ')} /></div>)}
+        {!hand && <button className="btn ghost" onClick={() => setUi({ cookMore: more + 6 })}>Show more ideas</button>}
+      </section>
+
+      <div className="page-title" style={{ marginTop: 8 }}><h2 style={{ fontSize: 22 }}>Your saved recipes</h2><span className="muted">{saved ? saved.size : ''}</span></div>
+      <div className="row">{[['all', 'All'], ['up', 'Liked'], ['down', 'Disliked']].map(([k, l]) => <button key={k} className="chip" style={{ border: 0, background: cb === k ? 'var(--fg)' : 'var(--track)', color: cb === k ? 'var(--bg)' : 'var(--fg)' }} onClick={() => setUi({ cbFilter: k })}>{l}</button>)}</div>
+      {savedList.length ? savedList.map(({ s, r }) => (
+        <button key={r.id} className="card row" style={{ textAlign: 'left', flexWrap: 'nowrap' }} onClick={() => setOpen(r)}>
+          <span style={{ flex: 1 }}><b>{r.title}</b><span className="muted" style={{ display: 'block', fontSize: 13 }}>{r.cuisine} · {r.source}</span></span>
+          {s.rating === 'up' && <span style={{ color: 'var(--fresh)' }} aria-label="Liked"><Icon name="up" /></span>}
+          {s.rating === 'down' && <span style={{ color: 'var(--bad)' }} aria-label="Disliked"><Icon name="down" /></span>}
+          <Icon name="chevron" />
         </button>
-      ))}
+      )) : <div className="empty"><b>No saved recipes here</b>Save a recipe, or rate a meal after you cook it.</div>}
 
-      <div className="page-title" style={{ marginTop: 8 }}><h2 style={{ fontSize: 22 }}>Your cookbook</h2><span className="muted">{saved.length}</span></div>
-      {saved.length === 0 ? <div className="empty"><b>No saved recipes yet</b>Open an idea above and tap Save.</div> : saved.map((s) => (
-        <button key={s.id} className="card row" style={{ textAlign: 'left', flexWrap: 'nowrap' }} onClick={() => setOpen({ data: s.data, id: s.id })}>
-          <span style={{ flex: 1 }}><b>{s.title}</b><span className="muted"> · {s.cuisine}</span></span>
-          {missingCount(s.data) ? <span className="chip need">{missingCount(s.data)} missing</span> : <span className="chip have">Ready</span>}
-        </button>
-      ))}
-
-      {open && <RecipeSheet recipe={open.data} savedId={open.id} pantryNames={names} onClose={() => setOpen(null)} onSaved={loadSaved} />}
+      {open && <RecipeSheet recipe={open} pantry={pantry || []} saved={saved?.get(open.id)} onClose={() => setOpen(null)} onChanged={() => { reload(); reloadSaved(); }} />}
     </div>
   );
 }
-
-export default function Cook() { return <Suspense fallback={<p className="muted">Loading…</p>}><CookInner /></Suspense>; }

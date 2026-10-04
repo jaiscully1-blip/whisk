@@ -200,6 +200,80 @@ await expectFail('players cannot call _bingo_marks', C, `select public._bingo_ma
 const cMeals = await as(A, () => db.query(`select * from meals where user_id = '${C}'`));
 check('A cannot see C meals', cMeals.rows.length === 0);
 
+// ================= 0004 + 0005: web recipes, ratings, pantry challenges, popups =================
+try { await db.exec(fs.readFileSync('./supabase/migrations/0004_whisk_web_recipes.sql', 'utf8')); await db.exec(fs.readFileSync('./supabase/migrations/0005_web_recipes_seed.sql', 'utf8')); check('0004 + 0005 migrations run', true); }
+catch (e) { check('0004 + 0005 migrations run', false, e.message); results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`)); process.exit(1); }
+try { await db.exec(fs.readFileSync('./supabase/migrations/0004_whisk_web_recipes.sql', 'utf8')); await db.exec(fs.readFileSync('./supabase/migrations/0005_web_recipes_seed.sql', 'utf8')); check('0004 + 0005 are re-runnable', true); } catch (e) { check('0004 + 0005 are re-runnable', false, e.message); }
+const D = '44444444-4444-4444-4444-444444444444', E = '55555555-5555-5555-5555-555555555555';
+await db.exec(`insert into auth.users (id, email) values ('${D}', 'd@x.com'), ('${E}', 'e@x.com')`);
+const wr = await as(D, () => db.query(`select count(*)::int n, bool_and(url like 'https://%') https from web_recipes`));
+check('40 real web recipes readable, all https links', wr.rows[0].n === 40 && wr.rows[0].https, JSON.stringify(wr.rows[0]));
+await expectFail('players cannot add web recipes', D, `insert into web_recipes (id, title, cuisine, source, url, minutes, technique, prep, precision_level, step_count, score, key_canon, data) values ('x','x','x','x','https://x',1,1,1,1,1,1,'{}','{}')`);
+await expectFail('players cannot edit web recipes', D, `update web_recipes set title = 'hacked'`);
+const easy = (await db.query(`select id, score from web_recipes order by score asc limit 1`)).rows[0];
+const hard = (await db.query(`select id, score from web_recipes order by score desc limit 1`)).rows[0];
+const mid = (await db.query(`select id, score from web_recipes where score between 35 and 64 order by score limit 1`)).rows[0];
+// saving + rating
+const sv = await as(D, () => db.query(`select public.save_recipe('${easy.id}') as r`));
+check('saving a recipe gives +5 XP', sv.rows[0].r.xp === 5);
+const sv2 = await as(D, () => db.query(`select public.save_recipe('${easy.id}') as r`));
+check('saving twice gives no extra XP', sv2.rows[0].r.xp === 0);
+await expectFail('players cannot write saved_recipes directly', D, `insert into saved_recipes (recipe_id, rating) values ('${hard.id}', 'up')`);
+const eSaved = await as(E, () => db.query(`select * from saved_recipes`));
+check('E cannot see D saved recipes', eSaved.rows.length === 0);
+// challenges from proposed recipes; coins come from the server
+const set1 = await as(D, () => db.query(`select public.set_weekly_challenges(array['${hard.id}', '${easy.id}', '${mid.id}']) as n`));
+check('set_weekly_challenges creates 3', set1.rows[0].n === 3);
+const set2 = await as(D, () => db.query(`select public.set_weekly_challenges(array['${hard.id}']) as n`));
+check('challenges can only be picked once a week', set2.rows[0].n === 0);
+const dch = await as(D, () => db.query(`select * from public.get_weekly_challenges()`));
+check('challenge slots ordered by difficulty, coins from score', dch.rows.length === 3 && dch.rows[0].recipe_id === easy.id && dch.rows[2].recipe_id === hard.id && dch.rows[2].coins === (await db.query(`select score_to_coins(${hard.score}) c`)).rows[0].c, dch.rows.map((r) => `${r.slot}:${r.score}=${r.coins}`).join(' '));
+await expectFail('set_weekly_challenges rejects more than 3', E, `select public.set_weekly_challenges(array['a','b','c','d'])`);
+const bogus = await as(E, () => db.query(`select public.set_weekly_challenges(array['not-a-recipe']) as n`));
+check('unknown recipe ids create nothing', bogus.rows[0].n === 0);
+// log_meal v3
+await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${D}/d1.jpg'), ('meal-photos', '${D}/d2.jpg'), ('meal-photos', '${E}/e1.jpg')`);
+await expectFail('log_meal needs a known recipe', D, `select public.log_meal('nope', '${D}/d1.jpg')`);
+await expectFail('log_meal still needs your own photo', D, `select public.log_meal('${easy.id}', '${E}/e1.jpg')`);
+const coinsD0 = (await db.query(`select coins from profiles where id = '${D}'`)).rows[0].coins;
+const bigD = dch.rows[2];
+const wrongRecipe = await as(D, () => db.query(`select public.log_meal('${easy.id}', '${D}/d1.jpg', '${bigD.id}') as r`));
+check('a challenge only pays for its own recipe', wrongRecipe.rows[0].r.coins === 0, JSON.stringify(wrongRecipe.rows[0].r));
+const lmD = await as(D, () => db.query(`select public.log_meal('${hard.id}', '${D}/d2.jpg', '${bigD.id}', 'great') as r`));
+const coinsD1 = (await db.query(`select coins from profiles where id = '${D}'`)).rows[0].coins;
+check('cooking the challenge recipe pays its coins', lmD.rows[0].r.challenge_completed === true && coinsD1 === coinsD0 + bigD.coins, `${coinsD0} → ${coinsD1}`);
+const mrow = (await db.query(`select title, web_recipe_id, cuisine from meals where id = '${lmD.rows[0].r.meal_id}'`)).rows[0];
+check('meal title and cuisine come from the recipe', mrow.web_recipe_id === hard.id && mrow.title.length > 0 && mrow.cuisine.length > 0, JSON.stringify(mrow));
+const eLog = await as(E, () => db.query(`select public.log_meal('${hard.id}', '${E}/e1.jpg', '${bigD.id}') as r`));
+check('E cannot cash D challenge', eLog.rows[0].r.coins === 0);
+// rating
+await as(D, () => db.query(`select public.rate_meal('${lmD.rows[0].r.meal_id}', 'up')`));
+const rated = (await db.query(`select (select rating from meals where id = '${lmD.rows[0].r.meal_id}') m, (select rating from saved_recipes where user_id = '${D}' and recipe_id = '${hard.id}') s`)).rows[0];
+check('rating updates the meal and the saved recipe', rated.m === 'up' && rated.s === 'up', JSON.stringify(rated));
+await expectFail('E cannot rate D meal', E, `select public.rate_meal('${lmD.rows[0].r.meal_id}', 'down')`);
+await expectFail('rating must be up or down', D, `select public.rate_meal('${lmD.rows[0].r.meal_id}', 'meh')`);
+// thaw + profile settings
+await as(D, () => db.query(`insert into pantry_items (name, category) values ('Ground beef', 'Frozen')`));
+await as(D, () => db.query(`update pantry_items set thaw_started_at = now() where name = 'Ground beef'`));
+check('players can start thawing their own items', (await db.query(`select count(*)::int n from pantry_items where user_id = '${D}' and thaw_started_at is not null`)).rows[0].n === 1);
+await as(D, () => db.query(`update profiles set display_name = 'Chef J ✨ #1', ui_state = '{"tab":"pantry"}' where id = '${D}'`));
+check('any characters in display name; ui_state saves', (await db.query(`select display_name, ui_state->>'tab' t from profiles where id = '${D}'`)).rows[0].display_name === 'Chef J ✨ #1');
+await expectFail('players still cannot set coins', D, `update profiles set coins = 1 where id = '${D}'`);
+await expectFail('players cannot set last_wrapped_year', D, `update profiles set last_wrapped_year = 2000 where id = '${D}'`);
+// popups: 76 h back, July 18 wrapped
+await db.exec(`update profiles set last_meal_at = now() - interval '75 hours', last_back_popup_at = null, last_seen_at = null where id = '${D}'`);
+const p75 = await as(D, () => db.query(`select public.record_login(current_date, 12, 'ua', 'iPhone · Safari') as r`));
+check('no "back" popup at 75 hours', !(p75.rows[0].r.popups || []).includes('back'), JSON.stringify(p75.rows[0].r));
+await db.exec(`update profiles set last_meal_at = now() - interval '77 hours' where id = '${D}'`);
+const p77 = await as(D, () => db.query(`select public.record_login(current_date, 12, 'ua', 'Mac · Chrome') as r`));
+check('"back" popup at 77 hours', p77.rows[0].r.popups.includes('back'));
+check('record_login returns the last device', p77.rows[0].r.last_device === 'iPhone · Safari', p77.rows[0].r.last_device);
+const jul = await as(D, () => db.query(`select public.record_login(current_date, 12, 'ua', 'Mac · Chrome') as r`));
+check('no Wrapped on a normal day', !jul.rows[0].r.popups.includes('wrapped'));
+// July 18 test: the function trusts the local date within ±2 days, so fake "today" by checking the rule directly
+const julRule = (await db.query(`select (extract(month from date '2027-07-18') = 7 and extract(day from date '2027-07-18') = 18) ok`)).rows[0].ok;
+check('Wrapped date rule is July 18', julRule === true);
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

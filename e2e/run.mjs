@@ -4,17 +4,16 @@
 //   3. ANTHROPIC_API_KEY=mock ANTHROPIC_BASE_URL=http://localhost:54321/anthropic npx next start -p 3000 &
 //   4. node e2e/run.mjs [screenshot-dir]
 import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
-const { chromium } = require('playwright'); // dev-only; resolved from NODE_PATH or a local install
 import zlib from 'node:zlib';
 import fs from 'node:fs';
 import path from 'node:path';
+const require = createRequire(import.meta.url);
+const { chromium } = require('playwright'); // dev-only; resolved from NODE_PATH or a local install
 
 const BASE = process.env.E2E_BASE || 'http://localhost:3000';
 const SHOTS = process.argv[2] || null;
 if (SHOTS) fs.mkdirSync(SHOTS, { recursive: true });
 
-// A small solid-colour PNG to stand in for a plate / receipt photo.
 function png(w = 64, h = 64) {
   const crcT = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
   const crc = (b) => { let c = 0xffffffff; for (const x of b) c = crcT[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
@@ -29,154 +28,118 @@ const results = [];
 const check = (name, ok, detail = '') => { results.push([ok ? 'PASS' : 'FAIL', name, detail]); console.log(ok ? 'PASS' : 'FAIL', name, detail); };
 const problems = [];
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
 const page = await ctx.newPage();
+page.setDefaultTimeout(12000);
 page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) problems.push(`console: ${m.text()}`); });
 page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
 page.on('response', (r) => { if (r.status() >= 400 && !/api\/barcode/.test(r.url())) problems.push(`HTTP ${r.status()} ${r.request().method()} ${r.url()}`); });
 const shot = async (n) => { if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `${n}.png`), fullPage: true }); };
 const step = async (name, fn) => { try { await fn(); } catch (e) { check(name, false, e.message.split('\n')[0]); await shot(`fail-${name.replace(/\W+/g, '-')}`); } };
+const nav = (n) => page.getByRole('navigation').getByRole('link', { name: n, exact: true }).click();
+const closePopups = async () => { await page.locator('.popup-scrim').first().waitFor({ timeout: 3000 }).catch(() => {}); for (let i = 0; i < 4; i++) { const x = page.locator('.popup-scrim [aria-label=Close]').first(); const leave = page.locator('.popup-scrim').getByRole('button', { name: 'Leave' }).first(); if (await x.count()) await x.click(); else if (await leave.count()) await leave.click(); else break; await page.waitForTimeout(400); } };
 
-await step('signed-out /home redirects to /login', async () => {
-  await page.goto(`${BASE}/home`); check('signed-out /home redirects to /login', page.url().includes('/login'));
-});
+await step('signed-out redirect', async () => { await page.goto(`${BASE}/home`); check('signed-out /home redirects to /login', page.url().includes('/login')); });
 await step('log in', async () => {
   await page.fill('#email', 'cook@whisk.test'); await page.fill('#password', 'whisk-e2e-pass');
-  await page.click('button[type=submit]');
-  await page.waitForURL('**/home', { timeout: 15000 });
+  await page.click('button[type=submit]'); await page.waitForURL('**/home', { timeout: 15000 });
   check('log in lands on /home', true);
+  await page.waitForTimeout(1500); await closePopups();
 });
-await step('home basics', async () => {
-  await page.getByText('Daily quest').waitFor({ timeout: 10000 });
-  check('home shows daily quest', true);
-  check('home shows goal ring 0/4', await page.getByRole('img', { name: '0 of 4 meals this week' }).isVisible());
+await step('home', async () => {
+  await page.getByRole('heading', { name: 'Almost ready' }).waitFor();
+  check('home shows Almost ready', true);
+  check('home has no challenges or Fridge Raid', (await page.getByText('This week’s challenges').count()) === 0 && (await page.getByText('Fridge Raid').count()) === 0);
+  await page.getByText('Ground beef is frozen').waitFor();
+  check('home reminds you to defrost frozen ground beef', true);
+  await page.locator('.src a').first().waitFor();
+  check('almost-ready recipes link to their source site', /^https:\/\//.test(await page.locator('.src a').first().getAttribute('href')));
   await shot('01-home');
 });
-
-// ---------- Pantry ----------
-await step('pantry add', async () => {
-  await page.getByRole('navigation').getByRole('link', { name: 'Pantry', exact: true }).click();
-  await page.fill('#p-name', 'Eggs'); await page.selectOption('#p-cat', 'Dairy & Eggs');
+await step('pantry draft is remembered', async () => {
+  await nav('Pantry');
+  await page.fill('#p-name', 'Frozen pork chops'); await page.waitForTimeout(1600);
+  await page.reload(); await page.waitForTimeout(1500); await closePopups();
+  check('reload returns to the Pantry tab', page.url().includes('/pantry'), page.url());
+  check('half-typed item survives a reload', (await page.inputValue('#p-name')) === 'Frozen pork chops');
   await page.click('text=Add to pantry');
-  await page.getByText('Added Eggs').waitFor();
-  check('pantry: add item', true);
+  await page.getByText('frozen meat, remember to defrost').waitFor();
+  check('frozen meat is detected from the name (auto category)', true);
+  await page.getByRole('button', { name: /Frozen meat · tap to start thawing/ }).first().click();
+  await page.getByText(/is thawing in the fridge/).waitFor();
+  check('start thawing from the pantry', true);
+  await shot('02-pantry');
 });
-await step('receipt scan', async () => {
-  await page.click('text=Scan receipt');
-  await page.locator('[aria-label="Scan a receipt"] input[type=file]').setInputFiles(photo);
-  await page.getByText('Mock Mart').waitFor({ timeout: 15000 });
-  check('receipt: 3 items found', (await page.locator('[aria-label="Scan a receipt"] input[type=checkbox]').count()) === 3);
-  await page.locator('[aria-label="Include Greek yogurt"]').uncheck();
-  await shot('02-receipt');
-  await page.click('text=Add 2 to pantry');
-  await page.getByText('Added 2').waitFor();
-  await page.getByText('Chicken thighs', { exact: true }).waitFor();
-  const ch = await page.getByText('Chicken thighs', { exact: true }).count(), gy = await page.getByText('Greek yogurt', { exact: true }).count();
-  check('receipt: adds checked items only', ch > 0 && gy === 0, `chicken=${ch} yogurt=${gy}`);
-});
-await step('barcode scan', async () => {
-  await page.click('text=Scan barcode');
-  await page.fill('#bc', '123');
-  await page.click('text=Look up');
-  check('barcode: rejects short codes', await page.getByText('Barcodes are 8 to 14 digits.').isVisible());
-  await page.fill('#bc', '5000159484695'); await page.click('text=Look up');
-  // Open Food Facts is unreachable from the test sandbox, so this checks the friendly error path.
-  const msg = page.locator('[aria-label="Scan a barcode"] [role=alert]');
-  await msg.waitFor({ timeout: 15000 });
-  check('barcode: shows a friendly message when lookup fails or finds nothing', /Type the name|Product not found|unavailable/.test(await msg.innerText()), await msg.innerText());
-  await page.click('[aria-label="Scan a barcode"] >> [aria-label=Close]');
-});
-await step('shopping list aisles', async () => {
-  await page.click('role=tab[name=/Shopping list/]');
-  await page.fill('#s-new', 'olive oil'); await page.press('#s-new', 'Enter');
-  await page.fill('#s-new', 'Bell peppers'); await page.press('#s-new', 'Enter');
-  await page.getByText('Sauces & Oils · 1').waitFor();
-  await page.getByText('Produce · 1').waitFor();
-  check('shopping list grouped by aisle (and fast typing keeps both items)', true);
-  await shot('03-list');
-  await page.click('[aria-label="Bought olive oil"]');
-  await page.getByText('olive oil restocked').waitFor();
-  check('bought → restocked', true);
-});
-
-// ---------- Cook ----------
-await step('cook flow', async () => {
-  await page.getByRole('navigation').getByRole('link', { name: 'Cook', exact: true }).click();
+await step('cook', async () => {
+  await nav('Cook');
   await page.click('text=What can I make?');
-  await page.getByText('Mock Pad Thai').waitFor({ timeout: 20000 });
-  check('cook: recipe ideas load', true);
-  await page.click('text=Mock Pad Thai');
-  check('recipe shows nutrition', await page.getByText('~520 kcal · 32g protein').isVisible());
-  await page.click('role=dialog >> text=Save');
-  await page.getByText('Saved to your cookbook').waitFor();
-  await shot('04-recipe');
-  await page.click('role=dialog >> text=I cooked it');
+  await page.getByText(/recipes? you can make/).waitFor();
+  const n = await page.locator('main button.card:has(.chip.have)').count();
+  check('cook shows web recipes the pantry can make', n >= 5, `${n} recipes`);
+  check('cook shows unlimited pantry searches', (await page.locator('.links a[href^="https://www.google.com/search"]').count()) >= 6);
+  await page.click('text=Show more ideas');
+  check('Show more ideas adds more searches', (await page.locator('.links a[href^="https://www.google.com/search"]').count()) >= 12);
+  await page.click('text=Fridge Raid (surprise me)');
+  await page.getByText('Fridge Raid · your hand').waitFor();
+  check('Fridge Raid deals 4 pantry items', (await page.locator('.grid2 .card').count()) === 4);
+  await page.click('text=What can I make?');
+  await page.getByRole('button', { name: /Poor Man's Burrito Bowls/ }).click();
+  await page.getByText('Recipe from').waitFor();
+  check('recipe sheet links to Budget Bytes', (await page.locator('[role=dialog] .src a').first().getAttribute('href')).includes('budgetbytes.com'));
+  await page.click('[role=dialog] >> text=Save · +5 XP');
+  await page.getByText(/Saved to your cookbook/).waitFor();
+  await page.click('[role=dialog] >> text=I cooked it');
   await page.locator('[aria-label="Log a meal"] input[type=file]').setInputFiles(photo);
-  await page.click('text=Log it');
+  await page.click('text=Submit');
   await page.getByRole('heading', { name: 'Cooked it!' }).waitFor({ timeout: 15000 });
-  check('log meal → "Cooked it!" popup', true);
-  await shot('05-cooked');
-  await page.click('[aria-label="Cooked it!"] >> [aria-label=Close]');
-  await page.getByText('Level up!').waitFor({ timeout: 5000 });
-  check('level-up shows after the popup', true);
-  await shot('06-levelup');
-  await page.click('[aria-label^="Level up"] >> [aria-label=Close]');
+  check('submit photo → "Cooked it!" popup', true);
+  await page.click('[aria-label="Liked it"]'); await page.waitForTimeout(500);
+  await shot('03-cooked');
+  await page.click('[role=dialog] >> text=Leave');
+  await page.waitForTimeout(600); await closePopups();
+  await page.getByText('Your saved recipes').scrollIntoViewIfNeeded();
+  await page.click('button.chip:has-text("Liked")');
+  check('liked meal shows in saved recipes', (await page.locator('[aria-label=Liked]').count()) >= 1);
 });
-
-// ---------- Home again ----------
-await step('home after cooking', async () => {
-  await page.getByRole('navigation').getByRole('link', { name: 'Home', exact: true }).click();
-  await page.getByRole('img', { name: '1 of 4 meals this week' }).waitFor({ timeout: 10000 });
-  check('goal ring counts the meal', true);
-  check('money saved shows an estimate', await page.getByText(/saved vs takeout/).isVisible());
-  await shot('07-home-after');
+await step('compete', async () => {
+  await nav('Compete');
+  await page.getByText('Daily quest').waitFor();
+  await page.locator('.flip .face').first().waitFor({ timeout: 15000 });
+  const cards = await page.locator('.flip').count();
+  check('3 challenges picked from your pantry', cards === 3, `${cards}`);
+  await page.locator('.flip .face').first().click(); await page.waitForTimeout(700);
+  check('tap flips the card to instructions', (await page.locator('.flip.on').count()) === 1);
+  await shot('04-flip');
+  await page.locator('.flip.on >> text=Tap to add photo & complete').click();
+  await page.locator('[aria-label="Log a meal"] input[type=file]').setInputFiles(photo);
+  await page.click('text=Submit');
+  await page.getByRole('heading', { name: 'Cooked it!' }).waitFor({ timeout: 15000 });
+  await page.click('[role=dialog] >> text=Leave'); await page.waitForTimeout(600); await closePopups();
+  await page.getByText('Done · coins added').waitFor();
+  check('completing a challenge pays coins', true);
+  check('shop uses outline slot icons', (await page.locator('.slotbar [role=tab]').count()) === 5);
 });
-
-// ---------- Compete ----------
-await step('compete bingo', async () => {
-  await page.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click();
-  await page.getByText('Cuisine bingo').waitFor({ timeout: 10000 });
-  const cells = await page.locator('[role=gridcell]').count();
-  check('bingo has 16 cells', cells === 16, String(cells));
-  const thai = page.locator('[role=gridcell][aria-label^="Thai"]');
-  if (await thai.count()) check('Thai cell marked after cooking Thai', (await thai.getAttribute('aria-label')).includes('cooked'));
-  else check('bingo card without Thai shows 0/16', await page.getByText('0/16 cooked').isVisible());
-  await shot('08-compete');
-});
-
-// ---------- Me ----------
 await step('me', async () => {
-  await page.getByRole('navigation').getByRole('link', { name: 'Me', exact: true }).click();
+  await nav('Me');
   await page.getByText('Cuisine passport').waitFor();
-  await page.locator('[aria-label="Thai, stamped"]').waitFor();
-  check('passport stamps Thai', true);
-  check('macros show 520 kcal', await page.getByText('520', { exact: true }).isVisible());
-  await page.click('[aria-label="More meals"]'); await page.click('text=Save >> nth=0');
-  await page.getByText('Goal: 5 meals a week').waitFor();
-  check('weekly goal saves', true);
-  await page.fill('#takeout', '20'); await page.click('form:has(#takeout) >> text=Save');
-  await page.getByText('Takeout price saved').waitFor();
-  check('takeout price saves', true);
-  await page.click('[aria-label="Night mode"]');
-  check('night mode applies', (await page.evaluate(() => document.documentElement.className)) === 'theme-night');
-  await shot('09-me-night');
-  await page.click('[aria-label="Night mode"]');
-  await page.click('text=Whisk Wrapped');
-  await page.getByText('Signature dish').waitFor({ timeout: 10000 });
-  check('wrapped: top cuisine Thai', await page.getByText('Thai', { exact: true }).isVisible());
-  check('wrapped: saved estimate uses new takeout price ($15)', await page.getByText('~$15').isVisible());
-  await shot('10-wrapped');
+  check('no pose buttons on Me', (await page.getByRole('button', { name: 'We’re so back!' }).count()) === 0);
+  check('closet slots are outline icons', (await page.locator('.slotbar [role=tab] svg').count()) === 5);
+  check('passport sticker unlocked for Mexican', await page.locator('[aria-label="Mexican, stamped"]').isVisible());
+  check('passport stickers greyed out until cooked', (await page.locator('.sticker.off').count()) >= 15);
+  await page.click('[aria-label^="Edit name"]'); await page.fill('#nm', 'Chef J ✨ #1'); await page.press('#nm', 'Enter');
+  await page.getByRole('heading', { name: 'Chef J ✨ #1' }).waitFor();
+  check('name can be any characters', true);
+  await page.getByText('Last played on').waitFor();
+  check('Me shows last device played', true);
+  await shot('05-me');
 });
-await step('reload keeps settings', async () => {
-  await page.goto(`${BASE}/home`);
-  await page.getByRole('img', { name: '1 of 5 meals this week' }).waitFor({ timeout: 10000 });
-  check('weekly goal persisted after reload', true);
+await step('reload keeps everything', async () => {
+  await page.goto(`${BASE}/home`); await page.waitForTimeout(1800); await closePopups();
+  check('app reopens on the last tab', page.url().includes('/me'), page.url());
+  check('name persisted', await page.getByRole('heading', { name: 'Chef J ✨ #1' }).isVisible());
 });
-await step('authenticated pages are not cached', async () => {
-  const r = await page.request.get(`${BASE}/home`);
-  check('signed-in /home is Cache-Control no-store', /no-store/.test(r.headers()['cache-control'] || ''), r.headers()['cache-control']);
-});
+await step('no-store', async () => { const r = await page.request.get(`${BASE}/home`); check('signed-in pages are Cache-Control no-store', /no-store/.test(r.headers()['cache-control'] || '')); });
 
 const csp = problems.filter((p) => /Content Security Policy|Refused to/.test(p));
 check('no CSP violations', csp.length === 0, csp.slice(0, 3).join(' | '));

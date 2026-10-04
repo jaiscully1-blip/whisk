@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Icon from './Icon';
 import { CATEGORIES } from '@/lib/game';
+import { isFrozenMeat } from '@/lib/recipes/match';
 
 // Shrinks a photo to a JPEG data URL (default max 1600px). Also drops camera metadata such as GPS.
 async function toDataUrl(file, max = 1600) {
@@ -106,6 +107,7 @@ export default function ScanSheet({ mode, onAdd, onClose }) {
                   <select className="input" aria-label="Category" value={it.category} onChange={(e) => setFound((f) => f.map((x, j) => (j === i ? { ...x, category: e.target.value } : x)))} style={{ width: 120, padding: '6px 8px', fontSize: 13 }}>
                     {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
                   </select>
+                  {isFrozenMeat(it) && <span className="chip ice" title="Needs defrosting before cooking"><Icon name="snow" size={14} /></span>}
                 </div>
               ))}
             </div>

@@ -16,5 +16,5 @@ export async function GET(req) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     ok = !error;
   }
-  return NextResponse.redirect(new URL(ok ? '/home' : '/auth/error', url.origin));
+  return NextResponse.redirect(new URL(ok ? '/cook' : '/auth/error', url.origin));
 }

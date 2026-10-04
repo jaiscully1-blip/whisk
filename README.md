@@ -28,3 +28,9 @@ npm run dev
 ## Credits
 
 Passport stamp art is [Twemoji](https://github.com/jdecked/twemoji) (graphics licensed CC-BY 4.0), served from `public/stamps/`. Country dishes and symbols: Wikipedia "National dish" and national cuisine pages.
+
+## Backend & live search
+
+- **Activity log:** `app_events` (one row per tap / pick / search / page view), written through `log_events` only for players who said yes to "Help improve Whisk" in the privacy popup. Saying no deletes their rows. Typed text is never recorded, except dish searches.
+- **Backend dashboard:** `/admin`, for accounts with `profiles.is_admin = true` (set by hand in SQL). Totals, actions per day, pages, most-pressed buttons, top searches and a live activity feed.
+- **Live dish search:** `/api/dishes` (Claude + the web search tool; pages forever by excluding what's shown) and `/api/dish-info` (ingredients + YouTube videos from a youtube.com-only web search; links are taken from the search results, never from model text). 150 searches per player per day. Web search costs about $10 per 1,000 searches plus tokens.

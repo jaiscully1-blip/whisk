@@ -361,6 +361,30 @@ await expectFail('players cannot write their consent directly', C, `update profi
 await db.exec(fs.readFileSync('./supabase/migrations/0010_hockey_helmet.sql', 'utf8'));
 check('Chef Hat is now the Hockey Helmet', (await db.query(`select name from items where id = 'hat-chef-hat'`)).rows[0]?.name === 'Hockey Helmet');
 
+// ================= 0011: activity log, onboarding, admin =================
+try { await db.exec(fs.readFileSync('./supabase/migrations/0011_activity_onboarding_admin.sql', 'utf8')); await db.exec(fs.readFileSync('./supabase/migrations/0011_activity_onboarding_admin.sql', 'utf8')); check('0011 runs (twice)', true); }
+catch (e) { check('0011 runs (twice)', false, e.message); }
+const ev = (n) => JSON.stringify(Array.from({ length: n }, (_, i) => ({ kind: 'tap', page: '/cook', target: 'What can I make? ' + i })));
+await as(C, () => db.query(`select public.set_privacy(true, true, 'America/New_York', false)`));
+check('no usage consent → nothing recorded', (await as(C, () => db.query(`select public.log_events('${ev(3)}'::jsonb) as n`))).rows[0].n === 0);
+await as(C, () => db.query(`select public.set_privacy(true, true, 'America/New_York', true)`));
+check('usage consent → taps recorded', (await as(C, () => db.query(`select public.log_events('${ev(3)}'::jsonb, 'iPhone') as n`))).rows[0].n === 3);
+await as(C, () => db.query(`select public.log_events('[{"kind":"search","page":"/cook","target":"dish search","value":"birria tacos"}]'::jsonb)`));
+check('players see only their own events', (await as(D, () => db.query(`select count(*)::int n from app_events`))).rows[0].n === 0 && (await as(C, () => db.query(`select count(*)::int n from app_events`))).rows[0].n === 4);
+await expectFail('players cannot insert events directly', C, `insert into app_events (user_id, kind) values ('${C}', 'tap')`);
+await expectFail('more than 50 events per call is refused', C, `select public.log_events('${ev(51)}'::jsonb)`);
+await expectFail('players cannot make themselves admin', C, `update profiles set is_admin = true where id = '${C}'`);
+await expectFail('non-admins cannot read the dashboard', C, `select public.admin_overview(7)`);
+await expectFail('non-admins cannot read events of others', C, `select public.admin_events(50)`);
+await db.exec(`update profiles set is_admin = true where id = '${D}'`);
+const ov = (await as(D, () => db.query(`select public.admin_overview(7) as r`))).rows[0].r;
+check('admin overview counts events and searches', ov.events === 4 && ov.top_searches[0]?.q === 'birria tacos' && ov.active_players === 1, JSON.stringify({ e: ov.events, s: ov.top_searches }));
+const ae = (await as(D, () => db.query(`select public.admin_events(10) as r`))).rows[0].r;
+check('admin sees the activity feed', ae.length === 4 && ae[0].kind === 'search');
+await as(C, () => db.query(`select public.set_privacy(true, true, 'America/New_York', false)`));
+check('turning usage data off deletes what was recorded', (await db.query(`select count(*)::int n from app_events where user_id = '${C}'`)).rows[0].n === 0);
+check('tutorial flag', !!(await as(C, () => db.query(`select public.set_onboarded(true) as t`))).rows[0].t && (await as(C, () => db.query(`select public.set_onboarded(false) as t`))).rows[0].t === null);
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

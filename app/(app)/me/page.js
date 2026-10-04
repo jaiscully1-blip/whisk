@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useWhisk, useDraft } from '@/components/AppShell';
 import WhiskStage, { outfitFrom } from '@/components/WhiskStage';
 import Icon, { Coin } from '@/components/Icon';
@@ -16,7 +17,7 @@ const RARITY_ORDER = ['common', 'rare', 'epic', 'exotic', 'mythic'];
 const EMPTY = { top: 'No top', hat: 'Classic toque', glasses: 'None', shoes: 'Bare feet', acc: 'Nothing' };
 
 export default function Me() {
-  const { supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, email, say, ui, setUi, openPrivacy } = useWhisk();
+  const { supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, email, say, ui, setUi, openPrivacy, replayTour } = useWhisk();
   const [items, setItems] = useState([]);
   const [owned, setOwned] = useState(new Set());
   const [buying, setBuying] = useState(null);
@@ -238,6 +239,10 @@ export default function Me() {
         <button className="row setbtn" onClick={openPrivacy} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
           <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Cookies &amp; privacy</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />
         </button>
+        <button className="row setbtn" onClick={replayTour} style={{ padding: '12px 16px', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottom: '1px solid var(--line)', textAlign: 'left', color: 'var(--fg)' }}>
+          <Icon name="flip" /><span style={{ flex: 1, fontWeight: 700 }}>Replay the tour</span><Icon name="chevron" />
+        </button>
+        {profile?.is_admin && <Link href="/admin" className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', textDecoration: 'none', color: 'var(--fg)', flexWrap: 'nowrap' }}><Icon name="compete" /><span style={{ flex: 1, fontWeight: 700 }}>Backend dashboard</span><Icon name="chevron" /></Link>}
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="me" /><span style={{ flex: 1, fontWeight: 700, overflowWrap: 'anywhere' }}>{email}</span></div>
         <form action="/auth/signout" method="post" style={{ padding: '12px 16px' }}><button className="btn ghost wide" type="submit">Sign out</button></form>
       </div>

@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import PullToRefresh from './PullToRefresh';
+import Tutorial from './Tutorial';
 import CookieConsent, { CONSENT_KEY, deviceTimeZone } from './CookieConsent';
+import { startActivity, setPage as trackPage } from '@/lib/activity';
 import { timerApi } from '@/lib/timers';
 import Icon, { Coin, Flame } from './Icon';
 import WhiskStage, { outfitFrom } from './WhiskStage';
@@ -14,10 +16,10 @@ import LevelUp from './LevelUp';
 const Ctx = createContext(null);
 export const useWhisk = () => useContext(Ctx);
 
-const TITLES = { cooked: 'Cooked it!', welcome: 'Welcome back!' };
+const TITLES = { cooked: 'Cooked it!' };
 const NAV = [['/home', 'Home', 'home'], ['/pantry', 'Pantry', 'pantry'], ['/cook', 'Cook', 'cook'], ['/compete', 'Compete', 'compete'], ['/me', 'Me', 'me']];
 const consentRef0 = (p) => { if (p?.consent) return p.consent; try { return JSON.parse(localStorage.getItem('whisk-consent') || 'null'); } catch { return null; } };
-const PROFILE_COLS = 'id, display_name, theme_pref, xp, coins, streak_days, streak_freezes, login_count, first_login_at, last_meal_at, weekly_goal, takeout_price, last_device, ui_state, time_zone, consent, first_open_date';
+const PROFILE_COLS = 'id, display_name, theme_pref, xp, coins, streak_days, streak_freezes, login_count, first_login_at, last_meal_at, weekly_goal, takeout_price, last_device, ui_state, time_zone, consent, first_open_date, onboarded_at, is_admin';
 const UI_LOCAL = 'whisk-ui';
 
 export function deviceLabel() {
@@ -50,7 +52,17 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
   // ---------- cookies & privacy ----------
   const [consent, setConsent] = useState(initialProfile?.consent || null);   // the account is the source of truth
   const consentRef = useRef(consent); consentRef.current = consent;
-  const [privacyOpen, setPrivacyOpen] = useState(!consent);
+  const [privacyOpen, setPrivacyOpen] = useState(!consent || (consent.v || 1) < 2);   // v2 added the usage-data choice
+  const [touring, setTouring] = useState(false);
+  useEffect(() => { if (!privacyOpen && profile && !profile.onboarded_at && profile.id) setTouring(true); }, [privacyOpen, profile?.onboarded_at]); // eslint-disable-line react-hooks/exhaustive-deps
+  const finishTour = useCallback(async () => {
+    setTouring(false); setProfile((p) => ({ ...p, onboarded_at: p.onboarded_at || new Date().toISOString() }));
+    await supabase.rpc('set_onboarded', { p_done: true });
+  }, [supabase]);
+  const replayTour = useCallback(() => setTouring(true), []);
+  const [hello, setHello] = useState(null);   // greeting shown in the top bar for a few seconds after opening
+  const [helloOn, setHelloOn] = useState(false);
+  useEffect(() => { if (!hello || privacyOpen || touring) return; setHelloOn(true); const t = setTimeout(() => setHelloOn(false), hello.gift ? 7000 : 4500); return () => clearTimeout(t); }, [hello, privacyOpen, touring]);
 
   // ---------- remembered screens + inputs (saved to your account, mirrored on this device) ----------
   const [ui, setUiState] = useState(() => {
@@ -91,13 +103,12 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
     return () => document.removeEventListener('visibilitychange', onHide);
   }, [flushUi]);
 
-  // Remember which tab you were on and where you were scrolled.
+  // Every time the app opens it starts on Cook (except coming back from the Bitcoin checkout). Scroll spots are remembered.
   const restored = useRef(false);
   useEffect(() => {
     if (!restored.current) {
       restored.current = true;
-      const last = ui.path;
-      if (pathname === '/home' && last && last !== '/home' && NAV.some(([h]) => last.startsWith(h))) { router.replace(last); return; }
+      if (pathname !== '/cook' && !pathname.startsWith('/admin') && !/[?&]paid=1/.test(window.location.search)) { router.replace('/cook'); return; }
     }
     setUi({ path: pathname });
     const y = uiRef.current.scroll?.[pathname] || 0;
@@ -143,8 +154,8 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
         if (error || !data) return;
         if (data.last_device || data.last_seen_at) setLastPlayed({ device: data.last_device, at: data.last_seen_at, here: data.last_device === device });
         if (data.gift_coins) refreshProfile();
-        // Opening the app shows one thing: a welcome.
-        showPopup({ kind: 'welcome', first: !data.last_seen_at, gift: data.gift_coins || 0 });
+        // Opening the app: a big greeting in the top bar (no popup).
+        setHello({ first: !data.last_seen_at, gift: data.gift_coins || 0 });
       });
   }, [supabase, say, showPopup, refreshProfile]);
 
@@ -156,7 +167,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
 
   const popup = popups[0] || null;
   const kind = popup && typeof popup === 'object' ? popup.kind : popup;
-  const title = kind === 'welcome' && popup.first ? 'Welcome to Whisk!' : TITLES[kind];
+  const title = TITLES[kind];
   const closePopup = () => { setPopups((q) => q.slice(1)); setRating(null); bump(); };
   async function rate(v) {
     const next = rating === v ? null : v; setRating(next);
@@ -166,26 +177,29 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
 
   const savePrivacy = useCallback(async (choice) => {
     const tz = deviceTimeZone();
-    const { data, error } = await supabase.rpc('set_privacy', { p_preferences: !!choice.preferences, p_local_time: !!choice.local_time, p_time_zone: choice.local_time ? tz : null });
+    const { data, error } = await supabase.rpc('set_privacy', { p_preferences: !!choice.preferences, p_local_time: !!choice.local_time, p_time_zone: choice.local_time ? tz : null, p_usage: !!choice.usage });
     if (error) { say('Couldn’t save your choices. Try again.'); return; }
-    const c = { v: 1, essential: true, preferences: !!choice.preferences, local_time: !!choice.local_time, at: new Date().toISOString() };
+    const c = { v: 2, essential: true, preferences: !!choice.preferences, local_time: !!choice.local_time, usage: !!choice.usage, at: new Date().toISOString() };
     try { localStorage.setItem(CONSENT_KEY, JSON.stringify(c)); if (!c.preferences) localStorage.removeItem(UI_LOCAL); else localStorage.setItem(UI_LOCAL, JSON.stringify(uiRef.current)); } catch {}
     setConsent(c); setPrivacyOpen(false);
     setProfile((p) => ({ ...p, consent: c, time_zone: data?.time_zone ?? null, first_open_date: data?.first_open_date ?? p.first_open_date }));
   }, [supabase, say]);
+  // Activity log follows the "Help improve Whisk" choice.
+  useEffect(() => { startActivity(supabase, !!consent?.usage, deviceLabel()); }, [consent, supabase]);
+  useEffect(() => { trackPage(pathname); }, [pathname, consent]);
   // Moved to a new time zone? Days follow you (only if you allowed local time).
   useEffect(() => {
     if (!consent?.local_time) return;
     const tz = deviceTimeZone();
-    if (tz && (tz !== profile?.time_zone || !profile?.first_open_date)) supabase.rpc('set_privacy', { p_preferences: !!consent.preferences, p_local_time: true, p_time_zone: tz }).then(({ data }) => { if (data) setProfile((p) => ({ ...p, time_zone: data.time_zone, first_open_date: data.first_open_date })); });
+    if (tz && (tz !== profile?.time_zone || !profile?.first_open_date)) supabase.rpc('set_privacy', { p_preferences: !!consent.preferences, p_local_time: true, p_time_zone: tz, p_usage: !!consent.usage }).then(({ data }) => { if (data) setProfile((p) => ({ ...p, time_zone: data.time_zone, first_open_date: data.first_open_date })); });
   }, [consent]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pullRefresh = useCallback(async () => {
     await Promise.all([refreshProfile(), refreshLoadout?.(), new Promise((r) => setTimeout(r, 450))]);
     bump(); setRefreshKey((k) => k + 1);
   }, [refreshProfile, refreshLoadout, bump]);
-  const value = useMemo(() => ({ profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, lastPlayed, saveState, dataVersion, bump }),
-    [profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, lastPlayed, saveState, dataVersion, bump]);
+  const value = useMemo(() => ({ profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump }),
+    [profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump]);
   const outfit = outfitFrom(loadout);
 
   return (
@@ -194,7 +208,11 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
         <header className="hud">
           <div className="hud-in">
             <Link href="/home" className="brand" aria-label="Whisk home"><img src="/icon.svg" alt="" />whisk</Link>
-            <div className="pills">
+            {hello && <div className={`hud-hello ${helloOn ? 'on' : ''}`} role="status" aria-hidden={!helloOn}>
+              <span>{hello.first ? 'Welcome to Whisk' : 'Welcome back'}{profile?.display_name ? `, ${profile.display_name}` : ''}!</span>
+              {hello.gift > 0 && <small>+{fmt(hello.gift)} coins, a gift from Whisk</small>}
+            </div>}
+            <div className={`pills ${helloOn ? 'away' : ''}`}>
               <RunningTimer />
               <span className="pill" title="Cooking streak"><Flame />{profile?.streak_days || 0}d</span>
               <Link href="/me#shop" className="pill" title="Coins" style={{ textDecoration: 'none' }}><Coin />{fmt(profile?.coins)}</Link>
@@ -209,6 +227,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
             ))}
           </div>
         </nav>
+        {touring && !privacyOpen && <Tutorial onDone={finishTour} />}
         {privacyOpen && <CookieConsent initial={consent} onSave={savePrivacy} onClose={() => setPrivacyOpen(false)} />}
         {kind && !privacyOpen && (
           <div className="popup-scrim" role="presentation" onClick={(e) => { if (kind !== 'cooked' && e.target === e.currentTarget) closePopup(); }}>
@@ -216,8 +235,6 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
               {kind !== 'cooked' && <button className="x" type="button" aria-label="Close" onClick={closePopup}><Icon name="x" /></button>}
               <WhiskStage pose={kind === 'cooked' ? 'cooked' : 'default'} outfit={outfit} interactive={false} height={kind === 'cooked' ? 250 : 300} zoom={1.15} label={`Whisk: ${title}`} />
               <h2>{title}</h2>
-              {kind === 'welcome' && popup.gift > 0 && <p style={{ margin: '4px 0 0', fontWeight: 800 }}><Coin /> +{fmt(popup.gift)} coins, a gift from Whisk</p>}
-              {kind === 'welcome' && <button className="btn wide" style={{ marginTop: 10 }} onClick={closePopup} autoFocus>Let’s cook</button>}
               {kind === 'cooked' && (
                 <>
                   <p className="muted" style={{ margin: '4px 0 0', fontWeight: 800 }}>How was it?</p>

@@ -12,7 +12,7 @@ function buildCsp(nonce) {
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: ${supa}`,
+    `img-src 'self' data: blob: https://i.ytimg.com ${supa}`,
     "font-src 'self'",
     `connect-src 'self' ${supa} ${supaWs}`,
     "worker-src 'self' blob:",
@@ -69,7 +69,7 @@ export async function middleware(req) {
     return NextResponse.redirect(url);
   }
   if (user && (pathname === '/login' || pathname === '/signup' || pathname === '/')) {
-    const url = req.nextUrl.clone(); url.pathname = '/home'; url.search = '';
+    const url = req.nextUrl.clone(); url.pathname = '/cook'; url.search = '';
     return NextResponse.redirect(url);
   }
 

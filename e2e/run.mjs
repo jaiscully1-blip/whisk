@@ -44,19 +44,32 @@ const closePopups = async () => { await page.locator('.popup-scrim').first().wai
 await step('signed-out redirect', async () => { await page.goto(`${BASE}/home`); check('signed-out /home redirects to /login', page.url().includes('/login')); });
 await step('log in', async () => {
   await page.fill('#email', 'cook@whisk.test'); await page.fill('#password', 'whisk-e2e-pass');
-  await page.click('button[type=submit]'); await page.waitForURL('**/home', { timeout: 15000 });
-  check('log in lands on /home', true);
+  await page.click('button[type=submit]'); await page.waitForURL('**/cook', { timeout: 15000 });
+  check('log in lands on Cook', true);
   await page.getByRole('dialog', { name: 'Cookies, chef?' }).waitFor({ timeout: 8000 });
   check('first open asks about cookies before anything else', (await page.locator('.popup-scrim').count()) === 0);
   await page.getByRole('button', { name: 'Manage choices' }).click();
-  check('manage shows 3 purposes, essential locked on', (await page.locator('.cc-switch').count()) === 3 && (await page.locator('.cc-switch.locked[aria-checked=true]').count()) === 1);
+  check('manage shows 4 purposes incl. usage data, essential locked on', (await page.locator('.cc-switch').count()) === 4 && (await page.getByText('Help improve Whisk').count()) === 1 && (await page.locator('.cc-switch.locked[aria-checked=true]').count()) === 1);
   await shot('00-cookies');
   await page.getByRole('button', { name: 'Accept all' }).click();
   await page.locator('.cc-scrim').waitFor({ state: 'detached' });
   check('cookie choices saved', true);
-  await page.getByRole('heading', { name: /^Welcome (back!|to Whisk!)$/ }).waitFor({ timeout: 8000 });
-  check('opening the app shows only the welcome popup', (await page.locator('.popup-scrim').count()) === 1 && (await page.getByText('Late night snack').count()) === 0 && (await page.getByText('We’re so back').count()) === 0);
-  await page.getByRole('button', { name: 'Let’s cook' }).click(); await page.waitForTimeout(400); await closePopups();
+  // first-run tour
+  await page.locator('.tour-card').waitFor({ timeout: 8000 });
+  check('new players get the tour', await page.getByRole('heading', { name: 'Hi, I’m Whisk!' }).isVisible());
+  await shot('00b-tour');
+  await page.locator('.tour-next').click(); await page.waitForTimeout(150);
+  check('Next flips the card', /out|back/.test(await page.locator('.tour-card').getAttribute('class')));
+  await page.waitForTimeout(700);
+  check('card shows the next area', await page.locator('#tour-title').innerText() === 'Cook');
+  await page.locator('.tour-next').click(); await page.waitForTimeout(900);
+  check('tour moves the app to that area and lights its tab', page.url().includes('/pantry') && (await page.locator('.nav a.tour-hot').getAttribute('href')) === '/pantry');
+  for (let k = 0; k < 6 && (await page.locator('.tour-card').count()); k++) { await page.locator('.tour-next').click(); await page.waitForTimeout(800); }
+  check('tour ends back on Cook', page.url().includes('/cook') && (await page.locator('.tour-card').count()) === 0);
+  await page.locator('.hud-hello.on').waitFor({ timeout: 4000 });
+  check('greeting shows in the top bar, no popup', /Welcome/.test(await page.locator('.hud-hello').innerText()) && (await page.locator('.popup-scrim').count()) === 0);
+  await shot('00c-hello');
+  await nav('Home');
 });
 await step('home', async () => {
   await page.getByRole('heading', { name: 'Almost ready' }).waitFor();
@@ -76,7 +89,8 @@ await step('pantry draft is remembered', async () => {
   await nav('Pantry');
   await page.fill('#p-name', 'Frozen pork chops'); await page.waitForTimeout(1600);
   await page.reload(); await page.waitForTimeout(1500); await closePopups();
-  check('reload returns to the Pantry tab', page.url().includes('/pantry'), page.url());
+  check('reopening starts on Cook', page.url().includes('/cook'), page.url());
+  await nav('Pantry'); await page.locator('#p-name').waitFor();
   check('half-typed item survives a reload', (await page.inputValue('#p-name')) === 'Frozen pork chops');
   await page.click('text=Add to pantry');
   await page.getByText('frozen meat, remember to defrost').waitFor();
@@ -93,8 +107,7 @@ await step('cook', async () => {
   const n = await page.locator('main button.card:has(.chip.have)').count();
   check('cook shows web recipes the pantry can make', n >= 5, `${n} recipes`);
   check('no "Find more online" searches', (await page.getByText('Find more online').count()) === 0 && (await page.getByText('Only real recipes').count()) === 0);
-  check('no description under channel names', (await page.locator('.card:has(a.social) .desc').count()) === 0);
-  check('top 10 cooking channels with YouTube + Instagram links', (await page.locator('a.social.yt[href^="https://www.youtube.com/@"]').count()) === 10 && (await page.locator('a.social.ig[href^="https://www.instagram.com/"]').count()) === 10);
+  check('no description under channel names', (await page.locator('a.channel .desc').count()) === 0);
   check('saved recipes moved off Cook', (await page.getByText('Your saved recipes').count()) === 0);
   await page.click('text=Fridge Raid (surprise me)');
   await page.getByText('Fridge Raid · your hand').waitFor();
@@ -224,15 +237,58 @@ await step('me settings', async () => {
   await page.locator('[aria-label="Reset game"]').getByRole('button', { name: 'Cancel' }).last().click();
 });
 await step('reload keeps everything', async () => {
-  await page.goto(`${BASE}/home`); await page.waitForTimeout(1800); await closePopups();
-  check('app reopens on the last tab', page.url().includes('/me'), page.url());
-  check('name persisted', await page.getByRole('heading', { name: 'Chef J ✨ #1' }).isVisible());
+  await page.goto(`${BASE}/me`); await page.waitForTimeout(1800); await closePopups();
+  check('every open starts on Cook', page.url().includes('/cook'), page.url());
+  check('no tour or popup on later opens', (await page.locator('.tour-card').count()) === 0 && (await page.locator('.popup-scrim').count()) === 0);
+  await nav('Me');
+  check('name persisted', await page.getByRole('heading', { name: 'Chef J ✨ #1' }).waitFor({ timeout: 8000 }).then(() => true, () => false));
+});
+await step('live dish search', async () => {
+  await nav('Cook');
+  await page.fill('#o-dish', 'tacos'); await page.getByRole('button', { name: 'Search dishes' }).click();
+  await page.getByText('Mock Dish 1', { exact: true }).first().waitFor({ timeout: 15000 });
+  check('search lists dishes from the web', (await page.locator('.dish-row:not(.skel)').count()) === 12);
+  await page.getByRole('button', { name: 'Show more dishes' }).scrollIntoViewIfNeeded();
+  await page.getByText('Mock Dish 13', { exact: true }).first().waitFor({ timeout: 15000 });
+  check('scrolling loads more dishes (no repeats)', (await page.locator('.dish-row:not(.skel)').count()) === 24);
+  await page.getByRole('button', { name: 'Mock Dish 3: show ingredients and videos' }).click();
+  const card = page.locator('.dflip.on');
+  await card.locator('a.vid').first().waitFor({ timeout: 15000 });
+  check('tapping a dish flips its card over', (await page.locator('.dflip.on').count()) === 1);
+  check('back shows ingredients you have and need', (await card.locator('.chip.have').count()) >= 1 && (await card.locator('.chip.need').count()) >= 1 && /you have \d of 4/i.test(await card.innerText()));
+  const hrefs = await card.locator('a.vid').evaluateAll((as) => as.map((a) => a.href));
+  check('YouTube links come from the search results only', hrefs.length === 2 && hrefs.every((h) => h.startsWith('https://www.youtube.com/watch?v=')) && !hrefs.some((h) => h.includes('MADEUP')), JSON.stringify(hrefs));
+  check('YouTube search link too', (await card.getByRole('link', { name: 'More on YouTube' }).getAttribute('href')).startsWith('https://www.youtube.com/results?search_query='));
+  await shot('07-dish-flip');
+  await card.getByRole('button', { name: /Add \d+ missing to shopping list/ }).click(); await page.getByText(/Added \d+ to your shopping list/).waitFor();
+  check('missing ingredients go to the shopping list', true);
+  await card.getByRole('button', { name: 'Flip back' }).click(); await page.waitForTimeout(600);
+  check('flips back', (await page.locator('.dflip.on').count()) === 0);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  check('search suggests all 193 passport countries', (await page.locator('#o-countries option').count()) === 193);
+  await page.fill('#o-dish', 'Peru'); await page.getByRole('button', { name: 'Search dishes' }).click();
+  await page.getByText('Peru Dish 1', { exact: true }).first().waitFor({ timeout: 15000 });
+  check('a country name lists dishes from that country', /Dishes from Peru/i.test(await page.locator('section[aria-live] .eyebrow').first().innerText()));
+  check('5 cooking channels, YouTube only, not numbered', (await page.locator('a.channel').count()) === 5 && (await page.locator('a.channel[href^="https://www.youtube.com/@"]').count()) === 5 && (await page.locator('.rank, a.social.ig').count()) === 0);
+});
+await step('activity backend', async () => {
+  await page.waitForTimeout(4500); await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  const ev = await (await fetch('http://localhost:54321/__e2e/events')).json();
+  check('taps, picks and searches are recorded', ev.some((e) => e.kind === 'tap') && ev.some((e) => e.kind === 'search' && e.value === 'tacos') && ev.some((e) => e.kind === 'view'), `${ev.length} events`);
+  check('typed text in other fields is not recorded', !ev.some((e) => /Frozen pork chops|Chef J/.test(e.value || '')));
+  await page.goto(`${BASE}/admin`); await page.waitForTimeout(1500);
+  check('backend page is closed to non-admins', await page.getByText('This page is only for Whisk admins.').isVisible());
+  await fetch('http://localhost:54321/__e2e/make-admin');
+  await page.reload(); await page.getByRole('heading', { name: 'Backend' }).waitFor({ timeout: 8000 });
+  check('admins see the backend dashboard', (await page.locator('.adm-tiles .adm-card').count()) === 5);
+  check('dashboard lists top searches and the activity feed', (await page.getByRole('cell', { name: 'tacos' }).count()) >= 1 && (await page.locator('.adm td').count()) > 10);
+  await shot('08-backend');
 });
 await step('no-store', async () => { const r = await page.request.get(`${BASE}/home`); check('signed-in pages are Cache-Control no-store', /no-store/.test(r.headers()['cache-control'] || '')); });
 
 const csp = problems.filter((p) => /Content Security Policy|Refused to/.test(p));
 check('no CSP violations', csp.length === 0, csp.slice(0, 3).join(' | '));
-const other = problems.filter((p) => !csp.includes(p));
+const other = problems.filter((p) => !csp.includes(p) && !/rpc\/admin_(overview|events)/.test(p));   // the backend refusing a non-admin is expected
 check('no page errors or failed requests', other.length === 0, other.slice(0, 5).join(' | '));
 await browser.close();
 const failed = results.filter((r) => r[0] === 'FAIL').length;

@@ -27,7 +27,7 @@ export default function AuthForm({ mode }) {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.replace('/home');
+        router.replace('/cook');
         router.refresh();
       }
     } catch (err) {

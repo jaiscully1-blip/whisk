@@ -8,6 +8,8 @@ import { usePantry, useSaved } from '@/components/usePantry';
 const PAGE = 12;
 import { canon, checkRecipe } from '@/lib/recipes/match';
 import { CHANNELS } from '@/lib/channels';
+import DishSearch from '@/components/DishSearch';
+import { COUNTRIES } from '@/lib/passport/countries';
 
 const SKIP = ['Spices & Seasonings', 'Sauces & Oils', 'Baking'];
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
@@ -64,8 +66,9 @@ export default function Cook() {
         <button className="btn ghost wide" onClick={raid}><Icon name="gift" size={18} />Fridge Raid (surprise me)</button>
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); if (!dish.trim()) return; setHand(null); setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>Dish</label>
-          <input id="o-dish" className="input" placeholder="Search a dish, e.g. tacos" maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
-          <button className="btn" type="submit">Go</button>
+          <input id="o-dish" className="input" type="search" enterKeyHint="search" list="o-countries" autoComplete="off" placeholder="Search any dish or country" maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
+          <datalist id="o-countries">{COUNTRIES.map((c) => <option key={c[0]} value={c[1]} />)}</datalist>
+          <button className="btn" type="submit" aria-label="Search dishes"><Icon name="search" size={18} />Search</button>
         </form>
       </div>
 
@@ -74,9 +77,9 @@ export default function Cook() {
           <div className="grid2">{hand.map((c, i) => <div key={c} className="card" style={{ textAlign: 'center', fontWeight: 800, background: 'var(--pop-soft)', transform: `rotate(${[-3, 2, -1, 3][i % 4]}deg)` }}>{c}</div>)}</div>
         </div>
       )}
-      {results && (results.length ? (
+      {mode === 'named' && ui.cookDish && results?.length === 0 ? null : results && (results.length ? (
         <>
-          <span className="eyebrow">{results.length} recipe{results.length === 1 ? '' : 's'} you can make{mode === 'raid' ? ' with your hand' : ''}</span>
+          <span className="eyebrow">{mode === 'named' ? `From your Whisk recipes · ${results.length}` : `${results.length} recipe${results.length === 1 ? '' : 's'} you can make${mode === 'raid' ? ' with your hand' : ''}`}</span>
           {results.slice(0, shown).map(({ r, c }) => (
             <button key={r.id} className="card stack" style={{ gap: 8, textAlign: 'left' }} onClick={() => setOpen(r)}>
               <span className="eyebrow">{r.cuisine} · {r.source}</span>
@@ -89,15 +92,15 @@ export default function Cook() {
         </>
       ) : <div className="empty"><b>Nothing fits yet</b>{mode === 'named' ? 'None of Whisk’s recipes match that dish and your pantry.' : 'Add a few more staples to your pantry and check back.'}</div>)}
 
+      {mode === 'named' && ui.cookDish && <DishSearch q={ui.cookDish} pantry={pantry} />}
+
       <h2 style={{ fontSize: 22, marginTop: 8 }}>Cooking channels</h2>
       <div className="stack" style={{ gap: 8 }}>
-        {CHANNELS.map((c, i) => (
-          <div key={c.name} className="card row" style={{ flexWrap: 'nowrap', gap: 10 }}>
-            <span className="rank" aria-hidden="true">{i + 1}</span>
+        {CHANNELS.map((c) => (
+          <a key={c.name} className="card row channel" href={c.youtube} target="_blank" rel="noopener noreferrer" aria-label={`${c.name} on YouTube`}>
             <b style={{ flex: 1, minWidth: 0 }}>{c.name}</b>
-            <a className="social yt" href={c.youtube} target="_blank" rel="noopener noreferrer" aria-label={`${c.name} on YouTube`}><Icon name="yt" size={22} /></a>
-            <a className="social ig" href={c.instagram} target="_blank" rel="noopener noreferrer" aria-label={`${c.name} on Instagram`}><Icon name="ig" size={22} /></a>
-          </div>
+            <span className="social yt" aria-hidden="true"><Icon name="yt" size={22} /></span>
+          </a>
         ))}
       </div>
 

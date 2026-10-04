@@ -31,7 +31,7 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on sequences to anon, authenticated;
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
-for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql']) {
+for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql']) {
   await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8').replace('create extension if not exists pgcrypto;', ''));
 }
 await db.exec(`insert into auth.users (id, email) values ('${E2E_USER.id}', '${E2E_USER.email}')`);
@@ -210,6 +210,24 @@ function fakeRecipe(title, cuisine, fromPantry) {
     nutrition: { calories: 520, protein_g: 32, carbs_g: 48, fat_g: 18 } };
 }
 function anthropic(body) {
+  const names = (body.tools || []).map((t) => t.name);
+  if (names.includes('web_search')) {
+    anthropicCalls.push(names.includes('dishes') ? 'dishes' : 'dish-info');
+    const search = { type: 'server_tool_use', id: 'srvtoolu_mock', name: 'web_search', input: { query: 'mock' } };
+    if (names.includes('dishes')) {
+      const shown = (body.messages[0].content.match(/already shown: (.*)$/m)?.[1] || '').split('; ').filter(Boolean).length;
+      const from = body.messages[0].content.match(/dishes from ([A-Z][\w ]+?) \(/)?.[1];
+      const dishes = shown >= 24 ? [] : Array.from({ length: 12 }, (_, i) => ({ name: `${from ? from + ' Dish' : 'Mock Dish'} ${shown + i + 1}`, cuisine: from || 'Mexican', about: 'A real-time mock result.' }));
+      return { id: 'msg_mock', type: 'message', role: 'assistant', model: body.model, content: [search, { type: 'web_search_tool_result', tool_use_id: 'srvtoolu_mock', content: [] }, { type: 'tool_use', id: 'toolu_mock', name: 'dishes', input: { dishes } }], stop_reason: 'tool_use', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } };
+    }
+    const results = [
+      { type: 'web_search_result', url: 'https://www.youtube.com/watch?v=abcDEF12345', title: 'How to make it - YouTube', encrypted_content: 'x', page_age: '2 months ago' },
+      { type: 'web_search_result', url: 'https://www.youtube.com/shorts/ZYX98765432', title: 'Quick version', encrypted_content: 'x' },
+      { type: 'web_search_result', url: 'https://evil.example.com/watch?v=nope', title: 'Not YouTube', encrypted_content: 'x' }
+    ];
+    const ingredients = [{ name: 'Corn tortillas', amount: '12' }, { name: 'Onion', amount: '1' }, { name: 'Dried guajillo chiles', amount: '4' }, { name: 'Beef chuck', amount: '2 lb' }];
+    return { id: 'msg_mock', type: 'message', role: 'assistant', model: body.model, content: [search, { type: 'web_search_tool_result', tool_use_id: 'srvtoolu_mock', content: results }, { type: 'text', text: 'Found some. Also see https://www.youtube.com/watch?v=MADEUP00000' }, { type: 'tool_use', id: 'toolu_ing', name: 'ingredients', input: { ingredients } }], stop_reason: 'tool_use', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } };
+  }
   const tool = body.tools?.[0]?.name; anthropicCalls.push(tool);
   let input;
   if (tool === 'groceries') input = { store: 'Mock Mart', items: [{ name: 'Chicken thighs', category: 'Proteins', quantity: '2 lb' }, { name: 'Spinach', category: 'Produce', quantity: null }, { name: 'Greek yogurt', category: 'Dairy & Eggs', quantity: '500 g' }] };
@@ -256,6 +274,8 @@ const server = http.createServer(async (req, res) => {
     if ((bm = path.match(/^\/btcpay\/api\/v1\/stores\/([^/]+)\/invoices\/([^/]+)$/))) { const inv = invoices.get(bm[2]); return inv ? send(res, 200, inv) : send(res, 404, {}); }
     if ((bm = path.match(/^\/btcpay\/i\/([^/]+)$/))) { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end(`<!doctype html><title>BTCPay test checkout</title><h1>Pay ${invoices.get(bm[1])?.amount} USD in Bitcoin</h1>`); }
     if ((bm = path.match(/^\/__e2e\/settle\/([^/]+)$/))) { const inv = invoices.get(bm[1]); if (inv) inv.status = 'Settled'; return send(res, 200, inv || {}); }
+    if (path === '/__e2e/events') { const r = await db.query(`select kind, page, target, value from app_events order by id`); return send(res, 200, r.rows); }
+    if (path === '/__e2e/make-admin') { await db.exec(`update profiles set is_admin = true where id = '${E2E_USER.id}'`); return send(res, 200, { ok: true }); }
     if (path === '/__e2e/invoices') return send(res, 200, [...invoices.values()]);
     if (path.startsWith('/rest/v1/rpc/')) return await rpc(res, uidFrom(req), path.slice('/rest/v1/rpc/'.length), json(), (req.headers.accept || '').includes('vnd.pgrst.object'));
     if (path.startsWith('/rest/v1/')) return await rest(req, res, uidFrom(req), path.slice('/rest/v1/'.length), url, json());

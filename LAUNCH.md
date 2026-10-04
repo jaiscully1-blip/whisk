@@ -79,7 +79,7 @@ Open **http://localhost:3000** → **Create account** → confirm the email → 
 3. Click **Deploy**.
 4. **Rate limiting across all servers (do this before sharing the link).** In your Vercel project → **Storage** (or **Marketplace**) → **Upstash for Redis** → create a free database → **Connect** it to the whisk project. It adds the Redis env vars automatically; Whisk accepts both `UPSTASH_REDIS_REST_*` and `KV_REST_API_*`. Then **Redeploy**.
 5. **Point Supabase at the live site.** Supabase → Authentication → URL Configuration → **Site URL** = `https://YOUR-APP.vercel.app`, and add `https://YOUR-APP.vercel.app/**` to Redirect URLs. In Vercel set `NEXT_PUBLIC_SITE_URL` to the same address → **Redeploy**.
-6. Open the live URL, create an account, confirm the email, and check the pantry, recipes, a challenge, the shop and the Me tab.
+6. Open the live URL, create an account, confirm the email, and check the pantry, Cook, a challenge, the shop and the Me tab.
 
 ---
 
@@ -87,4 +87,4 @@ Open **http://localhost:3000** → **Create account** → confirm the email → 
 
 - Every push to `main` redeploys automatically and runs **Build, test & scan** in GitHub Actions (npm audit, OSV-Scanner, database security tests, build). A red ❌ there means don't ship until it's fixed.
 - Changing the shop or challenge meals: edit `lib/whisk3d/engine.js` or `lib/catalog/meals.js`, run `npm run seed:sql`, then run the new `0002_whisk_seed.sql` in Supabase.
-- Watch Anthropic usage at console.anthropic.com. Each player gets at most 20 recipe requests a day.
+- Watch Anthropic usage at console.anthropic.com. It is only used to read receipt photos (max 20 scans per player per day). Recipes come from `lib/recipes/web.json`; add more real ones there and run `npm run seed:recipes`, then run the new `0005_web_recipes_seed.sql`.

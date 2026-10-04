@@ -1,40 +1,35 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
 
-// Two-step reset: 1) your password, 2) a 6-digit code emailed to you. The database also refuses a reset
-// unless the session was confirmed with that code in the last 10 minutes.
-export default function ResetSheet({ onClose }) {
-  const { supabase, email, profile } = useWhisk();
-  const [step, setStep] = useState(1);
-  const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
+// Two-step reset: 1) confirm it's you with Google again, 2) type RESET. The database also refuses a reset
+// unless this session came from a fresh sign-in in the last 10 minutes.
+export default function ResetSheet({ onClose, confirmed = false }) {
+  const { supabase, profile } = useWhisk();
+  const [step, setStep] = useState(confirmed ? 2 : 1);
+  const [word, setWord] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => { if (confirmed) setStep(2); }, [confirmed]);
 
-  async function checkPassword(e) {
-    e.preventDefault(); setBusy(true); setError('');
-    const { error: pe } = await supabase.auth.signInWithPassword({ email, password });
-    if (pe) { setBusy(false); setError('That password isn’t right.'); return; }
-    const { error: oe } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-    setBusy(false);
-    if (oe) { setError('Couldn’t send the code. Try again in a minute.'); return; }
-    setStep(2);
+  async function google() {
+    setBusy(true); setError('');
+    const site = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const { error: e } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${site}/auth/callback?next=${encodeURIComponent('/me?reset=1')}`, queryParams: { prompt: 'select_account' } } });
+    if (e) { setBusy(false); setError('Couldn’t open Google. Try again.'); }
   }
-  async function confirm(e) {
+  async function reset(e) {
     e.preventDefault(); setBusy(true); setError('');
-    const { error: ve } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: 'email' });
-    if (ve) { setBusy(false); setError('That code didn’t work. Check the latest email.'); return; }
     // Remove plate photos, then reset progress (coins and shop items stay).
     try {
       const { data: files } = await supabase.storage.from('meal-photos').list(profile.id, { limit: 1000 });
       if (files?.length) await supabase.storage.from('meal-photos').remove(files.map((f) => `${profile.id}/${f.name}`));
     } catch {}
     const { error: re } = await supabase.rpc('reset_game');
-    if (re) { setBusy(false); setError('Couldn’t reset. Try again.'); return; }
+    if (re) { setBusy(false); setStep(1); setError('That took too long. Confirm with Google again, then reset within 10 minutes.'); return; }
     try { localStorage.removeItem('whisk-ui'); } catch {}
-    window.location.assign('/home');
+    window.location.assign('/cook');
   }
 
   return (
@@ -46,14 +41,14 @@ export default function ResetSheet({ onClose }) {
         </div>
         <p className="err" style={{ margin: 0 }}>This erases your pantry, meals, photos, XP, streak and challenges. Your coins and shop items stay.</p>
         {step === 1 ? (
-          <form className="stack" onSubmit={checkPassword}>
-            <div><label className="lbl" htmlFor="rs-pw">Step 1 of 2 · your password</label><input id="rs-pw" className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
-            <button className="btn wide" type="submit" disabled={busy || !password}>{busy ? 'Checking…' : 'Send me a code'}</button>
-          </form>
+          <div className="stack">
+            <span className="lbl">Step 1 of 2 · confirm it’s you</span>
+            <button className="btn wide" type="button" onClick={google} disabled={busy}>{busy ? 'Opening Google…' : 'Confirm with Google'}</button>
+          </div>
         ) : (
-          <form className="stack" onSubmit={confirm}>
-            <div><label className="lbl" htmlFor="rs-code">Step 2 of 2 · the 6-digit code we emailed to {email}</label><input id="rs-code" className="input" inputMode="numeric" autoComplete="one-time-code" maxLength={10} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} required /></div>
-            <button className="btn wide" type="submit" disabled={busy || code.length < 6} style={{ background: 'var(--bad)', boxShadow: 'none' }}>{busy ? 'Resetting…' : 'Reset my game'}</button>
+          <form className="stack" onSubmit={reset}>
+            <div><label className="lbl" htmlFor="rs-word">Step 2 of 2 · type RESET to erase your game</label><input id="rs-word" className="input" autoComplete="off" autoCapitalize="characters" value={word} onChange={(e) => setWord(e.target.value)} required /></div>
+            <button className="btn wide" type="submit" disabled={busy || word.trim().toUpperCase() !== 'RESET'} style={{ background: 'var(--bad)', boxShadow: 'none' }}>{busy ? 'Resetting…' : 'Reset my game'}</button>
           </form>
         )}
         {error && <p className="err" role="alert" style={{ margin: 0 }}>{error}</p>}

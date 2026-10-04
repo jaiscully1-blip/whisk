@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { limitByIp, clientIp } from '@/lib/ratelimit';
 
-const PUBLIC_PATHS = ['/', '/login', '/signup', '/check-email', '/auth/confirm', '/auth/error'];
+const PUBLIC_PATHS = ['/', '/login', '/signup', '/check-email', '/auth/confirm', '/auth/callback', '/auth/error'];
 
 function buildCsp(nonce) {
   const supa = process.env.NEXT_PUBLIC_SUPABASE_URL || '';

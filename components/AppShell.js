@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import PullToRefresh from './PullToRefresh';
 import Tutorial from './Tutorial';
-import CookieConsent, { CONSENT_KEY, deviceTimeZone } from './CookieConsent';
+import CookieConsent, { CONSENT_KEY, LOGIN_CHOICE_KEY, deviceTimeZone } from './CookieConsent';
 import { startActivity, setPage as trackPage } from '@/lib/activity';
 import { timerApi } from '@/lib/timers';
 import Icon, { Coin, Flame } from './Icon';
@@ -53,7 +53,9 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
   // ---------- cookies & privacy ----------
   const [consent, setConsent] = useState(initialProfile?.consent || null);   // the account is the source of truth
   const consentRef = useRef(consent); consentRef.current = consent;
-  const [privacyOpen, setPrivacyOpen] = useState(!consent || (consent.v || 1) < 2);   // v2 added the usage-data choice
+  const needsConsent = !consent || (consent.v || 1) < 2;   // v2 added the usage-data choice
+  const [privacyOpen, setPrivacyOpen] = useState(needsConsent);
+  const [consentChecked, setConsentChecked] = useState(!needsConsent);   // until we've looked for an Accept/Decline from the sign-in screen
   const [touring, setTouring] = useState(false);
   useEffect(() => { if (!privacyOpen && profile && !profile.onboarded_at && profile.id) setTouring(true); }, [privacyOpen, profile?.onboarded_at]); // eslint-disable-line react-hooks/exhaustive-deps
   const finishTour = useCallback(async () => {
@@ -117,7 +119,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
   useEffect(() => {
     if (!restored.current) {
       restored.current = true;
-      if (pathname !== '/cook' && !pathname.startsWith('/admin') && !/[?&]paid=1/.test(window.location.search)) { router.replace('/cook'); return; }
+      if (pathname !== '/cook' && !pathname.startsWith('/admin') && !/[?&](paid|reset)=1/.test(window.location.search)) { router.replace('/cook'); return; }
     }
     setUi({ path: pathname });
     const y = uiRef.current.scroll?.[pathname] || 0;
@@ -184,15 +186,27 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
     if (error) say('Couldn’t save your rating.'); else bump();
   }
 
+  // Accept / Decline was picked on the sign-in screen: save it to the account instead of asking again.
+  useEffect(() => {
+    if (!needsConsent) return;
+    let pre = null; try { pre = JSON.parse(localStorage.getItem(LOGIN_CHOICE_KEY) || 'null'); } catch {}
+    if (pre && typeof pre.usage === 'boolean') {
+      setPrivacyOpen(false);
+      savePrivacyRef.current({ preferences: true, local_time: true, usage: pre.usage }).then((ok) => { if (ok) { try { localStorage.removeItem(LOGIN_CHOICE_KEY); } catch {} } else setPrivacyOpen(true); });
+    }
+    setConsentChecked(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const savePrivacy = useCallback(async (choice) => {
     const tz = deviceTimeZone();
     const { data, error } = await supabase.rpc('set_privacy', { p_preferences: !!choice.preferences, p_local_time: !!choice.local_time, p_time_zone: choice.local_time ? tz : null, p_usage: !!choice.usage });
-    if (error) { say('Couldn’t save your choices. Try again.'); return; }
+    if (error) { say('Couldn’t save your choices. Try again.'); return false; }
     const c = { v: 2, essential: true, preferences: !!choice.preferences, local_time: !!choice.local_time, usage: !!choice.usage, at: new Date().toISOString() };
     try { localStorage.setItem(CONSENT_KEY, JSON.stringify(c)); if (!c.preferences) localStorage.removeItem(UI_LOCAL); else localStorage.setItem(UI_LOCAL, JSON.stringify(uiRef.current)); } catch {}
     setConsent(c); setPrivacyOpen(false);
     setProfile((p) => ({ ...p, consent: c, time_zone: data?.time_zone ?? null, first_open_date: data?.first_open_date ?? p.first_open_date }));
+    return true;
   }, [supabase, say]);
+  const savePrivacyRef = useRef(savePrivacy); savePrivacyRef.current = savePrivacy;
   // Activity log follows the "Help improve Whisk" choice.
   useEffect(() => { startActivity(supabase, !!consent?.usage, deviceLabel()); }, [consent, supabase]);
   useEffect(() => { trackPage(pathname); }, [pathname, consent]);
@@ -237,7 +251,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
           </div>
         </nav>
         {touring && !privacyOpen && <Tutorial coins={profile?.coins ?? 0} onDone={finishTour} />}
-        {privacyOpen && <CookieConsent initial={consent} onSave={savePrivacy} onClose={() => setPrivacyOpen(false)} />}
+        {privacyOpen && consentChecked && <CookieConsent initial={consent} onSave={savePrivacy} onClose={() => setPrivacyOpen(false)} />}
         {kind && !privacyOpen && (
           <div className="popup-scrim" role="presentation" onClick={(e) => { if (kind !== 'cooked' && e.target === e.currentTarget) closePopup(); }}>
             <div className="popup" role="dialog" aria-modal="true" aria-label={title}>

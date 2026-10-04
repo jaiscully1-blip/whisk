@@ -410,6 +410,18 @@ check('dish meals carry bingo words for their country', /Mexican/.test(bingoCuis
 const rec = (await as(C, async () => db.query(`select public.log_meal('www-budgetbytes-com-picadillo', '${await photo(C, 'r12')}') as r`))).rows[0].r;
 check('recipe meals still log as before', !!rec.meal_id && rec.stamp === null);
 
+// ================= 0013: Google sign-in; reset confirms with a fresh Google sign-in =================
+try { await db.exec(fs.readFileSync('./supabase/migrations/0013_google_sign_in.sql', 'utf8')); await db.exec(fs.readFileSync('./supabase/migrations/0013_google_sign_in.sql', 'utf8')); check('0013 runs (twice)', true); }
+catch (e) { check('0013 runs (twice)', false, e.message); }
+await db.exec(`select set_config('request.jwt.claims', '{"amr":[{"method":"oauth","timestamp":${Math.floor(Date.now() / 1000) - 3600}}]}', false)`);
+await expectFail('an old Google sign-in does not unlock reset', D, `select public.reset_game()`);
+await db.exec(`select set_config('request.jwt.claims', '{"amr":[{"method":"oauth","timestamp":${Math.floor(Date.now() / 1000) - 30}}]}', false)`);
+await as(D, () => db.query(`select public.reset_game()`));
+check('a fresh Google sign-in unlocks reset (coins kept)', (await db.query(`select xp, coins from profiles where id = '${D}'`)).rows[0].xp === 0);
+await db.exec(`select set_config('request.jwt.claims', '{"amr":[{"method":"token_refresh","timestamp":${Math.floor(Date.now() / 1000) - 5}}]}', false)`);
+await expectFail('just being signed in (token refresh) does not unlock reset', D, `select public.reset_game()`);
+await db.exec(`select set_config('request.jwt.claims', '', false)`);
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

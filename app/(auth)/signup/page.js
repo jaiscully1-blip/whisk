@@ -1,3 +1,3 @@
-import AuthForm from '../AuthForm';
-export const metadata = { title: 'Sign up · Whisk' };
-export default function Signup() { return <AuthForm mode="signup" />; }
+import { redirect } from 'next/navigation';
+// Accounts are made with "Continue with Google" on the login screen.
+export default function Signup() { redirect('/login'); }

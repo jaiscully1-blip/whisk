@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 // and a second panel with a switch per purpose. Essential storage is always on; everything else is opt-in.
 // Whisk has no ads or third-party trackers. Usage data stays in Whisk's own database and is used only to improve the game.
 export const CONSENT_KEY = 'whisk-consent';
+export const LOGIN_CHOICE_KEY = 'whisk-login-choice';   // Accept / Decline picked on the sign-in screen, before there's an account
 export const deviceTimeZone = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch { return null; } };
 
 const PURPOSES = [

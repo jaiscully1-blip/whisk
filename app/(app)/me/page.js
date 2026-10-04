@@ -30,6 +30,9 @@ export default function Me() {
   const [editing, setEditing] = useState(false);
   const [editTakeout, setEditTakeout] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [resetConfirmed, setResetConfirmed] = useState(false);
+  // Back from confirming with Google → straight to step 2 of the reset.
+  useEffect(() => { if (/[?&]reset=1/.test(window.location.search)) { setResetConfirmed(true); setResetting(true); setTimeout(() => window.history.replaceState(null, '', '/me'), 0); /* after the app shell has seen ?reset=1 */ } }, []);
   const [recipe, setRecipe] = useState(null);
   const [pantry] = usePantry();
   const [nameDraft, setNameDraft, clearName] = useDraft('nm', profile?.display_name || '');
@@ -245,7 +248,7 @@ export default function Me() {
         <form action="/auth/signout" method="post" style={{ padding: '12px 16px' }}><button className="btn ghost wide" type="submit">Sign out</button></form>
       </div>
       <button onClick={() => setResetting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, color: 'var(--muted)', fontSize: 11, textDecoration: 'underline', padding: 8, minHeight: 32 }}>Reset game</button>
-      {resetting && <ResetSheet onClose={() => setResetting(false)} />}
+      {resetting && <ResetSheet confirmed={resetConfirmed} onClose={() => { setResetting(false); setResetConfirmed(false); }} />}
       {recipe && <RecipeSheet recipe={recipe} pantry={pantry || []} onClose={() => setRecipe(null)} />}
       {buying && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setBuying(null); }}>

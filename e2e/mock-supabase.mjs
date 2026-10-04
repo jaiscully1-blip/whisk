@@ -31,7 +31,7 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on sequences to anon, authenticated;
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
-for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql']) {
+for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql', '0012_dishes_and_stamp_coins.sql']) {
   await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8').replace('create extension if not exists pgcrypto;', ''));
 }
 await db.exec(`insert into auth.users (id, email) values ('${E2E_USER.id}', '${E2E_USER.email}')`);
@@ -203,6 +203,7 @@ async function storage(req, res, uid, path, buf) {
 
 // ---------- Anthropic stand-in ----------
 export const anthropicCalls = [];
+const wikiCalls = [], ytCalls = [];
 function fakeRecipe(title, cuisine, fromPantry) {
   return { title, cuisine, summary: `A quick ${cuisine.toLowerCase()} dinner.`, prep_minutes: 10, cook_minutes: 20, servings: 2, technique: 2, prep_level: 2, precision: 2, equipment: ['stove'],
     ingredients: [{ item: fromPantry[0] || 'Eggs', amount: '2', from_pantry: true }, { item: 'Fresh basil', amount: '1 handful', from_pantry: false }],
@@ -211,23 +212,7 @@ function fakeRecipe(title, cuisine, fromPantry) {
 }
 function anthropic(body) {
   const names = (body.tools || []).map((t) => t.name);
-  if (names.includes('web_search')) {
-    anthropicCalls.push(names.includes('dishes') ? 'dishes' : 'dish-info');
-    const search = { type: 'server_tool_use', id: 'srvtoolu_mock', name: 'web_search', input: { query: 'mock' } };
-    if (names.includes('dishes')) {
-      const shown = (body.messages[0].content.match(/already shown: (.*)$/m)?.[1] || '').split('; ').filter(Boolean).length;
-      const from = body.messages[0].content.match(/dishes from ([A-Z][\w ]+?) \(/)?.[1];
-      const dishes = shown >= 24 ? [] : Array.from({ length: 12 }, (_, i) => ({ name: `${from ? from + ' Dish' : 'Mock Dish'} ${shown + i + 1}`, cuisine: from || 'Mexican', about: 'A real-time mock result.' }));
-      return { id: 'msg_mock', type: 'message', role: 'assistant', model: body.model, content: [search, { type: 'web_search_tool_result', tool_use_id: 'srvtoolu_mock', content: [] }, { type: 'tool_use', id: 'toolu_mock', name: 'dishes', input: { dishes } }], stop_reason: 'tool_use', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } };
-    }
-    const results = [
-      { type: 'web_search_result', url: 'https://www.youtube.com/watch?v=abcDEF12345', title: 'How to make it - YouTube', encrypted_content: 'x', page_age: '2 months ago' },
-      { type: 'web_search_result', url: 'https://www.youtube.com/shorts/ZYX98765432', title: 'Quick version', encrypted_content: 'x' },
-      { type: 'web_search_result', url: 'https://evil.example.com/watch?v=nope', title: 'Not YouTube', encrypted_content: 'x' }
-    ];
-    const ingredients = [{ name: 'Corn tortillas', amount: '12' }, { name: 'Onion', amount: '1' }, { name: 'Dried guajillo chiles', amount: '4' }, { name: 'Beef chuck', amount: '2 lb' }];
-    return { id: 'msg_mock', type: 'message', role: 'assistant', model: body.model, content: [search, { type: 'web_search_tool_result', tool_use_id: 'srvtoolu_mock', content: results }, { type: 'text', text: 'Found some. Also see https://www.youtube.com/watch?v=MADEUP00000' }, { type: 'tool_use', id: 'toolu_ing', name: 'ingredients', input: { ingredients } }], stop_reason: 'tool_use', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } };
-  }
+  if (names.includes('web_search')) anthropicCalls.push('web_search');   // must never happen now: dish search is free
   const tool = body.tools?.[0]?.name; anthropicCalls.push(tool);
   let input;
   if (tool === 'groceries') input = { store: 'Mock Mart', items: [{ name: 'Chicken thighs', category: 'Proteins', quantity: '2 lb' }, { name: 'Spinach', category: 'Produce', quantity: null }, { name: 'Greek yogurt', category: 'Dairy & Eggs', quantity: '500 g' }] };
@@ -276,6 +261,46 @@ const server = http.createServer(async (req, res) => {
     if ((bm = path.match(/^\/__e2e\/settle\/([^/]+)$/))) { const inv = invoices.get(bm[1]); if (inv) inv.status = 'Settled'; return send(res, 200, inv || {}); }
     if (path === '/__e2e/events') { const r = await db.query(`select kind, page, target, value from app_events order by id`); return send(res, 200, r.rows); }
     if (path === '/__e2e/make-admin') { await db.exec(`update profiles set is_admin = true where id = '${E2E_USER.id}'`); return send(res, 200, { ok: true }); }
+    // ---- Wikipedia stand-in ----
+    if (path === '/wiki/w/api.php') {
+      wikiCalls.push(Object.fromEntries(url.searchParams));
+      const p = url.searchParams;
+      if (p.get('action') === 'query') {
+        const q = (p.get('gsrsearch') || '').toLowerCase();
+        if (!q.includes('macha')) return send(res, 200, { batchcomplete: true });
+        return send(res, 200, { query: { pages: [
+          { pageid: 777, title: 'Macha (film)', index: 1, description: '1990 film', categories: [{ title: 'Category:1990 films' }] },
+          { pageid: 778, title: 'Salsa macha', index: 2, description: 'Mexican sauce', categories: [{ title: 'Category:Mexican sauces' }] },
+          { pageid: 779, title: 'List of sauces', index: 3, description: 'Wikimedia list article', categories: [{ title: 'Category:Sauces' }] }
+        ] } });
+      }
+      if (p.get('action') === 'parse' && p.get('pageid') === '778') return send(res, 200, { parse: { title: 'Salsa macha', pageid: 778, wikitext: '{{Infobox food\n| name = Salsa macha\n| country = [[Mexico]]\n| main_ingredient = [[Chili pepper|Dried chiles]], [[garlic]], {{hlist|[[peanut]]s|sesame seeds}}, [[olive oil]]<ref>x</ref>\n| variations = \n}}\nSalsa macha is a sauce.' } });
+      return send(res, 404, { error: 'mock' });
+    }
+    // ---- YouTube Data API stand-in ----
+    if (path.startsWith('/yt/youtube/v3/')) {
+      if (url.searchParams.get('key') !== 'e2e-yt-key') return send(res, 403, { error: { code: 403, message: 'bad key' } });
+      if (path.endsWith('/search')) {
+        ytCalls.push(url.searchParams.get('q'));
+        const q = url.searchParams.get('q').toLowerCase();
+        if (q.startsWith('fli ')) return send(res, 200, { items: [{ id: { kind: 'youtube#video', videoId: 'UNRELATED01' } }] });   // nothing really about it
+        return send(res, 200, { items: ['UNRELATED01', 'SMALLmatch1', 'BIGmatch001', 'bad id!'].map((v) => ({ id: { kind: 'youtube#video', videoId: v } })) });
+      }
+      if (path.endsWith('/videos')) {
+        const dish = (ytCalls.at(-1) || '').replace(/ recipe$/, '');
+        const all = { UNRELATED01: ['Top 10 funniest cats', 99000000], SMALLmatch1: [`${dish} the easy way`, 1200], BIGmatch001: [`How to make ${dish} | Grandma's recipe`, 2500000] };
+        const ids = (url.searchParams.get('id') || '').split(',');
+        return send(res, 200, { items: ids.filter((i) => all[i]).map((i) => ({ id: i, snippet: { title: all[i][0], channelTitle: 'Mock Kitchen' }, statistics: { viewCount: String(all[i][1]) } })) });
+      }
+    }
+    if (path === '/__e2e/free-calls') return send(res, 200, { wiki: wikiCalls.length, youtube: ytCalls, anthropic: anthropicCalls });
+    if (path === '/__e2e/seed-meals') {
+      // n meals from one country, for the stamp test (only the 10th needs to come through the app)
+      const c = url.searchParams.get('country'), n = Number(url.searchParams.get('n'));
+      if (!/^[A-Z]{2}$/.test(c) || !(n > 0 && n < 20)) return send(res, 400, {});
+      for (let k = 0; k < n; k++) await db.query(`insert into meals (user_id, title, cuisine, country, photo_path) values ($1, 'Seed', 'Seed', $2, $3)`, [E2E_USER.id, c, `${E2E_USER.id}/seed${k}.jpg`]);
+      return send(res, 200, { ok: true });
+    }
     if (path === '/__e2e/invoices') return send(res, 200, [...invoices.values()]);
     if (path.startsWith('/rest/v1/rpc/')) return await rpc(res, uidFrom(req), path.slice('/rest/v1/rpc/'.length), json(), (req.headers.accept || '').includes('vnd.pgrst.object'));
     if (path.startsWith('/rest/v1/')) return await rest(req, res, uidFrom(req), path.slice('/rest/v1/'.length), url, json());

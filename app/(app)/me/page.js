@@ -112,7 +112,7 @@ export default function Me() {
 
   return (
     <div className="stack">
-      <div className="page-title" style={{ alignItems: 'center', flexWrap: 'nowrap' }}>
+      <div data-tour="name" className="page-title" style={{ alignItems: 'center', flexWrap: 'nowrap' }}>
         {editing ? (
           <form className="row" style={{ flexWrap: 'nowrap', flex: 1 }} onSubmit={saveName}>
             <label htmlFor="nm" hidden>Your name</label>

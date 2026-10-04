@@ -385,6 +385,31 @@ await as(C, () => db.query(`select public.set_privacy(true, true, 'America/New_Y
 check('turning usage data off deletes what was recorded', (await db.query(`select count(*)::int n from app_events where user_id = '${C}'`)).rows[0].n === 0);
 check('tutorial flag', !!(await as(C, () => db.query(`select public.set_onboarded(true) as t`))).rows[0].t && (await as(C, () => db.query(`select public.set_onboarded(false) as t`))).rows[0].t === null);
 
+// ================= 0012: dish list, log any dish, 5,000 coins per stamp =================
+try { await db.exec(fs.readFileSync('./supabase/migrations/0012_dishes_and_stamp_coins.sql', 'utf8')); await db.exec(fs.readFileSync('./supabase/migrations/0012_dishes_and_stamp_coins.sql', 'utf8')); check('0012 runs (twice)', true); }
+catch (e) { check('0012 runs (twice)', false, e.message); }
+check('dish list has all 193 countries', (await db.query(`select count(distinct country)::int n, count(*)::int d from dishes`)).rows[0].n === 193);
+await expectFail('players cannot read the dish table directly', C, `select * from dishes limit 1`);
+const photo = async (u, n) => { await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${u}/${n}.jpg') on conflict do nothing`); return `${u}/${n}.jpg`; };
+const coinsOf = async (u) => (await db.query(`select coins from profiles where id = '${u}'`)).rows[0].coins;
+const ld = await as(D, async () => db.query(`select public.log_meal(null, '${await photo(D, 'al0')}', null, null, 'byrek', 'AL') as r`));
+const m0 = (await db.query(`select title, country, cuisine from meals where photo_path = '${D}/al0.jpg'`)).rows[0];
+check('any dish from the list can be logged (keeps its country)', m0?.title === 'Byrek' && m0?.country === 'AL' && !!ld.rows[0].r.meal_id, JSON.stringify(m0));
+await expectFail('a made-up dish is refused', D, `select public.log_meal(null, '${await photo(D, 'x1')}', null, null, 'Moon Cheese', 'AL')`);
+await expectFail('a real dish with the wrong country is refused', D, `select public.log_meal(null, '${await photo(D, 'x2')}', null, null, 'Byrek', 'FR')`);
+const c12a = await coinsOf(D); let last = null;
+for (let k = 1; k <= 9; k++) last = (await as(D, async () => db.query(`select public.log_meal(null, '${await photo(D, 'al' + k)}', null, null, 'Fërgesë', 'AL') as r`))).rows[0].r;
+const c12b = await coinsOf(D);
+check('10th meal from a country stamps it and pays 5,000 coins', last.stamp === 'AL' && last.coins >= 5000 && c12b - c12a === 5000, JSON.stringify(last) + ` ${c12a}→${c12b}`);
+const eleventh = (await as(D, async () => db.query(`select public.log_meal(null, '${await photo(D, 'al11')}', null, null, 'Qofte', 'AL') as r`))).rows[0].r;
+check('a stamp only pays once', eleventh.stamp === null && (await coinsOf(D)) === c12b);
+check('players see their own stamps only', (await as(D, () => db.query(`select country from passport_stamps`))).rows.map((r) => r.country).join() === 'AL' && (await as(C, () => db.query(`select count(*)::int n from passport_stamps`))).rows[0].n === 0);
+await expectFail('players cannot stamp themselves', C, `insert into passport_stamps (user_id, country) values ('${C}', 'FR')`);
+const bingoCuisine = (await db.query(`select cuisine from dishes where country = 'MX' limit 1`)).rows[0].cuisine;
+check('dish meals carry bingo words for their country', /Mexican/.test(bingoCuisine), bingoCuisine);
+const rec = (await as(C, async () => db.query(`select public.log_meal('www-budgetbytes-com-picadillo', '${await photo(C, 'r12')}') as r`))).rows[0].r;
+check('recipe meals still log as before', !!rec.meal_id && rec.stamp === null);
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

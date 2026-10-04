@@ -9,7 +9,6 @@ const PAGE = 12;
 import { canon, checkRecipe } from '@/lib/recipes/match';
 import { CHANNELS } from '@/lib/channels';
 import DishSearch from '@/components/DishSearch';
-import { COUNTRIES } from '@/lib/passport/countries';
 
 const SKIP = ['Spices & Seasonings', 'Sauces & Oils', 'Baking'];
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
@@ -66,8 +65,7 @@ export default function Cook() {
         <button className="btn ghost wide" onClick={raid}><Icon name="gift" size={18} />Fridge Raid (surprise me)</button>
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); if (!dish.trim()) return; setHand(null); setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>Dish</label>
-          <input id="o-dish" className="input" type="search" enterKeyHint="search" list="o-countries" autoComplete="off" placeholder="Search any dish or country" maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
-          <datalist id="o-countries">{COUNTRIES.map((c) => <option key={c[0]} value={c[1]} />)}</datalist>
+          <input id="o-dish" className="input" type="search" enterKeyHint="search" autoComplete="off" placeholder="Search a dish, sauce, food or country" maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
           <button className="btn" type="submit" aria-label="Search dishes"><Icon name="search" size={18} />Search</button>
         </form>
       </div>

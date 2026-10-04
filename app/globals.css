@@ -336,6 +336,12 @@ button, a, [role="button"], [role="tab"], select, input { touch-action: manipula
 .skel i + i { width: 45%; }
 .skel .dish-ico, .skel .vid-img { background: var(--track); animation: skel 1.2s ease-in-out infinite; }
 @keyframes skel { 50% { opacity: .45; } }
+.ytbtn { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; border: 2px solid var(--line); background: var(--card); color: var(--fg); text-decoration: none; min-height: 56px; transition: transform .12s ease; }
+.ytbtn:active { transform: scale(.98); }
+.ytbtn b { display: block; font-size: 15px; }
+.ytbtn .ytt { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ytbtn.off { opacity: .6; filter: grayscale(1); cursor: not-allowed; border-style: dashed; }
+.dish-ico img { border-radius: 4px; }
 .vid { display: flex; gap: 10px; align-items: center; text-decoration: none; color: var(--fg); padding: 6px; border-radius: 14px; }
 .vid:active { background: var(--track); }
 .vid-img { width: 120px; height: 68px; flex: none; border-radius: 10px; object-fit: cover; background: var(--track); }
@@ -355,7 +361,10 @@ button, a, [role="button"], [role="tab"], select, input { touch-action: manipula
 .coach { position: fixed; inset: 0; z-index: 900; pointer-events: none; }
 .coach-dim { position: fixed; background: rgba(18, 24, 16, .58); pointer-events: auto; transition: all .3s ease; }
 .coach-ring { position: fixed; border-radius: 16px; box-shadow: 0 0 0 3px #F4B740, 0 0 0 7px rgba(244, 183, 64, .35); pointer-events: none; transition: all .3s ease; animation: coachring 1.4s ease-in-out infinite; }
-.coach-block { position: fixed; pointer-events: auto; }
+.coach.paused { visibility: hidden; }
+.coach-lift { position: relative; z-index: 1; box-shadow: 0 16px 36px rgba(0, 0, 0, .38), 0 4px 10px rgba(0, 0, 0, .18) !important; border-radius: 16px; animation: coachlift .45s cubic-bezier(.2, 1.3, .4, 1) both; }
+@keyframes coachlift { from { box-shadow: 0 0 0 rgba(0, 0, 0, 0); } }
+.coach-who { color: var(--accent); font-weight: 900; }
 @keyframes coachring { 50% { box-shadow: 0 0 0 3px #F4B740, 0 0 0 12px rgba(244, 183, 64, .15); } }
 .coach-arrow { position: fixed; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .35)); transition: left .3s ease, top .3s ease; }
 .coach-arrow.below { animation: coachup .9s ease-in-out infinite; }

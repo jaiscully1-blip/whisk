@@ -43,6 +43,7 @@ export default function Pantry() {
     if (error) { say('Couldn’t add that.'); return; }
     setItems((x) => [...x, data].sort((a, b) => a.name.localeCompare(b.name)));
     clrName(); clrQty(); clrExp();
+    window.dispatchEvent(new CustomEvent('whisk:added', { detail: data.name }));   // the first-time tour listens for this
     refreshProfile(); say(isFrozenMeat(data) ? `Added ${data.name} · frozen meat, remember to defrost` : `Added ${data.name}`);
   }
   // From a receipt or barcode: restock what's already in the pantry, add the rest.

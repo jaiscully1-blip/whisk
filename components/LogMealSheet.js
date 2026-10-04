@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useWhisk, useDraft } from './AppShell';
 import Icon from './Icon';
 import { fmt } from '@/lib/game';
+import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 
 // Shrinks the photo in the browser before upload (max 1600px JPEG) — faster, and strips camera metadata like GPS.
 async function compress(file) {
@@ -14,9 +15,11 @@ async function compress(file) {
 }
 
 // Photo of your plate → log_meal. Title, cuisine and nutrition come from the recipe on the server.
-export default function LogMealSheet({ recipe, challenge = null, onClose, onDone }) {
+// Or a dish from the search (`dish` = { name, countries }): it counts toward that country's passport stamp.
+export default function LogMealSheet({ recipe = null, dish = null, country: country0 = null, challenge = null, onClose, onDone }) {
   const { supabase, profile, refreshProfile, showPopup, say } = useWhisk();
-  const [notes, setNotes, clearNotes] = useDraft(`notes:${recipe.id}`);
+  const [notes, setNotes, clearNotes] = useDraft(`notes:${recipe ? recipe.id : 'dish:' + dish.name}`);
+  const [country, setCountry] = useState(country0 || dish?.countries?.[0] || null);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState('');
   const [busy, setBusy] = useState(false);
@@ -38,13 +41,16 @@ export default function LogMealSheet({ recipe, challenge = null, onClose, onDone
       const path = `${profile.id}/${crypto.randomUUID()}.jpg`;
       const up = await supabase.storage.from('meal-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
       if (up.error) throw new Error('The photo didn’t upload. Try again.');
-      const { data, error } = await supabase.rpc('log_meal', { p_recipe_id: recipe.id, p_photo_path: path, p_challenge_id: challenge?.id || null, p_notes: notes.trim().slice(0, 500) || null });
+      const { data, error } = await supabase.rpc('log_meal', recipe
+        ? { p_recipe_id: recipe.id, p_photo_path: path, p_challenge_id: challenge?.id || null, p_notes: notes.trim().slice(0, 500) || null }
+        : { p_recipe_id: null, p_photo_path: path, p_notes: notes.trim().slice(0, 500) || null, p_dish: dish.name, p_country: country });
       if (error) throw new Error('Could not save that meal.');
       clearNotes();
       await refreshProfile();
       onDone?.(data);
       onClose?.();
       showPopup({ kind: 'cooked', mealId: data.meal_id });
+      if (data.stamp) showPopup({ kind: 'stamp', country: data.stamp });
       say(`+${data.xp} XP${data.coins ? ` · +${fmt(data.coins)} coins` : ''}${data.used_freeze ? ' · streak freeze used' : ''}`);
     } catch (err) {
       setError(err?.message || 'Could not save that meal.');
@@ -59,7 +65,12 @@ export default function LogMealSheet({ recipe, challenge = null, onClose, onDone
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
         </div>
         {challenge && <p className="ok" style={{ margin: 0 }}>Worth {fmt(challenge.coins)} coins + 100 XP</p>}
-        <b style={{ fontSize: 18 }}>{recipe.title}</b>
+        <b style={{ fontSize: 18 }}>{recipe ? recipe.title : dish.name}</b>
+        {dish && (dish.countries || []).length > 1 && (
+          <div><label className="lbl" htmlFor="meal-country">Counts toward the stamp for</label>
+            <select id="meal-country" className="input" value={country || ''} onChange={(e) => setCountry(e.target.value)}>{dish.countries.map((c) => <option key={c} value={c}>{COUNTRY_BY_ISO[c]?.[1] || c}</option>)}</select></div>
+        )}
+        {dish && (dish.countries || []).length === 1 && <span className="desc">Counts toward your {COUNTRY_BY_ISO[country]?.[1]} stamp</span>}
         <label className="card" style={{ display: 'grid', placeItems: 'center', minHeight: 180, cursor: 'pointer', borderStyle: 'dashed', padding: 8 }}>
           {preview ? <img src={preview} alt="Your plate" style={{ maxHeight: 260, maxWidth: '100%', borderRadius: 14 }} /> : <span className="row muted" style={{ fontWeight: 800 }}><Icon name="camera" size={24} />Add a photo of your plate</span>}
           <input type="file" accept="image/*" capture="environment" onChange={pick} hidden />

@@ -11,12 +11,13 @@ import { timerApi } from '@/lib/timers';
 import Icon, { Coin, Flame } from './Icon';
 import WhiskStage, { outfitFrom } from './WhiskStage';
 import { fmt, levelFor } from '@/lib/game';
+import { COUNTRY_BY_ISO, flagCode } from '@/lib/passport/countries';
 import LevelUp from './LevelUp';
 
 const Ctx = createContext(null);
 export const useWhisk = () => useContext(Ctx);
 
-const TITLES = { cooked: 'Cooked it!' };
+const TITLES = { cooked: 'Cooked it!', stamp: 'New stamp!' };
 const NAV = [['/home', 'Home', 'home'], ['/pantry', 'Pantry', 'pantry'], ['/cook', 'Cook', 'cook'], ['/compete', 'Compete', 'compete'], ['/me', 'Me', 'me']];
 const consentRef0 = (p) => { if (p?.consent) return p.consent; try { return JSON.parse(localStorage.getItem('whisk-consent') || 'null'); } catch { return null; } };
 const PROFILE_COLS = 'id, display_name, theme_pref, xp, coins, streak_days, streak_freezes, login_count, first_login_at, last_meal_at, weekly_goal, takeout_price, last_device, ui_state, time_zone, consent, first_open_date, onboarded_at, is_admin';
@@ -62,7 +63,15 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
   const replayTour = useCallback(() => setTouring(true), []);
   const [hello, setHello] = useState(null);   // greeting shown in the top bar for a few seconds after opening
   const [helloOn, setHelloOn] = useState(false);
-  useEffect(() => { if (!hello || privacyOpen || touring || (profile && profile.id && !profile.onboarded_at)) return; setHelloOn(true); const t = setTimeout(() => setHelloOn(false), hello.gift ? 7000 : 4500); return () => clearTimeout(t); }, [hello, privacyOpen, touring, profile?.onboarded_at]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!hello || privacyOpen || touring || (profile && profile.id && !profile.onboarded_at)) return;
+    // "Welcome back" shows at most once every 24 hours (first open and coin gifts always show).
+    if (!hello.first && !hello.gift && Date.now() - (getUi().helloAt || 0) < 864e5) return;
+    if (helloDone.current) return; helloDone.current = true;
+    setUiQuiet({ helloAt: Date.now() }); setHelloOn(true);
+  }, [hello, privacyOpen, touring, profile?.onboarded_at]);
+  const helloDone = useRef(false);
+  useEffect(() => { if (!helloOn) return; const t = setTimeout(() => setHelloOn(false), hello?.gift ? 7000 : 4500); return () => clearTimeout(t); }, [helloOn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- remembered screens + inputs (saved to your account, mirrored on this device) ----------
   const [ui, setUiState] = useState(() => {
@@ -244,6 +253,15 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
                   </div>
                   <span className="desc">Saved to your cookbook with your rating.</span>
                   <button className="btn wide" style={{ marginTop: 8 }} onClick={closePopup} autoFocus>Leave</button>
+                </>
+              )}
+              {kind === 'stamp' && (
+                <>
+                  <p className="row" style={{ justifyContent: 'center', gap: 8, margin: '4px 0 0', fontWeight: 800, fontSize: 18 }}>
+                    <img src={`/stamps/${flagCode(popup.country)}.svg`} alt="" width="26" height="26" />{COUNTRY_BY_ISO[popup.country]?.[1]} is stamped in your passport
+                  </p>
+                  <p className="row" style={{ justifyContent: 'center', gap: 6, margin: 0, fontFamily: 'var(--f-display)', fontSize: 28, fontWeight: 700 }}><Coin />+5,000 coins</p>
+                  <button className="btn wide" style={{ marginTop: 8 }} onClick={closePopup} autoFocus>Nice!</button>
                 </>
               )}
             </div>

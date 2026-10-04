@@ -19,6 +19,7 @@ About 20 minutes. Do the steps in order. **Never paste keys into chat, screensho
    - New query → paste all of `supabase/migrations/0009_local_calendar.sql` → **Run**. Days, streaks and daily rewards follow each player's own time zone (after they allow it in the cookie popup).
    - New query → paste all of `supabase/migrations/0010_hockey_helmet.sql` → **Run**. The Chef Hat in the shop becomes a Hockey Helmet.
    - New query → paste all of `supabase/migrations/0011_activity_onboarding_admin.sql` → **Run**. Adds the activity log (only for players who allow "Help improve Whisk"), the first-run tour flag and the backend dashboard.
+   - New query → paste all of `supabase/migrations/0012_dishes_and_stamp_coins.sql` → **Run**. Adds the list of 1,787 dishes from all 193 countries (so any dish can be logged toward its country's stamp) and pays 5,000 coins per passport stamp.
    - Make yourself an admin so you can open **/admin** (the backend dashboard). In a new query, with your email:
      `update public.profiles set is_admin = true where id = (select id from auth.users where email = 'YOUR-EMAIL');`
    - Check: **Table Editor** shows `items` with 105 rows.
@@ -60,7 +61,8 @@ Open `.env.local` in a text editor and fill in:
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your anon/publishable key
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-ANTHROPIC_API_KEY=sk-ant-...      # from console.anthropic.com
+YOUTUBE_API_KEY=...               # free, see 3b (optional)
+# ANTHROPIC_API_KEY=               # leave empty: costs money (only receipt photos use it)
 ```
 
 Leave the Upstash lines empty on localhost. Then:
@@ -85,8 +87,8 @@ Open **http://localhost:3000** → **Create account** → confirm the email → 
    | `NEXT_PUBLIC_SUPABASE_URL` | your Project URL | public |
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon/publishable key | public |
    | `NEXT_PUBLIC_SITE_URL` | `https://YOUR-APP.vercel.app` | set after first deploy if you don't know it yet |
-   | `ANTHROPIC_API_KEY` | `sk-ant-…` | **server only**. Tick **Sensitive**. No `NEXT_PUBLIC_` prefix, so it never reaches the browser. |
-   | `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | optional |
+   | `YOUTUBE_API_KEY` | from Google Cloud (see 3b) | **server only**, free. Tick **Sensitive**. Optional: without it the YouTube button opens a YouTube search. |
+   | `ANTHROPIC_API_KEY` | leave it out for now | Costs money per use. The only thing that uses it is reading receipt photos; without it, receipt scanning says it isn't set up and everything else works. Dish search does **not** use it. |
 
 3. Click **Deploy**.
 4. **Rate limiting across all servers (do this before sharing the link).** In your Vercel project → **Storage** (or **Marketplace**) → **Upstash for Redis** → create a free database → **Connect** it to the whisk project. It adds the Redis env vars automatically; Whisk accepts both `UPSTASH_REDIS_REST_*` and `KV_REST_API_*`. Then **Redeploy**.
@@ -95,7 +97,17 @@ Open **http://localhost:3000** → **Create account** → confirm the email → 
 
 ---
 
-## 3b. Bitcoin coin packs (BTCPay Server)
+## 3b. YouTube button (free)
+
+Dish search is free: it uses Whisk's own dish list (all 193 countries) and Wikipedia. To make each dish's YouTube button open the most-watched video that's really about that dish (greyed out when there isn't one):
+
+1. console.cloud.google.com → create a project (free, no card needed for this API) → **APIs & Services → Library** → **YouTube Data API v3** → **Enable**.
+2. **APIs & Services → Credentials → Create credentials → API key**. Click the key → **API restrictions → Restrict key → YouTube Data API v3** → Save.
+3. Vercel → Environment Variables → `YOUTUBE_API_KEY` = that key (Sensitive) → **Redeploy**.
+
+Free quota is 10,000 units a day; a dish nobody has opened yet costs 101, so about 99 new dishes a day. Every answer is cached for a week and shared by all players. When the quota runs out, the button falls back to a YouTube search link until midnight Pacific; nothing is ever billed.
+
+## 3c. Bitcoin coin packs (BTCPay Server)
 
 Whisk sells 1,000 / 3,000 / 10,000 / 15,000 coins for $2 / $5 / $10 / $20, paid in Bitcoin through **your own BTCPay Server**.
 Until these are set, the Get coins packs show "Bitcoin checkout isn't set up yet" and nothing else breaks.

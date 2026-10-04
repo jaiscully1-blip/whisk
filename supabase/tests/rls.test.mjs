@@ -336,6 +336,27 @@ check('new meal country comes from the recipe', (await db.query(`select country 
 await expectFail('players cannot change a meal country', C, `update meals set country = 'FR' where photo_path = '${C}/ctry.jpg'`);
 check('country stays put', (await db.query(`select country from meals where photo_path = '${C}/ctry.jpg'`)).rows[0]?.country === 'CU');
 
+// ================= 0009: local calendar =================
+try { await db.exec(fs.readFileSync('./supabase/migrations/0009_local_calendar.sql', 'utf8')); await db.exec(fs.readFileSync('./supabase/migrations/0009_local_calendar.sql', 'utf8')); check('0009 runs (twice)', true); }
+catch (e) { check('0009 runs (twice)', false, e.message); }
+const sp = await as(C, () => db.query(`select public.set_privacy(true, true, 'Pacific/Kiritimati') as r`));
+const want = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Kiritimati' }).format(new Date());
+check('set_privacy stores the time zone and today is the player\'s local date', sp.rows[0].r.time_zone === 'Pacific/Kiritimati' && sp.rows[0].r.today === want, JSON.stringify(sp.rows[0].r) + ' want ' + want);
+check('first open date is recorded', !!sp.rows[0].r.first_open_date);
+await expectFail('unknown time zones are refused', C, `select public.set_privacy(true, true, 'Mars/Olympus')`);
+const q9 = await as(C, () => db.query(`select public.get_daily_quest() as r`));
+check('daily quest still works on the local calendar', !!q9.rows[0].r);
+const b9 = await as(C, () => db.query(`select public.get_bingo() as r`));
+const wantRound = (await db.query(`select public._bingo_round_start('${want}'::date)::text as d`)).rows[0].d;
+check('bingo round follows the local date', b9.rows[0].r.week_start === wantRound, b9.rows[0].r.week_start + ' vs ' + wantRound);
+await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${C}/tz.jpg')`);
+await as(C, () => db.query(`select public.log_meal('www-budgetbytes-com-picadillo', '${C}/tz.jpg')`));
+check('streak date is the local date', (await db.query(`select streak_last_date::text d from profiles where id = '${C}'`)).rows[0].d === want);
+const off = await as(C, () => db.query(`select public.set_privacy(false, false) as r`));
+check('turning local time off goes back to UTC', off.rows[0].r.time_zone === null);
+await expectFail('players cannot call _user_today', C, `select public._user_today('${C}')`);
+await expectFail('players cannot write their consent directly', C, `update profiles set consent = '{}'::jsonb where id = '${C}'`);
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

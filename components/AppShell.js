@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import PullToRefresh from './PullToRefresh';
+import CookieConsent, { CONSENT_KEY, deviceTimeZone } from './CookieConsent';
 import { timerApi } from '@/lib/timers';
 import Icon, { Coin, Flame } from './Icon';
 import WhiskStage, { outfitFrom } from './WhiskStage';
@@ -15,7 +16,8 @@ export const useWhisk = () => useContext(Ctx);
 
 const TITLES = { cooked: 'Cooked it!', welcome: 'Welcome back!' };
 const NAV = [['/home', 'Home', 'home'], ['/pantry', 'Pantry', 'pantry'], ['/cook', 'Cook', 'cook'], ['/compete', 'Compete', 'compete'], ['/me', 'Me', 'me']];
-const PROFILE_COLS = 'id, display_name, theme_pref, xp, coins, streak_days, streak_freezes, login_count, first_login_at, last_meal_at, weekly_goal, takeout_price, last_device, ui_state';
+const consentRef0 = (p) => { if (p?.consent) return p.consent; try { return JSON.parse(localStorage.getItem('whisk-consent') || 'null'); } catch { return null; } };
+const PROFILE_COLS = 'id, display_name, theme_pref, xp, coins, streak_days, streak_freezes, login_count, first_login_at, last_meal_at, weekly_goal, takeout_price, last_device, ui_state, time_zone, consent, first_open_date';
 const UI_LOCAL = 'whisk-ui';
 
 export function deviceLabel() {
@@ -45,10 +47,14 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
   const [dataVersion, setDataVersion] = useState(0);   // bump to make lists (saved recipes, pantry) reload
   const bump = useCallback(() => setDataVersion((v) => v + 1), []);
   const [refreshKey, setRefreshKey] = useState(0);   // pull to refresh remounts the page so it reloads everything
+  // ---------- cookies & privacy ----------
+  const [consent, setConsent] = useState(initialProfile?.consent || null);   // the account is the source of truth
+  const consentRef = useRef(consent); consentRef.current = consent;
+  const [privacyOpen, setPrivacyOpen] = useState(!consent);
 
   // ---------- remembered screens + inputs (saved to your account, mirrored on this device) ----------
   const [ui, setUiState] = useState(() => {
-    let local = null; try { local = JSON.parse(localStorage.getItem(UI_LOCAL) || 'null'); } catch {}
+    let local = null; try { if (consentRef0(initialProfile)?.preferences) local = JSON.parse(localStorage.getItem(UI_LOCAL) || 'null'); } catch {}
     const remote = initialProfile?.ui_state || null;
     return (local && (!remote || (local.at || 0) > (remote.at || 0)) ? local : remote) || { drafts: {}, scroll: {} };
   });
@@ -65,17 +71,18 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
       const cur = uiRef.current;   // includes quiet saves (scroll spots) made since the last render
       const next = { ...cur, ...(typeof patch === 'function' ? patch(cur) : patch), at: Date.now() };
       uiRef.current = next;
-      try { localStorage.setItem(UI_LOCAL, JSON.stringify(next)); } catch {}
+      if (consentRef.current?.preferences) { try { localStorage.setItem(UI_LOCAL, JSON.stringify(next)); } catch {} }
       return next;
     });
     clearTimeout(uiTimer.current); uiTimer.current = setTimeout(() => flushUi(), 400);
   }, [flushUi]);
   const getUi = useCallback(() => uiRef.current, []);
+  const openPrivacy = useCallback(() => setPrivacyOpen(true), []);
   // Saves without re-rendering the app (scroll spots, album page): nothing on screen depends on these.
   const setUiQuiet = useCallback((patch) => {
     const next = { ...uiRef.current, ...(typeof patch === 'function' ? patch(uiRef.current) : patch), at: Date.now() };
     uiRef.current = next;
-    try { localStorage.setItem(UI_LOCAL, JSON.stringify(next)); } catch {}
+    if (consentRef.current?.preferences) { try { localStorage.setItem(UI_LOCAL, JSON.stringify(next)); } catch {} }
     clearTimeout(uiTimer.current); uiTimer.current = setTimeout(() => flushUi(), 800);
   }, [flushUi]);
   useEffect(() => {
@@ -157,12 +164,28 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
     if (error) say('Couldn’t save your rating.'); else bump();
   }
 
+  const savePrivacy = useCallback(async (choice) => {
+    const tz = deviceTimeZone();
+    const { data, error } = await supabase.rpc('set_privacy', { p_preferences: !!choice.preferences, p_local_time: !!choice.local_time, p_time_zone: choice.local_time ? tz : null });
+    if (error) { say('Couldn’t save your choices. Try again.'); return; }
+    const c = { v: 1, essential: true, preferences: !!choice.preferences, local_time: !!choice.local_time, at: new Date().toISOString() };
+    try { localStorage.setItem(CONSENT_KEY, JSON.stringify(c)); if (!c.preferences) localStorage.removeItem(UI_LOCAL); else localStorage.setItem(UI_LOCAL, JSON.stringify(uiRef.current)); } catch {}
+    setConsent(c); setPrivacyOpen(false);
+    setProfile((p) => ({ ...p, consent: c, time_zone: data?.time_zone ?? null, first_open_date: data?.first_open_date ?? p.first_open_date }));
+  }, [supabase, say]);
+  // Moved to a new time zone? Days follow you (only if you allowed local time).
+  useEffect(() => {
+    if (!consent?.local_time) return;
+    const tz = deviceTimeZone();
+    if (tz && (tz !== profile?.time_zone || !profile?.first_open_date)) supabase.rpc('set_privacy', { p_preferences: !!consent.preferences, p_local_time: true, p_time_zone: tz }).then(({ data }) => { if (data) setProfile((p) => ({ ...p, time_zone: data.time_zone, first_open_date: data.first_open_date })); });
+  }, [consent]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const pullRefresh = useCallback(async () => {
     await Promise.all([refreshProfile(), refreshLoadout?.(), new Promise((r) => setTimeout(r, 450))]);
     bump(); setRefreshKey((k) => k + 1);
   }, [refreshProfile, refreshLoadout, bump]);
-  const value = useMemo(() => ({ profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, setUiQuiet, getUi, lastPlayed, saveState, dataVersion, bump }),
-    [profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, setUiQuiet, getUi, lastPlayed, saveState, dataVersion, bump]);
+  const value = useMemo(() => ({ profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, lastPlayed, saveState, dataVersion, bump }),
+    [profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, lastPlayed, saveState, dataVersion, bump]);
   const outfit = outfitFrom(loadout);
 
   return (
@@ -186,7 +209,8 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
             ))}
           </div>
         </nav>
-        {kind && (
+        {privacyOpen && <CookieConsent initial={consent} onSave={savePrivacy} onClose={() => setPrivacyOpen(false)} />}
+        {kind && !privacyOpen && (
           <div className="popup-scrim" role="presentation" onClick={(e) => { if (kind !== 'cooked' && e.target === e.currentTarget) closePopup(); }}>
             <div className="popup" role="dialog" aria-modal="true" aria-label={title}>
               {kind !== 'cooked' && <button className="x" type="button" aria-label="Close" onClick={closePopup}><Icon name="x" /></button>}
@@ -209,7 +233,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
           </div>
         )}
         {toast && <div className="toast" role="status">{toast}</div>}
-        {levelUp && !popup && <LevelUp level={levelUp} onClose={() => setLevelUp(null)} />}
+        {levelUp && !popup && !privacyOpen && <LevelUp level={levelUp} onClose={() => setLevelUp(null)} />}
       </div>
     </Ctx.Provider>
   );

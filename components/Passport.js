@@ -68,7 +68,8 @@ export default function Passport({ counts, onOpenRecipe }) {
         </div>
         <button className="btn ghost sm" onClick={() => go(page + 1)} disabled={page === PAGES.length - 1} aria-label="Next page">›</button>
       </div>
-      <p className="desc" style={{ margin: '8px 0 0' }}>Cook 10 meals from a country to stamp it in full color. Stamp art: Twemoji, CC-BY 4.0.</p>
+      <p className="desc" style={{ margin: '8px 0 0' }}>Cook 10 meals from a country to stamp it in full color.</p>
+      <p className="credit">Stamp art: Twemoji, CC-BY 4.0.</p>
 
       {open && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setOpen(null); }}>

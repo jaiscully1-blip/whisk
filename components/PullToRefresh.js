@@ -37,7 +37,7 @@ export default function PullToRefresh({ onRefresh, children }) {
     <>
       <div className="ptr" aria-live="polite" style={{ height: pull, opacity: pull ? 1 : 0 }}>
         <span className={`ptr-dot ${busy ? 'spin' : ''}`} style={{ transform: busy ? undefined : `rotate(${pull * 3}deg)` }} />
-        <span className="ptr-txt">{busy ? 'Refreshing…' : ready ? 'Let go to refresh' : 'Pull to refresh'}</span>
+        <span className="ptr-txt">{busy ? 'Refreshing…' : !pull ? '' : ready ? 'Let go to refresh' : 'Pull to refresh'}</span>
       </div>
       {children}
     </>

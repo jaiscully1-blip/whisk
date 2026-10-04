@@ -8,7 +8,7 @@ import Passport from '@/components/Passport';
 import ResetSheet from '@/components/ResetSheet';
 import RecipeSheet from '@/components/RecipeSheet';
 import { usePantry } from '@/components/usePantry';
-import { levelFor, fmt, weekStart, HOME_MEAL_COST } from '@/lib/game';
+import { levelFor, fmt, weekStart, HOME_MEAL_COST, dayNumber } from '@/lib/game';
 
 const SLOTS = [['top', 'Top', 'shirt'], ['hat', 'Hat', 'hat'], ['glasses', 'Glasses', 'glasses'], ['shoes', 'Shoes', 'shoe'], ['acc', 'Accessory', 'spoon']];
 const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
@@ -16,7 +16,7 @@ const RARITY_ORDER = ['common', 'rare', 'epic', 'exotic', 'mythic'];
 const EMPTY = { top: 'No top', hat: 'Classic toque', glasses: 'None', shoes: 'Bare feet', acc: 'Nothing' };
 
 export default function Me() {
-  const { supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, email, say, ui, setUi } = useWhisk();
+  const { supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, email, say, ui, setUi, openPrivacy } = useWhisk();
   const [items, setItems] = useState([]);
   const [owned, setOwned] = useState(new Set());
   const [buying, setBuying] = useState(null);
@@ -125,7 +125,7 @@ export default function Me() {
         )}
       </div>
       <div>
-        <div className="row" style={{ justifyContent: 'space-between', fontSize: 13, fontWeight: 800 }}><span>{fmt(profile?.xp)} XP</span><span className="muted">{lvl.next ? `${fmt(lvl.next - (profile?.xp || 0))} to level ${lvl.level + 1}` : 'Max level'}</span></div>
+        <div className="row" style={{ justifyContent: 'space-between', fontSize: 13, fontWeight: 800 }}><span>{fmt(profile?.xp)} XP · <span className="dayno">Day {dayNumber(profile)}</span></span><span className="muted">{lvl.next ? `${fmt(lvl.next - (profile?.xp || 0))} to level ${lvl.level + 1}` : 'Max level'}</span></div>
         <div className="bar" style={{ height: 10, marginTop: 4 }}><i style={{ width: `${lvl.pct}%` }} /></div>
       </div>
 
@@ -235,6 +235,9 @@ export default function Me() {
           {editTakeout && <button className="btn sm" type="submit">Submit</button>}
         </form>
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="snow" /><span style={{ flex: 1, fontWeight: 700 }}>Streak freezes</span><b>{profile?.streak_freezes ?? 1}</b><span className="desc" style={{ width: '100%' }}>Miss one day and a freeze keeps your streak. You get one each week; it doesn’t stack.</span></div>
+        <button className="row setbtn" onClick={openPrivacy} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
+          <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Cookies &amp; privacy</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />
+        </button>
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="me" /><span style={{ flex: 1, fontWeight: 700, overflowWrap: 'anywhere' }}>{email}</span></div>
         <form action="/auth/signout" method="post" style={{ padding: '12px 16px' }}><button className="btn ghost wide" type="submit">Sign out</button></form>
       </div>

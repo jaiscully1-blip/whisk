@@ -30,7 +30,7 @@ const check = (name, ok, detail = '') => { results.push([ok ? 'PASS' : 'FAIL', n
 const problems = [];
 
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, timezoneId: 'America/New_York' });
 const page = await ctx.newPage();
 page.setDefaultTimeout(12000);
 page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) problems.push(`console: ${m.text()}`); });
@@ -46,6 +46,14 @@ await step('log in', async () => {
   await page.fill('#email', 'cook@whisk.test'); await page.fill('#password', 'whisk-e2e-pass');
   await page.click('button[type=submit]'); await page.waitForURL('**/home', { timeout: 15000 });
   check('log in lands on /home', true);
+  await page.getByRole('dialog', { name: 'Cookies, chef?' }).waitFor({ timeout: 8000 });
+  check('first open asks about cookies before anything else', (await page.locator('.popup-scrim').count()) === 0);
+  await page.getByRole('button', { name: 'Manage choices' }).click();
+  check('manage shows 3 purposes, essential locked on', (await page.locator('.cc-switch').count()) === 3 && (await page.locator('.cc-switch.locked[aria-checked=true]').count()) === 1);
+  await shot('00-cookies');
+  await page.getByRole('button', { name: 'Accept all' }).click();
+  await page.locator('.cc-scrim').waitFor({ state: 'detached' });
+  check('cookie choices saved', true);
   await page.getByRole('heading', { name: /^Welcome (back!|to Whisk!)$/ }).waitFor({ timeout: 8000 });
   check('opening the app shows only the welcome popup', (await page.locator('.popup-scrim').count()) === 1 && (await page.getByText('Late night snack').count()) === 0 && (await page.getByText('We’re so back').count()) === 0);
   await page.getByRole('button', { name: 'Let’s cook' }).click(); await page.waitForTimeout(400); await closePopups();
@@ -196,6 +204,11 @@ await step('buy coins with bitcoin', async () => {
 await step('me settings', async () => {
   await nav('Me'); await page.getByText('Settings').waitFor();
   check('autosave is not shown', (await page.getByText('Autosave').count()) === 0);
+  check('day counter starts at Day 1', (await page.locator('.dayno').innerText()) === 'Day 1');
+  await page.getByRole('button', { name: /Cookies & privacy/ }).click();
+  check('cookie choices can be reopened from Settings', await page.getByRole('dialog', { name: 'Your choices' }).isVisible());
+  check('your time zone is used for days', (await page.locator('.cc-text em').innerText()).includes('America/New York'));
+  await page.getByRole('button', { name: 'Cancel' }).click();
   await page.getByRole('button', { name: 'Bigger text' }).click(); await page.waitForTimeout(200);
   check('text size goes up', (await page.locator('main').evaluate((m) => getComputedStyle(m).zoom)) === '1.1');
   await page.getByRole('button', { name: 'Smaller text' }).click(); await page.waitForTimeout(200);

@@ -15,7 +15,7 @@ Last reviewed: Oct 3, 2026. Checked against the **OWASP Top 10 (2021)**. OWASP p
 | A07 | Auth failures | Supabase Auth with **email confirmation required**; min 8-char passwords; generic login error (no account enumeration); sign-out is POST-only; session cookies refreshed in middleware. Turn on leaked-password protection in Supabase (see LAUNCH.md). | Manual |
 | A08 | Software & data integrity | Lockfile committed; CI uses `npm ci`. AI responses are schema-validated (zod) and bounded in size before anyone sees or saves them. Recipe JSON size capped in DB. | Code review |
 | A09 | Logging & monitoring | Logins recorded (`login_events`), XP ledger (`xp_events`), Supabase auth logs, Vercel function logs. AI errors logged server-side without user data. Errors shown to users are generic. | Code review |
-| A10 | SSRF | The server calls two fixed hosts only: the Anthropic API (`/api/receipt`, reading receipt photos only; Whisk never asks the AI to write recipes) and `world.openfoodfacts.org` (`/api/barcode`). The barcode route accepts only 8–14 digits, which are placed in a fixed URL path, with a 6 s timeout. No user-supplied URLs are fetched. Video links are search links built from the recipe title, opened by the user's browser. | Code review |
+| A10 | SSRF | The server calls three fixed hosts only (plus your BTCPay Server from `BTCPAY_URL`): the Anthropic API (`/api/receipt`, reading receipt photos only; Whisk never asks the AI to write recipes) and `world.openfoodfacts.org` (`/api/barcode`). The barcode route accepts only 8–14 digits, which are placed in a fixed URL path, with a 6 s timeout. No user-supplied URLs are fetched. Video links are search links built from the recipe title, opened by the user's browser. | Code review |
 
 ## Rate limiting
 - **100 requests / minute / IP** on every `/api/*` route (middleware). Production uses Upstash Redis so the limit holds across all Vercel instances; without Upstash it falls back to per-instance memory (fine for localhost, **not** for production).
@@ -35,6 +35,12 @@ Last reviewed: Oct 3, 2026. Checked against the **OWASP Top 10 (2021)**. OWASP p
 
 ## End-to-end tests
 `e2e/mock-supabase.mjs` is a local stand-in for Supabase and the Anthropic API, backed by PGlite running the real migrations, so RLS and every SQL function run for real. `e2e/run.mjs` walks every screen in Chromium (30 checks, including no CSP violations and no-store on signed-in pages). It's for local testing only and is never deployed. The steps to run it are at the top of `e2e/run.mjs`.
+
+## Payments (Bitcoin coin packs)
+- Prices live in `coin_packs` (read-only to players). The browser only sends a pack id; the server creates the order (`create_coin_order`) and the BTCPay invoice with the database price.
+- Coins are credited only by `/api/coins/webhook`, which (1) checks the `BTCPay-Sig` HMAC-SHA256 over the raw body in constant time, (2) re-fetches the invoice from BTCPay with the API key and requires status `Settled`, currency `USD` and our order id, then (3) calls `credit_coin_order`, which requires the webhook secret (stored only as a SHA-256 hash in `private.app_secrets`, a schema players can't read), refuses underpayment, and credits each order once (replays credit nothing).
+- No service-role key is used. BTCPay keys are server-only env vars; the checkout redirect is only allowed to the configured BTCPay origin.
+- Game reset requires the session to be confirmed with an emailed one-time code within the last 10 minutes (checked in the database from the JWT `amr` claim), after a password check in the app. Coins and shop items are kept.
 
 ## Known limits / to do
 - Recipes come from a fixed catalog of real web pages (`web_recipes`, read-only to players). Players can't add or edit recipes.

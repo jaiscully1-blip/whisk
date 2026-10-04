@@ -17,6 +17,8 @@ await db.exec(`
 create role anon nologin; create role authenticated nologin;
 create schema auth; create table auth.users (id uuid primary key, email text);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+grant execute on function auth.jwt() to anon, authenticated;
 grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;
 create schema storage;
 create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
@@ -29,7 +31,7 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on sequences to anon, authenticated;
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
-for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql']) {
+for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql']) {
   await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8').replace('create extension if not exists pgcrypto;', ''));
 }
 await db.exec(`insert into auth.users (id, email) values ('${E2E_USER.id}', '${E2E_USER.email}')`);
@@ -39,6 +41,8 @@ const START = [['Eggs', 'Dairy & Eggs'], ['Tomatoes', 'Produce'], ['Scallions', 
   ['Onion', 'Produce'], ['Chicken thighs', 'Proteins'], ['Soy sauce', 'Sauces & Oils'], ['Lentils', 'Canned & Jarred'], ['Chickpeas', 'Canned & Jarred'], ['Ginger', 'Produce'],
   ['Tomato paste', 'Canned & Jarred'], ['Lemon', 'Produce'], ['Ground beef', 'Frozen'], ['Bell peppers', 'Produce'], ['Spinach', 'Produce'], ['Butter', 'Dairy & Eggs'],
   ['Milk', 'Dairy & Eggs'], ['Flour', 'Baking'], ['Tortillas', 'Carbs & Grains'], ['Chicken broth', 'Canned & Jarred'], ['Carrots', 'Produce']];
+export const WEBHOOK_SECRET = process.env.BTCPAY_WEBHOOK_SECRET || 'e2e-webhook-secret';
+await db.exec(`insert into private.app_secrets (name, sha256_hex) values ('payments_webhook', encode(sha256(convert_to('${WEBHOOK_SECRET}', 'UTF8')), 'hex'))`);
 await db.exec(`insert into public.pantry_items (user_id, name, category) values ${START.map(([n, c]) => `('${E2E_USER.id}', '${n}', '${c}')`).join(', ')}`);
 
 // One PGlite connection → run requests one at a time.
@@ -172,6 +176,7 @@ async function rpc(res, uid, fn, args, wantObj) {
 
 // ---------- storage ----------
 const files = new Map();
+const invoices = new Map();
 async function storage(req, res, uid, path, buf) {
   let m;
   if (req.method === 'POST' && (m = path.match(/^\/storage\/v1\/object\/sign\/([^/]+)$/))) {
@@ -241,6 +246,17 @@ const server = http.createServer(async (req, res) => {
     if (path === '/auth/v1/logout') return send(res, 204, null);
     if (path === '/anthropic/v1/messages' && req.method === 'POST') return send(res, 200, anthropic(json()));
     if (path === '/__e2e/calls') return send(res, 200, anthropicCalls);
+    // ---- BTCPay stand-in ----
+    let bm;
+    if ((bm = path.match(/^\/btcpay\/api\/v1\/stores\/([^/]+)\/invoices$/)) && req.method === 'POST') {
+      if (req.headers.authorization !== 'token e2e-api-key') return send(res, 401, { message: 'bad key' });
+      const b = json(); const inv = { id: 'inv' + randomUUID().slice(0, 8), storeId: bm[1], amount: String(b.amount), currency: b.currency, metadata: b.metadata, status: 'New', checkoutLink: '' };
+      inv.checkoutLink = `http://localhost:${PORT}/btcpay/i/${inv.id}`; invoices.set(inv.id, inv); return send(res, 200, inv);
+    }
+    if ((bm = path.match(/^\/btcpay\/api\/v1\/stores\/([^/]+)\/invoices\/([^/]+)$/))) { const inv = invoices.get(bm[2]); return inv ? send(res, 200, inv) : send(res, 404, {}); }
+    if ((bm = path.match(/^\/btcpay\/i\/([^/]+)$/))) { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end(`<!doctype html><title>BTCPay test checkout</title><h1>Pay ${invoices.get(bm[1])?.amount} USD in Bitcoin</h1>`); }
+    if ((bm = path.match(/^\/__e2e\/settle\/([^/]+)$/))) { const inv = invoices.get(bm[1]); if (inv) inv.status = 'Settled'; return send(res, 200, inv || {}); }
+    if (path === '/__e2e/invoices') return send(res, 200, [...invoices.values()]);
     if (path.startsWith('/rest/v1/rpc/')) return await rpc(res, uidFrom(req), path.slice('/rest/v1/rpc/'.length), json(), (req.headers.accept || '').includes('vnd.pgrst.object'));
     if (path.startsWith('/rest/v1/')) return await rest(req, res, uidFrom(req), path.slice('/rest/v1/'.length), url, json());
     if (path.startsWith('/storage/v1/')) return await storage(req, res, uidFrom(req), path, buf);

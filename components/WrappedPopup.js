@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useWhisk } from './AppShell';
 import WhiskStage from './WhiskStage';
-import Icon from './Icon';
+import Icon, { Coin } from './Icon';
 import { CUISINES, cuisineMatch, fmt, HOME_MEAL_COST } from '@/lib/game';
 
 const pl = (n, w) => `${fmt(n)} ${w}${n === 1 ? '' : 's'}`;
@@ -40,6 +40,7 @@ export default function WrappedPopup({ outfit, onClose }) {
         <span className="eyebrow">July 18 · Whisk Wrapped</span>
         <WhiskStage pose="cooked" outfit={outfit} interactive={false} height={210} label="Whisk celebrating" />
         <h2 style={{ fontSize: 28 }}>Your {year} in the kitchen</h2>
+        <div className="card row" style={{ background: 'var(--gold-soft)', justifyContent: 'center', fontWeight: 800, width: '100%' }}><Coin size={20} />July 18 gift: +5,000 coins</div>
         {!s ? <p className="muted">Counting your meals…</p> : s.meals === 0 ? (
           <div className="empty" style={{ width: '100%' }}><b>Nothing to wrap yet</b>Cook and log meals this year and they show up here next July 18.</div>
         ) : (

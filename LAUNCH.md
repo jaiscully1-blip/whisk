@@ -13,6 +13,7 @@ About 20 minutes. Do the steps in order. **Never paste keys into chat, screensho
    - New query again → paste all of `supabase/migrations/0003_whisk_features.sql` → **Run**. This adds daily quests, cuisine bingo, streak freezes, the weekly goal, takeout price and meal nutrition. (Already ran 0001 and 0002? Just run 0003. It is safe to run more than once.)
    - New query → paste all of `supabase/migrations/0004_whisk_web_recipes.sql` → **Run**. This adds real web recipes, defrost tracking, meal ratings, pantry-based challenges, the new popup timing and remembered inputs.
    - New query → paste all of `supabase/migrations/0005_web_recipes_seed.sql` → **Run**. This loads the 40 real recipes. Run 0004 before 0005.
+   - New query → paste all of `supabase/migrations/0006_whisk_coins_reset.sql` → **Run**. This adds coin packs, Bitcoin payments, the July 18 gift and the two-step reset.
    - Check: **Table Editor** shows `items` with 105 rows.
 3. **Email confirmation.** **Authentication → Sign In / Providers → Email**: make sure **Confirm email** is ON (it's on by default).
 4. **Passwords.** **Authentication → Policies / Passwords** (the name varies): minimum length **8**. If you see **Leaked password protection**, turn it on.
@@ -21,6 +22,10 @@ About 20 minutes. Do the steps in order. **Never paste keys into chat, screensho
    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Confirm your email</a>
    ```
    Save. (Without this step the link still works, but only in the same browser you signed up in.)
+   Then open the **Magic Link** template and add this line so the reset code shows up in the email:
+   ```
+   <p>Your Whisk code: <b>{{ .Token }}</b></p>
+   ```
 6. **URLs.** **Authentication → URL Configuration**:
    - **Site URL:** `http://localhost:3000` for now (change it to your Vercel URL in step 3.5).
    - **Redirect URLs:** add `http://localhost:3000/**`. After deploying, also add `https://YOUR-APP.vercel.app/**`.
@@ -82,6 +87,26 @@ Open **http://localhost:3000** → **Create account** → confirm the email → 
 6. Open the live URL, create an account, confirm the email, and check the pantry, Cook, a challenge, the shop and the Me tab.
 
 ---
+
+## 3b. Bitcoin coin packs (BTCPay Server)
+
+Whisk sells 1,000 / 3,000 / 10,000 / 15,000 coins for $2 / $5 / $10 / $20, paid in Bitcoin through **your own BTCPay Server**.
+Until these are set, the Get coins packs show "Bitcoin checkout isn't set up yet" and nothing else breaks.
+
+1. **Get a BTCPay Server.** Either self-host it (docs.btcpayserver.org → Deployment) or use a third-party BTCPay host. Create a **store** and connect a Bitcoin wallet to it.
+2. **API key.** In BTCPay: Account → **API Keys** → Generate. Permissions: **Create an invoice** and **View invoices** for your store only. Copy the key.
+3. **Store ID.** Store → Settings → General → **Store ID**.
+4. **Webhook.** Store → Settings → **Webhooks** → Create: Payload URL `https://YOUR-APP.vercel.app/api/coins/webhook`, event **An invoice has been settled**. Copy the webhook **secret** BTCPay shows.
+5. **Vercel env vars** (Production, all **Sensitive**, none start with `NEXT_PUBLIC_`): `BTCPAY_URL` (e.g. `https://pay.yourdomain.com`), `BTCPAY_STORE_ID`, `BTCPAY_API_KEY`, `BTCPAY_WEBHOOK_SECRET`. Redeploy.
+6. **Unlock crediting in the database.** Supabase → SQL Editor → run this once, pasting the same webhook secret between the quotes (it's stored only as a hash):
+   ```sql
+   insert into private.app_secrets (name, sha256_hex)
+   values ('payments_webhook', encode(sha256(convert_to('PASTE-WEBHOOK-SECRET-HERE', 'UTF8')), 'hex'))
+   on conflict (name) do update set sha256_hex = excluded.sha256_hex;
+   ```
+7. **Test with a small pack.** Buy 1,000 coins for $2. Coins appear when BTCPay marks the invoice **Settled** (on-chain that can take a confirmation; Lightning is near-instant if your store has it on).
+
+Before charging real people, add Terms and a refund policy page, and check the rules where you live for selling in-game currency and accepting Bitcoin. I'm not a lawyer; this isn't legal advice.
 
 ## 4. After launch
 

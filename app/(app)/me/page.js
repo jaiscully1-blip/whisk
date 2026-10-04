@@ -1,26 +1,32 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useWhisk, useDraft, deviceLabel } from '@/components/AppShell';
+import { useWhisk, useDraft } from '@/components/AppShell';
 import WhiskStage, { outfitFrom } from '@/components/WhiskStage';
 import Icon from '@/components/Icon';
 import Passport from '@/components/Passport';
+import ResetSheet from '@/components/ResetSheet';
 import { levelFor, fmt, CUISINES, cuisineMatch, weekStart, HOME_MEAL_COST } from '@/lib/game';
 
 const SLOTS = [['top', 'Top', 'shirt'], ['hat', 'Hat', 'hat'], ['glasses', 'Glasses', 'glasses'], ['shoes', 'Shoes', 'shoe'], ['acc', 'Accessory', 'spoon']];
-const EMPTY = { top: 'No top', hat: 'Classic toque', glasses: 'None', shoes: 'Bare feet', acc: 'Wooden spoon' };
+const EMPTY = { top: 'No top', hat: 'Classic toque', glasses: 'None', shoes: 'Bare feet', acc: 'Nothing' };
 
 export default function Me() {
-  const { supabase, profile, setProfile, loadout, refreshLoadout, email, say, ui, setUi, lastPlayed, saveState } = useWhisk();
+  const { supabase, profile, setProfile, loadout, refreshLoadout, email, say, ui, setUi } = useWhisk();
   const [owned, setOwned] = useState([]);
   const slot = ui.closetSlot || 'top';
   const [thumbs, setThumbs] = useState({});
   const [meals, setMeals] = useState([]);
   const [history, setHistory] = useState([]);
   const [editing, setEditing] = useState(false);
+  const [editTakeout, setEditTakeout] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [nameDraft, setNameDraft, clearName] = useDraft('nm', profile?.display_name || '');
   const [takeout, setTakeout, clearTakeout] = useDraft('takeout', String(profile?.takeout_price ?? 15));
   const outfit = outfitFrom(loadout);
+  const stripRef = useRef(null);
+  // stay where you were in the item row; only a different slot starts from the beginning
+  useEffect(() => { if (stripRef.current) stripRef.current.scrollLeft = ui.closetScroll?.[slot] || 0; }, [slot, owned.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const lvl = levelFor(profile?.xp);
   const name = profile?.display_name || 'Me';
 
@@ -113,7 +119,7 @@ export default function Me() {
           </button>
         ))}
       </div>
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+      <div ref={stripRef} onScroll={(e) => setUi((c) => ({ closetScroll: { ...(c.closetScroll || {}), [slot]: Math.round(e.currentTarget.scrollLeft) } }))} style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
         <button onClick={() => equip(null)} aria-pressed={!outfit[slot]} className="card" style={{ flex: 'none', width: 96, padding: 8, display: 'grid', placeItems: 'center', gap: 4, borderColor: !outfit[slot] ? 'var(--accent)' : 'var(--line)' }}>
           <span style={{ width: 64, height: 64, display: 'grid', placeItems: 'center', color: 'var(--muted)' }}><Icon name="x" size={28} /></span>
           <span style={{ fontSize: 12, fontWeight: 800 }}>{EMPTY[slot]}</span>
@@ -181,20 +187,20 @@ export default function Me() {
           <output style={{ minWidth: 28, textAlign: 'center', fontWeight: 800 }}>{goal}</output>
           <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="More meals" onClick={() => saveSetting({ weekly_goal: Math.min(14, goal + 1) }, `Goal: ${Math.min(14, goal + 1)} meals a week`)}>+</button>
         </div>
-        <form className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }} onSubmit={async (e) => { e.preventDefault(); const v = Math.round(Number(takeout) * 100) / 100; if (!(v >= 0 && v <= 200)) { say('Pick a price from $0 to $200.'); return; } if (await saveSetting({ takeout_price: v }, 'Takeout price saved')) clearTakeout(); }}>
+        <form className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }} onSubmit={async (e) => { e.preventDefault(); const v = Math.round(Number(takeout) * 100) / 100; if (!(v >= 0 && v <= 200)) { say('Pick a price from $0 to $200.'); return; } if (await saveSetting({ takeout_price: v })) { clearTakeout(); setEditTakeout(false); e.target.querySelector('input')?.blur(); } }}>
           <Icon name="gift" /><label htmlFor="takeout" style={{ flex: 1, fontWeight: 700 }}>Typical takeout meal ($)</label>
-          <input id="takeout" className="input" inputMode="decimal" style={{ width: 84 }} value={takeout} onChange={(e) => setTakeout(e.target.value.replace(/[^0-9.]/g, '').slice(0, 6))} />
-          <button className="btn sm" type="submit">Save</button>
+          <input id="takeout" className="input" inputMode="decimal" style={{ width: 84, background: editTakeout ? 'var(--card)' : 'transparent', borderColor: editTakeout ? 'var(--accent)' : 'var(--line)', fontWeight: 800, textAlign: 'center' }}
+            value={editTakeout ? takeout : String(profile?.takeout_price ?? 15)} readOnly={!editTakeout}
+            onFocus={() => { if (!editTakeout) { setTakeout(String(profile?.takeout_price ?? 15)); setEditTakeout(true); } }} onClick={() => setEditTakeout(true)}
+            onChange={(e) => setTakeout(e.target.value.replace(/[^0-9.]/g, '').slice(0, 6))} aria-label="Typical takeout meal in dollars. Tap to edit." />
+          {editTakeout && <button className="btn sm" type="submit">Submit</button>}
         </form>
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="snow" /><span style={{ flex: 1, fontWeight: 700 }}>Streak freezes</span><b>{profile?.streak_freezes ?? 1}</b><span className="muted" style={{ fontSize: 12, width: '100%' }}>Miss one day and a freeze keeps your streak. You get one each week; it doesn’t stack.</span></div>
-        <div className="stack" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', gap: 2 }}>
-          <span style={{ fontWeight: 700 }}>Autosave</span>
-          <span className="muted" style={{ fontSize: 13 }}>{saveState === 'saving' ? 'Saving…' : saveState === 'error' ? 'Saved on this device · will sync to your account when you’re back online' : 'Everything saves to your account as you play, including what you typed and where you were.'}</span>
-          {lastPlayed?.device && <span className="muted" style={{ fontSize: 13 }}>Last played on <b>{lastPlayed.device}</b>{lastPlayed.at ? ` · ${new Date(lastPlayed.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}{lastPlayed.device === deviceLabel() ? ' (this device)' : ''}</span>}
-        </div>
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="me" /><span style={{ flex: 1, fontWeight: 700, overflowWrap: 'anywhere' }}>{email}</span></div>
         <form action="/auth/signout" method="post" style={{ padding: '12px 16px' }}><button className="btn ghost wide" type="submit">Sign out</button></form>
       </div>
+      <button onClick={() => setResetting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, color: 'var(--muted)', fontSize: 11, textDecoration: 'underline', padding: 8, minHeight: 32 }}>Reset game</button>
+      {resetting && <ResetSheet onClose={() => setResetting(false)} />}
     </div>
   );
 }

@@ -22,5 +22,5 @@ npm run dev
 - `middleware.js`: session refresh, route protection, nonce CSP, no-store on signed-in pages, 100 req/min/IP on `/api`
 - `lib/whisk3d/engine.js`: 3D mascot, poses and all 105 items (also renders shop thumbnails)
 - `supabase/migrations`: schema, RLS, server functions, storage policies, seed
-- `supabase/tests/rls.test.mjs`: 103 database security and logic checks (runs in CI)
-- `e2e/`: local Supabase/Anthropic stand-in plus a Playwright walk through every screen (32 checks)
+- `supabase/tests/rls.test.mjs`: 120 database security and logic checks (runs in CI)
+- `e2e/`: local Supabase/Anthropic stand-in plus a Playwright walk through every screen (45 checks)

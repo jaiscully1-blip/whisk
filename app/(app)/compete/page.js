@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useWhisk } from '@/components/AppShell';
 import LogMealSheet from '@/components/LogMealSheet';
+import GetCoinsSheet from '@/components/GetCoinsSheet';
 import Icon, { Coin } from '@/components/Icon';
 import { usePantry } from '@/components/usePantry';
 import { checkRecipe } from '@/lib/recipes/match';
@@ -47,6 +48,7 @@ export default function Compete() {
   const [logging, setLogging] = useState(null);
   const [busy, setBusy] = useState(false);
   const [bingo, setBingo] = useState(null);
+  const [getCoins, setGetCoins] = useState(false);
   const slot = ui.shopSlot || 'top';
   const flipped = ui.flipped || {};
 
@@ -57,6 +59,8 @@ export default function Compete() {
     if (!b.error) setBingo(b.data); if (!q.error) setQuest(q.data);
   }
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Back from the Bitcoin checkout
+  useEffect(() => { if (new URLSearchParams(window.location.search).get('paid') === '1') { say('Payment sent · coins arrive as soon as Bitcoin confirms'); window.history.replaceState(null, '', '/compete'); const t = setInterval(refreshProfile, 15000); return () => clearInterval(t); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // No challenges yet this week? Pick them from what your pantry can make.
   useEffect(() => {
     if (!challenges || challenges.length || !recipes || !pantry) return;
@@ -93,6 +97,18 @@ export default function Compete() {
   return (
     <div className="stack">
       <div className="page-title"><h1>Compete</h1><span className="muted">Resets in {resetIn}</span></div>
+      {bingo && (
+        <section className="stack" style={{ gap: 10 }} aria-labelledby="bingo-h">
+          <div className="row" style={{ justifyContent: 'space-between' }}><h2 id="bingo-h" style={{ fontSize: 22 }}>Cuisine bingo</h2><span className="chip xp">+200 XP</span></div>
+          <p className="muted" style={{ margin: 0, fontSize: 13 }}>Cook a dish from each cuisine this week. Four in a row (across, down or diagonal) wins.</p>
+          <div role="grid" aria-label="Bingo card" className="bingo">
+            {bingo.cells.map((cell, i) => { const hit = bingo.marks?.[i]; return <div key={i} role="gridcell" className={hit ? 'on' : ''} aria-label={`${cell}${hit ? ', cooked' : ''}`}>{hit ? <span><Icon name="check" size={16} /><br />{cell}</span> : cell}</div>; })}
+          </div>
+          {bingo.claimed ? <span className="row" style={{ color: 'var(--fresh)', fontWeight: 800 }}><Icon name="check" />Bingo claimed · new card Monday</span>
+            : bingo.lines > 0 ? <button className="btn" onClick={claimBingo}>Claim BINGO · +200 XP</button>
+            : <span className="muted" style={{ fontWeight: 800, fontSize: 13 }}>{(bingo.marks || []).filter(Boolean).length}/16 cooked</span>}
+        </section>
+      )}
 
       {quest && (
         <div className="card stack" style={{ gap: 8, background: quest.claimed ? 'var(--card)' : 'var(--gold-soft)' }}>
@@ -144,20 +160,9 @@ export default function Compete() {
         );
       })}
 
-      {bingo && (
-        <section className="stack" style={{ gap: 10 }} aria-labelledby="bingo-h">
-          <div className="row" style={{ justifyContent: 'space-between' }}><h2 id="bingo-h" style={{ fontSize: 22 }}>Cuisine bingo</h2><span className="chip xp">+200 XP</span></div>
-          <p className="muted" style={{ margin: 0, fontSize: 13 }}>Cook a dish from each cuisine this week. Four in a row (across, down or diagonal) wins.</p>
-          <div role="grid" aria-label="Bingo card" className="bingo">
-            {bingo.cells.map((cell, i) => { const hit = bingo.marks?.[i]; return <div key={i} role="gridcell" className={hit ? 'on' : ''} aria-label={`${cell}${hit ? ', cooked' : ''}`}>{hit ? <span><Icon name="check" size={16} /><br />{cell}</span> : cell}</div>; })}
-          </div>
-          {bingo.claimed ? <span className="row" style={{ color: 'var(--fresh)', fontWeight: 800 }}><Icon name="check" />Bingo claimed · new card Monday</span>
-            : bingo.lines > 0 ? <button className="btn" onClick={claimBingo}>Claim BINGO · +200 XP</button>
-            : <span className="muted" style={{ fontWeight: 800, fontSize: 13 }}>{(bingo.marks || []).filter(Boolean).length}/16 cooked</span>}
-        </section>
-      )}
 
       <h2 id="shop" style={{ fontSize: 22, marginTop: 10 }}>Shop</h2>
+      <button className="btn wide" onClick={() => setGetCoins(true)} style={{ minHeight: 64, fontSize: 20, fontFamily: 'var(--f-display)', background: 'var(--gold)', color: '#23301F', boxShadow: '0 4px 0 #B8862A' }}><Coin size={28} />Get coins</button>
       <div className="slotbar" role="tablist" aria-label="Shop slots">
         {SLOTS.map(([k, label, icon]) => (
           <button key={k} className="card" role="tab" aria-selected={k === slot} aria-label={label} title={label} onClick={() => setUi({ shopSlot: k })}
@@ -190,11 +195,12 @@ export default function Compete() {
             <p className="muted" style={{ margin: 0 }}>You have {fmt(profile?.coins)} coins.</p>
             {profile?.coins >= buying.price
               ? <button className="btn wide" onClick={confirmBuy} disabled={busy}><Coin />{busy ? 'Buying…' : `Buy for ${fmt(buying.price)}`}</button>
-              : <p className="err" style={{ margin: 0 }}>You need {fmt(buying.price - (profile?.coins || 0))} more coins. Finish a challenge above to earn them.</p>}
+              : <><p className="err" style={{ margin: 0 }}>You need {fmt(buying.price - (profile?.coins || 0))} more coins. Finish a challenge or get coins.</p><button className="btn wide" onClick={() => { setBuying(null); setGetCoins(true); }} style={{ background: 'var(--gold)', color: '#23301F', boxShadow: '0 3px 0 #B8862A' }}><Coin />Get coins</button></>}
             <button className="btn ghost wide" onClick={() => setBuying(null)}>Not now</button>
           </div>
         </div>
       )}
+      {getCoins && <GetCoinsSheet onClose={() => setGetCoins(false)} />}
       {logging && <LogMealSheet recipe={logging.r} challenge={logging.c} onClose={() => setLogging(null)} onDone={() => { setUi({ flipped: { ...flipped, [logging.c.id]: false } }); load(); }} />}
     </div>
   );

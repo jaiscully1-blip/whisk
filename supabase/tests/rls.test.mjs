@@ -8,7 +8,7 @@ const results = [];
 const check = (name, ok, detail = '') => { results.push([ok ? 'PASS' : 'FAIL', name, detail]); };
 
 async function as(uid, fn) {
-  await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claim.sub', '${uid}', false);`);
+  await db.exec(uid ? `reset role; set role authenticated; select set_config('request.jwt.claim.sub', '${uid}', false);` : `reset role; set role anon; select set_config('request.jwt.claim.sub', '', false);`);
   try { return await fn(); } finally { await db.exec('reset role;'); }
 }
 async function expectFail(name, uid, sql) {
@@ -21,6 +21,8 @@ await db.exec(`
 create role anon nologin; create role authenticated nologin;
 create schema auth; create table auth.users (id uuid primary key, email text);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+grant execute on function auth.jwt() to anon, authenticated;
 grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;
 create schema storage;
 create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
@@ -273,6 +275,41 @@ check('no Wrapped on a normal day', !jul.rows[0].r.popups.includes('wrapped'));
 // July 18 test: the function trusts the local date within ±2 days, so fake "today" by checking the rule directly
 const julRule = (await db.query(`select (extract(month from date '2027-07-18') = 7 and extract(day from date '2027-07-18') = 18) ok`)).rows[0].ok;
 check('Wrapped date rule is July 18', julRule === true);
+
+// ================= 0006: coins, packs, reset =================
+try { await db.exec(fs.readFileSync('./supabase/migrations/0006_whisk_coins_reset.sql', 'utf8')); await db.exec(fs.readFileSync('./supabase/migrations/0006_whisk_coins_reset.sql', 'utf8')); check('0006 runs (twice)', true); }
+catch (e) { check('0006 runs (twice)', false, e.message); }
+check('renamed items keep their ids', (await db.query(`select name from items where id in ('acc-watch','acc-crystal-backpack') order by id`)).rows.map((r) => r.name).join('|') === 'Basketball Backpack|50 lb Dumbbell');
+const packs = await as(D, () => db.query(`select id, coins, usd::float usd from coin_packs order by sort`));
+check('4 coin packs readable', packs.rows.length === 4 && packs.rows[0].coins === 1000 && packs.rows[0].usd === 2, JSON.stringify(packs.rows));
+await expectFail('players cannot change pack prices', D, `update coin_packs set usd = 0.01`);
+await expectFail('players cannot insert orders directly', D, `insert into coin_orders (user_id, pack_id, coins, usd) values ('${D}', 'coins-1000', 999999, 0.01)`);
+const ord = await as(D, () => db.query(`select public.create_coin_order('coins-3000') as r`));
+const oid = ord.rows[0].r.order_id;
+check('create_coin_order uses the pack price', ord.rows[0].r.coins === 3000 && Number(ord.rows[0].r.usd) === 5);
+check('E cannot see D orders', (await as(E, () => db.query(`select * from coin_orders`))).rows.length === 0);
+await expectFail('players cannot mark orders paid', D, `update coin_orders set status = 'paid'`);
+await db.exec(`insert into private.app_secrets (name, sha256_hex) values ('payments_webhook', encode(sha256(convert_to('test-secret-123', 'UTF8')), 'hex')) on conflict (name) do update set sha256_hex = excluded.sha256_hex`);
+await expectFail('crediting needs the webhook secret', D, `select public.credit_coin_order('${oid}', 'inv1', 5, 'wrong')`);
+await expectFail('anon without secret cannot credit', null, `select public.credit_coin_order('${oid}', 'inv1', 5, null)`);
+await expectFail('underpaid invoices are refused', D, `select public.credit_coin_order('${oid}', 'inv1', 4.99, 'test-secret-123')`);
+const c0 = (await db.query(`select coins from profiles where id = '${D}'`)).rows[0].coins;
+const cr = await as(null, () => db.query(`select public.credit_coin_order('${oid}', 'inv1', 5, 'test-secret-123') as r`));
+const c1 = (await db.query(`select coins from profiles where id = '${D}'`)).rows[0].coins;
+check('paid order credits the pack coins once', cr.rows[0].r.credited === true && c1 === c0 + 3000, `${c0} → ${c1}`);
+const cr2 = await as(null, () => db.query(`select public.credit_coin_order('${oid}', 'inv1', 5, 'test-secret-123') as r`));
+check('a replayed webhook credits nothing', cr2.rows[0].r.credited === false && (await db.query(`select coins from profiles where id = '${D}'`)).rows[0].coins === c1);
+await expectFail('players cannot read app secrets', D, `select * from private.app_secrets`);
+// reset needs a fresh email code
+await expectFail('reset needs a recent email code', D, `select public.reset_game()`);
+await db.exec(`select set_config('request.jwt.claims', '{"amr":[{"method":"otp","timestamp":${Math.floor(Date.now() / 1000) - 60}}]}', false)`);
+await as(D, () => db.query(`select public.reset_game()`));
+await db.exec(`select set_config('request.jwt.claims', '', false)`);
+const afterReset = (await db.query(`select xp, coins, (select count(*)::int from meals where user_id = '${D}') m, (select count(*)::int from pantry_items where user_id = '${D}') p from profiles where id = '${D}'`)).rows[0];
+check('reset clears progress, keeps coins', afterReset.xp === 0 && afterReset.m === 0 && afterReset.p === 0 && afterReset.coins === c1, JSON.stringify(afterReset));
+await db.exec(`select set_config('request.jwt.claims', '{"amr":[{"method":"otp","timestamp":${Math.floor(Date.now() / 1000) - 3600}}]}', false)`);
+await expectFail('an old email code does not count', D, `select public.reset_game()`);
+await db.exec(`select set_config('request.jwt.claims', '', false)`);
 
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));

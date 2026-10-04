@@ -64,7 +64,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
       try { localStorage.setItem(UI_LOCAL, JSON.stringify(next)); } catch {}
       return next;
     });
-    clearTimeout(uiTimer.current); uiTimer.current = setTimeout(() => flushUi(), 1200);
+    clearTimeout(uiTimer.current); uiTimer.current = setTimeout(() => flushUi(), 400);
   }, [flushUi]);
   useEffect(() => {
     const onHide = () => { if (document.visibilityState === 'hidden' && uiTimer.current) flushUi(); };
@@ -124,9 +124,10 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
         if (error || !data) return;
         if (data.last_device || data.last_seen_at) setLastPlayed({ device: data.last_device, at: data.last_seen_at, here: data.last_device === device });
         if (data.last_seen_at && data.new_session) say(`Welcome back · picked up where you left off${data.last_device && data.last_device !== device ? ` on ${data.last_device}` : ''}`);
+        if (data.gift_coins) refreshProfile();
         (data.popups || []).forEach(showPopup);
       });
-  }, [supabase, say, showPopup]);
+  }, [supabase, say, showPopup, refreshProfile]);
 
   const night = profile?.theme_pref === 'night';
   useEffect(() => {

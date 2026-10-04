@@ -7,6 +7,7 @@ import { createRequire } from 'node:module';
 import zlib from 'node:zlib';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright'); // dev-only; resolved from NODE_PATH or a local install
 
@@ -130,9 +131,48 @@ await step('me', async () => {
   await page.click('[aria-label^="Edit name"]'); await page.fill('#nm', 'Chef J ✨ #1'); await page.press('#nm', 'Enter');
   await page.getByRole('heading', { name: 'Chef J ✨ #1' }).waitFor();
   check('name can be any characters', true);
-  await page.getByText('Last played on').waitFor();
-  check('Me shows last device played', true);
+  check('last device is remembered in the background (not shown)', (await page.getByText('Last played on').count()) === 0);
   await shot('05-me');
+});
+await step('compete layout', async () => {
+  await nav('Compete'); await page.getByText('Cuisine bingo').waitFor();
+  const yB = (await page.getByRole('heading', { name: 'Cuisine bingo' }).boundingBox()).y, yQ = (await page.getByText('Daily quest').boundingBox()).y;
+  check('cuisine bingo is at the top of Compete', yB < yQ, `${yB} < ${yQ}`);
+});
+await step('buy coins with bitcoin', async () => {
+  const before = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
+  await page.getByRole('button', { name: 'Get coins' }).first().click();
+  await page.getByText('$2 in Bitcoin').waitFor();
+  check('Get coins shows the 4 packs', (await page.locator('[aria-label="Get coins"] button.card').count()) === 4);
+  await page.getByText('$2 in Bitcoin').click();
+  await page.waitForURL('**/btcpay/i/**', { timeout: 15000 });
+  check('pack opens the BTCPay checkout page', true);
+  const inv = (await (await fetch('http://localhost:54321/__e2e/invoices')).json()).at(-1);
+  check('invoice is $2.00 USD for a Whisk order', inv.amount === '2.00' && inv.currency === 'USD' && /^[0-9a-f-]{36}$/.test(inv.metadata.orderId), JSON.stringify(inv));
+  const hook = async (body, sig) => (await fetch(`${BASE}/api/coins/webhook`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'BTCPay-Sig': sig }, body })).status;
+  const body = JSON.stringify({ type: 'InvoiceSettled', invoiceId: inv.id, storeId: 'e2e-store' });
+  const sign = (b) => 'sha256=' + crypto.createHmac('sha256', 'e2e-webhook-secret').update(b).digest('hex');
+  check('webhook with a bad signature is rejected', (await hook(body, 'sha256=00')) === 401);
+  check('unsettled invoice credits nothing', (await hook(body, sign(body))) === 200);
+  await fetch(`http://localhost:54321/__e2e/settle/${inv.id}`);
+  check('settled invoice webhook accepted', (await hook(body, sign(body))) === 200);
+  await hook(body, sign(body)); // replay
+  await page.goto(`${BASE}/compete?paid=1`); await page.waitForTimeout(1500); await closePopups();
+  const after = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
+  check('1,000 coins credited exactly once', after === before + 1000, `${before} → ${after}`);
+});
+await step('me settings', async () => {
+  await nav('Me'); await page.getByText('Settings').waitFor();
+  check('autosave is not shown', (await page.getByText('Autosave').count()) === 0);
+  check('reset game is a tiny link', (await page.getByRole('button', { name: 'Reset game' }).evaluate((b) => parseFloat(getComputedStyle(b).fontSize))) <= 12);
+  check('takeout shows just the number (no button)', (await page.locator('form:has(#takeout) button').count()) === 0);
+  await page.click('#takeout'); await page.fill('#takeout', '18');
+  await page.locator('form:has(#takeout)').getByRole('button', { name: 'Submit' }).click();
+  await page.waitForTimeout(600);
+  check('takeout saves and goes back to just the number', (await page.locator('form:has(#takeout) button').count()) === 0 && (await page.inputValue('#takeout')) === '18');
+  await page.getByRole('button', { name: 'Reset game' }).click();
+  check('reset asks for your password first (step 1 of 2)', await page.getByText('Step 1 of 2').isVisible());
+  await page.locator('[aria-label="Reset game"]').getByRole('button', { name: 'Cancel' }).last().click();
 });
 await step('reload keeps everything', async () => {
   await page.goto(`${BASE}/home`); await page.waitForTimeout(1800); await closePopups();

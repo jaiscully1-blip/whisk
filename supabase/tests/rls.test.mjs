@@ -357,6 +357,10 @@ check('turning local time off goes back to UTC', off.rows[0].r.time_zone === nul
 await expectFail('players cannot call _user_today', C, `select public._user_today('${C}')`);
 await expectFail('players cannot write their consent directly', C, `update profiles set consent = '{}'::jsonb where id = '${C}'`);
 
+// ================= 0010: hockey helmet =================
+await db.exec(fs.readFileSync('./supabase/migrations/0010_hockey_helmet.sql', 'utf8'));
+check('Chef Hat is now the Hockey Helmet', (await db.query(`select name from items where id = 'hat-chef-hat'`)).rows[0]?.name === 'Hockey Helmet');
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

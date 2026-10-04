@@ -17,6 +17,7 @@ About 20 minutes. Do the steps in order. **Never paste keys into chat, screensho
    - New query → paste all of `supabase/migrations/0007_bingo_five_days.sql` → **Run**. Cuisine bingo now resets every 5 days.
    - New query → paste all of `supabase/migrations/0008_passport_countries.sql` → **Run**. Meals remember their country for the 193-country passport. (Run it after 0005, which seeds each recipe's country.)
    - New query → paste all of `supabase/migrations/0009_local_calendar.sql` → **Run**. Days, streaks and daily rewards follow each player's own time zone (after they allow it in the cookie popup).
+   - New query → paste all of `supabase/migrations/0010_hockey_helmet.sql` → **Run**. The Chef Hat in the shop becomes a Hockey Helmet.
    - Check: **Table Editor** shows `items` with 105 rows.
 3. **Email confirmation.** **Authentication → Sign In / Providers → Email**: make sure **Confirm email** is ON (it's on by default).
 4. **Passwords.** **Authentication → Policies / Passwords** (the name varies): minimum length **8**. If you see **Leaked password protection**, turn it on.

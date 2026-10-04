@@ -24,7 +24,7 @@ insert into public.items (id, slot, name, rarity, price, sort) values
 ('top-phoenix-mantle', 'top', 'Phoenix Mantle', 'mythic', 25000, 20),
 ('hat-baseball-cap', 'hat', 'Baseball Cap', 'common', 1500, 0),
 ('hat-cowboy-hat', 'hat', 'Cowboy Hat', 'common', 1500, 1),
-('hat-chef-hat', 'hat', 'Chef Hat', 'common', 1500, 2),
+('hat-chef-hat', 'hat', 'Hockey Helmet', 'common', 1500, 2),
 ('hat-construction-helmet', 'hat', 'Construction Helmet', 'common', 1500, 3),
 ('hat-beanie', 'hat', 'Beanie', 'common', 1500, 4),
 ('hat-boonie-hat', 'hat', 'Boonie Hat', 'common', 1500, 5),

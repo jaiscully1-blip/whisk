@@ -1,19 +1,25 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import { useWhisk, useDraft } from '@/components/AppShell';
 import WhiskStage, { outfitFrom } from '@/components/WhiskStage';
-import Icon from '@/components/Icon';
+import Icon, { Coin } from '@/components/Icon';
+import GetCoinsSheet from '@/components/GetCoinsSheet';
 import Passport from '@/components/Passport';
 import ResetSheet from '@/components/ResetSheet';
 import { levelFor, fmt, CUISINES, cuisineMatch, weekStart, HOME_MEAL_COST } from '@/lib/game';
 
 const SLOTS = [['top', 'Top', 'shirt'], ['hat', 'Hat', 'hat'], ['glasses', 'Glasses', 'glasses'], ['shoes', 'Shoes', 'shoe'], ['acc', 'Accessory', 'spoon']];
+const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
+const RARITY_ORDER = ['common', 'rare', 'epic', 'exotic', 'mythic'];
 const EMPTY = { top: 'No top', hat: 'Classic toque', glasses: 'None', shoes: 'Bare feet', acc: 'Nothing' };
 
 export default function Me() {
-  const { supabase, profile, setProfile, loadout, refreshLoadout, email, say, ui, setUi } = useWhisk();
-  const [owned, setOwned] = useState([]);
+  const { supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, email, say, ui, setUi } = useWhisk();
+  const [items, setItems] = useState([]);
+  const [owned, setOwned] = useState(new Set());
+  const [buying, setBuying] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [getCoins, setGetCoins] = useState(false);
   const slot = ui.closetSlot || 'top';
   const [thumbs, setThumbs] = useState({});
   const [meals, setMeals] = useState([]);
@@ -24,20 +30,19 @@ export default function Me() {
   const [nameDraft, setNameDraft, clearName] = useDraft('nm', profile?.display_name || '');
   const [takeout, setTakeout, clearTakeout] = useDraft('takeout', String(profile?.takeout_price ?? 15));
   const outfit = outfitFrom(loadout);
-  const stripRef = useRef(null);
-  // stay where you were in the item row; only a different slot starts from the beginning
-  useEffect(() => { if (stripRef.current) stripRef.current.scrollLeft = ui.closetScroll?.[slot] || 0; }, [slot, owned.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const scaleAt = Math.max(0, TEXT_SCALES.indexOf(ui.textScale || 1));
   const lvl = levelFor(profile?.xp);
   const name = profile?.display_name || 'Me';
 
   useEffect(() => {
     (async () => {
-      const [inv, m, h] = await Promise.all([
-        supabase.from('inventory').select('item_id, items(id, slot, name, rarity)'),
+      const [it, inv, m, h] = await Promise.all([
+        supabase.from('items').select('id, slot, name, rarity, price, sort').order('sort'),
+        supabase.from('inventory').select('item_id'),
         supabase.from('meals').select('id, title, photo_path, cooked_at, rating').order('cooked_at', { ascending: false }).limit(12),
         supabase.from('meals').select('cuisine, cooked_at, calories, protein_g, carbs_g, fat_g').order('cooked_at', { ascending: false }).limit(1000)
       ]);
-      setOwned((inv.data || []).map((r) => r.items).filter(Boolean));
+      setItems(it.data || []); setOwned(new Set((inv.data || []).map((r) => r.item_id)));
       setHistory(h.data || []);
       const rows = m.data || [];
       if (rows.length) {
@@ -47,17 +52,24 @@ export default function Me() {
     })();
   }, [supabase]);
 
+  // Back from the Bitcoin checkout
+  useEffect(() => { if (new URLSearchParams(window.location.search).get('paid') === '1') { say('Payment sent · coins arrive as soon as Bitcoin confirms'); window.history.replaceState(null, '', '/me'); const t = setInterval(refreshProfile, 15000); return () => clearInterval(t); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const inSlot = useMemo(() => items.filter((i) => i.slot === slot).sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || a.sort - b.sort), [items, slot]);
   useEffect(() => {
     let alive = true;
     import('@/lib/whisk3d/engine').then(async ({ ITEMS_BY_ID, renderThumb }) => {
-      for (const it of owned) { if (!alive) return; const def = ITEMS_BY_ID[it.id]; if (!def) continue; const url = renderThumb(def); setThumbs((t) => ({ ...t, [it.id]: url })); await new Promise((r) => setTimeout(r, 10)); }
+      for (const it of inSlot) {
+        if (!alive) return; const def = ITEMS_BY_ID[it.id]; if (!def) continue;
+        try { const url = renderThumb(def); setThumbs((t) => (t[it.id] ? t : { ...t, [it.id]: url })); } catch (e) { console.error(e); }
+        await new Promise((r) => setTimeout(r, 10));
+      }
     });
     return () => { alive = false; };
-  }, [owned]);
+  }, [inSlot]);
 
-  const inSlot = useMemo(() => owned.filter((i) => i.slot === slot), [owned, slot]);
-  const byId = useMemo(() => Object.fromEntries(owned.map((i) => [i.id, i])), [owned]);
-  const stamped = useMemo(() => new Set(CUISINES.filter((c) => history.some((m) => cuisineMatch(m.cuisine, c)))), [history]);
+  const byId = useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
+  const cuisineCounts = useMemo(() => new Map(CUISINES.map((c) => [c, history.filter((m) => cuisineMatch(m.cuisine, c)).length])), [history]);
   const macros = useMemo(() => {
     const since = Date.now() - 7 * 864e5;
     const wk = history.filter((m) => new Date(m.cooked_at).getTime() >= since && m.calories != null);
@@ -72,6 +84,14 @@ export default function Me() {
     const { error } = await supabase.rpc('equip_item', { p_slot: slot, p_item_id: itemId });
     if (error) { say('Couldn’t put that on.'); return; }
     refreshLoadout();
+  }
+  async function confirmBuy() {
+    setBusy(true);
+    const { error } = await supabase.rpc('buy_item', { p_item_id: buying.id });
+    setBusy(false);
+    if (error) { say(error.message.includes('enough') ? 'Not enough coins yet' : 'Couldn’t buy that'); return; }
+    const it = buying; setOwned((s) => new Set(s).add(it.id)); setBuying(null); refreshProfile();
+    await equip(it.id); say(`${it.name} is yours!`);
   }
   async function saveSetting(patch, msg) {
     const { error } = await supabase.from('profiles').update(patch).eq('id', profile.id);
@@ -119,18 +139,27 @@ export default function Me() {
           </button>
         ))}
       </div>
-      <div ref={stripRef} onScroll={(e) => setUi((c) => ({ closetScroll: { ...(c.closetScroll || {}), [slot]: Math.round(e.currentTarget.scrollLeft) } }))} style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-        <button onClick={() => equip(null)} aria-pressed={!outfit[slot]} className="card" style={{ flex: 'none', width: 96, padding: 8, display: 'grid', placeItems: 'center', gap: 4, borderColor: !outfit[slot] ? 'var(--accent)' : 'var(--line)' }}>
+      <div id="shop" className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+        <span className="row" style={{ gap: 6, fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 20 }}><Coin size={22} />{fmt(profile?.coins)}</span>
+        <button className="btn sm" onClick={() => setGetCoins(true)} style={{ background: 'var(--gold)', color: '#23301F', boxShadow: '0 3px 0 #B8862A' }}><Coin size={18} />Get coins</button>
+      </div>
+      <div className="closet-grid">
+        <button onClick={() => equip(null)} aria-pressed={!outfit[slot]} className="card tile" style={{ borderColor: !outfit[slot] ? 'var(--accent)' : 'var(--line)' }}>
           <span style={{ width: 64, height: 64, display: 'grid', placeItems: 'center', color: 'var(--muted)' }}><Icon name="x" size={28} /></span>
-          <span style={{ fontSize: 12, fontWeight: 800 }}>{EMPTY[slot]}</span>
+          <span className="tname">{EMPTY[slot]}</span>
         </button>
-        {inSlot.map((it) => (
-          <button key={it.id} onClick={() => equip(it.id)} aria-pressed={outfit[slot] === it.id} className="card" style={{ flex: 'none', width: 96, padding: 8, display: 'grid', placeItems: 'center', gap: 4, borderColor: outfit[slot] === it.id ? 'var(--accent)' : `var(--${it.rarity})` }}>
-            {thumbs[it.id] ? <img src={thumbs[it.id]} alt="" width="64" height="64" /> : <span style={{ height: 64 }} />}
-            <span style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.15 }}>{it.name}</span>
-          </button>
-        ))}
-        {inSlot.length === 0 && <Link href="/compete#shop" className="card" style={{ flex: 'none', width: 140, padding: 10, textDecoration: 'none', fontSize: 13, fontWeight: 800, display: 'grid', placeItems: 'center', textAlign: 'center' }}>Nothing here yet. Visit the shop →</Link>}
+        {inSlot.map((it) => {
+          const have = owned.has(it.id); const on = outfit[slot] === it.id;
+          return (
+            <button key={it.id} onClick={() => (have ? equip(it.id) : setBuying(it))} aria-pressed={have ? on : undefined} className={`card tile ${have ? '' : 'locked'}`}
+              aria-label={have ? `${it.name}${on ? ', wearing' : ''}` : `${it.name}, locked, ${fmt(it.price)} coins`}
+              style={{ borderColor: on ? 'var(--accent)' : have ? `var(--${it.rarity})` : 'var(--line)', boxShadow: on ? 'inset 0 0 0 1px var(--accent)' : 'none' }}>
+              {thumbs[it.id] ? <img src={thumbs[it.id]} alt="" width="64" height="64" /> : <span style={{ height: 64 }} />}
+              <span className="tname">{it.name}</span>
+              {!have && <span className="row tprice"><Coin size={12} />{fmt(it.price)}</span>}
+            </button>
+          );
+        })}
       </div>
 
       <div className="card row" style={{ gap: 14, flexWrap: 'nowrap' }}>
@@ -145,11 +174,11 @@ export default function Me() {
         </div>
       </div>
 
-      <Passport stamped={stamped} />
+      <Passport counts={cuisineCounts} />
 
       <section className="card stack" style={{ gap: 8 }}>
         <div className="row" style={{ justifyContent: 'space-between' }}><h3>Last 7 days</h3><span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>From the recipe pages</span></div>
-        {macros.n === 0 ? <p className="muted" style={{ margin: 0, fontSize: 14 }}>Cook a recipe that lists nutrition and log it to see calories and macros here.</p> : (
+        {macros.n === 0 ? <p className="desc" style={{ margin: 0 }}>Cook a recipe that lists nutrition and log it to see calories and macros here.</p> : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6, textAlign: 'center' }}>
             {[['kcal', fmt(macros.calories)], ['protein', macros.protein + 'g'], ['carbs', macros.carbs + 'g'], ['fat', macros.fat + 'g']].map(([l, v]) => (
               <div key={l}><div style={{ fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 20 }}>{v}</div><span className="eyebrow" style={{ fontSize: 10 }}>{l}</span></div>
@@ -187,6 +216,12 @@ export default function Me() {
           <output style={{ minWidth: 28, textAlign: 'center', fontWeight: 800 }}>{goal}</output>
           <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="More meals" onClick={() => saveSetting({ weekly_goal: Math.min(14, goal + 1) }, `Goal: ${Math.min(14, goal + 1)} meals a week`)}>+</button>
         </div>
+        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }}>
+          <span style={{ width: 24, textAlign: 'center', fontWeight: 900, fontFamily: 'var(--f-display)' }} aria-hidden="true">Aa</span><span style={{ flex: 1, fontWeight: 700 }}>Text size</span>
+          <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Smaller text" disabled={scaleAt === 0} onClick={() => setUi({ textScale: TEXT_SCALES[Math.max(0, scaleAt - 1)] })}>−</button>
+          <output style={{ minWidth: 44, textAlign: 'center', fontWeight: 800 }} aria-live="polite">{Math.round(TEXT_SCALES[scaleAt] * 100)}%</output>
+          <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Bigger text" disabled={scaleAt === TEXT_SCALES.length - 1} onClick={() => setUi({ textScale: TEXT_SCALES[Math.min(TEXT_SCALES.length - 1, scaleAt + 1)] })}>+</button>
+        </div>
         <form className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }} onSubmit={async (e) => { e.preventDefault(); const v = Math.round(Number(takeout) * 100) / 100; if (!(v >= 0 && v <= 200)) { say('Pick a price from $0 to $200.'); return; } if (await saveSetting({ takeout_price: v })) { clearTakeout(); setEditTakeout(false); e.target.querySelector('input')?.blur(); } }}>
           <Icon name="gift" /><label htmlFor="takeout" style={{ flex: 1, fontWeight: 700 }}>Typical takeout meal ($)</label>
           <input id="takeout" className="input" inputMode="decimal" style={{ width: 84, background: editTakeout ? 'var(--card)' : 'transparent', borderColor: editTakeout ? 'var(--accent)' : 'var(--line)', fontWeight: 800, textAlign: 'center' }}
@@ -195,12 +230,27 @@ export default function Me() {
             onChange={(e) => setTakeout(e.target.value.replace(/[^0-9.]/g, '').slice(0, 6))} aria-label="Typical takeout meal in dollars. Tap to edit." />
           {editTakeout && <button className="btn sm" type="submit">Submit</button>}
         </form>
-        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="snow" /><span style={{ flex: 1, fontWeight: 700 }}>Streak freezes</span><b>{profile?.streak_freezes ?? 1}</b><span className="muted" style={{ fontSize: 12, width: '100%' }}>Miss one day and a freeze keeps your streak. You get one each week; it doesn’t stack.</span></div>
+        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="snow" /><span style={{ flex: 1, fontWeight: 700 }}>Streak freezes</span><b>{profile?.streak_freezes ?? 1}</b><span className="desc" style={{ width: '100%' }}>Miss one day and a freeze keeps your streak. You get one each week; it doesn’t stack.</span></div>
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="me" /><span style={{ flex: 1, fontWeight: 700, overflowWrap: 'anywhere' }}>{email}</span></div>
         <form action="/auth/signout" method="post" style={{ padding: '12px 16px' }}><button className="btn ghost wide" type="submit">Sign out</button></form>
       </div>
       <button onClick={() => setResetting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, color: 'var(--muted)', fontSize: 11, textDecoration: 'underline', padding: 8, minHeight: 32 }}>Reset game</button>
       {resetting && <ResetSheet onClose={() => setResetting(false)} />}
+      {buying && (
+        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setBuying(null); }}>
+          <div className="sheet stack" role="dialog" aria-modal="true" aria-label={`Buy ${buying.name}`} style={{ alignItems: 'center', textAlign: 'center' }}>
+            {thumbs[buying.id] && <img src={thumbs[buying.id]} alt="" width="150" height="150" />}
+            <span className="chip" style={{ background: `var(--${buying.rarity})`, color: '#fff', textTransform: 'uppercase', fontWeight: 800 }}>{buying.rarity}</span>
+            <h2 style={{ fontSize: 26 }}>{buying.name}</h2>
+            <p className="muted" style={{ margin: 0 }}>You have {fmt(profile?.coins)} coins.</p>
+            {profile?.coins >= buying.price
+              ? <button className="btn wide" onClick={confirmBuy} disabled={busy}><Coin />{busy ? 'Buying…' : `Buy for ${fmt(buying.price)}`}</button>
+              : <><p className="err" style={{ margin: 0 }}>You need {fmt(buying.price - (profile?.coins || 0))} more coins. Finish a challenge or get coins.</p><button className="btn wide" onClick={() => { setBuying(null); setGetCoins(true); }} style={{ background: 'var(--gold)', color: '#23301F', boxShadow: '0 3px 0 #B8862A' }}><Coin />Get coins</button></>}
+            <button className="btn ghost wide" onClick={() => setBuying(null)}>Not now</button>
+          </div>
+        </div>
+      )}
+      {getCoins && <GetCoinsSheet onClose={() => setGetCoins(false)} />}
     </div>
   );
 }

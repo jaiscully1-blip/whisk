@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
+import PullToRefresh from './PullToRefresh';
 import Icon, { Coin, Flame } from './Icon';
 import WhiskStage, { outfitFrom } from './WhiskStage';
 import { fmt, levelFor } from '@/lib/game';
@@ -43,6 +44,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
   const [saveState, setSaveState] = useState('saved');
   const [dataVersion, setDataVersion] = useState(0);   // bump to make lists (saved recipes, pantry) reload
   const bump = useCallback(() => setDataVersion((v) => v + 1), []);
+  const [refreshKey, setRefreshKey] = useState(0);   // pull to refresh remounts the page so it reloads everything
 
   // ---------- remembered screens + inputs (saved to your account, mirrored on this device) ----------
   const [ui, setUiState] = useState(() => {
@@ -144,6 +146,10 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
     if (error) say('Couldn’t save your rating.'); else bump();
   }
 
+  const pullRefresh = useCallback(async () => {
+    await Promise.all([refreshProfile(), refreshLoadout?.(), new Promise((r) => setTimeout(r, 450))]);
+    bump(); setRefreshKey((k) => k + 1);
+  }, [refreshProfile, refreshLoadout, bump]);
   const value = useMemo(() => ({ profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, lastPlayed, saveState, dataVersion, bump }),
     [profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, lastPlayed, saveState, dataVersion, bump]);
   const outfit = outfitFrom(loadout);
@@ -156,11 +162,11 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
             <Link href="/home" className="brand" aria-label="Whisk home"><img src="/icon.svg" alt="" />whisk</Link>
             <div className="pills">
               <span className="pill" title="Cooking streak"><Flame />{profile?.streak_days || 0}d</span>
-              <Link href="/compete#shop" className="pill" title="Coins" style={{ textDecoration: 'none' }}><Coin />{fmt(profile?.coins)}</Link>
+              <Link href="/me#shop" className="pill" title="Coins" style={{ textDecoration: 'none' }}><Coin />{fmt(profile?.coins)}</Link>
             </div>
           </div>
         </header>
-        <main className="wrap">{children}</main>
+        <PullToRefresh onRefresh={pullRefresh}><main key={refreshKey} className="wrap" style={ui.textScale && ui.textScale !== 1 ? { zoom: ui.textScale } : undefined}>{children}</main></PullToRefresh>
         <nav className="nav" aria-label="Main">
           <div className="nav-in">
             {NAV.map(([href, label, icon]) => (
@@ -182,7 +188,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
                     <button type="button" aria-pressed={rating === 'up'} aria-label="Liked it" onClick={() => rate('up')}><Icon name="up" size={26} /></button>
                     <button type="button" className="down" aria-pressed={rating === 'down'} aria-label="Didn’t like it" onClick={() => rate('down')}><Icon name="down" size={26} /></button>
                   </div>
-                  <span className="muted" style={{ fontSize: 13 }}>Saved to your cookbook with your rating.</span>
+                  <span className="desc">Saved to your cookbook with your rating.</span>
                   <button className="btn wide" style={{ marginTop: 8 }} onClick={closePopup} autoFocus>Leave</button>
                 </>
               )}

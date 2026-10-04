@@ -14,6 +14,7 @@ About 20 minutes. Do the steps in order. **Never paste keys into chat, screensho
    - New query → paste all of `supabase/migrations/0004_whisk_web_recipes.sql` → **Run**. This adds real web recipes, defrost tracking, meal ratings, pantry-based challenges, the new popup timing and remembered inputs.
    - New query → paste all of `supabase/migrations/0005_web_recipes_seed.sql` → **Run**. This loads the 40 real recipes. Run 0004 before 0005.
    - New query → paste all of `supabase/migrations/0006_whisk_coins_reset.sql` → **Run**. This adds coin packs, Bitcoin payments, the July 18 gift and the two-step reset.
+   - New query → paste all of `supabase/migrations/0007_bingo_five_days.sql` → **Run**. Cuisine bingo now resets every 5 days.
    - Check: **Table Editor** shows `items` with 105 rows.
 3. **Email confirmation.** **Authentication → Sign In / Providers → Email**: make sure **Confirm email** is ON (it's on by default).
 4. **Passwords.** **Authentication → Policies / Passwords** (the name varies): minimum length **8**. If you see **Leaked password protection**, turn it on.

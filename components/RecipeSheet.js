@@ -56,7 +56,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
           {r.key.map((k) => { const ok = !c.missing.includes(k); return (
             <div key={k} className="row" style={{ flexWrap: 'nowrap' }}><span className={`chip ${ok ? 'have' : 'need'}`} style={{ flex: 'none' }}>{ok ? 'Have' : 'Need'}</span><span><b>{k}</b> <span className="muted">{r.amounts?.[k] || ''}</span></span></div>
           ); })}
-          {r.minor?.length > 0 && <span className="muted" style={{ fontSize: 13 }}>Also uses: {r.minor.join(', ')}. Salt, pepper and oil assumed.</span>}
+          {r.minor?.length > 0 && <span className="desc">Also uses: {r.minor.join(', ')}. Salt, pepper and oil assumed.</span>}
         </div>
         {c.missing.length > 0 && <button className="btn ghost" onClick={addMissing}>Add {c.missing.length} missing to shopping list</button>}
         <h3>Steps <span className="muted" style={{ fontSize: 13, fontFamily: 'var(--f-body)' }}>(summary · full recipe on {r.source})</span></h3>

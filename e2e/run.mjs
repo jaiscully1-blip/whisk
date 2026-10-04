@@ -56,6 +56,10 @@ await step('home', async () => {
   check('home reminds you to defrost frozen ground beef', true);
   await page.locator('.src a').first().waitFor();
   check('almost-ready recipes link to their source site', /^https:\/\//.test(await page.locator('.src a').first().getAttribute('href')));
+  for (let i = 0; i < 8 && (await page.locator('.away-h').count()) < 2; i++) { const more = page.getByRole('button', { name: 'Show more' }); if (!(await more.count())) break; await more.click(); await page.waitForTimeout(150); }
+  check('almost ready is grouped by items missing, closest first, no limit', (await page.locator('.away-h').count()) >= 2 && /1 item away/i.test(await page.locator('.away-h').first().innerText()) && /2 items away/i.test(await page.locator('.away-h').nth(1).innerText()));
+  await page.evaluate(() => window.scrollTo(0, 0));
+  check('pantry hint is the short version', (await page.getByText('Whisk reads').count()) === 0);
   await shot('01-home');
 });
 await step('pantry draft is remembered', async () => {
@@ -78,9 +82,9 @@ await step('cook', async () => {
   await page.getByText(/recipes? you can make/).waitFor();
   const n = await page.locator('main button.card:has(.chip.have)').count();
   check('cook shows web recipes the pantry can make', n >= 5, `${n} recipes`);
-  check('cook shows unlimited pantry searches', (await page.locator('.links a[href^="https://www.google.com/search"]').count()) >= 6);
-  await page.click('text=Show more ideas');
-  check('Show more ideas adds more searches', (await page.locator('.links a[href^="https://www.google.com/search"]').count()) >= 12);
+  check('no "Find more online" searches', (await page.getByText('Find more online').count()) === 0 && (await page.getByText('Only real recipes').count()) === 0);
+  check('top 10 cooking channels with YouTube + Instagram links', (await page.locator('a.social.yt[href^="https://www.youtube.com/@"]').count()) === 10 && (await page.locator('a.social.ig[href^="https://www.instagram.com/"]').count()) === 10);
+  check('saved recipes moved off Cook', (await page.getByText('Your saved recipes').count()) === 0);
   await page.click('text=Fridge Raid (surprise me)');
   await page.getByText('Fridge Raid · your hand').waitFor();
   check('Fridge Raid deals 4 pantry items', (await page.locator('.grid2 .card').count()) === 4);
@@ -99,9 +103,11 @@ await step('cook', async () => {
   await shot('03-cooked');
   await page.click('[role=dialog] >> text=Leave');
   await page.waitForTimeout(600); await closePopups();
-  await page.getByText('Your saved recipes').scrollIntoViewIfNeeded();
+  await nav('Pantry'); await page.getByRole('tab', { name: 'Saved recipes' }).click();
   await page.click('button.chip:has-text("Liked")');
-  check('liked meal shows in saved recipes', (await page.locator('[aria-label=Liked]').count()) >= 1);
+  await page.locator('main [aria-label=Liked]').first().waitFor();
+  check('liked meal shows in Pantry → Saved recipes', (await page.locator('main [aria-label=Liked]').count()) >= 1);
+  await page.getByRole('tab', { name: /^Pantry/ }).click();
 });
 await step('compete', async () => {
   await nav('Compete');
@@ -119,15 +125,19 @@ await step('compete', async () => {
   await page.click('[role=dialog] >> text=Leave'); await page.waitForTimeout(600); await closePopups();
   await page.getByText('Done · coins added').waitFor();
   check('completing a challenge pays coins', true);
-  check('shop uses outline slot icons', (await page.locator('.slotbar [role=tab]').count()) === 5);
+  check('shop is no longer on Compete', (await page.getByRole('button', { name: 'Get coins' }).count()) === 0 && (await page.getByText('Picked from recipes').count()) === 0);
 });
 await step('me', async () => {
   await nav('Me');
   await page.getByText('Cuisine passport').waitFor();
   check('no pose buttons on Me', (await page.getByRole('button', { name: 'We’re so back!' }).count()) === 0);
   check('closet slots are outline icons', (await page.locator('.slotbar [role=tab] svg').count()) === 5);
-  check('passport sticker unlocked for Mexican', await page.locator('[aria-label="Mexican, stamped"]').isVisible());
-  check('passport stickers greyed out until cooked', (await page.locator('.sticker.off').count()) >= 15);
+  check('passport shows x/10 under each cuisine', (await page.locator('.sticker .tally').count()) === 20 && !/Mexican, 0 of/.test(await page.locator('[aria-label^="Mexican, "]').getAttribute('aria-label')));
+  check('stickers stay grey until 10 cooks', (await page.locator('.sticker.off').count()) === 20);
+  check('Thai sticker is pad thai', (await page.locator('[aria-label^="Thai,"] svg ellipse').count()) >= 2);
+  check('shop is on Me: every item shown, locked ones greyed with a price', (await page.locator('.closet-grid .locked').count()) >= 5 && /\d/.test(await page.locator('.closet-grid .locked .tprice').first().innerText()));
+  await page.getByRole('button', { name: 'Get coins' }).waitFor();
+  check('Get coins is on Me', true);
   await page.click('[aria-label^="Edit name"]'); await page.fill('#nm', 'Chef J ✨ #1'); await page.press('#nm', 'Enter');
   await page.getByRole('heading', { name: 'Chef J ✨ #1' }).waitFor();
   check('name can be any characters', true);
@@ -138,6 +148,8 @@ await step('compete layout', async () => {
   await nav('Compete'); await page.getByText('Cuisine bingo').waitFor();
   const yB = (await page.getByRole('heading', { name: 'Cuisine bingo' }).boundingBox()).y, yQ = (await page.getByText('Daily quest').boundingBox()).y;
   check('cuisine bingo is at the top of Compete', yB < yQ, `${yB} < ${yQ}`);
+  check('bingo card resets every 5 days', /resets in [1-5]d/.test(await page.locator('section[aria-labelledby=bingo-h] p').first().innerText()));
+  await nav('Me'); await page.getByText('Cuisine passport').waitFor();
 });
 await step('buy coins with bitcoin', async () => {
   const before = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
@@ -157,13 +169,17 @@ await step('buy coins with bitcoin', async () => {
   await fetch(`http://localhost:54321/__e2e/settle/${inv.id}`);
   check('settled invoice webhook accepted', (await hook(body, sign(body))) === 200);
   await hook(body, sign(body)); // replay
-  await page.goto(`${BASE}/compete?paid=1`); await page.waitForTimeout(1500); await closePopups();
+  await page.goto(`${BASE}/me?paid=1`); await page.waitForTimeout(1500); await closePopups();
   const after = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
   check('1,000 coins credited exactly once', after === before + 1000, `${before} → ${after}`);
 });
 await step('me settings', async () => {
   await nav('Me'); await page.getByText('Settings').waitFor();
   check('autosave is not shown', (await page.getByText('Autosave').count()) === 0);
+  await page.getByRole('button', { name: 'Bigger text' }).click(); await page.waitForTimeout(200);
+  check('text size goes up', (await page.locator('main').evaluate((m) => getComputedStyle(m).zoom)) === '1.1');
+  await page.getByRole('button', { name: 'Smaller text' }).click(); await page.waitForTimeout(200);
+  check('text size goes back down', ['1', 'normal'].includes(await page.locator('main').evaluate((m) => getComputedStyle(m).zoom)));
   check('reset game is a tiny link', (await page.getByRole('button', { name: 'Reset game' }).evaluate((b) => parseFloat(getComputedStyle(b).fontSize))) <= 12);
   check('takeout shows just the number (no button)', (await page.locator('form:has(#takeout) button').count()) === 0);
   await page.click('#takeout'); await page.fill('#takeout', '18');

@@ -1,27 +1,28 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWhisk, useDraft } from '@/components/AppShell';
 import RecipeSheet from '@/components/RecipeSheet';
 import Icon from '@/components/Icon';
 import { usePantry, useSaved } from '@/components/usePantry';
-import { canon, checkRecipe, pantryCombos, searchLinks } from '@/lib/recipes/match';
+
+const PAGE = 12;
+import { canon, checkRecipe } from '@/lib/recipes/match';
+import { CHANNELS } from '@/lib/channels';
 
 const SKIP = ['Spices & Seasonings', 'Sauces & Oils', 'Baking'];
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
-
-function Links({ query }) {
-  return <div className="links">{searchLinks(query).map(([l, h]) => <a key={l} href={h} target="_blank" rel="noopener noreferrer"><Icon name={l === 'Google' || l === 'Reddit' ? 'search' : 'play'} size={15} />{l}</a>)}</div>;
-}
 
 // Only real recipes from the web, and only ones your pantry can make.
 export default function Cook() {
   const { recipes, ui, setUi } = useWhisk();
   const [pantry, reload] = usePantry();
   const [saved, reloadSaved] = useSaved();
+  const [shown, setShown] = useState(PAGE);
+  const moreRef = useRef(null);
   const [dish, setDish] = useDraft('o-dish');
   const [hand, setHand] = useState(null);
   const [open, setOpen] = useState(null);
-  const savedMode = ui.cookMode || null; const time = ui.cookTime || ''; const cu = ui.cookCuisine || ''; const more = ui.cookMore || 6; const cb = ui.cbFilter || 'all';
+  const savedMode = ui.cookMode || null; const time = ui.cookTime || ''; const cu = ui.cookCuisine || ''; 
 
   const mode = savedMode === 'raid' && !hand ? 'pantry' : savedMode;
   const inStock = useMemo(() => (pantry || []).filter((p) => p.status !== 'out'), [pantry]);
@@ -37,8 +38,13 @@ export default function Cook() {
   }, [mode, makeable, time, cu, hand, ui.cookDish]);
 
   const names = inStock.filter((p) => !SKIP.includes(p.category)).map((p) => p.name);
-  const combos = hand ? [hand] : pantryCombos(names, new Date().getDate() * 31 + names.length, more);
-  const savedList = saved && recipes ? [...saved.values()].map((s) => ({ s, r: recipes.find((r) => r.id === s.recipe_id) })).filter((x) => x.r && (cb === 'all' || x.s.rating === cb)) : [];
+  // Keep loading more as you scroll, until every recipe your pantry can make is on screen.
+  useEffect(() => { setShown(PAGE); }, [mode, time, cu, hand, ui.cookDish]);
+  useEffect(() => {
+    const el = moreRef.current; if (!el || !results || shown >= results.length) return;
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) setShown((n) => n + PAGE); }, { rootMargin: '400px' });
+    io.observe(el); return () => io.disconnect();
+  }, [results, shown]);
 
   function raid() {
     const pool = [...names]; const h = [];
@@ -61,7 +67,6 @@ export default function Cook() {
           <input id="o-dish" className="input" placeholder="Search a dish, e.g. tacos" maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
           <button className="btn" type="submit">Go</button>
         </form>
-        <span className="muted" style={{ fontSize: 13 }}>Only real recipes from the web, and only ones your pantry can make. Salt, pepper and oil assumed.</span>
       </div>
 
       {hand && mode === 'raid' && (
@@ -72,33 +77,29 @@ export default function Cook() {
       {results && (results.length ? (
         <>
           <span className="eyebrow">{results.length} recipe{results.length === 1 ? '' : 's'} you can make{mode === 'raid' ? ' with your hand' : ''}</span>
-          {results.map(({ r, c }) => (
+          {results.slice(0, shown).map(({ r, c }) => (
             <button key={r.id} className="card stack" style={{ gap: 8, textAlign: 'left' }} onClick={() => setOpen(r)}>
               <span className="eyebrow">{r.cuisine} · {r.source}</span>
               <h2 style={{ fontSize: 20 }}>{r.title}</h2>
               <div className="row"><span className="chip">{hrs(r.minutes)}</span><span className="chip">Serves {r.servings}</span><span className="chip have">You have everything</span>{c.frozen.length > 0 && <span className="chip ice"><Icon name="snow" size={14} />Defrost first</span>}</div>
             </button>
           ))}
+          {shown < results.length ? <div ref={moreRef}><button className="btn ghost wide" onClick={() => setShown((n) => n + PAGE)}>Show more</button></div>
+            : <span className="desc" style={{ textAlign: 'center' }}>That’s every recipe your pantry can make right now.</span>}
         </>
-      ) : <div className="empty"><b>No saved web recipe fits yet</b>{mode === 'named' ? 'None of the recipes found so far match that dish and your pantry.' : 'Try the searches below. They look across the web using only what’s in your pantry.'}</div>)}
+      ) : <div className="empty"><b>Nothing fits yet</b>{mode === 'named' ? 'None of Whisk’s recipes match that dish and your pantry.' : 'Add a few more staples to your pantry and check back.'}</div>)}
 
-      <section className="card stack" style={{ gap: 10 }}>
-        <div className="row" style={{ justifyContent: 'space-between' }}><h3>Find more online</h3><span className="muted" style={{ fontSize: 13 }}>Unlimited · uses your pantry</span></div>
-        {mode === 'named' && ui.cookDish && <div className="stack" style={{ gap: 6 }}><b>{ui.cookDish} with what you have</b><Links query={`${ui.cookDish} ${names.slice(0, 3).join(' ')}`} /></div>}
-        {combos.map((c) => <div key={c.join('|')} className="stack" style={{ gap: 6, paddingTop: 8, borderTop: '1px solid var(--line)' }}><b>{c.join(' + ')}</b><Links query={c.join(' ')} /></div>)}
-        {!hand && <button className="btn ghost" onClick={() => setUi({ cookMore: more + 6 })}>Show more ideas</button>}
-      </section>
-
-      <div className="page-title" style={{ marginTop: 8 }}><h2 style={{ fontSize: 22 }}>Your saved recipes</h2><span className="muted">{saved ? saved.size : ''}</span></div>
-      <div className="row">{[['all', 'All'], ['up', 'Liked'], ['down', 'Disliked']].map(([k, l]) => <button key={k} className="chip" style={{ border: 0, background: cb === k ? 'var(--fg)' : 'var(--track)', color: cb === k ? 'var(--bg)' : 'var(--fg)' }} onClick={() => setUi({ cbFilter: k })}>{l}</button>)}</div>
-      {savedList.length ? savedList.map(({ s, r }) => (
-        <button key={r.id} className="card row" style={{ textAlign: 'left', flexWrap: 'nowrap' }} onClick={() => setOpen(r)}>
-          <span style={{ flex: 1 }}><b>{r.title}</b><span className="muted" style={{ display: 'block', fontSize: 13 }}>{r.cuisine} · {r.source}</span></span>
-          {s.rating === 'up' && <span style={{ color: 'var(--fresh)' }} aria-label="Liked"><Icon name="up" /></span>}
-          {s.rating === 'down' && <span style={{ color: 'var(--bad)' }} aria-label="Disliked"><Icon name="down" /></span>}
-          <Icon name="chevron" />
-        </button>
-      )) : <div className="empty"><b>No saved recipes here</b>Save a recipe, or rate a meal after you cook it.</div>}
+      <h2 style={{ fontSize: 22, marginTop: 8 }}>Cooking channels</h2>
+      <div className="stack" style={{ gap: 8 }}>
+        {CHANNELS.map((c, i) => (
+          <div key={c.name} className="card row" style={{ flexWrap: 'nowrap', gap: 10 }}>
+            <span className="rank" aria-hidden="true">{i + 1}</span>
+            <span style={{ flex: 1, minWidth: 0 }}><b>{c.name}</b><span className="desc" style={{ display: 'block' }}>{c.about}</span></span>
+            <a className="social yt" href={c.youtube} target="_blank" rel="noopener noreferrer" aria-label={`${c.name} on YouTube`}><Icon name="yt" size={22} /></a>
+            <a className="social ig" href={c.instagram} target="_blank" rel="noopener noreferrer" aria-label={`${c.name} on Instagram`}><Icon name="ig" size={22} /></a>
+          </div>
+        ))}
+      </div>
 
       {open && <RecipeSheet recipe={open} pantry={pantry || []} saved={saved?.get(open.id)} onClose={() => setOpen(null)} onChanged={() => { reload(); reloadSaved(); }} />}
     </div>

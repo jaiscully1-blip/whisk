@@ -209,7 +209,7 @@ try { await db.exec(fs.readFileSync('./supabase/migrations/0004_whisk_web_recipe
 const D = '44444444-4444-4444-4444-444444444444', E = '55555555-5555-5555-5555-555555555555';
 await db.exec(`insert into auth.users (id, email) values ('${D}', 'd@x.com'), ('${E}', 'e@x.com')`);
 const wr = await as(D, () => db.query(`select count(*)::int n, bool_and(url like 'https://%') https from web_recipes`));
-check('40 real web recipes readable, all https links', wr.rows[0].n === 40 && wr.rows[0].https, JSON.stringify(wr.rows[0]));
+check('100 real web recipes readable, all https links', wr.rows[0].n === 100 && wr.rows[0].https, JSON.stringify(wr.rows[0]));
 await expectFail('players cannot add web recipes', D, `insert into web_recipes (id, title, cuisine, source, url, minutes, technique, prep, precision_level, step_count, score, key_canon, data) values ('x','x','x','x','https://x',1,1,1,1,1,1,'{}','{}')`);
 await expectFail('players cannot edit web recipes', D, `update web_recipes set title = 'hacked'`);
 const easy = (await db.query(`select id, score from web_recipes order by score asc limit 1`)).rows[0];
@@ -310,6 +310,20 @@ check('reset clears progress, keeps coins', afterReset.xp === 0 && afterReset.m 
 await db.exec(`select set_config('request.jwt.claims', '{"amr":[{"method":"otp","timestamp":${Math.floor(Date.now() / 1000) - 3600}}]}', false)`);
 await expectFail('an old email code does not count', D, `select public.reset_game()`);
 await db.exec(`select set_config('request.jwt.claims', '', false)`);
+
+// ================= 0007: bingo in 5-day rounds =================
+try { await db.exec(fs.readFileSync('./supabase/migrations/0007_bingo_five_days.sql', 'utf8')); await db.exec(fs.readFileSync('./supabase/migrations/0007_bingo_five_days.sql', 'utf8')); check('0007 runs (twice)', true); }
+catch (e) { check('0007 runs (twice)', false, e.message); }
+const rs = (await db.query(`select public._bingo_round_start(date '2026-01-05') a, public._bingo_round_start(date '2026-01-09') b, public._bingo_round_start(date '2026-01-10') c, public._bingo_round_start(date '2026-10-04') d`)).rows[0];
+const ds = (d) => new Date(d).toISOString().slice(0, 10);
+check('bingo rounds are 5 days long', ds(rs.a) === '2026-01-05' && ds(rs.b) === '2026-01-05' && ds(rs.c) === '2026-01-10' && (new Date(rs.d) - new Date('2026-01-05')) % (5 * 864e5) === 0, JSON.stringify(rs));
+const g7 = await as(E, () => db.query(`select public.get_bingo() as r`));
+const g7r = g7.rows[0].r;
+check('get_bingo reports a 5-day round', (new Date(g7r.ends) - new Date(g7r.week_start)) === 5 * 864e5 && g7r.cells.length === 16, JSON.stringify([g7r.week_start, g7r.ends]));
+await db.exec(`update meals set cooked_at = now() - interval '6 days' where user_id = '${C}'`);
+const g7c = await as(C, () => db.query(`select public.get_bingo() as r`));
+check('meals from an earlier round do not mark the new card', g7c.rows[0].r.marks.every((m) => !m));
+await expectFail('players cannot call _bingo_marks', C, `select public._bingo_marks('${C}', current_date, array['Thai'])`);
 
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));

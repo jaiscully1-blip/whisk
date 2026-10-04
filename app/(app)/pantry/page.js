@@ -5,6 +5,7 @@ import { isFrozenMeat, thawState, THAW_HOURS } from '@/lib/recipes/match';
 import Icon from '@/components/Icon';
 import { CATEGORIES, freshness, guessCategory } from '@/lib/game';
 import ScanSheet from '@/components/ScanSheet';
+import SavedRecipes from '@/components/SavedRecipes';
 
 const NEXT_STATUS = { stocked: 'low', low: 'out', out: 'stocked' };
 const STATUS_LABEL = { stocked: 'Stocked', low: 'Low', out: 'Out' };
@@ -108,13 +109,14 @@ export default function Pantry() {
 
   return (
     <div className="stack">
-      <div className="page-title"><h1>{tab === 'pantry' ? 'Pantry' : 'Shopping list'}</h1></div>
+      <div className="page-title"><h1>{tab === 'pantry' ? 'Pantry' : tab === 'list' ? 'Shopping list' : 'Saved recipes'}</h1></div>
       <div className="row" role="tablist">
         <button className={`btn sm ${tab === 'pantry' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'pantry'} onClick={() => setTab('pantry')}>Pantry {items ? `(${items.length})` : ''}</button>
         <button className={`btn sm ${tab === 'list' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'list'} onClick={() => setTab('list')}>Shopping list {list ? `(${list.length})` : ''}</button>
+        <button className={`btn sm ${tab === 'saved' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'saved'} onClick={() => setTab('saved')}>Saved recipes</button>
       </div>
 
-      {tab === 'pantry' ? (
+      {tab === 'saved' ? <SavedRecipes pantry={items} /> : tab === 'pantry' ? (
         <>
           <div className="grid2">
             <button className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('receipt')}><Icon name="receipt" size={22} />Scan receipt</button>
@@ -128,7 +130,7 @@ export default function Pantry() {
               <div><label className="lbl" htmlFor="p-exp">Expires (optional)</label><input id="p-exp" className="input" type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} /></div>
             </div>
             <button className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
-            <span className="muted" style={{ fontSize: 13 }}>Whisk reads the name: frozen meat or seafood gets a defrost reminder.</span>
+            <span className="desc">Anything frozen that’s meat or seafood gets a defrost reminder.</span>
           </form>
 
           <div className="row">
@@ -178,7 +180,7 @@ export default function Pantry() {
               ))}
             </section>
           ))}
-          {list?.length > 0 && <p className="muted" style={{ fontSize: 13, margin: 0 }}>Tap ✓ when you buy something. It goes back into your pantry as stocked.</p>}
+          {list?.length > 0 && <p className="desc" style={{ margin: 0 }}>Tap ✓ when you buy something. It goes back into your pantry as stocked.</p>}
         </>
       )}
       {scan && <ScanSheet mode={scan} onAdd={addMany} onClose={() => setScan(null)} />}

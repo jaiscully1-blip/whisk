@@ -138,5 +138,25 @@ button.face { text-align: left; color: var(--fg); width: 100%; }
 .sticker .art { filter: drop-shadow(2.5px 0 0 #fff) drop-shadow(-2.5px 0 0 #fff) drop-shadow(0 2.5px 0 #fff) drop-shadow(0 -2.5px 0 #fff) drop-shadow(0 3px 3px rgba(40, 30, 10, .28)); display: flex; flex-direction: column; align-items: center; }
 .sticker svg { width: 62px; height: 62px; display: block; }
 .sticker .word { font-family: var(--f-display); font-weight: 700; line-height: 1; text-transform: uppercase; }
-.sticker.off { filter: grayscale(1); opacity: .26; }
 .sticker.off .art { filter: none; }
+.sticker.off svg, .sticker.off .word { filter: grayscale(1); opacity: .3; }
+.sticker .tally { font-size: 11px; font-weight: 800; color: #5C6858; margin-top: 4px; letter-spacing: .02em; }
+.desc { font-size: 12.5px; line-height: 1.4; color: #5C6858; font-weight: 600; }
+.closet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.closet-grid .tile { padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; color: var(--fg); }
+.closet-grid .tname { font-size: 12px; font-weight: 800; line-height: 1.15; }
+.closet-grid .tprice { gap: 3px; font-size: 12px; font-weight: 800; color: var(--muted); justify-content: center; }
+.closet-grid .locked { background: transparent; }
+.closet-grid .locked img { filter: grayscale(1); opacity: .45; }
+.closet-grid .locked .tname { color: var(--muted); }
+.rank { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 99px; background: var(--track); font-weight: 900; font-size: 13px; }
+.social { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 12px; color: #fff; text-decoration: none; }
+.social.yt { background: #E62117; }
+.social.ig { background: radial-gradient(circle at 30% 110%, #FDCB52 0%, #FD5949 40%, #D6249F 65%, #285AEB 100%); }
+html { overscroll-behavior-y: contain; }
+.ptr { overflow: hidden; display: flex; align-items: flex-end; justify-content: center; gap: 8px; padding-bottom: 8px; transition: height .2s, opacity .2s; font-size: 12px; font-weight: 800; color: var(--muted); }
+.ptr-dot { width: 18px; height: 18px; border-radius: 99px; border: 2.5px solid var(--accent); border-top-color: transparent; }
+.ptr-dot.spin { animation: ptrspin .7s linear infinite; }
+@keyframes ptrspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ptr-dot.spin { animation: none; } }
+.away-h { font-size: 15px; font-family: var(--f-body); font-weight: 900; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); margin: 10px 0 0; }

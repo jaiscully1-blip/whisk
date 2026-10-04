@@ -9,7 +9,7 @@ const ART = {
   Chinese: '<path d="M22 14c0-6 20-6 20 0" stroke="#9AA3A8" stroke-width="2.5" fill="none"/><path d="M12 22h40l-5 34H17z" fill="#FFFFFF" stroke="#2D2D2D" stroke-width="2"/><path d="M12 22l6-8h28l6 8" fill="#F1F1EE" stroke="#2D2D2D" stroke-width="2" stroke-linejoin="round"/><circle cx="32" cy="38" r="8" fill="#D32F2F"/><path d="M29 35h6M32 35v7M29 42h6" stroke="#fff" stroke-width="1.6"/>',
   Japanese: '<rect x="8" y="22" width="48" height="28" rx="14" fill="#1F3A2B"/><circle cx="20" cy="36" r="10" fill="#FFF"/><circle cx="20" cy="36" r="4.5" fill="#FF7A59"/><circle cx="44" cy="36" r="10" fill="#FFF"/><circle cx="44" cy="36" r="4.5" fill="#7BC67E"/>',
   Korean: '<path d="M8 32h48a24 21 0 0 1-48 0z" fill="#3D6CB3"/><path d="M10 32c2-7 8-10 22-10s20 3 22 10z" fill="#FFF6E5"/><path d="M14 31l8-7 6 7z" fill="#E53935"/><path d="M36 31l6-8 7 8z" fill="#6DBE45"/><path d="M27 31l4-8 5 8z" fill="#F57C00"/><ellipse cx="32" cy="27" rx="7" ry="5" fill="#fff"/><circle cx="32" cy="27" r="3" fill="#FFB300"/>',
-  Thai: '<path d="M12 52c12 4 32-8 38-31 2-6-4-8-6-3-6 19-20 27-32 28z" fill="#E53935"/><path d="M44 19c1-6 4-9 9-9" stroke="#2E7D32" stroke-width="4.5" fill="none" stroke-linecap="round"/><path d="M40 21c3-2 7-1 9 2" stroke="#2E7D32" stroke-width="4" fill="none" stroke-linecap="round"/>',
+  Thai: '<ellipse cx="32" cy="40" rx="27" ry="15" fill="#FFFFFF" stroke="#1E63B5" stroke-width="2"/><ellipse cx="32" cy="38" rx="20" ry="10" fill="#E8A25A"/><path d="M15 36q5-5 10 0t10 0 10 0 6-1M14 40q6-5 11 0t11 0 11 0 4-1M17 44q5-4 10 0t10 0 9-1" stroke="#F6C27A" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M20 31a5 5 0 1 1 7 3" stroke="#FF7A59" stroke-width="3.4" fill="none" stroke-linecap="round"/><path d="M36 30a5 5 0 1 1 7 3" stroke="#FF7A59" stroke-width="3.4" fill="none" stroke-linecap="round"/><path d="M28 40l3-2 2 2-3 2zM39 41l3-1 1 2-3 1zM24 44l2-1 1 2-2 1z" fill="#B5651D"/><path d="M44 46l10-8a8 8 0 0 1-10 8z" fill="#8BC34A" stroke="#558B2F" stroke-width="1.2"/><path d="M18 34l-6-10M22 33l-3-11" stroke="#F3EBC8" stroke-width="2" stroke-linecap="round"/><circle cx="33" cy="36" r="2" fill="#43A047"/><circle cx="26" cy="38" r="1.6" fill="#66BB6A"/>',
   Indian: '<path d="M20 14c-3 4 3 6 0 10M32 12c-3 4 3 6 0 10M44 14c-3 4 3 6 0 10" stroke="#B0BEC5" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M8 30h48a24 22 0 0 1-48 0z" fill="#B87333"/><ellipse cx="32" cy="30" rx="24" ry="5" fill="#F57C00"/><circle cx="25" cy="30" r="2.4" fill="#FFE0B2"/><circle cx="38" cy="29" r="2.4" fill="#FFE0B2"/><path d="M4 32h6M54 32h6" stroke="#8D5524" stroke-width="4" stroke-linecap="round"/>',
   Vietnamese: '<path d="M40 6 26 30M48 8 32 30" stroke="#8D6E63" stroke-width="3" stroke-linecap="round"/><path d="M8 32h48a24 21 0 0 1-48 0z" fill="#FAFAFA" stroke="#2E7D32" stroke-width="2"/><path d="M14 34q6 4 12 0t12 0 12 0" stroke="#F3E5AB" stroke-width="3" fill="none"/><circle cx="22" cy="31" r="3" fill="#66BB6A"/><circle cx="40" cy="31" r="3" fill="#EF5350"/>',
   Mediterranean: '<path d="M10 52C24 40 36 28 54 12" stroke="#6D4C41" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="20" cy="38" rx="9" ry="4" transform="rotate(-50 20 38)" fill="#7CB342"/><ellipse cx="36" cy="27" rx="9" ry="4" transform="rotate(40 36 27)" fill="#7CB342"/><ellipse cx="46" cy="16" rx="8" ry="3.5" transform="rotate(-40 46 16)" fill="#9CCC65"/><ellipse cx="28" cy="40" rx="5" ry="6.5" fill="#4A2C5E"/><ellipse cx="42" cy="34" rx="5" ry="6.5" fill="#556B2F"/>',
@@ -29,29 +29,34 @@ const INK = { American: ['#2F6AE6', '#E53935'], Mexican: ['#2E9E44', '#E53935'],
 
 const TILT = [-6, 4, -2, 7, -4, 3];
 
-export default function Passport({ stamped }) {
+export const STICKER_GOAL = 10;
+
+// counts: Map of cuisine -> meals cooked. A sticker turns to full color after 10 of that cuisine.
+export default function Passport({ counts }) {
+  const done = CUISINES.filter((c) => (counts.get(c) || 0) >= STICKER_GOAL).length;
   return (
     <section className="notebook" aria-labelledby="pp-h">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <h2 id="pp-h" style={{ fontSize: 26 }}>Cuisine passport</h2>
-        <span className="count">{stamped.size}/20</span>
+        <span className="count">{done}/20</span>
       </div>
       <div className="stickers">
         {CUISINES.map((c, i) => {
-          const on = stamped.has(c); const [a, b] = INK[c];
+          const n = Math.min(counts.get(c) || 0, STICKER_GOAL); const on = n >= STICKER_GOAL; const [a, b] = INK[c];
           return (
-            <div key={c} className={`sticker ${on ? '' : 'off'}`} style={{ transform: `rotate(${on ? TILT[i % 6] : 0}deg)` }} aria-label={`${c}${on ? ', stamped' : ', not cooked yet'}`}>
+            <div key={c} className={`sticker ${on ? '' : 'off'}`} style={{ transform: `rotate(${on ? TILT[i % 6] : 0}deg)` }} aria-label={`${c}, ${n} of ${STICKER_GOAL} cooked`}>
               <span className="art">
                 <svg viewBox="0 0 64 64" aria-hidden="true" dangerouslySetInnerHTML={{ __html: ART[c] }} />
                 <span className="word" style={{ fontSize: c.length > 12 ? 10.5 : c.length > 9 ? 12 : 15, letterSpacing: c.length > 12 ? '-.02em' : undefined }}>
                   {c.split('').map((ch, k) => <span key={k} style={{ color: k % 2 ? b : a }}>{ch}</span>)}
                 </span>
+                <span className="tally">{n}/{STICKER_GOAL}</span>
               </span>
             </div>
           );
         })}
       </div>
-      <p style={{ margin: '12px 0 0', fontSize: 13, color: '#5C6858', fontWeight: 700 }}>Cook a cuisine for the first time and its sticker comes out from under the page. +40 XP each.</p>
+      <p className="desc" style={{ margin: '12px 0 0' }}>Cook a cuisine 10 times to bring its sticker to full color.</p>
     </section>
   );
 }

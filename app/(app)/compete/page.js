@@ -2,33 +2,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useWhisk } from '@/components/AppShell';
 import LogMealSheet from '@/components/LogMealSheet';
-import GetCoinsSheet from '@/components/GetCoinsSheet';
 import Icon, { Coin } from '@/components/Icon';
 import { usePantry } from '@/components/usePantry';
 import { checkRecipe } from '@/lib/recipes/match';
 import { fmt } from '@/lib/game';
 
 const TIER = { 1: ['Small', 'var(--fresh-soft)', 'var(--fresh)'], 2: ['Medium', 'var(--warn-soft)', 'var(--warn)'], 3: ['Big', 'var(--pop-soft)', 'var(--bad)'] };
-const SLOTS = [['top', 'Tops', 'shirt'], ['hat', 'Hats', 'hat'], ['glasses', 'Glasses', 'glasses'], ['shoes', 'Shoes', 'shoe'], ['acc', 'Accessory', 'spoon']];
-const RARITY_ORDER = ['common', 'rare', 'epic', 'exotic', 'mythic'];
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
-
-function useThumbs(ids) {
-  const [thumbs, setThumbs] = useState({});
-  useEffect(() => {
-    let alive = true;
-    import('@/lib/whisk3d/engine').then(async ({ ITEMS_BY_ID, renderThumb }) => {
-      for (const id of ids) {
-        if (!alive) return;
-        const it = ITEMS_BY_ID[id]; if (!it) continue;
-        try { const url = renderThumb(it); setThumbs((t) => (t[id] ? t : { ...t, [id]: url })); } catch (e) { console.error(e); }
-        await new Promise((r) => setTimeout(r, 10));
-      }
-    });
-    return () => { alive = false; };
-  }, [ids.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
-  return thumbs;
-}
 
 // Pick up to 3 recipes the pantry can make: one per difficulty band when possible.
 function proposeChallenges(recipes, pantry) {
@@ -38,29 +18,20 @@ function proposeChallenges(recipes, pantry) {
 }
 
 export default function Compete() {
-  const { supabase, profile, refreshProfile, say, recipes, ui, setUi } = useWhisk();
+  const { supabase, refreshProfile, say, recipes, ui, setUi } = useWhisk();
   const [pantry] = usePantry();
   const [challenges, setChallenges] = useState(null);
   const [quest, setQuest] = useState(null);
-  const [items, setItems] = useState([]);
-  const [owned, setOwned] = useState(new Set());
-  const [buying, setBuying] = useState(null);
   const [logging, setLogging] = useState(null);
-  const [busy, setBusy] = useState(false);
   const [bingo, setBingo] = useState(null);
-  const [getCoins, setGetCoins] = useState(false);
-  const slot = ui.shopSlot || 'top';
   const flipped = ui.flipped || {};
 
   async function load() {
-    const [c, i, v, b, q] = await Promise.all([supabase.rpc('get_weekly_challenges'), supabase.from('items').select('id, slot, name, rarity, price, sort').order('sort'),
-      supabase.from('inventory').select('item_id'), supabase.rpc('get_bingo'), supabase.rpc('get_daily_quest')]);
-    setChallenges(c.data || []); setItems(i.data || []); setOwned(new Set((v.data || []).map((x) => x.item_id)));
+    const [c, b, q] = await Promise.all([supabase.rpc('get_weekly_challenges'), supabase.rpc('get_bingo'), supabase.rpc('get_daily_quest')]);
+    setChallenges(c.data || []);
     if (!b.error) setBingo(b.data); if (!q.error) setQuest(q.data);
   }
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // Back from the Bitcoin checkout
-  useEffect(() => { if (new URLSearchParams(window.location.search).get('paid') === '1') { say('Payment sent · coins arrive as soon as Bitcoin confirms'); window.history.replaceState(null, '', '/compete'); const t = setInterval(refreshProfile, 15000); return () => clearInterval(t); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // No challenges yet this week? Pick them from what your pantry can make.
   useEffect(() => {
     if (!challenges || challenges.length || !recipes || !pantry) return;
@@ -81,17 +52,9 @@ export default function Compete() {
   }
   const flip = (id) => setUi({ flipped: { ...flipped, [id]: !flipped[id] } });
 
-  const list = useMemo(() => items.filter((i) => i.slot === slot).sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || a.sort - b.sort), [items, slot]);
-  const thumbs = useThumbs(list.map((i) => i.id));
   const resetIn = useMemo(() => { const d = (8 - new Date().getUTCDay()) % 7 || 7; return `${d}d`; }, []);
+  const bingoIn = bingo?.ends ? Math.max(1, Math.ceil((new Date(bingo.ends + 'T00:00:00Z') - Date.now()) / 864e5)) : null;
 
-  async function confirmBuy() {
-    setBusy(true);
-    const { error } = await supabase.rpc('buy_item', { p_item_id: buying.id });
-    setBusy(false);
-    if (error) { say(error.message.includes('enough') ? 'Not enough coins yet' : 'Couldn’t buy that'); return; }
-    setOwned((s) => new Set(s).add(buying.id)); setBuying(null); refreshProfile(); say(`${buying.name} is yours! Wear it from the Me tab.`);
-  }
   const recipeOf = (c) => recipes?.find((r) => r.id === c.recipe_id);
 
   return (
@@ -100,11 +63,11 @@ export default function Compete() {
       {bingo && (
         <section className="stack" style={{ gap: 10 }} aria-labelledby="bingo-h">
           <div className="row" style={{ justifyContent: 'space-between' }}><h2 id="bingo-h" style={{ fontSize: 22 }}>Cuisine bingo</h2><span className="chip xp">+200 XP</span></div>
-          <p className="muted" style={{ margin: 0, fontSize: 13 }}>Cook a dish from each cuisine this week. Four in a row (across, down or diagonal) wins.</p>
+          <p className="desc" style={{ margin: 0 }}>Cook a dish from each cuisine before the card resets{bingoIn ? ` in ${bingoIn}d` : ''}. Four in a row (across, down or diagonal) wins.</p>
           <div role="grid" aria-label="Bingo card" className="bingo">
             {bingo.cells.map((cell, i) => { const hit = bingo.marks?.[i]; return <div key={i} role="gridcell" className={hit ? 'on' : ''} aria-label={`${cell}${hit ? ', cooked' : ''}`}>{hit ? <span><Icon name="check" size={16} /><br />{cell}</span> : cell}</div>; })}
           </div>
-          {bingo.claimed ? <span className="row" style={{ color: 'var(--fresh)', fontWeight: 800 }}><Icon name="check" />Bingo claimed · new card Monday</span>
+          {bingo.claimed ? <span className="row" style={{ color: 'var(--fresh)', fontWeight: 800 }}><Icon name="check" />Bingo claimed · new card {bingoIn ? `in ${bingoIn}d` : 'soon'}</span>
             : bingo.lines > 0 ? <button className="btn" onClick={claimBingo}>Claim BINGO · +200 XP</button>
             : <span className="muted" style={{ fontWeight: 800, fontSize: 13 }}>{(bingo.marks || []).filter(Boolean).length}/16 cooked</span>}
         </section>
@@ -120,7 +83,6 @@ export default function Compete() {
       )}
 
       <h2 style={{ fontSize: 22 }}>This week’s challenges</h2>
-      <span className="muted" style={{ fontSize: 13, marginTop: -6 }}>Picked from recipes your pantry can make. Tap a card to see how to cook it.</span>
       {challenges === null || !recipes ? <p className="muted">Loading…</p> : challenges.length === 0 ? (
         <div className="empty"><b>No challenges yet</b>Stock your pantry so Whisk can pick recipes you can actually make.</div>
       ) : challenges.map((c) => {
@@ -160,47 +122,6 @@ export default function Compete() {
         );
       })}
 
-
-      <h2 id="shop" style={{ fontSize: 22, marginTop: 10 }}>Shop</h2>
-      <button className="btn wide" onClick={() => setGetCoins(true)} style={{ minHeight: 64, fontSize: 20, fontFamily: 'var(--f-display)', background: 'var(--gold)', color: '#23301F', boxShadow: '0 4px 0 #B8862A' }}><Coin size={28} />Get coins</button>
-      <div className="slotbar" role="tablist" aria-label="Shop slots">
-        {SLOTS.map(([k, label, icon]) => (
-          <button key={k} className="card" role="tab" aria-selected={k === slot} aria-label={label} title={label} onClick={() => setUi({ shopSlot: k })}
-            style={{ borderColor: k === slot ? 'var(--accent)' : 'var(--line)', boxShadow: k === slot ? 'inset 0 0 0 1px var(--accent)' : 'none', color: k === slot ? 'var(--accent)' : 'var(--fg)' }}>
-            <Icon name={icon} size={34} stroke={1.6} />
-          </button>
-        ))}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
-        {list.map((it) => {
-          const have = owned.has(it.id);
-          return (
-            <button key={it.id} onClick={() => !have && setBuying(it)} aria-label={`${it.name}, ${it.rarity}, ${have ? 'owned' : fmt(it.price) + ' coins'}`}
-              style={{ border: `2px solid var(--${it.rarity})`, borderRadius: 18, background: `linear-gradient(180deg, var(--card) 35%, color-mix(in srgb, var(--${it.rarity}) 22%, var(--card)))`, padding: '8px 8px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, textAlign: 'center', color: 'var(--fg)' }}>
-              <span style={{ alignSelf: 'flex-start', background: `var(--${it.rarity})`, color: '#fff', fontSize: 10, fontWeight: 800, letterSpacing: '.07em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 99 }}>{it.rarity}</span>
-              {thumbs[it.id] ? <img src={thumbs[it.id]} alt="" width="96" height="96" /> : <span style={{ height: 96 }} />}
-              <span style={{ fontWeight: 800, fontSize: 13.5, minHeight: 34, display: 'flex', alignItems: 'center' }}>{it.name}</span>
-              {have ? <span className="chip have">Owned</span> : <span className="row" style={{ gap: 4, fontWeight: 800, fontSize: 13 }}><Coin size={14} />{fmt(it.price)}</span>}
-            </button>
-          );
-        })}
-      </div>
-
-      {buying && (
-        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setBuying(null); }}>
-          <div className="sheet stack" role="dialog" aria-modal="true" aria-label={`Buy ${buying.name}`} style={{ alignItems: 'center', textAlign: 'center' }}>
-            {thumbs[buying.id] && <img src={thumbs[buying.id]} alt="" width="150" height="150" />}
-            <span className="chip" style={{ background: `var(--${buying.rarity})`, color: '#fff', textTransform: 'uppercase', fontWeight: 800 }}>{buying.rarity}</span>
-            <h2 style={{ fontSize: 26 }}>{buying.name}</h2>
-            <p className="muted" style={{ margin: 0 }}>You have {fmt(profile?.coins)} coins.</p>
-            {profile?.coins >= buying.price
-              ? <button className="btn wide" onClick={confirmBuy} disabled={busy}><Coin />{busy ? 'Buying…' : `Buy for ${fmt(buying.price)}`}</button>
-              : <><p className="err" style={{ margin: 0 }}>You need {fmt(buying.price - (profile?.coins || 0))} more coins. Finish a challenge or get coins.</p><button className="btn wide" onClick={() => { setBuying(null); setGetCoins(true); }} style={{ background: 'var(--gold)', color: '#23301F', boxShadow: '0 3px 0 #B8862A' }}><Coin />Get coins</button></>}
-            <button className="btn ghost wide" onClick={() => setBuying(null)}>Not now</button>
-          </div>
-        </div>
-      )}
-      {getCoins && <GetCoinsSheet onClose={() => setGetCoins(false)} />}
       {logging && <LogMealSheet recipe={logging.r} challenge={logging.c} onClose={() => setLogging(null)} onDone={() => { setUi({ flipped: { ...flipped, [logging.c.id]: false } }); load(); }} />}
     </div>
   );

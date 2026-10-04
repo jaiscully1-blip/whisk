@@ -22,7 +22,7 @@ export async function POST(req) {
 
   try {
     const site = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
-    const inv = await createInvoice({ orderId: order.order_id, usd: order.usd, coins: order.coins, redirectURL: `${site}/compete?paid=1` });
+    const inv = await createInvoice({ orderId: order.order_id, usd: order.usd, coins: order.coins, redirectURL: `${site}/me?paid=1` });
     return NextResponse.json({ url: inv.checkoutLink });
   } catch (e) {
     console.error('btcpay checkout', e?.message);

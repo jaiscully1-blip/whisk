@@ -61,7 +61,7 @@ export default function Compete() {
     <div className="stack">
       <div className="page-title"><h1>Compete</h1><span className="muted">Resets in {resetIn}</span></div>
       {bingo && (
-        <section className="stack" style={{ gap: 10 }} aria-labelledby="bingo-h">
+        <section data-tour="bingo" className="stack" style={{ gap: 10 }} aria-labelledby="bingo-h">
           <div className="row" style={{ justifyContent: 'space-between' }}><h2 id="bingo-h" style={{ fontSize: 22 }}>Cuisine bingo</h2><span className="chip xp">+200 XP</span></div>
           <p className="desc" style={{ margin: 0 }}>Cook a dish from each cuisine before the card resets{bingoIn ? ` in ${bingoIn}d` : ''}. Four in a row (across, down or diagonal) wins.</p>
           <div role="grid" aria-label="Bingo card" className="bingo">
@@ -82,7 +82,7 @@ export default function Compete() {
         </div>
       )}
 
-      <h2 style={{ fontSize: 22 }}>This week’s challenges</h2>
+      <h2 data-tour="challenges" style={{ fontSize: 22 }}>This week’s challenges</h2>
       {challenges === null || !recipes ? <p className="muted">Loading…</p> : challenges.length === 0 ? (
         <div className="empty"><b>No challenges yet</b>Stock your pantry so Whisk can pick recipes you can actually make.</div>
       ) : challenges.map((c) => {

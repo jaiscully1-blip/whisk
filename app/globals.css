@@ -350,3 +350,28 @@ button, a, [role="button"], [role="tab"], select, input { touch-action: manipula
 .dish-back .chip { font-size: 12.5px; }
 .chip .amt { font-weight: 600; opacity: .7; }
 .dish-back .skel i:nth-child(3) { width: 55%; }
+
+/* ---------- first-time walkthrough (arrow + words) ---------- */
+.coach { position: fixed; inset: 0; z-index: 900; pointer-events: none; }
+.coach-dim { position: fixed; background: rgba(18, 24, 16, .58); pointer-events: auto; transition: all .3s ease; }
+.coach-ring { position: fixed; border-radius: 16px; box-shadow: 0 0 0 3px #F4B740, 0 0 0 7px rgba(244, 183, 64, .35); pointer-events: none; transition: all .3s ease; animation: coachring 1.4s ease-in-out infinite; }
+.coach-block { position: fixed; pointer-events: auto; }
+@keyframes coachring { 50% { box-shadow: 0 0 0 3px #F4B740, 0 0 0 12px rgba(244, 183, 64, .15); } }
+.coach-arrow { position: fixed; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .35)); transition: left .3s ease, top .3s ease; }
+.coach-arrow.below { animation: coachup .9s ease-in-out infinite; }
+.coach-arrow.above { transform: rotate(180deg); animation: coachdown .9s ease-in-out infinite; }
+@keyframes coachup { 50% { transform: translateY(8px); } }
+@keyframes coachdown { 0%, 100% { transform: rotate(180deg) translateY(0); } 50% { transform: rotate(180deg) translateY(8px); } }
+.coach-bubble { position: fixed; pointer-events: auto; background: var(--card); color: var(--fg); border-radius: 20px; padding: 12px 14px 14px; box-shadow: 0 14px 34px rgba(0, 0, 0, .35); border: 3px solid #F4B740; opacity: 0; transform: scale(.92); transition: opacity .2s ease, transform .25s cubic-bezier(.2, 1.4, .4, 1), left .3s ease, top .3s ease; }
+.coach-bubble.on { opacity: 1; transform: none; }
+.coach-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 800; color: var(--muted); }
+.coach-top button { background: none; border: 0; color: var(--muted); font-weight: 800; font-size: 13px; padding: 6px 2px 6px 10px; min-height: 32px; text-decoration: underline; }
+.coach-bubble p { margin: 6px 0 12px; font-size: 17px; line-height: 1.4; font-weight: 700; animation: coachtext .35s ease both; }
+@keyframes coachtext { from { opacity: 0; transform: translateY(6px); } }
+.coach-actions { display: flex; gap: 8px; }
+.coach-back { width: 52px; min-height: 50px; border-radius: 14px; border: 2px solid var(--line); background: var(--card); color: var(--fg); font-size: 26px; font-weight: 800; line-height: 1; }
+.coach-next { flex: 1; min-height: 50px; border: 0; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--f-display); font-size: 20px; font-weight: 700; color: #fff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 85%, #fff), var(--accent)); box-shadow: 0 4px 0 color-mix(in srgb, var(--accent) 60%, #000); transition: transform .08s, box-shadow .08s; }
+.coach-next span { font-size: 26px; line-height: 1; }
+.coach-next:active, .coach-back:active { transform: translateY(3px); box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 60%, #000); }
+@media (prefers-reduced-motion: reduce) { .coach-ring, .coach-arrow.below, .coach-arrow.above, .coach-bubble p { animation: none !important; } .coach-arrow.above { transform: rotate(180deg); } .coach-dim, .coach-ring, .coach-bubble, .coach-arrow { transition: none; } }

@@ -62,7 +62,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
   const replayTour = useCallback(() => setTouring(true), []);
   const [hello, setHello] = useState(null);   // greeting shown in the top bar for a few seconds after opening
   const [helloOn, setHelloOn] = useState(false);
-  useEffect(() => { if (!hello || privacyOpen || touring) return; setHelloOn(true); const t = setTimeout(() => setHelloOn(false), hello.gift ? 7000 : 4500); return () => clearTimeout(t); }, [hello, privacyOpen, touring]);
+  useEffect(() => { if (!hello || privacyOpen || touring || (profile && profile.id && !profile.onboarded_at)) return; setHelloOn(true); const t = setTimeout(() => setHelloOn(false), hello.gift ? 7000 : 4500); return () => clearTimeout(t); }, [hello, privacyOpen, touring, profile?.onboarded_at]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- remembered screens + inputs (saved to your account, mirrored on this device) ----------
   const [ui, setUiState] = useState(() => {
@@ -227,7 +227,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
             ))}
           </div>
         </nav>
-        {touring && !privacyOpen && <Tutorial onDone={finishTour} />}
+        {touring && !privacyOpen && <Tutorial coins={profile?.coins ?? 0} onDone={finishTour} />}
         {privacyOpen && <CookieConsent initial={consent} onSave={savePrivacy} onClose={() => setPrivacyOpen(false)} />}
         {kind && !privacyOpen && (
           <div className="popup-scrim" role="presentation" onClick={(e) => { if (kind !== 'cooked' && e.target === e.currentTarget) closePopup(); }}>

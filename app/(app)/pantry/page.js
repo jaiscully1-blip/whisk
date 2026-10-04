@@ -119,7 +119,7 @@ export default function Pantry() {
       {tab === 'saved' ? <SavedRecipes pantry={items} /> : tab === 'pantry' ? (
         <>
           <div className="grid2">
-            <button className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('receipt')}><Icon name="receipt" size={22} />Scan receipt</button>
+            <button data-tour="scan" className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('receipt')}><Icon name="receipt" size={22} />Scan receipt</button>
             <button className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('barcode')}><Icon name="barcode" size={22} />Scan barcode</button>
           </div>
           <form className="card stack" onSubmit={addPantry}>
@@ -129,7 +129,7 @@ export default function Pantry() {
               <div><label className="lbl" htmlFor="p-qty">Amount (optional)</label><input id="p-qty" className="input" maxLength={30} placeholder="2 lb" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
               <div><label className="lbl" htmlFor="p-exp">Expires (optional)</label><input id="p-exp" className="input" type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} /></div>
             </div>
-            <button className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
+            <button data-tour="add" className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
             <span className="desc">Anything frozen that’s meat or seafood gets a defrost reminder.</span>
           </form>
 

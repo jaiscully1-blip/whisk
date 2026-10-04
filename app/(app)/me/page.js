@@ -17,7 +17,7 @@ const RARITY_ORDER = ['common', 'rare', 'epic', 'exotic', 'mythic'];
 const EMPTY = { top: 'No top', hat: 'Classic toque', glasses: 'None', shoes: 'Bare feet', acc: 'Nothing' };
 
 export default function Me() {
-  const { supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, email, say, ui, setUi, openPrivacy, replayTour } = useWhisk();
+  const { supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, email, say, ui, setUi, openPrivacy } = useWhisk();
   const [items, setItems] = useState([]);
   const [owned, setOwned] = useState(new Set());
   const [buying, setBuying] = useState(null);
@@ -95,7 +95,8 @@ export default function Me() {
     const { error } = await supabase.rpc('buy_item', { p_item_id: buying.id });
     setBusy(false);
     if (error) { say(error.message.includes('enough') ? 'Not enough coins yet' : 'Couldn’t buy that'); return; }
-    const it = buying; setOwned((s) => new Set(s).add(it.id)); setBuying(null); refreshProfile();
+    const it = buying; window.dispatchEvent(new CustomEvent('whisk:bought', { detail: it.id }));   // the first-time tour listens for this
+    setOwned((s) => new Set(s).add(it.id)); setBuying(null); refreshProfile();
     await equip(it.id); say(`${it.name} is yours!`);
   }
   async function saveSetting(patch, msg) {
@@ -131,11 +132,11 @@ export default function Me() {
       </div>
 
       <div style={{ position: 'relative', borderRadius: 26, overflow: 'hidden', background: 'radial-gradient(120% 90% at 50% 30%, var(--card) 0%, var(--stage) 70%)', border: '1px solid var(--line)' }}>
-        <WhiskStage pose="default" outfit={outfit} height={360} />
+        <div data-tour="stage"><WhiskStage pose="default" outfit={outfit} height={360} /></div>
         <span style={{ position: 'absolute', top: 10, left: 12, fontSize: 12, fontWeight: 800, color: 'var(--muted)' }}>Drag to spin</span>
       </div>
 
-      <div className="slotbar" role="tablist" aria-label="Outfit slots">
+      <div data-tour="slots" className="slotbar" role="tablist" aria-label="Outfit slots">
         {SLOTS.map(([k, l, icon]) => (
           <button key={k} role="tab" aria-selected={slot === k} onClick={() => setUi({ closetSlot: k })} className="card" title={l}
             aria-label={`${l}: ${outfit[k] ? (byId[outfit[k]]?.name || '') : EMPTY[k]}`}
@@ -144,7 +145,7 @@ export default function Me() {
           </button>
         ))}
       </div>
-      <div id="shop" className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+      <div id="shop" data-tour="coins" className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
         <span className="row" style={{ gap: 6, fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 20 }}><Coin size={22} />{fmt(profile?.coins)}</span>
         <button className="btn sm" onClick={() => setGetCoins(true)} style={{ background: 'var(--gold)', color: '#23301F', boxShadow: '0 3px 0 #B8862A' }}><Coin size={18} />Get coins</button>
       </div>
@@ -239,9 +240,6 @@ export default function Me() {
         <button className="row setbtn" onClick={openPrivacy} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
           <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Cookies &amp; privacy</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />
         </button>
-        <button className="row setbtn" onClick={replayTour} style={{ padding: '12px 16px', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottom: '1px solid var(--line)', textAlign: 'left', color: 'var(--fg)' }}>
-          <Icon name="flip" /><span style={{ flex: 1, fontWeight: 700 }}>Replay the tour</span><Icon name="chevron" />
-        </button>
         {profile?.is_admin && <Link href="/admin" className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', textDecoration: 'none', color: 'var(--fg)', flexWrap: 'nowrap' }}><Icon name="compete" /><span style={{ flex: 1, fontWeight: 700 }}>Backend dashboard</span><Icon name="chevron" /></Link>}
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="me" /><span style={{ flex: 1, fontWeight: 700, overflowWrap: 'anywhere' }}>{email}</span></div>
         <form action="/auth/signout" method="post" style={{ padding: '12px 16px' }}><button className="btn ghost wide" type="submit">Sign out</button></form>
@@ -257,7 +255,7 @@ export default function Me() {
             <h2 style={{ fontSize: 26 }}>{buying.name}</h2>
             <p className="muted" style={{ margin: 0 }}>You have {fmt(profile?.coins)} coins.</p>
             {profile?.coins >= buying.price
-              ? <button className="btn wide" onClick={confirmBuy} disabled={busy}><Coin />{busy ? 'Buying…' : `Buy for ${fmt(buying.price)}`}</button>
+              ? <button data-tour="buy" className="btn wide" onClick={confirmBuy} disabled={busy}><Coin />{busy ? 'Buying…' : `Buy for ${fmt(buying.price)}`}</button>
               : <><p className="err" style={{ margin: 0 }}>You need {fmt(buying.price - (profile?.coins || 0))} more coins. Finish a challenge or get coins.</p><button className="btn wide" onClick={() => { setBuying(null); setGetCoins(true); }} style={{ background: 'var(--gold)', color: '#23301F', boxShadow: '0 3px 0 #B8862A' }}><Coin />Get coins</button></>}
             <button className="btn ghost wide" onClick={() => setBuying(null)}>Not now</button>
           </div>

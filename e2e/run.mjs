@@ -54,18 +54,39 @@ await step('log in', async () => {
   await page.getByRole('button', { name: 'Accept all' }).click();
   await page.locator('.cc-scrim').waitFor({ state: 'detached' });
   check('cookie choices saved', true);
-  // first-run tour
-  await page.locator('.tour-card').waitFor({ timeout: 8000 });
-  check('new players get the tour', await page.getByRole('heading', { name: 'Hi, I’m Whisk!' }).isVisible());
-  await shot('00b-tour');
-  await page.locator('.tour-next').click(); await page.waitForTimeout(150);
-  check('Next flips the card', /out|back/.test(await page.locator('.tour-card').getAttribute('class')));
-  await page.waitForTimeout(700);
-  check('card shows the next area', await page.locator('#tour-title').innerText() === 'Cook');
-  await page.locator('.tour-next').click(); await page.waitForTimeout(900);
-  check('tour moves the app to that area and lights its tab', page.url().includes('/pantry') && (await page.locator('.nav a.tour-hot').getAttribute('href')) === '/pantry');
-  for (let k = 0; k < 6 && (await page.locator('.tour-card').count()); k++) { await page.locator('.tour-next').click(); await page.waitForTimeout(800); }
-  check('tour ends back on Cook', page.url().includes('/cook') && (await page.locator('.tour-card').count()) === 0);
+  // first-time walkthrough: arrow + words, Next moves on
+  await page.locator('.coach-bubble.on').waitFor({ timeout: 8000 });
+  const bubbleText = async () => (await page.locator('.coach-bubble p').innerText()).trim();
+  const nextBtn = page.locator('.coach-next');
+  check('new players get the walkthrough', /I’m Whisk/.test(await bubbleText()));
+  const arrowNear = async (sel) => { const a = await page.locator('.coach-arrow').boundingBox(); const t = await page.locator(sel).first().boundingBox(); return !!a && !!t && a.x + 23 >= t.x - 8 && a.x + 23 <= t.x + t.width + 8 && Math.min(Math.abs(a.y - (t.y + t.height)), Math.abs(a.y + 52 - t.y)) < 20; };
+  await nextBtn.click(); await page.locator('.coach-arrow').waitFor();
+  check('arrow points at the Pantry button with words', await arrowNear('.nav a[href="/pantry"]') && /Pantry/.test(await bubbleText()));
+  await shot('00b-coach');
+  await nextBtn.click(); await page.waitForURL('**/pantry'); await page.waitForTimeout(1800);
+  check('next step moves the arrow to the food box and types an example', await arrowNear('#p-name') && (await page.inputValue('#p-name')) === 'Eggs');
+  await nextBtn.click(); await page.waitForFunction(() => /green button/.test(document.querySelector('.coach-bubble p')?.textContent || ''), null, { timeout: 8000 });
+  check('arrow moves to the Add button', await arrowNear('[data-tour="add"]'));
+  await nextBtn.click();
+  await page.waitForFunction(() => /receipt/.test(document.querySelector('.coach-bubble p')?.textContent || ''), null, { timeout: 8000 });
+  await page.waitForTimeout(600);
+  check('Next presses Add for the example food (Eggs saved to pantry)', (await page.locator('main').innerText()).includes('Eggs') && (await page.inputValue('#p-name')) === '');
+  check('arrow moves on to the receipt scanner', await arrowNear('[data-tour="scan"]'));
+  for (let k = 0; k < 40; k++) { if ((await page.locator('.coach-bubble p').innerText()).includes('Tap it to buy it')) break; await page.locator('.coach-bubble.on').waitFor(); await nextBtn.click(); await page.waitForTimeout(700); }
+  check('walkthrough reaches the shop on Me with the starting coins', page.url().includes('/me') && /costs [\d,]+ coins/.test(await bubbleText()));
+  await shot('00c-coach-shop');
+  const coins0 = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
+  await page.locator('.closet-grid .tile.locked').filter({ hasText: '1,500' }).first().click();
+  await page.locator('[data-tour="buy"]').waitFor(); await page.waitForTimeout(700);
+  check('player taps the shirt themselves; arrow moves to Buy', /Buy button/.test(await bubbleText()) && await arrowNear('[data-tour="buy"]'));
+  await page.locator('[data-tour="buy"]').click();
+  await page.waitForFunction(() => /Ta-da/.test(document.querySelector('.coach-bubble p')?.textContent || ''), null, { timeout: 8000 });
+  await page.waitForFunction((c0) => Number((document.querySelectorAll('header .pill')[1]?.textContent || '').replace(/\D/g, '')) !== c0, coins0, { timeout: 6000 }).catch(() => {});
+  const coins1 = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
+  check('the shirt is bought with the 1,500 starting coins', coins0 - coins1 === 1500, `${coins0} → ${coins1}`);
+  for (let k = 0; k < 6 && (await page.locator('.coach-bubble').count()); k++) { await nextBtn.click(); await page.waitForTimeout(800); }
+  await page.waitForURL('**/cook');
+  check('walkthrough ends on Cook', (await page.locator('.coach').count()) === 0);
   await page.locator('.hud-hello.on').waitFor({ timeout: 4000 });
   check('greeting shows in the top bar, no popup', /Welcome/.test(await page.locator('.hud-hello').innerText()) && (await page.locator('.popup-scrim').count()) === 0);
   await shot('00c-hello');
@@ -239,7 +260,7 @@ await step('me settings', async () => {
 await step('reload keeps everything', async () => {
   await page.goto(`${BASE}/me`); await page.waitForTimeout(1800); await closePopups();
   check('every open starts on Cook', page.url().includes('/cook'), page.url());
-  check('no tour or popup on later opens', (await page.locator('.tour-card').count()) === 0 && (await page.locator('.popup-scrim').count()) === 0);
+  check('no tour or popup on later opens (first time only)', (await page.locator('.coach').count()) === 0 && (await page.locator('.popup-scrim').count()) === 0);
   await nav('Me');
   check('name persisted', await page.getByRole('heading', { name: 'Chef J ✨ #1' }).waitFor({ timeout: 8000 }).then(() => true, () => false));
 });

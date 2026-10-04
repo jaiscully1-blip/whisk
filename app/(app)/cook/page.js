@@ -62,7 +62,7 @@ export default function Cook() {
           <div><label className="lbl" htmlFor="o-time">Time limit</label><select id="o-time" className="input" value={time} onChange={(e) => setUi({ cookTime: e.target.value })}>{[['', 'Any'], ['20', '20 min'], ['30', '30 min'], ['45', '45 min'], ['60', '1 hour'], ['120', '2 hours']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
           <div><label className="lbl" htmlFor="o-cu">Cuisine</label><select id="o-cu" className="input" value={cu} onChange={(e) => setUi({ cookCuisine: e.target.value })}><option value="">Any</option>{cuisines.map((c) => <option key={c}>{c}</option>)}</select></div>
         </div>
-        <button className="btn wide" onClick={() => { setHand(null); setUi({ cookMode: 'pantry' }); }}>What can I make?</button>
+        <button data-tour="make" className="btn wide" onClick={() => { setHand(null); setUi({ cookMode: 'pantry' }); }}>What can I make?</button>
         <button className="btn ghost wide" onClick={raid}><Icon name="gift" size={18} />Fridge Raid (surprise me)</button>
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); if (!dish.trim()) return; setHand(null); setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>Dish</label>
@@ -94,7 +94,7 @@ export default function Cook() {
 
       {mode === 'named' && ui.cookDish && <DishSearch q={ui.cookDish} pantry={pantry} />}
 
-      <h2 style={{ fontSize: 22, marginTop: 8 }}>Cooking channels</h2>
+      <h2 data-tour="channels" style={{ fontSize: 22, marginTop: 8 }}>Cooking channels</h2>
       <div className="stack" style={{ gap: 8 }}>
         {CHANNELS.map((c) => (
           <a key={c.name} className="card row channel" href={c.youtube} target="_blank" rel="noopener noreferrer" aria-label={`${c.name} on YouTube`}>

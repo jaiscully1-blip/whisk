@@ -31,7 +31,7 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on sequences to anon, authenticated;
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
-for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql', '0012_dishes_and_stamp_coins.sql', '0013_one_phone_play.sql']) {
+for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql', '0012_dishes_and_stamp_coins.sql', '0013_one_phone_play.sql', '0014_recipe_steps.sql', '0015_free_chef_coat_pilot_coat_xp.sql']) {
   await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8').replace('create extension if not exists pgcrypto;', ''));
 }
 await db.exec(`insert into auth.users (id, email) values ('${E2E_USER.id}', '${E2E_USER.email}')`);
@@ -41,7 +41,7 @@ const START = [['Eggs', 'Dairy & Eggs'], ['Tomatoes', 'Produce'], ['Scallions', 
   ['Onion', 'Produce'], ['Chicken thighs', 'Proteins'], ['Soy sauce', 'Sauces & Oils'], ['Lentils', 'Canned & Jarred'], ['Chickpeas', 'Canned & Jarred'], ['Ginger', 'Produce'],
   ['Tomato paste', 'Canned & Jarred'], ['Lemon', 'Produce'], ['Ground beef', 'Frozen'], ['Bell peppers', 'Produce'], ['Spinach', 'Produce'], ['Butter', 'Dairy & Eggs'],
   ['Milk', 'Dairy & Eggs'], ['Flour', 'Baking'], ['Tortillas', 'Carbs & Grains'], ['Chicken broth', 'Canned & Jarred'], ['Carrots', 'Produce']];
-export const WEBHOOK_SECRET = process.env.BTCPAY_WEBHOOK_SECRET || 'e2e-webhook-secret';
+export const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_e2e';
 await db.exec(`insert into private.app_secrets (name, sha256_hex) values ('payments_webhook', encode(sha256(convert_to('${WEBHOOK_SECRET}', 'UTF8')), 'hex'))`);
 await db.exec(`insert into public.pantry_items (user_id, name, category) values ${START.map(([n, c]) => `('${E2E_USER.id}', '${n}', '${c}')`).join(', ')}`);
 
@@ -178,7 +178,7 @@ async function rpc(res, uid, fn, args, wantObj) {
 
 // ---------- storage ----------
 const files = new Map();
-const invoices = new Map();
+const sessions = new Map(), sessionsByIdem = new Map();
 async function storage(req, res, uid, path, buf) {
   let m;
   if (req.method === 'POST' && (m = path.match(/^\/storage\/v1\/object\/sign\/([^/]+)$/))) {
@@ -258,16 +258,21 @@ const server = http.createServer(async (req, res) => {
     if (path === '/auth/v1/logout') return send(res, 204, null);
     if (path === '/anthropic/v1/messages' && req.method === 'POST') return send(res, 200, anthropic(json()));
     if (path === '/__e2e/calls') return send(res, 200, anthropicCalls);
-    // ---- BTCPay stand-in ----
+    // ---- Stripe stand-in (Checkout Sessions API, form-encoded like the real one) ----
     let bm;
-    if ((bm = path.match(/^\/btcpay\/api\/v1\/stores\/([^/]+)\/invoices$/)) && req.method === 'POST') {
-      if (req.headers.authorization !== 'token e2e-api-key') return send(res, 401, { message: 'bad key' });
-      const b = json(); const inv = { id: 'inv' + randomUUID().slice(0, 8), storeId: bm[1], amount: String(b.amount), currency: b.currency, metadata: b.metadata, status: 'New', checkoutLink: '' };
-      inv.checkoutLink = `http://localhost:${PORT}/btcpay/i/${inv.id}`; invoices.set(inv.id, inv); return send(res, 200, inv);
+    if (path === '/stripe/v1/checkout/sessions' && req.method === 'POST') {
+      if (req.headers.authorization !== 'Bearer sk_test_e2e') return send(res, 401, { error: { code: 'invalid_api_key' } });
+      const f = Object.fromEntries(new URLSearchParams(buf.toString()));
+      const idem = req.headers['idempotency-key']; if (idem && sessionsByIdem.has(idem)) return send(res, 200, sessionsByIdem.get(idem));
+      const id = 'cs_test_' + randomUUID().replace(/-/g, '').slice(0, 20);
+      const sess = { id, object: 'checkout.session', url: `http://localhost:${PORT}/stripe-checkout/${id}`, mode: f.mode, currency: f['line_items[0][price_data][currency]'], amount_total: Number(f['line_items[0][price_data][unit_amount]']),
+        metadata: { order_id: f['metadata[order_id]'] }, client_reference_id: f.client_reference_id, payment_status: 'unpaid', success_url: f.success_url, name: f['line_items[0][price_data][product_data][name]'] };
+      sessions.set(id, sess); if (idem) sessionsByIdem.set(idem, sess); return send(res, 200, sess);
     }
-    if ((bm = path.match(/^\/btcpay\/api\/v1\/stores\/([^/]+)\/invoices\/([^/]+)$/))) { const inv = invoices.get(bm[2]); return inv ? send(res, 200, inv) : send(res, 404, {}); }
-    if ((bm = path.match(/^\/btcpay\/i\/([^/]+)$/))) { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end(`<!doctype html><title>BTCPay test checkout</title><h1>Pay ${invoices.get(bm[1])?.amount} USD in Bitcoin</h1>`); }
-    if ((bm = path.match(/^\/__e2e\/settle\/([^/]+)$/))) { const inv = invoices.get(bm[1]); if (inv) inv.status = 'Settled'; return send(res, 200, inv || {}); }
+    if ((bm = path.match(/^\/stripe\/v1\/checkout\/sessions\/([^/]+)$/))) { if (req.headers.authorization !== 'Bearer sk_test_e2e') return send(res, 401, {}); const s2 = sessions.get(bm[1]); return s2 ? send(res, 200, s2) : send(res, 404, { error: { code: 'resource_missing' } }); }
+    if ((bm = path.match(/^\/stripe-checkout\/([^/]+)$/))) { const s2 = sessions.get(bm[1]); res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end(`<!doctype html><title>Stripe test checkout</title><h1>Pay $${(s2?.amount_total || 0) / 100} with Apple Pay</h1><p>${s2?.name || ''}</p>`); }
+    if ((bm = path.match(/^\/__e2e\/stripe-pay\/([^/]+)$/))) { const s2 = sessions.get(bm[1]); if (s2) s2.payment_status = 'paid'; return send(res, 200, s2 || {}); }
+    if (path === '/__e2e/stripe-sessions') return send(res, 200, [...sessions.values()]);
     if (path === '/__e2e/events') { const r = await db.query(`select kind, page, target, value from app_events order by id`); return send(res, 200, r.rows); }
     if (path === '/__e2e/make-admin') { await db.exec(`update profiles set is_admin = true where id = '${E2E_USER.id}'`); return send(res, 200, { ok: true }); }
     // ---- Wikipedia stand-in ----
@@ -310,7 +315,6 @@ const server = http.createServer(async (req, res) => {
       for (let k = 0; k < n; k++) await db.query(`insert into meals (user_id, title, cuisine, country, photo_path) values ($1, 'Seed', 'Seed', $2, $3)`, [E2E_USER.id, c, `${E2E_USER.id}/seed${k}.jpg`]);
       return send(res, 200, { ok: true });
     }
-    if (path === '/__e2e/invoices') return send(res, 200, [...invoices.values()]);
     if (path.startsWith('/rest/v1/rpc/')) return await rpc(res, uidFrom(req), path.slice('/rest/v1/rpc/'.length), json(), (req.headers.accept || '').includes('vnd.pgrst.object'));
     if (path.startsWith('/rest/v1/')) return await rest(req, res, uidFrom(req), path.slice('/rest/v1/'.length), url, json());
     if (path.startsWith('/storage/v1/')) return await storage(req, res, uidFrom(req), path, buf);

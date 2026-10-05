@@ -11,10 +11,10 @@ import RecipeSheet from '@/components/RecipeSheet';
 import { usePantry } from '@/components/usePantry';
 import { levelFor, fmt, weekStart, HOME_MEAL_COST, dayNumber } from '@/lib/game';
 
-const SLOTS = [['top', 'Top', 'shirt'], ['hat', 'Hat', 'hat'], ['glasses', 'Glasses', 'glasses'], ['shoes', 'Shoes', 'shoe'], ['acc', 'Accessory', 'spoon']];
+const SLOTS = [['top', 'Top', 'shirt'], ['hat', 'Hat', 'hat'], ['glasses', 'Glasses', 'glasses'], ['shoes', 'Shoes', 'shoe'], ['acc', 'Accessory', 'bag']];
 const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
 const RARITY_ORDER = ['common', 'rare', 'epic', 'exotic', 'mythic'];
-const EMPTY = { top: 'No top', hat: 'Classic toque', glasses: 'None', shoes: 'Bare feet', acc: 'Nothing' };
+const EMPTY = { top: 'White chef coat', hat: 'Classic toque', glasses: 'None', shoes: 'Bare feet', acc: 'Nothing' };   // top + hat: free, always yours
 
 export default function Me() {
   const { supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, say, ui, setUi, openPrivacy } = useWhisk();
@@ -42,7 +42,7 @@ export default function Me() {
   useEffect(() => {
     (async () => {
       const [it, inv, m, h] = await Promise.all([
-        supabase.from('items').select('id, slot, name, rarity, price, sort').order('sort'),
+        supabase.from('items').select('id, slot, name, rarity, price, sort').eq('active', true).order('sort'),
         supabase.from('inventory').select('item_id'),
         supabase.from('meals').select('id, title, photo_path, cooked_at, rating').order('cooked_at', { ascending: false }).limit(12),
         supabase.from('meals').select('cuisine, country, cooked_at, calories, protein_g, carbs_g, fat_g').order('cooked_at', { ascending: false }).limit(1000)
@@ -57,13 +57,14 @@ export default function Me() {
     })();
   }, [supabase]);
 
-  // Back from the Bitcoin checkout
-  useEffect(() => { if (new URLSearchParams(window.location.search).get('paid') === '1') { say('Payment sent · coins arrive as soon as Bitcoin confirms'); window.history.replaceState(null, '', '/me'); const t = setInterval(refreshProfile, 15000); return () => clearInterval(t); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Back from the checkout
+  useEffect(() => { if (new URLSearchParams(window.location.search).get('paid') === '1') { say('Payment done · your coins are on the way'); window.history.replaceState(null, '', '/me'); const t = setInterval(refreshProfile, 15000); return () => clearInterval(t); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inSlot = useMemo(() => items.filter((i) => i.slot === slot).sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || a.sort - b.sort), [items, slot]);
   useEffect(() => {
     let alive = true;
-    import('@/lib/whisk3d/engine').then(async ({ ITEMS_BY_ID, renderThumb }) => {
+    import('@/lib/whisk3d/engine').then(async ({ ITEMS_BY_ID, renderThumb, CHEF_COAT }) => {
+      if (slot === 'top') { try { const url = renderThumb(CHEF_COAT); setThumbs((t) => ({ ...t, [CHEF_COAT.id]: url })); } catch {} }
       for (const it of inSlot) {
         if (!alive) return; const def = ITEMS_BY_ID[it.id]; if (!def) continue;
         try { const url = renderThumb(def); setThumbs((t) => (t[it.id] ? t : { ...t, [it.id]: url })); } catch (e) { console.error(e); }
@@ -151,8 +152,8 @@ export default function Me() {
       </div>
       <div className="closet-grid">
         <button onClick={() => equip(null)} aria-pressed={!outfit[slot]} className="card tile" style={{ borderColor: !outfit[slot] ? 'var(--accent)' : 'var(--line)' }}>
-          <span style={{ width: 64, height: 64, display: 'grid', placeItems: 'center', color: 'var(--muted)' }}><Icon name="x" size={28} /></span>
-          <span className="tname">{EMPTY[slot]}</span>
+          {slot === 'top' && thumbs['top-white-chef-coat'] ? <img src={thumbs['top-white-chef-coat']} alt="" width="64" height="64" /> : <span style={{ width: 64, height: 64, display: 'grid', placeItems: 'center', color: 'var(--muted)' }}><Icon name="x" size={28} /></span>}
+          <span className="tname">{EMPTY[slot]}</span>{(slot === 'top' || slot === 'hat') && <span className="tprice free">Free</span>}
         </button>
         {inSlot.map((it) => {
           const have = owned.has(it.id); const on = outfit[slot] === it.id;

@@ -39,7 +39,8 @@ export default function AuthForm() {
           <h2 id="dc-h">Before you start</h2>
           <p>While you play, Whisk records what you do in the app: what you tap, what you pick and what you search. It helps us make the game better.</p>
           <p>We don’t record anything else you type, and we never sell it. You can change this any time in <b>Me → Settings → Cookies &amp; privacy</b>.</p>
-          <div className="dc-btns" role="radiogroup" aria-label="Allow Whisk to record what you do?">
+          <p className="dc-device"><b>Your game saves on this device only.</b> There’s no account, so it can’t move to another phone or browser. Deleting the app or clearing this browser’s data erases it, coins included.</p>
+          <div className="dc-btns" role="radiogroup" aria-label="Accept or decline: Whisk records what you do, and your game saves on this device only">
             <button type="button" role="radio" aria-checked={choice === 'accept'} className={`dc-btn ${choice === 'accept' ? 'on' : ''}`} onClick={() => pick('accept')}>Accept</button>
             <button type="button" role="radio" aria-checked={choice === 'decline'} className={`dc-btn ${choice === 'decline' ? 'on' : ''}`} onClick={() => pick('decline')}>Decline</button>
           </div>
@@ -49,7 +50,7 @@ export default function AuthForm() {
         <button className="btn wide startbtn" type="button" onClick={start} disabled={!choice || busy}>{busy ? 'Setting up your kitchen…' : 'Start playing'}</button>
         {!choice && <p className="desc" style={{ margin: 0 }}>Pick Accept or Decline first.</p>}
         {error && <p className="err" role="alert" style={{ margin: 0 }}>{error}</p>}
-        <p className="desc" style={{ margin: 0 }}>No account, no email. Your game saves on this phone. Deleting the app or clearing this browser’s data starts a new game.</p>
+        <p className="desc" style={{ margin: 0 }}>No account, no email, no password.</p>
       </div>
     </main>
   );

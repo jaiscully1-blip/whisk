@@ -394,3 +394,33 @@ button, a, [role="button"], [role="tab"], select, input { touch-action: manipula
 .coach-next span { font-size: 26px; line-height: 1; }
 .coach-next:active, .coach-back:active { transform: translateY(3px); box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 60%, #000); }
 @media (prefers-reduced-motion: reduce) { .coach-ring, .coach-arrow.below, .coach-arrow.above, .coach-bubble p { animation: none !important; } .coach-arrow.above { transform: rotate(180deg); } .coach-dim, .coach-ring, .coach-bubble, .coach-arrow { transition: none; } }
+
+/* ---------- full recipes: servings ×, measured ingredients, numbered beginner steps ---------- */
+.flip.tall .face.back { max-height: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; border-width: 0; transition: max-height .5s ease, padding .3s; }
+.flip.tall.on .face.back { max-height: 9000px; padding-top: 16px; padding-bottom: 16px; border-width: 1px; }
+.flip.tall.on .face:not(.back) { max-height: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; border-width: 0; }
+.flip.tall .face:not(.back) { max-height: 600px; transition: max-height .5s ease, padding .3s; }
+.servx { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border: 2px solid var(--line); border-radius: 16px; background: var(--card); }
+.servx-base { font-weight: 800; }
+.servx-ctrl { display: flex; align-items: center; gap: 6px; }
+.servx-btn { width: 40px; height: 40px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--fg); font-size: 22px; font-weight: 800; line-height: 1; cursor: pointer; }
+.servx-btn:disabled { opacity: .4; }
+.servx-in { display: flex; align-items: center; gap: 4px; border: 2px solid var(--accent); border-radius: 12px; padding: 0 10px; height: 44px; background: var(--card); }
+.servx-in input { width: 44px; border: 0; outline: 0; background: transparent; color: var(--fg); font: 800 20px var(--f-display); text-align: right; }
+.servx-in b { font: 700 20px var(--f-display); color: var(--accent); }
+.servx-total { color: var(--muted); font-weight: 800; font-size: 14px; }
+.ing-list ul { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ing-list li { display: grid; grid-template-columns: minmax(70px, auto) 1fr; gap: 10px; align-items: baseline; font-size: 15px; padding-bottom: 6px; border-bottom: 1px dashed var(--line); }
+.ing-list li.need { color: var(--bad, #B3261E); }
+.ing-q { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; counter-reset: none; }
+.steps li { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
+.step-n { width: 30px; height: 30px; border-radius: 99px; background: var(--accent); color: #fff; display: grid; place-items: center; font: 700 15px var(--f-display); }
+.step-body { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.step-body p { margin: 3px 0 0; font-size: 16px; line-height: 1.5; }
+.steps.compact .step-body p { font-size: 15px; }
+.amt { color: var(--accent); white-space: nowrap; }
+.closet-grid .tprice.free { color: var(--accent); }
+
+.dc-device { background: var(--card); border: 2px dashed var(--line); border-radius: 12px; padding: 8px 10px; }
+.sr { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

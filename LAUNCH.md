@@ -8,7 +8,7 @@ About 20 minutes. Do the steps in order. **Never paste keys into chat, screensho
 
 1. Open your **whisk** project at supabase.com.
 2. **Run the SQL.** Left menu → **SQL Editor** → **New query**.
-   - **Shortcut (already ran 0001 + 0002):** run the four files in `supabase/setup/` in order (`1-…` to `4-…`), each in its own new query, then `5-check.sql`: every column should say **true**. They contain exactly 0003–0012 below.
+   - **Shortcut (already ran 0001 + 0002):** run the files in `supabase/setup/` in number order, each in its own new query: `1-…` to `4-…`, then `5-check.sql` (every column should say **true**), then `6-one-phone-play.sql` and `7-recipes-shop-xp.sql`. (`8-…` is only for Apple Pay, see 3c.)
    - Open `supabase/migrations/0001_whisk_schema.sql` from the repo on GitHub, copy all of it, paste, click **Run**. You should see "Success. No rows returned".
    - New query again → paste all of `supabase/migrations/0002_whisk_seed.sql` → **Run**. This adds the 105 shop items and 26 challenge meals.
    - New query again → paste all of `supabase/migrations/0003_whisk_features.sql` → **Run**. This adds daily quests, cuisine bingo, streak freezes, the weekly goal, takeout price and meal nutrition. (Already ran 0001 and 0002? Just run 0003. It is safe to run more than once.)
@@ -113,25 +113,19 @@ Dish search is free: it uses Whisk's own dish list (all 193 countries) and Wikip
 
 Free quota is 10,000 units a day; a dish nobody has opened yet costs 101, so about 99 new dishes a day. Every answer is cached for a week and shared by all players. When the quota runs out, the button falls back to a YouTube search link until midnight Pacific; nothing is ever billed.
 
-## 3c. Bitcoin coin packs (BTCPay Server)
+## 3c. Coin packs with Apple Pay (Stripe) — optional, do it when you want to sell coins
 
-Whisk sells 1,000 / 3,000 / 10,000 / 15,000 coins for $2 / $5 / $10 / $20, paid in Bitcoin through **your own BTCPay Server**.
-Until these are set, the Get coins packs show "Bitcoin checkout isn't set up yet" and nothing else breaks.
+Players pay with **Apple Pay** (iPhone/Safari), Google Pay or a card on Stripe's own checkout page. No monthly fee; Stripe keeps about 2.9% + 30¢ of each sale. Until this is set up, the Get coins buttons say "isn't set up yet" and nothing breaks.
 
-1. **Get a BTCPay Server.** Either self-host it (docs.btcpayserver.org → Deployment) or use a third-party BTCPay host. Create a **store** and connect a Bitcoin wallet to it.
-2. **API key.** In BTCPay: Account → **API Keys** → Generate. Permissions: **Create an invoice** and **View invoices** for your store only. Copy the key.
-3. **Store ID.** Store → Settings → General → **Store ID**.
-4. **Webhook.** Store → Settings → **Webhooks** → Create: Payload URL `https://YOUR-APP.vercel.app/api/coins/webhook`, event **An invoice has been settled**. Copy the webhook **secret** BTCPay shows.
-5. **Vercel env vars** (Production, all **Sensitive**, none start with `NEXT_PUBLIC_`): `BTCPAY_URL` (e.g. `https://pay.yourdomain.com`), `BTCPAY_STORE_ID`, `BTCPAY_API_KEY`, `BTCPAY_WEBHOOK_SECRET`. Redeploy.
-6. **Unlock crediting in the database.** Supabase → SQL Editor → run this once, pasting the same webhook secret between the quotes (it's stored only as a hash):
-   ```sql
-   insert into private.app_secrets (name, sha256_hex)
-   values ('payments_webhook', encode(sha256(convert_to('PASTE-WEBHOOK-SECRET-HERE', 'UTF8')), 'hex'))
-   on conflict (name) do update set sha256_hex = excluded.sha256_hex;
-   ```
-7. **Test with a small pack.** Buy 1,000 coins for $2. Coins appear when BTCPay marks the invoice **Settled** (on-chain that can take a confirmation; Lightning is near-instant if your store has it on).
+1. stripe.com → create an account → finish **Activate payments** (business details + your bank account for payouts).
+2. **Settings → Payment methods**: make sure **Apple Pay** and **Google Pay** are on (they are by default for Checkout).
+3. **Developers → API keys**: copy the **Secret key** (`sk_live_…`). Vercel → Environment Variables → `STRIPE_SECRET_KEY` (Sensitive).
+4. **Developers → Webhooks → Add endpoint**: URL `https://YOUR-APP.vercel.app/api/coins/webhook`, events **checkout.session.completed** and **checkout.session.async_payment_succeeded** → Add. Open it and reveal the **Signing secret** (`whsec_…`):
+   - Vercel → `STRIPE_WEBHOOK_SECRET` = that value (Sensitive) → **Redeploy**.
+   - Supabase SQL Editor → run `supabase/setup/8-apple-pay-secret.sql` with the secret pasted in place of the placeholder.
+5. Test with Stripe's **Test mode** keys first (`sk_test_…` + the test webhook's `whsec_…`) and card 4242 4242 4242 4242, then switch both to live.
 
-Before charging real people, add Terms and a refund policy page, and check the rules where you live for selling in-game currency and accepting Bitcoin. I'm not a lawyer; this isn't legal advice.
+Selling coins to kids: the Get coins sheet says "Ask a parent before buying". Stripe's own rules apply to refunds and disputes.
 
 ## 4. After launch
 

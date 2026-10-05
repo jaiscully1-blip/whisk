@@ -71,13 +71,13 @@ export default function Cook() {
       </div>
 
       {hand && mode === 'raid' && (
-        <div className="stack" style={{ gap: 8 }}><span className="eyebrow">Fridge Raid · your hand</span>
+        <div className="stack" style={{ gap: 8 }}><span className="eyebrow">Ingredients</span>
           <div className="grid2">{hand.map((c, i) => <div key={c} className="card" style={{ textAlign: 'center', fontWeight: 800, background: 'var(--pop-soft)', transform: `rotate(${[-3, 2, -1, 3][i % 4]}deg)` }}>{c}</div>)}</div>
         </div>
       )}
       {mode === 'named' && ui.cookDish && results?.length === 0 ? null : results && (results.length ? (
         <>
-          <span className="eyebrow">{mode === 'named' ? `From your Whisk recipes · ${results.length}` : `${results.length} recipe${results.length === 1 ? '' : 's'} you can make${mode === 'raid' ? ' with your hand' : ''}`}</span>
+          <span className="eyebrow">{mode === 'named' ? `From your Whisk recipes · ${results.length}` : `${results.length} recipe${results.length === 1 ? '' : 's'} you can make right now`}</span>
           {results.slice(0, shown).map(({ r, c }) => (
             <button key={r.id} className="card stack" style={{ gap: 8, textAlign: 'left' }} onClick={() => setOpen(r)}>
               <span className="eyebrow">{r.cuisine} · {r.source}</span>

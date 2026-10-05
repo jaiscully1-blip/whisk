@@ -4,7 +4,7 @@ import { useWhisk } from './AppShell';
 import Icon, { Coin } from './Icon';
 import { fmt } from '@/lib/game';
 
-// Coin packs paid in Bitcoin. Tapping a pack opens the BTCPay checkout page; coins arrive when the payment settles.
+// Coin packs paid with Apple Pay, Google Pay or a card (Stripe Checkout). Coins arrive as soon as the payment goes through.
 export default function GetCoinsSheet({ onClose }) {
   const { supabase } = useWhisk();
   const [packs, setPacks] = useState(null);
@@ -29,7 +29,7 @@ export default function GetCoinsSheet({ onClose }) {
           <h2 style={{ fontSize: 26 }}>Get coins</h2>
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
         </div>
-        <p className="muted" style={{ margin: 0 }}>Pay with Bitcoin. Coins land in your game as soon as the payment confirms.</p>
+        <p className="muted" style={{ margin: 0 }}>Pay with Apple Pay, Google Pay or a card. Coins land in your game right after you pay.</p>
         <p className="err" style={{ margin: 0, fontSize: 14 }}>Coins live on this phone. If you delete the app or clear this browser’s data, they’re gone and can’t be moved.</p>
         {packs === null ? <p className="muted">Loading…</p> : (
           <div className="grid2">
@@ -37,13 +37,13 @@ export default function GetCoinsSheet({ onClose }) {
               <button key={p.id} className="card stack" onClick={() => buy(p)} disabled={!!busy} style={{ gap: 6, alignItems: 'center', textAlign: 'center', border: '2px solid var(--gold)', background: 'var(--gold-soft)', color: 'var(--fg)' }}>
                 <Coin size={34} />
                 <span style={{ fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 24 }}>{fmt(p.coins)}</span>
-                <span className="btn sm" style={{ width: '100%' }}>{busy === p.id ? 'Opening…' : `$${Number(p.usd).toFixed(0)} in Bitcoin`}</span>
+                <span className="btn sm" style={{ width: '100%' }}>{busy === p.id ? 'Opening…' : `$${Number(p.usd).toFixed(2)}`}</span>
               </button>
             ))}
           </div>
         )}
         {error && <p className="err" role="alert">{error}</p>}
-        <p className="muted" style={{ margin: 0, fontSize: 12 }}>Checkout is handled by BTCPay Server. Prices are in US dollars and converted to Bitcoin at checkout. Coins are for the Whisk shop only and have no cash value.</p>
+        <p className="muted" style={{ margin: 0, fontSize: 12 }}>Checkout is handled securely by Stripe; Whisk never sees your card. Prices are in US dollars. Coins are for the Whisk shop only and have no cash value. Ask a parent before buying.</p>
       </div>
     </div>
   );

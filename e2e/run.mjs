@@ -160,12 +160,27 @@ await step('cook', async () => {
   check('no description under channel names', (await page.locator('a.channel .desc').count()) === 0);
   check('saved recipes moved off Cook', (await page.getByText('Your saved recipes').count()) === 0);
   await page.click('text=Fridge Raid (surprise me)');
-  await page.getByText('Fridge Raid · your hand').waitFor();
+  await page.getByText('Ingredients', { exact: true }).waitFor();
+  check('Fridge Raid says "Ingredients" and "recipes you can make right now"', (await page.getByText('your hand').count()) === 0 && (await page.getByText(/you can make right now/).count()) >= 1);
   check('Fridge Raid deals 4 pantry items', (await page.locator('.grid2 .card').count()) === 4);
   await page.click('text=What can I make?');
   await page.getByRole('button', { name: /Poor Man's Burrito Bowls/ }).click();
   await page.getByText('Recipe from').waitFor();
   check('recipe sheet links to Budget Bytes', (await page.locator('[role=dialog] .src a').first().getAttribute('href')).includes('budgetbytes.com'));
+  const dlg = page.locator('[role=dialog]');
+  check('every ingredient is measured (full list from the recipe page)', (await dlg.locator('.ing-list li').count()) >= 6 && (await dlg.locator('.ing-q').filter({ hasText: /\d/ }).count()) >= 5);
+  check('numbered beginner steps with measured amounts', (await dlg.locator('ol.steps li').count()) >= 6 && (await dlg.locator('ol.steps .amt').count()) >= 3);
+  check('steps say which bowl or pan things go in', /bowl|skillet|pot|pan|baking dish/i.test(await dlg.locator('ol.steps').innerText()));
+  check('cooking it is +20 XP', (await dlg.getByText('+20 XP when you cook it').count()) === 1);
+  const amt0 = await dlg.locator('ol.steps .amt').first().innerText();
+  const ing0 = await dlg.locator('.ing-q').filter({ hasText: /\d/ }).first().innerText();
+  await dlg.locator('.servx-in input').fill('3');
+  const amt3 = await dlg.locator('ol.steps .amt').first().innerText();
+  const ing3 = await dlg.locator('.ing-q').filter({ hasText: /\d/ }).first().innerText();
+  const qn = (t) => { const m = t.match(/^(\d+(?:\.\d+)?)?\s*([¼½¾⅓⅔⅛⅜⅝⅞])?/); const F = { '¼': .25, '½': .5, '¾': .75, '⅓': 1 / 3, '⅔': 2 / 3, '⅛': .125, '⅜': .375, '⅝': .625, '⅞': .875 }; return (parseFloat(m?.[1] || 0) || 0) + (F[m?.[2]] || 0); };
+  check('type 3 next to the × and every amount triples', Math.abs(qn(amt3) - 3 * qn(amt0)) < .05 && Math.abs(qn(ing3) - 3 * qn(ing0)) < .05 && /x|×/.test(await dlg.locator('.servx-in').innerText()) && /= \d+ servings/.test(await dlg.locator('.servx').innerText()), `${amt0} → ${amt3}, ${ing0} → ${ing3}`);
+  await shot('02b-recipe-3x');
+  await dlg.locator('.servx-in input').fill('1');
   const tmr = page.locator('[role=dialog] button.timer').first();
   if (await tmr.count()) {
     await tmr.click(); await page.waitForTimeout(1300);
@@ -199,8 +214,11 @@ await step('compete', async () => {
   check('3 challenges picked from your pantry', cards === 3, `${cards}`);
   await page.locator('.flip .face').first().click(); await page.waitForTimeout(700);
   check('tap flips the card to instructions', (await page.locator('.flip.on').count()) === 1);
+  check('flipped challenge: numbered, measured steps + servings ×', (await page.locator('.flip.on ol.steps li').count()) >= 5 && (await page.locator('.flip.on ol.steps .amt').count()) >= 2 && (await page.locator('.flip.on .servx').count()) === 1 && (await page.locator('.flip.on .ing-list li').count()) >= 4);
+  await page.locator('.flip.on .servx-in input').fill('2');
+  check('tapping the servings box does not start the photo step', (await page.locator('[aria-label="Log a meal"]').count()) === 0);
   await shot('04-flip');
-  await page.locator('.flip.on >> text=Tap to add photo & complete').click();
+  await page.locator('.flip.on .flip-cta').click();
   await page.locator('[aria-label="Log a meal"] input[type=file]').setInputFiles(photo);
   await page.click('text=Submit');
   await page.getByRole('heading', { name: 'Cooked it!' }).waitFor({ timeout: 15000 });
@@ -214,6 +232,11 @@ await step('me', async () => {
   await page.getByRole('heading', { name: 'Passport' }).waitFor();
   check('no pose buttons on Me', (await page.getByRole('button', { name: 'We’re so back!' }).count()) === 0);
   check('closet slots are outline icons', (await page.locator('.slotbar [role=tab] svg').count()) === 5);
+  await page.locator('.slotbar [role=tab]').first().click(); await page.waitForTimeout(300);
+  const closet = await page.locator('.closet-grid').innerText();
+  check('White chef coat is free (worn by default, not for sale)', /White chef coat\s*Free/i.test(closet) && !/White Chef Coat\s*[\d,]+/.test(closet), closet.slice(0, 120));
+  check('Airline Pilot Coat is in the shop for 1,500', /Airline Pilot Coat\s*1,500/.test(closet) || (await page.locator('.closet-grid .tile', { hasText: 'Airline Pilot Coat' }).count()) === 1);
+  check('accessory slot icon is a bag, not a wooden spoon', (await page.getByText(/wooden spoon/i).count()) === 0 && (await page.locator('.slotbar [role=tab]').last().getAttribute('aria-label')).startsWith('Accessory'));
   check('album has all 193 UN members, 20 a page', (await page.locator('.album .stamp').count()) === 193 && (await page.locator('.album-page').count()) === 10 && (await page.locator('.album-page').first().locator('.stamp').count()) === 20);
   check('pages are numbered', (await page.locator('.album-num').first().innerText()).includes('1'));
   check('stamps stay grey until 10 meals', (await page.locator('.album .stamp.done').count()) === 0);
@@ -242,24 +265,25 @@ await step('compete layout', async () => {
   check('bingo card resets every 5 days', /resets in [1-5]d/.test(await page.locator('section[aria-labelledby=bingo-h] p').first().innerText()));
   await nav('Me'); await page.getByRole('heading', { name: 'Passport' }).waitFor();
 });
-await step('buy coins with bitcoin', async () => {
+await step('buy coins with Apple Pay', async () => {
   const before = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
   await page.getByRole('button', { name: 'Get coins' }).first().click();
-  await page.getByText('$2 in Bitcoin').waitFor();
-  check('Get coins shows the 4 packs', (await page.locator('[aria-label="Get coins"] button.card').count()) === 4);
-  await page.getByText('$2 in Bitcoin').click();
-  await page.waitForURL('**/btcpay/i/**', { timeout: 15000 });
-  check('pack opens the BTCPay checkout page', true);
-  const inv = (await (await fetch('http://localhost:54321/__e2e/invoices')).json()).at(-1);
-  check('invoice is $2.00 USD for a Whisk order', inv.amount === '2.00' && inv.currency === 'USD' && /^[0-9a-f-]{36}$/.test(inv.metadata.orderId), JSON.stringify(inv));
-  const hook = async (body, sig) => (await fetch(`${BASE}/api/coins/webhook`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'BTCPay-Sig': sig }, body })).status;
-  const body = JSON.stringify({ type: 'InvoiceSettled', invoiceId: inv.id, storeId: 'e2e-store' });
-  const sign = (b) => 'sha256=' + crypto.createHmac('sha256', 'e2e-webhook-secret').update(b).digest('hex');
-  check('webhook with a bad signature is rejected', (await hook(body, 'sha256=00')) === 401);
-  check('unsettled invoice credits nothing', (await hook(body, sign(body))) === 200);
-  await fetch(`http://localhost:54321/__e2e/settle/${inv.id}`);
-  check('settled invoice webhook accepted', (await hook(body, sign(body))) === 200);
-  await hook(body, sign(body)); // replay
+  await page.getByText('$2.00', { exact: true }).waitFor();
+  check('Get coins shows the 4 packs, Apple Pay / Google Pay / card, no Bitcoin', (await page.locator('[aria-label="Get coins"] button.card').count()) === 4 && /Apple Pay/.test(await page.locator('[aria-label="Get coins"]').innerText()) && !/bitcoin/i.test(await page.locator('[aria-label="Get coins"]').innerText()));
+  await page.getByText('$2.00', { exact: true }).click();
+  await page.waitForURL('**/stripe-checkout/**', { timeout: 15000 });
+  check('pack opens the Stripe checkout page (Apple Pay)', /Apple Pay/.test(await page.locator('h1').innerText()));
+  const ss = (await (await fetch('http://localhost:54321/__e2e/stripe-sessions')).json()).at(-1);
+  check('checkout is $2.00 USD for a Whisk order', ss.amount_total === 200 && ss.currency === 'usd' && /^[0-9a-f-]{36}$/.test(ss.metadata.order_id) && ss.success_url.endsWith('/me?paid=1'), JSON.stringify(ss));
+  const hook = async (body, sig) => (await fetch(`${BASE}/api/coins/webhook`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Stripe-Signature': sig }, body })).status;
+  const body = JSON.stringify({ id: 'evt_test', type: 'checkout.session.completed', data: { object: { id: ss.id, object: 'checkout.session' } } });
+  const sign = (b, t = Math.floor(Date.now() / 1000)) => `t=${t},v1=` + crypto.createHmac('sha256', 'whsec_e2e').update(`${t}.${b}`).digest('hex');
+  check('webhook with a bad signature is rejected', (await hook(body, 't=1,v1=00')) === 401);
+  check('an old (replayed) signature is rejected', (await hook(body, sign(body, Math.floor(Date.now() / 1000) - 3600))) === 401);
+  check('unpaid checkout credits nothing', (await hook(body, sign(body))) === 200);
+  await fetch(`http://localhost:54321/__e2e/stripe-pay/${ss.id}`);
+  check('paid checkout webhook accepted', (await hook(body, sign(body))) === 200);
+  await hook(body, sign(body)); // Stripe retries
   await page.goto(`${BASE}/me?paid=1`); await page.waitForTimeout(1500); await closePopups();
   const after = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
   check('1,000 coins credited exactly once', after === before + 1000, `${before} → ${after}`);
@@ -351,7 +375,7 @@ await step('free dish search', async () => {
   const free = await (await fetch('http://localhost:54321/__e2e/free-calls')).json();
   check('no AI used for search (costs nothing)', !free.anthropic.includes('web_search') && free.wiki >= 1 && free.youtube.length >= 1, JSON.stringify(free));
   await page.evaluate(() => window.scrollTo(0, 0));
-  check('5 cooking channels, YouTube only, not numbered', (await page.locator('a.channel').count()) === 5 && (await page.locator('a.channel[href^="https://www.youtube.com/@"]').count()) === 5 && (await page.locator('.rank, a.social.ig').count()) === 0);
+  check('3 cooking channels (no Nick DiGiovanni or Joshua Weissman), YouTube only, not numbered', (await page.locator('a.channel').count()) === 3 && (await page.getByText(/DiGiovanni|Weissman/).count()) === 0 && (await page.locator('a.channel[href^="https://www.youtube.com/@"]').count()) === 3 && (await page.locator('.rank, a.social.ig').count()) === 0);
 });
 await step('activity backend', async () => {
   await page.waitForTimeout(4500); await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));

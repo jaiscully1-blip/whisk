@@ -6,6 +6,7 @@ import Icon, { Coin } from '@/components/Icon';
 import { usePantry } from '@/components/usePantry';
 import { checkRecipe } from '@/lib/recipes/match';
 import { fmt } from '@/lib/game';
+import { ServingsX, IngredientList, StepList } from '@/components/RecipeSteps';
 
 const TIER = { 1: ['Small', 'var(--fresh-soft)', 'var(--fresh)'], 2: ['Medium', 'var(--warn-soft)', 'var(--warn)'], 3: ['Big', 'var(--pop-soft)', 'var(--bad)'] };
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
@@ -23,6 +24,7 @@ export default function Compete() {
   const [challenges, setChallenges] = useState(null);
   const [quest, setQuest] = useState(null);
   const [logging, setLogging] = useState(null);
+  const [factors, setFactors] = useState({});   // servings × per challenge card
   const [bingo, setBingo] = useState(null);
   const flipped = ui.flipped || {};
 
@@ -96,7 +98,7 @@ export default function Compete() {
             </span>
             <span style={{ fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 20, display: 'block', margin: '8px 0' }}>{r.title}</span>
             <span className="row" style={{ flexWrap: 'nowrap' }}><span style={{ fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap' }}>Difficulty {c.score}/100</span><span className="bar" style={{ flex: 1 }}><i style={{ width: `${c.score}%`, background: ink }} /></span></span>
-            <span className="row" style={{ marginTop: 8 }}><span className="chip">{hrs(r.minutes)}</span><span className="chip">{r.cuisine}</span><span className="chip">{r.steps.length} steps</span></span>
+            <span className="row" style={{ marginTop: 8 }}><span className="chip">{hrs(r.minutes)}</span><span className="chip">{r.cuisine}</span><span className="chip">{r.steps.length} steps</span><span className="chip">Serves {r.servings}</span></span>
             {c.completed_at ? <span className="row" style={{ color: 'var(--fresh)', fontWeight: 800, marginTop: 10 }}><Icon name="check" />Done · coins added</span>
               : <span className="row muted" style={{ marginTop: 10, fontSize: 12, fontWeight: 800 }}><Icon name="flip" size={16} />Tap to flip for instructions</span>}
           </>
@@ -104,18 +106,19 @@ export default function Compete() {
         if (c.completed_at) return <div key={c.id} className="card">{front}</div>;
         const complete = () => { const fz = pantry ? checkRecipe(r, pantry).frozen : []; if (fz.length) { say(`Defrost ${fz.map((p) => p.name).join(', ')} first`); return; } setLogging({ c, r }); };
         return (
-          <div key={c.id} className={`flip ${on ? 'on' : ''}`}>
+          <div key={c.id} className={`flip tall ${on ? "on" : ""}`}>
             <div className="flip-in">
               <button className="card face" onClick={() => flip(c.id)} aria-label={`${r.title}: show instructions`} tabIndex={on ? -1 : 0} aria-hidden={on}>{front}</button>
-              <div className="card face back stack" style={{ gap: 8 }} aria-hidden={!on} onClick={(e) => { if (!e.target.closest('a,button')) complete(); }}>
+              <div className="card face back stack" style={{ gap: 8 }} aria-hidden={!on} onClick={(e) => { if (e.target.closest('.flip-cta')) complete(); }}>
                 <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
                   <b style={{ fontFamily: 'var(--f-display)', fontSize: 18 }}>{r.title}</b>
                   <button className="btn ghost sm" style={{ width: 40, padding: 0 }} onClick={() => flip(c.id)} aria-label="Flip back" tabIndex={on ? 0 : -1}><Icon name="flip" size={18} /></button>
                 </div>
-                <div className="row">{r.key.map((k) => <span key={k} className="chip have">{k}</span>)}</div>
-                <ol style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>{r.steps.map(([t], i) => <li key={i}>{t}</li>)}</ol>
-                <span className="src">Full recipe: <a href={r.url} target="_blank" rel="noopener noreferrer" tabIndex={on ? 0 : -1}>{r.source}</a></span>
-                <button className="btn" onClick={complete} tabIndex={on ? 0 : -1}><Icon name="camera" size={18} />Tap to add photo &amp; complete</button>
+                <ServingsX base={r.servings} factor={factors[c.id] || 1} onChange={(f) => setFactors((x) => ({ ...x, [c.id]: f }))} id={`sx-${c.id}`} />
+                <IngredientList r={r} factor={factors[c.id] || 1} />
+                <StepList r={r} factor={factors[c.id] || 1} compact />
+                <span className="src">Full page with photos: <a href={r.url} target="_blank" rel="noopener noreferrer" tabIndex={on ? 0 : -1}>{r.source}</a></span>
+                <button className="btn flip-cta" tabIndex={on ? 0 : -1}><Icon name="camera" size={18} />Cooked it? Add a photo &amp; complete</button>
               </div>
             </div>
           </div>

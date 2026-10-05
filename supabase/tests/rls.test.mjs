@@ -424,6 +424,20 @@ await expectFail('signed-out visitors cannot reset anything', null, `select publ
 check('a phone game sees none of another player\'s pantry', (await as(P, () => db.query(`select count(*)::int n from pantry_items where user_id = '${D}'`))).rows[0].n === 0);
 await db.exec(`select set_config('request.jwt.claims', '', false)`);
 
+// ================= 0014 + 0015: full recipes, free chef coat, pilot coat, cook = +20 XP =================
+try { for (const f of ['0014_recipe_steps.sql', '0015_free_chef_coat_pilot_coat_xp.sql']) { await db.exec(fs.readFileSync('./supabase/migrations/' + f, 'utf8')); await db.exec(fs.readFileSync('./supabase/migrations/' + f, 'utf8')); } check('0014 + 0015 run (twice)', true); }
+catch (e) { check('0014 + 0015 run (twice)', false, e.message); }
+const rx = (await db.query(`select data from web_recipes where id = 'www-budgetbytes-com-chili-cheese-beef-n-mac'`)).rows[0].data;
+check('recipes carry every measured ingredient and beginner steps', rx.ingredients.length >= 8 && rx.steps.length >= 8 && rx.steps.some(([t]) => /\[\[[^\]]+\]\]/.test(t)));
+check('the chef coat is out of the shop; the pilot coat is in at 1,500', (await db.query(`select active from items where id = 'top-white-chef-coat'`)).rows[0].active === false && (await db.query(`select price from items where id = 'top-airline-pilot-coat' and active`)).rows[0]?.price === 1500);
+const Q = '77777777-7777-7777-7777-777777777777';
+await db.exec(`insert into auth.users (id, email) values ('${Q}', null)`);
+check('new players start with an empty pantry', (await db.query(`select count(*)::int n from pantry_items where user_id = '${Q}'`)).rows[0].n === 0);
+await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${Q}/x20.jpg')`);
+const x20 = (await as(Q, () => db.query(`select public.log_meal('www-budgetbytes-com-picadillo', '${Q}/x20.jpg') as r`))).rows[0].r;
+check('cooking a recipe and sending the photo: +20 XP for the cook', (await db.query(`select amount from xp_events where user_id = '${Q}' and kind = 'cook'`)).rows[0]?.amount === 20, JSON.stringify(x20));
+await expectFail('nobody can buy the retired chef coat', Q, `select public.buy_item('top-white-chef-coat')`);
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

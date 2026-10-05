@@ -114,7 +114,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
     return () => document.removeEventListener('visibilitychange', onHide);
   }, [flushUi]);
 
-  // Every time the app opens it starts on Cook (except coming back from the Bitcoin checkout). Scroll spots are remembered.
+  // Every time the app opens it starts on Cook (except coming back from the coin checkout). Scroll spots are remembered.
   const restored = useRef(false);
   useEffect(() => {
     if (!restored.current) {

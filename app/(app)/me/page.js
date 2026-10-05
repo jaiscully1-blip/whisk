@@ -17,7 +17,7 @@ const RARITY_ORDER = ['common', 'rare', 'epic', 'exotic', 'mythic'];
 const EMPTY = { top: 'No top', hat: 'Classic toque', glasses: 'None', shoes: 'Bare feet', acc: 'Nothing' };
 
 export default function Me() {
-  const { supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, email, say, ui, setUi, openPrivacy } = useWhisk();
+  const { supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, say, ui, setUi, openPrivacy } = useWhisk();
   const [items, setItems] = useState([]);
   const [owned, setOwned] = useState(new Set());
   const [buying, setBuying] = useState(null);
@@ -30,10 +30,7 @@ export default function Me() {
   const [editing, setEditing] = useState(false);
   const [editTakeout, setEditTakeout] = useState(false);
   const [resetting, setResetting] = useState(false);
-  const [resetConfirmed, setResetConfirmed] = useState(false);
-  // Back from confirming with Google → straight to step 2 of the reset.
-  useEffect(() => { if (/[?&]reset=1/.test(window.location.search)) { setResetConfirmed(true); setResetting(true); setTimeout(() => window.history.replaceState(null, '', '/me'), 0); /* after the app shell has seen ?reset=1 */ } }, []);
-  const [recipe, setRecipe] = useState(null);
+    const [recipe, setRecipe] = useState(null);
   const [pantry] = usePantry();
   const [nameDraft, setNameDraft, clearName] = useDraft('nm', profile?.display_name || '');
   const [takeout, setTakeout, clearTakeout] = useDraft('takeout', String(profile?.takeout_price ?? 15));
@@ -244,11 +241,14 @@ export default function Me() {
           <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Cookies &amp; privacy</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />
         </button>
         {profile?.is_admin && <Link href="/admin" className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', textDecoration: 'none', color: 'var(--fg)', flexWrap: 'nowrap' }}><Icon name="compete" /><span style={{ flex: 1, fontWeight: 700 }}>Backend dashboard</span><Icon name="chevron" /></Link>}
-        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="me" /><span style={{ flex: 1, fontWeight: 700, overflowWrap: 'anywhere' }}>{email}</span></div>
-        <form action="/auth/signout" method="post" style={{ padding: '12px 16px' }}><button className="btn ghost wide" type="submit">Sign out</button></form>
+        <div className="stack" style={{ padding: '12px 16px', gap: 4 }}>
+          <span className="row" style={{ gap: 8, fontWeight: 700, flexWrap: 'nowrap' }}><Icon name="me" />Your game is saved on this phone</span>
+          <span className="desc">No account needed. Deleting the app or clearing this browser’s data starts a new game.</span>
+          <span className="desc" style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Player ID: <span className="mono" style={{ userSelect: 'all' }}>{profile?.id}</span></span>
+        </div>
       </div>
       <button onClick={() => setResetting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, color: 'var(--muted)', fontSize: 11, textDecoration: 'underline', padding: 8, minHeight: 32 }}>Reset game</button>
-      {resetting && <ResetSheet confirmed={resetConfirmed} onClose={() => { setResetting(false); setResetConfirmed(false); }} />}
+      {resetting && <ResetSheet onClose={() => setResetting(false)} />}
       {recipe && <RecipeSheet recipe={recipe} pantry={pantry || []} onClose={() => setRecipe(null)} />}
       {buying && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setBuying(null); }}>

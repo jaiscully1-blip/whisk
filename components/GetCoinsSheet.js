@@ -29,7 +29,8 @@ export default function GetCoinsSheet({ onClose }) {
           <h2 style={{ fontSize: 26 }}>Get coins</h2>
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
         </div>
-        <p className="muted" style={{ margin: 0 }}>Pay with Bitcoin. Coins land in your account as soon as the payment confirms.</p>
+        <p className="muted" style={{ margin: 0 }}>Pay with Bitcoin. Coins land in your game as soon as the payment confirms.</p>
+        <p className="err" style={{ margin: 0, fontSize: 14 }}>Coins live on this phone. If you delete the app or clear this browser’s data, they’re gone and can’t be moved.</p>
         {packs === null ? <p className="muted">Loading…</p> : (
           <div className="grid2">
             {packs.map((p) => (

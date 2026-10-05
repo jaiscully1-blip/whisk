@@ -31,7 +31,7 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on sequences to anon, authenticated;
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
-for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql', '0012_dishes_and_stamp_coins.sql', '0013_google_sign_in.sql']) {
+for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql', '0012_dishes_and_stamp_coins.sql', '0013_one_phone_play.sql']) {
   await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8').replace('create extension if not exists pgcrypto;', ''));
 }
 await db.exec(`insert into auth.users (id, email) values ('${E2E_USER.id}', '${E2E_USER.email}')`);
@@ -67,7 +67,7 @@ function session(uid) {
 const userObj = (uid) => ({ id: uid, aud: 'authenticated', role: 'authenticated', email: E2E_USER.email, email_confirmed_at: '2026-01-01T00:00:00Z', app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, identities: [], created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' });
 const uidFrom = (req) => tokens.get((req.headers.authorization || '').replace(/^Bearer /, '')) || null;
 const refreshes = new Set();
-const oauthCodes = new Set(), authorizeCalls = [], amrByUid = new Map();
+const amrByUid = new Map(); let anonSignups = 0;
 
 // ---------- PostgREST subset ----------
 function splitTop(s) { const out = []; let depth = 0, cur = ''; for (const ch of s) { if (ch === '(') depth++; if (ch === ')') depth--; if (ch === ',' && !depth) { out.push(cur.trim()); cur = ''; } else cur += ch; } if (cur.trim()) out.push(cur.trim()); return out; }
@@ -244,23 +244,16 @@ const server = http.createServer(async (req, res) => {
         if (b.email !== E2E_USER.email || b.password !== E2E_USER.password) return send(res, 400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' });
         const s = session(E2E_USER.id); refreshes.add(s.refresh_token); return send(res, 200, s);
       }
-      if (url.searchParams.get('grant_type') === 'pkce') {
-        // Google came back with a one-time code: only codes this mock handed out work, and only once
-        if (!oauthCodes.delete(b.auth_code) || !b.code_verifier) return send(res, 400, { code: 400, error_code: 'flow_state_not_found', msg: 'invalid flow state' });
-        amrByUid.set(E2E_USER.id, [{ method: 'oauth', timestamp: Math.floor(Date.now() / 1000) }]);
-        const s = session(E2E_USER.id); refreshes.add(s.refresh_token); return send(res, 200, s);
-      }
       if (url.searchParams.get('grant_type') === 'refresh_token') { const s = session(E2E_USER.id); refreshes.add(s.refresh_token); return send(res, 200, s); }
       return send(res, 400, { msg: 'unsupported grant' });
     }
-    if (path === '/auth/v1/authorize') {
-      // Stand-in for Google: the "account picker" goes straight back with a one-time code
-      authorizeCalls.push(Object.fromEntries(url.searchParams));
-      if (url.searchParams.get('provider') !== 'google') return send(res, 400, { msg: 'provider not enabled' });
-      const back = new URL(url.searchParams.get('redirect_to')); const code = randomUUID(); oauthCodes.add(code); back.searchParams.set('code', code);
-      res.writeHead(302, { Location: back.toString() }); return res.end();
+    if (path === '/auth/v1/signup' && req.method === 'POST') {
+      // "Start playing": Supabase anonymous sign-in (no email, no password). The test player is the anonymous user here.
+      const b = json() || {}; if (b.email || b.password) return send(res, 422, { code: 422, error_code: 'email_provider_disabled', msg: 'Email signups are disabled' });
+      anonSignups++; amrByUid.set(E2E_USER.id, [{ method: 'anonymous', timestamp: Math.floor(Date.now() / 1000) }]);
+      const s = session(E2E_USER.id); s.user = { ...s.user, email: '', is_anonymous: true, app_metadata: { provider: 'anonymous', providers: ['anonymous'] } }; refreshes.add(s.refresh_token); return send(res, 200, s);
     }
-    if (path === '/__e2e/authorize-calls') return send(res, 200, authorizeCalls);
+    if (path === '/__e2e/anon-signups') return send(res, 200, { n: anonSignups });
     if (path === '/auth/v1/user') { const uid = uidFrom(req); return uid ? send(res, 200, userObj(uid)) : send(res, 401, { code: 401, error_code: 'bad_jwt', msg: 'invalid JWT' }); }
     if (path === '/auth/v1/logout') return send(res, 204, null);
     if (path === '/anthropic/v1/messages' && req.method === 'POST') return send(res, 200, anthropic(json()));

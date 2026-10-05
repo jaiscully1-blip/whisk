@@ -24,14 +24,12 @@ About 20 minutes. Do the steps in order. **Never paste keys into chat, screensho
    - Make yourself an admin so you can open **/admin** (the backend dashboard). In a new query, with your email:
      `update public.profiles set is_admin = true where id = (select id from auth.users where email = 'YOUR-EMAIL');`
    - Check: **Table Editor** shows `items` with 105 rows.
-3. **Google sign-in (the only way in: no passwords).**
-   - Run `supabase/setup/6-google-sign-in.sql` (reset now confirms with Google instead of a password).
-   - console.cloud.google.com → pick or create a project → **APIs & Services → OAuth consent screen** (may be called **Google Auth Platform**) → **Get started**: app name *Whisk*, your email as support + contact → Audience **External** → Create. Then **Audience → Publish app** so anyone can sign in.
-   - **Clients → Create client** → *Web application*. **Authorized JavaScript origins:** your Vercel address (and `http://localhost:3000`). **Authorized redirect URIs:** `https://YOUR-PROJECT-REF.supabase.co/auth/v1/callback` (Supabase shows this exact address on its Google page). Create → copy the **Client ID** and **Client secret**.
-   - Supabase → **Authentication → Sign In / Providers → Google** → turn on, paste both → Save. (The secret goes only here, never in chat or Vercel.)
-   - Supabase → **Authentication → URL Configuration → Redirect URLs**: add `https://YOUR-APP.vercel.app/auth/callback` (the `/**` line covers it if you added that).
-   - Accounts you already made with the same Gmail address are joined automatically, so your admin switch stays.
-4. **Email confirmation (old accounts only).** **Authentication → Sign In / Providers → Email**: make sure **Confirm email** is ON (it's on by default).
+3. **One phone, no account (the only way in).**
+   - Run `supabase/setup/6-one-phone-play.sql` (reset no longer needs a password).
+   - **Authentication → Sign In / Providers** → turn on **Allow anonymous sign-ins** → Save. "Start playing" makes a private game for that phone; Row Level Security still keeps every player's data to themselves. Supabase limits new games to 30 an hour per network by default.
+   - Admin: open the live app on your phone → **Start playing** → **Me → Settings** shows your **Player ID**. In SQL Editor: `update public.profiles set is_admin = true where id = 'PASTE-PLAYER-ID' returning id, is_admin;`
+   - Google sign-in, email templates and passwords aren't used. You can leave those settings alone.
+4. **Email confirmation (not used any more; leave as is).** **Authentication → Sign In / Providers → Email**: make sure **Confirm email** is ON (it's on by default).
 4. **Passwords.** **Authentication → Policies / Passwords** (the name varies): minimum length **8**. If you see **Leaked password protection**, turn it on.
 5. **Make confirm links work on any device.** **Authentication → Emails → Templates → Confirm signup**. Replace the link in the template with:
    ```

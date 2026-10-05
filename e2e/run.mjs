@@ -43,22 +43,17 @@ const closePopups = async () => { await page.locator('.popup-scrim').first().wai
 
 await step('signed-out redirect', async () => { await page.goto(`${BASE}/home`); check('signed-out /home redirects to /login', page.url().includes('/login')); });
 await step('log in', async () => {
-  check('no password anywhere: just Google', (await page.locator('input[type=password], #password, #email').count()) === 0 && (await page.getByRole('button', { name: 'Continue with Google' }).count()) === 1);
+  check('no account: no email, no password, no Google', (await page.locator('input[type=password], input[type=email], #email, #password').count()) === 0 && (await page.getByText(/Google/).count()) === 0 && (await page.getByRole('button', { name: 'Start playing' }).count()) === 1);
   check('a plain-words disclaimer says what is recorded', /records what you do in the app/.test(await page.locator('.disclaimer').innerText()));
-  check('Google stays off until you Accept or Decline', await page.getByRole('button', { name: 'Continue with Google' }).isDisabled());
+  check('Start stays off until you Accept or Decline', await page.getByRole('button', { name: 'Start playing' }).isDisabled());
   await page.getByRole('radio', { name: 'Decline' }).click();
   check('Decline says you can still play, nothing recorded', /still play everything, and nothing you do is recorded/.test(await page.locator('.disclaimer').innerText()));
   await page.getByRole('radio', { name: 'Accept' }).click();
   await shot('00-login');
-  await page.getByRole('button', { name: 'Continue with Google' }).click(); await page.waitForURL('**/cook', { timeout: 15000 });
-  const az = (await (await fetch('http://localhost:54321/__e2e/authorize-calls')).json()).at(-1);
-  check('Google sign-in (PKCE) lands on Cook', az?.provider === 'google' && !!az.code_challenge && /\/auth\/callback\?next=%2Fcook|\/auth\/callback\?next=\/cook/.test(az.redirect_to), JSON.stringify(az));
+  await page.getByRole('button', { name: 'Start playing' }).click(); await page.waitForURL('**/cook', { timeout: 15000 });
+  check('Start playing makes a phone-only game and lands on Cook', (await (await fetch('http://localhost:54321/__e2e/anon-signups')).json()).n === 1);
   await page.locator('.coach-bubble.on').waitFor({ timeout: 8000 });
-  check('no second cookie popup: the Accept from sign-in was saved to the account', (await page.locator('.cc-scrim').count()) === 0);
-  // a callback can never send you to another site
-  const evil = await fetch('http://localhost:54321/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(`${BASE}/auth/callback?next=//evil.example/x`), { redirect: 'manual' });
-  const cb = await fetch(evil.headers.get('location'), { redirect: 'manual' });
-  check('sign-in callback ignores off-site "next" links', new URL(cb.headers.get('location'), BASE).origin === BASE, cb.headers.get('location'));
+  check('no second cookie popup: the Accept from the start screen was saved to the game', (await page.locator('.cc-scrim').count()) === 0);
   // first-time walkthrough: a story (Chef shows the new cook around), arrow + words, touch what's lit up
   await page.locator('.coach-bubble.on').waitFor({ timeout: 8000 });
   const bubbleText = async () => (await page.locator('.coach-bubble p').innerText()).trim();
@@ -289,11 +284,8 @@ await step('me settings', async () => {
   await page.waitForTimeout(600);
   check('takeout saves and goes back to just the number', (await page.locator('form:has(#takeout) button').count()) === 0 && (await page.inputValue('#takeout')) === '18');
   await page.getByRole('button', { name: 'Reset game' }).click();
-  check('reset asks you to confirm with Google first (step 1 of 2)', await page.getByText('Step 1 of 2').isVisible() && (await page.locator('[aria-label="Reset game"] input[type=password]').count()) === 0);
-  await page.getByRole('button', { name: 'Confirm with Google' }).click();
-  await page.getByText('Step 2 of 2').waitFor({ timeout: 15000 });
-  check('back from Google: step 2, type RESET to erase', page.url().endsWith('/me') && await page.getByRole('button', { name: 'Reset my game' }).isDisabled());
-  await page.fill('#rs-word', 'RESET');
+  check('reset: type RESET (no password, no Google)', (await page.locator('[aria-label="Reset game"] input[type=password]').count()) === 0 && await page.getByRole('button', { name: 'Reset my game' }).isDisabled());
+  await page.fill('#rs-word', 'reset');
   check('typing RESET unlocks the button', await page.getByRole('button', { name: 'Reset my game' }).isEnabled());
   await page.locator('[aria-label="Reset game"]').getByRole('button', { name: 'Cancel' }).last().click();
 });

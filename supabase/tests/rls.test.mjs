@@ -410,16 +410,18 @@ check('dish meals carry bingo words for their country', /Mexican/.test(bingoCuis
 const rec = (await as(C, async () => db.query(`select public.log_meal('www-budgetbytes-com-picadillo', '${await photo(C, 'r12')}') as r`))).rows[0].r;
 check('recipe meals still log as before', !!rec.meal_id && rec.stamp === null);
 
-// ================= 0013: Google sign-in; reset confirms with a fresh Google sign-in =================
-try { await db.exec(fs.readFileSync('./supabase/migrations/0013_google_sign_in.sql', 'utf8')); await db.exec(fs.readFileSync('./supabase/migrations/0013_google_sign_in.sql', 'utf8')); check('0013 runs (twice)', true); }
+// ================= 0013: one phone, no account (anonymous sign-in); reset is just your own game =================
+try { await db.exec(fs.readFileSync('./supabase/migrations/0013_one_phone_play.sql', 'utf8')); await db.exec(fs.readFileSync('./supabase/migrations/0013_one_phone_play.sql', 'utf8')); check('0013 runs (twice)', true); }
 catch (e) { check('0013 runs (twice)', false, e.message); }
-await db.exec(`select set_config('request.jwt.claims', '{"amr":[{"method":"oauth","timestamp":${Math.floor(Date.now() / 1000) - 3600}}]}', false)`);
-await expectFail('an old Google sign-in does not unlock reset', D, `select public.reset_game()`);
-await db.exec(`select set_config('request.jwt.claims', '{"amr":[{"method":"oauth","timestamp":${Math.floor(Date.now() / 1000) - 30}}]}', false)`);
-await as(D, () => db.query(`select public.reset_game()`));
-check('a fresh Google sign-in unlocks reset (coins kept)', (await db.query(`select xp, coins from profiles where id = '${D}'`)).rows[0].xp === 0);
-await db.exec(`select set_config('request.jwt.claims', '{"amr":[{"method":"token_refresh","timestamp":${Math.floor(Date.now() / 1000) - 5}}]}', false)`);
-await expectFail('just being signed in (token refresh) does not unlock reset', D, `select public.reset_game()`);
+const P = '99999999-9999-9999-9999-999999999999';
+await db.exec(`insert into auth.users (id, email) values ('${P}', null)`);   // "Start playing": an anonymous user, no email
+check('a new phone game gets a profile with 1,500 coins (no email needed)', (await db.query(`select coins from profiles where id = '${P}'`)).rows[0]?.coins === 1500);
+await db.exec(`insert into pantry_items (user_id, name, category) values ('${P}', 'Eggs', 'Dairy & Eggs'), ('${D}', 'Keep me', 'Produce')`);
+await db.exec(`select set_config('request.jwt.claims', '{"amr":[{"method":"anonymous","timestamp":${Math.floor(Date.now() / 1000) - 86400}}]}', false)`);
+await as(P, () => db.query(`select public.reset_game()`));
+check('reset erases only your own game', (await db.query(`select count(*)::int n from pantry_items where user_id = '${P}'`)).rows[0].n === 0 && (await db.query(`select count(*)::int n from pantry_items where user_id = '${D}' and name = 'Keep me'`)).rows[0].n === 1);
+await expectFail('signed-out visitors cannot reset anything', null, `select public.reset_game()`);
+check('a phone game sees none of another player\'s pantry', (await as(P, () => db.query(`select count(*)::int n from pantry_items where user_id = '${D}'`))).rows[0].n === 0);
 await db.exec(`select set_config('request.jwt.claims', '', false)`);
 
 const fails = results.filter((r) => r[0] === 'FAIL');

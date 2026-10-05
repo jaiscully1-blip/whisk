@@ -1,16 +1,14 @@
--- Whisk setup step 6: 0013_google_sign_in.sql
+-- Whisk setup step 6: 0013_one_phone_play.sql
 -- Paste ALL of this into Supabase → SQL Editor → New query → Run. Safe to run more than once.
 
--- 0013: sign in with Google (no passwords). Resetting your game now asks you to confirm with Google again
--- (a fresh Google sign-in in the last 10 minutes), instead of a password + emailed code. Safe to run more than once.
+-- 0013: one phone, no account. Players start with "Start playing" (Supabase anonymous sign-in: no email, no password),
+-- so there's no password or email code to confirm a reset with any more. Reset is your own game on your own phone:
+-- the app asks you to type RESET, and the database only lets you reset your own rows. Safe to run more than once.
 create or replace function public.reset_game()
 returns void language plpgsql security definer set search_path = public, pg_temp as $$
-declare uid uuid := auth.uid(); amr jsonb := coalesce(auth.jwt() -> 'amr', '[]'::jsonb); ok boolean;
+declare uid uuid := auth.uid();
 begin
   if uid is null then raise exception 'not signed in'; end if;
-  select exists (select 1 from jsonb_array_elements(amr) a where a ->> 'method' in ('otp', 'magiclink', 'oauth')
-                 and (a ->> 'timestamp')::bigint > extract(epoch from now() - interval '10 minutes')) into ok;
-  if not ok then raise exception 'confirm it''s you first'; end if;
   delete from pantry_items where user_id = uid;
   delete from shopping_items where user_id = uid;
   delete from saved_recipes where user_id = uid;

@@ -8,7 +8,7 @@ About 20 minutes. Do the steps in order. **Never paste keys into chat, screensho
 
 1. Open your **whisk** project at supabase.com.
 2. **Run the SQL.** Left menu → **SQL Editor** → **New query**.
-   - **Shortcut (already ran 0001 + 0002):** run the files in `supabase/setup/` in number order, each in its own new query: `1-…` to `4-…`, then `5-check.sql` (every column should say **true**), then `6-one-phone-play.sql` and `7-recipes-shop-xp.sql`. (`8-…` is only for Apple Pay, see 3c.)
+   - **Shortcut (already ran 0001 + 0002):** run the files in `supabase/setup/` in number order, each in its own new query: `1-…` to `4-…`, then `5-check.sql` (every column should say **true**), then `6-one-phone-play.sql`, `7a-…`, `7b-…`, `7c-…` and `7d-check.sql` (every column **true**). (`8-…` is only for Apple Pay, see 3c.)
    - Open `supabase/migrations/0001_whisk_schema.sql` from the repo on GitHub, copy all of it, paste, click **Run**. You should see "Success. No rows returned".
    - New query again → paste all of `supabase/migrations/0002_whisk_seed.sql` → **Run**. This adds the 105 shop items and 26 challenge meals.
    - New query again → paste all of `supabase/migrations/0003_whisk_features.sql` → **Run**. This adds daily quests, cuisine bingo, streak freezes, the weekly goal, takeout price and meal nutrition. (Already ran 0001 and 0002? Just run 0003. It is safe to run more than once.)

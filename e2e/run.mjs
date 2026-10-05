@@ -87,18 +87,20 @@ await step('log in', async () => {
   await nextBtn.click(); await waitText(/Nobody here does them for the coins/);
   await nextBtn.click(); await waitText(/Everybody does them for the coins/);
   await nextBtn.click(); await page.waitForURL('**/me'); await waitText(/start with 1,500/);
-  await nextBtn.click(); await waitText(/Tap it/);
-  check('walkthrough reaches the shop with the starting coins', /costs exactly 1,500/.test(await bubbleText()));
+  await nextBtn.click(); await waitText(/Pick your first shirt/);
+  check('walkthrough reaches the shop: pick any of the six 1,500 shirts', /exactly 1,500/.test(await bubbleText()) && /pilot coat, polo, lifeguard, Hawaiian, basketball or construction/.test(await bubbleText()));
+  const lit = await page.locator('.coach-ring').boundingBox(); const t6 = await page.locator('.closet-grid .tile.locked').filter({ hasText: '1,500' }).nth(5).boundingBox(); const t1 = await page.locator('.closet-grid .tile.locked').filter({ hasText: '1,500' }).first().boundingBox();
+  check('all six starter shirts are lit up together', !!lit && t1.x >= lit.x - 1 && t1.y >= lit.y - 1 && t6.x + t6.width <= lit.x + lit.width + 1 && t6.y + t6.height <= lit.y + lit.height + 1);
   await shot('00c-coach-shop');
   const coins0 = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
-  await page.locator('.closet-grid .tile.locked').filter({ hasText: '1,500' }).first().click();
+  await page.locator('.closet-grid .tile.locked').filter({ hasText: 'Lifeguard Shirt' }).click();
   await waitText(/Tap Buy/);
   check('player taps the shirt themselves; arrow moves to Buy', await arrowNear('[data-tour="buy"]'));
   await page.locator('[data-tour="buy"]').click();
   await waitText(/Sharp/);
   await page.waitForFunction((c0) => Number((document.querySelectorAll('header .pill')[1]?.textContent || '').replace(/\D/g, '')) !== c0, coins0, { timeout: 6000 }).catch(() => {});
   const coins1 = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
-  check('the shirt is bought with the 1,500 starting coins', coins0 - coins1 === 1500, `${coins0} → ${coins1}`);
+  check('the shirt you picked (Lifeguard) is bought with the 1,500 starting coins', coins0 - coins1 === 1500 && (await page.locator('.closet-grid .tile', { hasText: 'Lifeguard Shirt' }).locator('.tprice').count()) === 0, `${coins0} → ${coins1}`);
   // spin your cook during the tour
   const st = await page.locator('[data-tour="stage"]').boundingBox();
   await page.mouse.move(st.x + st.width / 2, st.y + st.height / 2); await page.mouse.down(); await page.mouse.move(st.x + st.width / 2 + 120, st.y + st.height / 2, { steps: 8 }); await page.mouse.up();
@@ -238,7 +240,7 @@ await step('me', async () => {
   check('Airline Pilot Coat is in the shop for 1,500', /Airline Pilot Coat\s*1,500/.test(closet) || (await page.locator('.closet-grid .tile', { hasText: 'Airline Pilot Coat' }).count()) === 1);
   check('accessory slot icon is a bag, not a wooden spoon', (await page.getByText(/wooden spoon/i).count()) === 0 && (await page.locator('.slotbar [role=tab]').last().getAttribute('aria-label')).startsWith('Accessory'));
   check('album has all 193 UN members, 20 a page', (await page.locator('.album .stamp').count()) === 193 && (await page.locator('.album-page').count()) === 10 && (await page.locator('.album-page').first().locator('.stamp').count()) === 20);
-  check('pages are numbered', (await page.locator('.album-num').first().innerText()).includes('1'));
+  check('pages are numbered', (await page.locator('.album-num').first().textContent()).includes('1'));
   check('stamps stay grey until 10 meals', (await page.locator('.album .stamp.done').count()) === 0);
   check('cooking Mexican counts toward the Mexico stamp', /Mexico, [1-9] of 10/.test(await page.locator('[aria-label^="Mexico, "]').getAttribute('aria-label')));
   const x0 = await page.locator('.album-pages').evaluate((e) => e.scrollLeft);

@@ -7,6 +7,10 @@ import { useRouter, usePathname } from 'next/navigation';
 // (spin your cook, flip a card, type a search) — the tutorial waits. Next moves on, or does the step for you.
 // Jokes are set up on one card and land when you tap Next. Written short, for kids and anyone new to phone games.
 const $ = (sel) => (typeof sel === 'function' ? sel() : document.querySelector(sel));
+// The six 1,500-coin starter tops (Airline Pilot Coat, Polo, Lifeguard, Hawaiian, Basketball, Construction): pick any one.
+const tilePrice = (el) => Number((el.querySelector('.tprice')?.textContent || '').replace(/\D/g, ''));
+const starterTops = () => [...document.querySelectorAll('.closet-grid .tile.locked')].filter((el) => tilePrice(el) === 1500).slice(0, 6);
+const showTops = async () => { const t = document.querySelector('.slotbar [role=tab]'); if (t && t.getAttribute('aria-selected') !== 'true') { t.click(); await new Promise((r) => setTimeout(r, 120)); } };
 const cheapestLocked = () => [...document.querySelectorAll('.closet-grid .tile.locked')]
   .map((el) => ({ el, price: Number((el.querySelector('.tprice')?.textContent || '').replace(/\D/g, '')) })).filter((x) => x.price > 0).sort((a, b) => a.price - b.price)[0];
 
@@ -38,9 +42,9 @@ export const STEPS = [
   { page: '/compete', sel: '[data-tour="challenges"]', text: 'Weekly challenges pay coins. Nobody here does them for the coins.' },
   { page: '/compete', sel: '.nav a[href="/me"]', go: '/me', text: 'Everybody does them for the coins. Let’s go spend some. Tap Me.' },
   { page: '/me', sel: '[data-tour="coins"]', text: 'You start with 1,500 coins. Spend them like a professional.' },
-  { page: '/me', sel: () => cheapestLocked()?.el, buy: true, action: true, sheet: true, label: 'Do it for me',
-    text: (p) => `This shirt costs exactly ${p.toLocaleString('en-US')}. Very professional. Tap it.`,
-    next: () => cheapestLocked()?.el.click(), waitFor: () => !!$('[data-tour="buy"]') },
+  { page: '/me', sel: () => starterTops()[0], many: starterTops, before: showTops, buy: true, action: true, sheet: true, label: 'Pick for me',
+    text: (p) => `Pick your first shirt. Any of these six costs exactly ${p.toLocaleString('en-US')}: pilot coat, polo, lifeguard, Hawaiian, basketball or construction. Tap the one you like.`,
+    next: () => starterTops()[0]?.click(), waitFor: () => !!$('[data-tour="buy"]') },
   { page: '/me', sel: '[data-tour="buy"]', buy: true, action: true, sheet: true, label: 'Do it for me', text: 'Tap Buy. No refunds. Kitchen policy.',
     next: () => $('[data-tour="buy"]')?.click(), waitEvent: 'whisk:bought' },
   { page: '/me', sel: '[data-tour="stage"]', text: (_, bought) => (bought ? 'Sharp. That’s you, by the way. Drag your cook with a finger to spin around. Go on, show off.' : 'That’s you, by the way. Drag your cook with a finger to spin around.') },
@@ -80,6 +84,12 @@ export default function Tutorial({ coins = 0, onDone }) {
     const blocked = !step.sheet && !!document.querySelector('.scrim, .popup-scrim, .cc-scrim');
     setPaused((p) => (p === blocked ? p : blocked));
     if (!step.sel) { setRect(null); unlift(); return true; }
+    if (step.many) {   // several things to choose from: one lit-up area around all of them
+      const els = step.many(); if (!els.length) return false; unlift();
+      const rs = els.map((e) => e.getBoundingClientRect()); const x = Math.min(...rs.map((r) => r.left)), y = Math.min(...rs.map((r) => r.top));
+      const w = Math.max(...rs.map((r) => r.right)) - x, h = Math.max(...rs.map((r) => r.bottom)) - y;
+      setRect((o) => (o && o.x === x && o.y === y && o.w === w && o.h === h ? o : { x, y, w, h })); return true;
+    }
     const el = $(step.sel); if (!el) return false;
     if (lifted.current !== el) { unlift(); lifted.current = el; }
     if (!el.closest('.scrim') && !el.closest('.nav') && !el.classList.contains('coach-lift')) el.classList.add('coach-lift');
@@ -97,6 +107,7 @@ export default function Tutorial({ coins = 0, onDone }) {
     if (step.go && pathname === step.go && entered.current.path !== step.go) { setI(nextIndex(i)); return; }
     if (step.page && pathname !== step.page) { entered.current.path = step.page; router.push(step.page); return; }
     (async () => {
+      if (step.before) await step.before();
       if (step.buy && !step.waitEvent) { const c = cheapestLocked(); canBuy.current = !!c && c.price <= coins; if (c) price.current = c.price; if (!canBuy.current) { setI(nextIndex(i)); return; } }
       for (let t = 0; t < 40 && alive; t++) { if (!step.sel || $(step.sel)) break; await wait(100); }
       if (!alive) return;

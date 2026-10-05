@@ -6,6 +6,7 @@ const nextConfig = {
     // CSP is set per request (with a nonce) in middleware.js. These apply everywhere.
     return [
       { source: '/stamps/:file*', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] },
+      { source: '/thumbs/:file*', headers: [{ key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=2592000' }] },
       { source: '/sw.js', headers: [{ key: 'Cache-Control', value: 'no-cache' }] },
       {
         source: '/:path*',

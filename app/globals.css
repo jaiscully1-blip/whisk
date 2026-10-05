@@ -176,7 +176,7 @@ html { overscroll-behavior-y: contain; }
 .album .count { font-weight: 900; color: #B5651D; }
 .album-pages { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; margin: 10px -14px 0; -webkit-overflow-scrolling: touch; outline: none; }
 .album-pages::-webkit-scrollbar { display: none; }
-.album-page { flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; padding: 4px 14px 0; contain: layout paint; }
+.album-page { flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; padding: 4px 14px 0; contain: layout paint; content-visibility: auto; contain-intrinsic-size: auto 620px; }   /* off-screen pages are skipped until swiped to */
 .album-range { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #8A7F66; text-align: center; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .album-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 8px; }
 .album-num { text-align: center; font-family: var(--f-display); font-weight: 700; color: #8A7F66; margin-top: 12px; font-size: 14px; }

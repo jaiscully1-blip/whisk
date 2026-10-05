@@ -24,7 +24,6 @@ export default function Me() {
   const [busy, setBusy] = useState(false);
   const [getCoins, setGetCoins] = useState(false);
   const slot = ui.closetSlot || 'top';
-  const [thumbs, setThumbs] = useState({});
   const [meals, setMeals] = useState([]);
   const [history, setHistory] = useState([]);
   const [editing, setEditing] = useState(false);
@@ -61,18 +60,8 @@ export default function Me() {
   useEffect(() => { if (new URLSearchParams(window.location.search).get('paid') === '1') { say('Payment done · your coins are on the way'); window.history.replaceState(null, '', '/me'); const t = setInterval(refreshProfile, 15000); return () => clearInterval(t); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inSlot = useMemo(() => items.filter((i) => i.slot === slot).sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || a.sort - b.sort), [items, slot]);
-  useEffect(() => {
-    let alive = true;
-    import('@/lib/whisk3d/engine').then(async ({ ITEMS_BY_ID, renderThumb, CHEF_COAT }) => {
-      if (slot === 'top') { try { const url = renderThumb(CHEF_COAT); setThumbs((t) => ({ ...t, [CHEF_COAT.id]: url })); } catch {} }
-      for (const it of inSlot) {
-        if (!alive) return; const def = ITEMS_BY_ID[it.id]; if (!def) continue;
-        try { const url = renderThumb(def); setThumbs((t) => (t[it.id] ? t : { ...t, [it.id]: url })); } catch (e) { console.error(e); }
-        await new Promise((r) => setTimeout(r, 10));
-      }
-    });
-    return () => { alive = false; };
-  }, [inSlot]);
+  // Item pictures are pre-drawn files (public/thumbs, made by scripts/gen-thumbs.cjs): no 3D work on the phone.
+  const thumb = (id) => `/thumbs/${id}.webp`;
 
   const byId = useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
   const countryCounts = useMemo(() => { const m = new Map(); history.forEach((x) => { if (x.country) m.set(x.country, (m.get(x.country) || 0) + 1); }); return m; }, [history]);
@@ -152,7 +141,7 @@ export default function Me() {
       </div>
       <div className="closet-grid">
         <button onClick={() => equip(null)} aria-pressed={!outfit[slot]} className="card tile" style={{ borderColor: !outfit[slot] ? 'var(--accent)' : 'var(--line)' }}>
-          {slot === 'top' && thumbs['top-white-chef-coat'] ? <img src={thumbs['top-white-chef-coat']} alt="" width="64" height="64" /> : <span style={{ width: 64, height: 64, display: 'grid', placeItems: 'center', color: 'var(--muted)' }}><Icon name="x" size={28} /></span>}
+          {slot === 'top' ? <img src={thumb('top-white-chef-coat')} alt="" width="64" height="64" decoding="async" /> : <span style={{ width: 64, height: 64, display: 'grid', placeItems: 'center', color: 'var(--muted)' }}><Icon name="x" size={28} /></span>}
           <span className="tname">{EMPTY[slot]}</span>{(slot === 'top' || slot === 'hat') && <span className="tprice free">Free</span>}
         </button>
         {inSlot.map((it) => {
@@ -161,7 +150,7 @@ export default function Me() {
             <button key={it.id} onClick={() => (have ? equip(it.id) : setBuying(it))} aria-pressed={have ? on : undefined} className={`card tile ${have ? '' : 'locked'}`}
               aria-label={have ? `${it.name}${on ? ', wearing' : ''}` : `${it.name}, locked, ${fmt(it.price)} coins`}
               style={{ borderColor: on ? 'var(--accent)' : have ? `var(--${it.rarity})` : 'var(--line)', boxShadow: on ? 'inset 0 0 0 1px var(--accent)' : 'none' }}>
-              {thumbs[it.id] ? <img src={thumbs[it.id]} alt="" width="64" height="64" /> : <span style={{ height: 64 }} />}
+              <img src={thumb(it.id)} alt="" width="64" height="64" loading="lazy" decoding="async" />
               <span className="tname">{it.name}</span>
               {!have && <span className="row tprice"><Coin size={12} />{fmt(it.price)}</span>}
             </button>
@@ -254,7 +243,7 @@ export default function Me() {
       {buying && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setBuying(null); }}>
           <div className="sheet stack" role="dialog" aria-modal="true" aria-label={`Buy ${buying.name}`} style={{ alignItems: 'center', textAlign: 'center' }}>
-            {thumbs[buying.id] && <img src={thumbs[buying.id]} alt="" width="150" height="150" />}
+            <img src={thumb(buying.id)} alt="" width="150" height="150" decoding="async" />
             <span className="chip" style={{ background: `var(--${buying.rarity})`, color: '#fff', textTransform: 'uppercase', fontWeight: 800 }}>{buying.rarity}</span>
             <h2 style={{ fontSize: 26 }}>{buying.name}</h2>
             <p className="muted" style={{ margin: 0 }}>You have {fmt(profile?.coins)} coins.</p>

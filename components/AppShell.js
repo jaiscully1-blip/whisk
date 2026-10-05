@@ -207,6 +207,12 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
     return true;
   }, [supabase, say]);
   const savePrivacyRef = useRef(savePrivacy); savePrivacyRef.current = savePrivacy;
+  // Warm up the 3D engine in the background once the app is idle, so opening Me (or a popup) doesn't stall.
+  useEffect(() => {
+    const go = () => { import('@/lib/whisk3d/engine').catch(() => {}); };
+    const id = typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(go, { timeout: 5000 }) : setTimeout(go, 3000);
+    return () => { if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(id); else clearTimeout(id); };
+  }, []);
   // Activity log follows the "Help improve Whisk" choice.
   useEffect(() => { startActivity(supabase, !!consent?.usage, deviceLabel()); }, [consent, supabase]);
   useEffect(() => { trackPage(pathname); }, [pathname, consent]);

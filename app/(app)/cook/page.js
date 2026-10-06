@@ -61,11 +61,11 @@ export default function Cook() {
           <div><label className="lbl" htmlFor="o-time">Time limit</label><select id="o-time" className="input" value={time} onChange={(e) => setUi({ cookTime: e.target.value })}>{[['', 'Any'], ['20', '20 min'], ['30', '30 min'], ['45', '45 min'], ['60', '1 hour'], ['120', '2 hours']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
           <div><label className="lbl" htmlFor="o-cu">Cuisine</label><select id="o-cu" className="input" value={cu} onChange={(e) => setUi({ cookCuisine: e.target.value })}><option value="">Any</option>{cuisines.map((c) => <option key={c}>{c}</option>)}</select></div>
         </div>
-        <button data-tour="make" className="btn wide" onClick={() => { setHand(null); setUi({ cookMode: 'pantry' }); }}>What can I make?</button>
-        <button className="btn ghost wide" onClick={raid}><Icon name="gift" size={18} />Fridge Raid (surprise me)</button>
+        <button data-tour="make" data-tip="make" className="btn wide" onClick={() => { setHand(null); setUi({ cookMode: 'pantry' }); }}>What can I make?</button>
+        <button className="btn ghost wide" data-tip="fridge" onClick={raid}><Icon name="gift" size={18} />Fridge Raid (surprise me)</button>
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); if (!dish.trim()) return; setHand(null); setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>Dish</label>
-          <input id="o-dish" className="input" type="search" enterKeyHint="search" autoComplete="off" placeholder="Search a dish, sauce, food or country" maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
+          <input id="o-dish" data-tip="search" className="input" type="search" enterKeyHint="search" autoComplete="off" placeholder="Search a dish, sauce, food or country" maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
           <button className="btn" type="submit" aria-label="Search dishes"><Icon name="search" size={18} />Search</button>
         </form>
       </div>

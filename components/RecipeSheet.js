@@ -7,6 +7,7 @@ import ThawBanner from './ThawBanner';
 import { checkRecipe, searchLinks } from '@/lib/recipes/match';
 import { guessCategory } from '@/lib/game';
 import { ServingsX, IngredientList, StepList } from './RecipeSteps';
+import { cultureStyle, motifFor } from '@/lib/culture';
 
 // A real recipe from the web: every ingredient measured and beginner steps from the source page, scaled to any servings.
 export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChanged, challenge = null }) {
@@ -14,7 +15,10 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
   const [isSaved, setSaved] = useState(!!saved);
   const [logging, setLogging] = useState(false);
   const [factor, setFactor] = useState(1);
-  const c = checkRecipe(r, pantry);
+  const [added, setAdded] = useState([]);   // ingredients just added from this sheet (shown as ✓ straight away)
+  const c0 = checkRecipe(r, pantry);
+  const c = { ...c0, missing: c0.missing.filter((m) => !added.includes(m)) };
+  c.ok = c0.ok || (c0.missing.length > 0 && c.missing.length === 0);
 
   async function save() {
     const { data, error } = await supabase.rpc('save_recipe', { p_recipe_id: r.id });
@@ -28,11 +32,20 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
     if (add.length) { const { error } = await supabase.from('shopping_items').insert(add.map((m) => ({ name: m.slice(0, 60), category: guessCategory(m) }))); if (error) { say('Couldn’t add to your list.'); return; } }
     say(add.length ? `Added ${add.length} to your shopping list` : 'Already on your list');
   }
+  // Tap one missing ingredient to put it in your pantry (you've got it after all).
+  async function addOne(k) {
+    if (added.includes(k)) return;
+    setAdded((a) => [...a, k]);
+    const name = (k.charAt(0).toUpperCase() + k.slice(1)).slice(0, 60);
+    const { error } = await supabase.from('pantry_items').insert({ name, category: guessCategory(name) });
+    if (error) { setAdded((a) => a.filter((x) => x !== k)); say('Couldn’t add that.'); return; }
+    say(`${name} is in your pantry`); refreshProfile(); onChanged?.();
+  }
   if (logging) return <LogMealSheet recipe={r} challenge={challenge} onClose={() => { setLogging(false); onClose?.(); }} onDone={onChanged} />;
 
   return (
     <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
-      <div className="sheet stack" role="dialog" aria-modal="true" aria-label={r.title}>
+      <div className="sheet stack cx" style={cultureStyle(r.country, r.cuisine)} data-motif={motifFor(r.country, r.cuisine)} data-tip="recipe" role="dialog" aria-modal="true" aria-label={r.title}>
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'nowrap' }}>
           <div><span className="eyebrow">{r.cuisine}</span><h2 style={{ fontSize: 26 }}>{r.title}</h2></div>
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
@@ -47,8 +60,11 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         <ServingsX base={r.servings} factor={factor} onChange={setFactor} id={`sx-${r.id}`} />
         <h3>What you have</h3>
         <div className="row" style={{ gap: 6 }}>
-          {r.key.map((k) => { const ok = !c.missing.includes(k); return <span key={k} className={`chip ${ok ? 'have' : 'need'}`}>{ok ? '✓ ' : '+ '}{k}</span>; })}
+          {r.key.map((k) => { const ok = !c.missing.includes(k); return ok
+            ? <span key={k} className="chip have">✓ {k}</span>
+            : <button key={k} type="button" className="chip need add-ing" onClick={() => addOne(k)} aria-label={`I have ${k}: add it to my pantry`}>+ {k}</button>; })}
         </div>
+        {c.missing.length > 0 && <p className="desc" style={{ margin: 0 }}>Already have one? Tap it to add it to your pantry.</p>}
         {c.missing.length > 0 && <button className="btn ghost" onClick={addMissing}>Add {c.missing.length} missing to shopping list</button>}
         <h3>Ingredients</h3>
         <IngredientList r={r} factor={factor} missing={c.missing} />

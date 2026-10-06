@@ -45,7 +45,7 @@ export default function Passport({ counts, onOpenRecipe }) {
   const fromHere = open && recipes ? recipes.filter((r) => r.country === open[0]) : [];
 
   return (
-    <section className="album" aria-labelledby="pp-h">
+    <section className="album" data-tip="album" aria-labelledby="pp-h">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <h2 id="pp-h" style={{ fontSize: 26 }}>Passport</h2>
         <span className="count">{done}/{COUNTRIES.length}</span>

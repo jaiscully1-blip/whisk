@@ -8,6 +8,7 @@ import { canon, STAPLES } from '@/lib/recipes/match';
 import { guessCategory } from '@/lib/game';
 import { COUNTRY_BY_ISO, flagCode } from '@/lib/passport/countries';
 import LogMealSheet from './LogMealSheet';
+import { cultureStyle, motifFor } from '@/lib/culture';
 
 // Search anything — a country, a dish, a sauce, an ingredient. Free: Whisk's own list of dishes from all 193 countries,
 // plus Wikipedia for anything else. Tap a dish and its card flips: what you have / need, and a YouTube button.
@@ -92,7 +93,7 @@ function DishCard({ d, have, country }) {
           <span style={{ flex: 1, minWidth: 0 }}><b>{d.name}</b><span className="desc" style={{ display: 'block' }}>{[TYPE_LABEL[d.type], flags.map((f) => f[1]).join(', '), d.about].filter(Boolean).join(' · ')}</span></span>
           <Icon name="flip" size={18} />
         </button>
-        <div className="card face back stack dish-back" aria-hidden={!on}>
+        <div className="card face back stack dish-back cx" style={cultureStyle(d.countries?.[0])} data-motif={motifFor(d.countries?.[0])} aria-hidden={!on}>
           <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
             <b style={{ fontFamily: 'var(--f-display)', fontSize: 19 }}>{d.name}</b>
             <button className="btn ghost sm" style={{ width: 40, padding: 0 }} onClick={() => setOn(false)} aria-label="Flip back" tabIndex={t}><Icon name="flip" size={18} /></button>

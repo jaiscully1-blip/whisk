@@ -17,7 +17,8 @@ const RARITY_ORDER = ['common', 'rare', 'epic', 'exotic', 'mythic'];
 const EMPTY = { top: 'White chef coat', hat: 'Classic toque', glasses: 'None', shoes: 'Bare feet', acc: 'Nothing' };   // top + hat: free, always yours
 
 export default function Me() {
-  const { supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, say, ui, setUi, openPrivacy } = useWhisk();
+  const { supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, say, ui, setUi, openPrivacy, replayTour } = useWhisk();
+  const [dancing, setDancing] = useState(false);   // the Dance button; stops on its own when you leave or the screen turns off
   const [items, setItems] = useState([]);
   const [owned, setOwned] = useState(new Set());
   const [buying, setBuying] = useState(null);
@@ -122,11 +123,14 @@ export default function Me() {
       </div>
 
       <div style={{ position: 'relative', borderRadius: 26, overflow: 'hidden', background: 'radial-gradient(120% 90% at 50% 30%, var(--card) 0%, var(--stage) 70%)', border: '1px solid var(--line)' }}>
-        <div data-tour="stage"><WhiskStage pose="default" outfit={outfit} height={360} /></div>
+        <div data-tour="stage" data-tip="stage" style={{ position: 'relative' }}>
+          <WhiskStage pose="default" outfit={outfit} height={360} dancing={dancing} onDanceEnd={() => setDancing(false)} />
+          <button type="button" className={`dance-btn ${dancing ? 'on' : ''}`} aria-pressed={dancing} onClick={() => setDancing((d) => !d)}>{dancing ? 'Stop' : 'Dance'}</button>
+        </div>
         <span style={{ position: 'absolute', top: 10, left: 12, fontSize: 12, fontWeight: 800, color: 'var(--muted)' }}>Drag to spin</span>
       </div>
 
-      <div data-tour="slots" className="slotbar" role="tablist" aria-label="Outfit slots">
+      <div data-tour="slots" data-tip="closet" className="slotbar" role="tablist" aria-label="Outfit slots">
         {SLOTS.map(([k, l, icon]) => (
           <button key={k} role="tab" aria-selected={slot === k} onClick={() => setUi({ closetSlot: k })} className="card" title={l}
             aria-label={`${l}: ${outfit[k] ? (byId[outfit[k]]?.name || '') : EMPTY[k]}`}
@@ -229,6 +233,9 @@ export default function Me() {
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="snow" /><span style={{ flex: 1, fontWeight: 700 }}>Streak freezes</span><b>{profile?.streak_freezes ?? 1}</b><span className="desc" style={{ width: '100%' }}>Miss one day and a freeze keeps your streak. You get one each week; it doesn’t stack.</span></div>
         <button className="row setbtn" onClick={openPrivacy} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
           <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Cookies &amp; privacy</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />
+        </button>
+        <button className="row setbtn" onClick={() => { replayTour(); say('Chef will explain things again as you tap them'); }} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
+          <img src="/icon.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Show Chef’s tips again</span><Icon name="chevron" />
         </button>
         {profile?.is_admin && <Link href="/admin" className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', textDecoration: 'none', color: 'var(--fg)', flexWrap: 'nowrap' }}><Icon name="compete" /><span style={{ flex: 1, fontWeight: 700 }}>Backend dashboard</span><Icon name="chevron" /></Link>}
         <div className="stack" style={{ padding: '12px 16px', gap: 4 }}>

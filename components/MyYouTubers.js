@@ -1,10 +1,12 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import Icon from './Icon';
 import { useWhisk } from './AppShell';
 import { cleanList, parseYouTuber, MAX_YOUTUBERS } from '@/lib/youtubers';
 
-// The player's own cooking channels, saved with their game. "+ Add a YouTuber" takes a link or an @handle.
+// The player's own cooking channels, saved with their game. "Add Channel" takes a link or an @handle;
+// tapping a channel opens its cooking videos inside Whisk (/cook/channel).
 export default function MyYouTubers() {
   const { ui, setUi, say } = useWhisk();
   const list = cleanList(ui.youtubers);
@@ -26,18 +28,17 @@ export default function MyYouTubers() {
 
   return (
     <>
-      <h2 data-tour="channels" style={{ fontSize: 22, marginTop: 8 }}>Your YouTubers</h2>
-      <div className="stack" style={{ gap: 8 }}>
+      <div className="stack" data-tour="channels" data-tip="channels" style={{ gap: 8, marginTop: 8 }}>
         {list.map((c) => (
           <div key={c.url} className="card row channel">
-            <a href={c.url} target="_blank" rel="noopener noreferrer" className="row yt-link" aria-label={`${c.name} on YouTube`}>
+            <Link href={`/cook/channel?u=${encodeURIComponent(c.url)}&n=${encodeURIComponent(c.name)}`} className="row yt-link" aria-label={`${c.name}: cooking videos`}>
               <span className="social yt" aria-hidden="true"><Icon name="yt" size={22} /></span>
               <b style={{ flex: 1, minWidth: 0 }}>{c.name}</b>
-            </a>
+              <Icon name="chevron" />
+            </Link>
             <button type="button" className="btn ghost sm" style={{ border: 0, width: 40, padding: 0 }} onClick={() => remove(c.url)} aria-label={`Remove ${c.name}`}><Icon name="x" size={18} /></button>
           </div>
         ))}
-        {!list.length && !open && <p className="desc" style={{ margin: 0 }}>Add the cooking channels you like to watch. They’ll be right here.</p>}
         {open ? (
           <form className="card stack yt-add" onSubmit={add} noValidate>
             <div><label className="lbl" htmlFor="yt-link">Channel link or @handle</label>
@@ -51,7 +52,7 @@ export default function MyYouTubers() {
             </div>
           </form>
         ) : list.length < MAX_YOUTUBERS ? (
-          <button type="button" className="btn ghost wide" onClick={() => setOpen(true)}><Icon name="plus" size={18} />Add a YouTuber</button>
+          <button type="button" className="btn ghost wide" onClick={() => setOpen(true)}><Icon name="plus" size={18} />Add Channel</button>
         ) : <p className="desc" style={{ margin: 0 }}>That’s {MAX_YOUTUBERS}, the most you can add. Remove one to add another.</p>}
       </div>
     </>

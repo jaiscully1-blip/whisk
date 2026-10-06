@@ -294,6 +294,20 @@ const server = http.createServer(async (req, res) => {
     // ---- YouTube Data API stand-in ----
     if (path.startsWith('/yt/youtube/v3/')) {
       if (url.searchParams.get('key') !== 'e2e-yt-key') return send(res, 403, { error: { code: 403, message: 'bad key' } });
+      // a channel's uploads (Your channels → channel page)
+      if (path.endsWith('/channels')) {
+        if (url.searchParams.get('forHandle')?.toLowerCase() !== '@mockkitchen') return send(res, 200, { items: [] });
+        return send(res, 200, { items: [{ id: 'UCmockkitchen000000000aa', snippet: { title: 'Mock Kitchen', thumbnails: { default: { url: 'https://yt3.ggpht.com/mock=s88' } } }, contentDetails: { relatedPlaylists: { uploads: 'UUmockkitchen000000000aa' } } }] });
+      }
+      if (path.endsWith('/playlistItems')) return send(res, 200, { items: ['RECIPEvid01', 'VLOGvid0001', 'CHAPTERS001'].map((v) => ({ contentDetails: { videoId: v } })) });
+      if (path.endsWith('/videos') && (url.searchParams.get('part') || '').includes('contentDetails')) {
+        const D = {
+          RECIPEvid01: ['Crispy Honey Garlic Chicken', 'The crispiest chicken.\n\nFULL RECIPE: https://mockkitchen.example/recipes/honey-chicken\n\nIngredients\nFor the chicken:\n4 chicken thighs\n1 tsp salt\nFor the sauce:\n3 cloves garlic\n½ cup honey\n\nMethod\n1. Pat the chicken dry and salt it.\n2. Sear skin side down for 12 minutes.\n3. Pour over the honey garlic sauce.\n\n0:00 Intro\n0:45 Prep\n2:10 Searing\n4:30 Sauce\n7:05 Taste test\n\nInstagram https://instagram.com/mock', 'PT9M12S'],
+          VLOGvid0001: ['Q&A: answering your questions', 'Thanks for 1M!', 'PT14M'],
+          CHAPTERS001: ['Weeknight Carbonara', 'Quick pasta.\n\n00:00 Intro\n01:12 Boiling the pasta\n03:40 Making the sauce\n06:00 Plating\n07:30 Thanks for watching', 'PT8M']
+        };
+        return send(res, 200, { items: (url.searchParams.get('id') || '').split(',').filter((i) => D[i]).map((i) => ({ id: i, snippet: { title: D[i][0], description: D[i][1], publishedAt: '2026-09-30T12:00:00Z', thumbnails: { medium: { url: `https://i.ytimg.com/vi/${i}/mqdefault.jpg` } } }, contentDetails: { duration: D[i][2] } })) });
+      }
       if (path.endsWith('/search')) {
         ytCalls.push(url.searchParams.get('q'));
         const q = url.searchParams.get('q').toLowerCase();

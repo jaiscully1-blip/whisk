@@ -7,6 +7,7 @@ import { usePantry } from '@/components/usePantry';
 import { checkRecipe } from '@/lib/recipes/match';
 import { fmt } from '@/lib/game';
 import { ServingsX, IngredientList, StepList } from '@/components/RecipeSteps';
+import { cultureStyle } from '@/lib/culture';
 
 const TIER = { 1: ['Small', 'var(--fresh-soft)', 'var(--fresh)'], 2: ['Medium', 'var(--warn-soft)', 'var(--warn)'], 3: ['Big', 'var(--pop-soft)', 'var(--bad)'] };
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
@@ -63,9 +64,8 @@ export default function Compete() {
     <div className="stack">
       <div className="page-title"><h1>Compete</h1><span className="muted">Resets in {resetIn}</span></div>
       {bingo && (
-        <section data-tour="bingo" className="stack" style={{ gap: 10 }} aria-labelledby="bingo-h">
+        <section data-tour="bingo" data-tip="bingo" className="stack" style={{ gap: 10 }} aria-labelledby="bingo-h">
           <div className="row" style={{ justifyContent: 'space-between' }}><h2 id="bingo-h" style={{ fontSize: 22 }}>Cuisine bingo</h2><span className="chip xp">+200 XP</span></div>
-          <p className="desc" style={{ margin: 0 }}>Get four in a row.</p>
           <div role="grid" aria-label="Bingo card" className="bingo">
             {bingo.cells.map((cell, i) => { const hit = bingo.marks?.[i]; return <div key={i} role="gridcell" className={hit ? 'on' : ''} aria-label={`${cell}${hit ? ', cooked' : ''}`}>{hit ? <span><Icon name="check" size={16} /><br />{cell}</span> : cell}</div>; })}
           </div>
@@ -76,7 +76,7 @@ export default function Compete() {
       )}
 
       {quest && (
-        <div className="card stack" style={{ gap: 8, background: quest.claimed ? 'var(--card)' : 'var(--gold-soft)' }}>
+        <div className="card stack" data-tip="quest" style={{ gap: 8, background: quest.claimed ? 'var(--card)' : 'var(--gold-soft)' }}>
           <div className="row" style={{ justifyContent: 'space-between' }}><span className="eyebrow">Daily quest</span><span className="chip xp">+30 XP</span></div>
           <b style={{ fontSize: 16 }}>{quest.label}</b>
           <div className="row" style={{ flexWrap: 'nowrap' }}><div className="bar" style={{ flex: 1 }}><i style={{ width: `${Math.round((quest.progress / quest.target) * 100)}%` }} /></div><span style={{ fontWeight: 800, fontSize: 13 }}>{quest.progress}/{quest.target}</span></div>
@@ -84,7 +84,7 @@ export default function Compete() {
         </div>
       )}
 
-      <h2 data-tour="challenges" style={{ fontSize: 22 }}>This week’s challenges</h2>
+      <h2 data-tour="challenges" data-tip="challenges" style={{ fontSize: 22 }}>This week’s challenges</h2>
       {challenges === null || !recipes ? <p className="muted">Loading…</p> : challenges.length === 0 ? (
         <div className="empty"><b>No challenges yet</b>Stock your pantry so Whisk can pick recipes you can actually make.</div>
       ) : challenges.map((c) => {
@@ -106,10 +106,10 @@ export default function Compete() {
         if (c.completed_at) return <div key={c.id} className="card">{front}</div>;
         const complete = () => { const fz = pantry ? checkRecipe(r, pantry).frozen : []; if (fz.length) { say(`Defrost ${fz.map((p) => p.name).join(', ')} first`); return; } setLogging({ c, r }); };
         return (
-          <div key={c.id} className={`flip tall ${on ? "on" : ""}`}>
+          <div key={c.id} data-tip="challenges" className={`flip tall ${on ? "on" : ""}`}>
             <div className="flip-in">
               <button className="card face" onClick={() => flip(c.id)} aria-label={`${r.title}: show instructions`} tabIndex={on ? -1 : 0} aria-hidden={on}>{front}</button>
-              <div className="card face back stack" style={{ gap: 8 }} aria-hidden={!on} onClick={(e) => { if (e.target.closest('.flip-cta')) complete(); }}>
+              <div className="card face back stack cx" style={{ gap: 8, ...cultureStyle(r.country, r.cuisine) }} aria-hidden={!on} onClick={(e) => { if (e.target.closest('.flip-cta')) complete(); }}>
                 <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
                   <b style={{ fontFamily: 'var(--f-display)', fontSize: 18 }}>{r.title}</b>
                   <button className="btn ghost sm" style={{ width: 40, padding: 0 }} onClick={() => flip(c.id)} aria-label="Flip back" tabIndex={on ? 0 : -1}><Icon name="flip" size={18} /></button>

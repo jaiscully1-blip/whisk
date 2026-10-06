@@ -18,11 +18,10 @@ export default function Pantry() {
   const [list, setList] = useState(null);
   // Everything you type here is remembered until you add it, even across devices.
   const [fName, setFName, clrName] = useDraft('p-name');
-  const [fCat, setFCat] = useDraft('p-cat', '');
   const [fQty, setFQty, clrQty] = useDraft('p-qty');
   const [fExp, setFExp, clrExp] = useDraft('p-exp');
-  const form = { name: fName, category: fCat, quantity: fQty, expires_on: fExp };
-  const setForm = (next) => { const f = typeof next === 'function' ? next(form) : next; if (f.name !== fName) setFName(f.name); if (f.category !== fCat) setFCat(f.category); if (f.quantity !== fQty) setFQty(f.quantity); if (f.expires_on !== fExp) setFExp(f.expires_on); };
+  const form = { name: fName, quantity: fQty, expires_on: fExp };
+  const setForm = (next) => { const f = typeof next === 'function' ? next(form) : next; if (f.name !== fName) setFName(f.name); if (f.quantity !== fQty) setFQty(f.quantity); if (f.expires_on !== fExp) setFExp(f.expires_on); };
   const [newItem, setNewItem, clrNewItem] = useDraft('s-new');
   const [scan, setScan] = useState(null); // 'receipt' | 'barcode'
 
@@ -38,7 +37,7 @@ export default function Pantry() {
   async function addPantry(e) {
     e.preventDefault();
     const name = form.name.trim(); if (!name) return;
-    const category = form.category || guessCategory(name);
+    const category = guessCategory(name);   // shelved automatically from the name ("fish sauce" → Sauces & Oils)
     const { data, error } = await supabase.from('pantry_items').insert({ name: name.slice(0, 60), category, quantity: form.quantity.trim().slice(0, 30) || null, expires_on: form.expires_on || null }).select().single();
     if (error) { say('Couldn’t add that.'); return; }
     setItems((x) => [...x, data].sort((a, b) => a.name.localeCompare(b.name)));
@@ -120,18 +119,17 @@ export default function Pantry() {
       {tab === 'saved' ? <SavedRecipes pantry={items} /> : tab === 'pantry' ? (
         <>
           <div className="grid2">
-            <button data-tour="scan" className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('receipt')}><Icon name="receipt" size={22} />Scan receipt</button>
-            <button className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('barcode')}><Icon name="barcode" size={22} />Scan barcode</button>
+            <button data-tour="scan" data-tip="receipt" className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('receipt')}><Icon name="receipt" size={22} />Scan receipt</button>
+            <button className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} data-tip="barcode" onClick={() => setScan('barcode')}><Icon name="barcode" size={22} />Scan barcode</button>
           </div>
           <form className="card stack" onSubmit={addPantry}>
             <div className="grid2">
-              <div><label className="lbl" htmlFor="p-name">Item</label><input id="p-name" className="input" maxLength={60} placeholder="e.g. Frozen chicken breast" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-              <div><label className="lbl" htmlFor="p-cat">Category</label><select id="p-cat" className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}><option value="">Auto</option>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></div>
+              <div style={{ gridColumn: '1 / -1' }}><label className="lbl" htmlFor="p-name">Item</label><input id="p-name" className="input" maxLength={60} placeholder="e.g. Frozen chicken breast" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
               <div><label className="lbl" htmlFor="p-qty">Amount (optional)</label><input id="p-qty" className="input" maxLength={30} placeholder="2 lb" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
               <div><label className="lbl" htmlFor="p-exp">Expires (optional)</label><input id="p-exp" className="input" type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} /></div>
             </div>
-            <button data-tour="add" className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
-            <span className="desc">Anything frozen that’s meat or seafood gets a defrost reminder.</span>
+            <button data-tour="add" data-tip="add" className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
+            <span className="desc">Whisk puts it on the right shelf for you. Frozen meat or seafood gets a defrost reminder.</span>
           </form>
 
           <div className="row">

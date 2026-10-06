@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import PullToRefresh from './PullToRefresh';
-import Tutorial from './Tutorial';
+import Tips from './Tips';
 import CookieConsent, { CONSENT_KEY, LOGIN_CHOICE_KEY, deviceTimeZone } from './CookieConsent';
 import { startActivity, setPage as trackPage } from '@/lib/activity';
 import { timerApi } from '@/lib/timers';
@@ -58,13 +58,17 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
   const needsConsent = !consent || (consent.v || 1) < 2;   // v2 added the usage-data choice
   const [privacyOpen, setPrivacyOpen] = useState(needsConsent);
   const [consentChecked, setConsentChecked] = useState(!needsConsent);   // until we've looked for an Accept/Decline from the sign-in screen
-  const [touring, setTouring] = useState(false);
-  useEffect(() => { if (!privacyOpen && profile && !profile.onboarded_at && profile.id) setTouring(true); }, [privacyOpen, profile?.onboarded_at]); // eslint-disable-line react-hooks/exhaustive-deps
-  const finishTour = useCallback(async () => {
-    setTouring(false); setProfile((p) => ({ ...p, onboarded_at: p.onboarded_at || new Date().toISOString() }));
-    await supabase.rpc('set_onboarded', { p_done: true });
-  }, [supabase]);
-  const replayTour = useCallback(() => setTouring(true), []);
+  // No tour: a new player lands straight in the app, and Chef explains each feature the first time it's tapped (Tips).
+  const [welcome, setWelcome] = useState(false);
+  const [tipsKey, setTipsKey] = useState(0);
+  useEffect(() => {
+    if (privacyOpen || !profile?.id || profile.onboarded_at) return;
+    setWelcome(true); setProfile((p) => ({ ...p, onboarded_at: p.onboarded_at || new Date().toISOString() }));
+    supabase.rpc('set_onboarded', { p_done: true });
+  }, [privacyOpen, profile?.id, profile?.onboarded_at]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tipSeen = useCallback((id) => setUiQuiet((cur) => ({ tips: [...new Set([...(cur.tips || []), id])] })), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const replayTour = useCallback(() => { setUi({ tips: [] }); setWelcome(true); setTipsKey((k) => k + 1); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const touring = false;
   const [hello, setHello] = useState(null);   // greeting shown in the top bar for a few seconds after opening
   const [helloOn, setHelloOn] = useState(false);
   useEffect(() => {
@@ -245,8 +249,8 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
             </div>}
             <div className={`pills ${helloOn ? 'away' : ''}`}>
               <RunningTimer />
-              <span className="pill" title="Cooking streak"><Flame />{profile?.streak_days || 0}d</span>
-              <Link href="/me#shop" prefetch className="pill" title="Coins" style={{ textDecoration: 'none' }}><Coin />{fmt(profile?.coins)}</Link>
+              <span className="pill" data-tip="streak" title="Cooking streak"><Flame />{profile?.streak_days || 0}d</span>
+              <Link href="/me#shop" prefetch className="pill" data-tip="coins" title="Coins" style={{ textDecoration: 'none' }}><Coin />{fmt(profile?.coins)}</Link>
             </div>
           </div>
         </header>
@@ -256,11 +260,11 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
             {NAV.map(([href, label, icon]) => (
               // prefetch: each tab is fetched ahead of time, so a tap switches straight away instead of waiting on the server.
               // The tab lights up the moment it's touched (pendingTab), not when the page arrives.
-              <Link key={href} href={href} prefetch onClick={() => setPendingTab(href)} aria-current={(pendingTab ? pendingTab === href : pathname.startsWith(href)) ? 'page' : undefined}><Icon name={icon} size={24} />{label}</Link>
+              <Link key={href} href={href} prefetch data-tip={`tab-${href.slice(1)}`} onClick={() => setPendingTab(href)} aria-current={(pendingTab ? pendingTab === href : pathname.startsWith(href)) ? 'page' : undefined}><Icon name={icon} size={24} />{label}</Link>
             ))}
           </div>
         </nav>
-        {touring && !privacyOpen && <Tutorial coins={profile?.coins ?? 0} onDone={finishTour} />}
+        {!privacyOpen && profile?.id && <Tips key={tipsKey} seen={ui.tips} onSeen={tipSeen} welcome={welcome} />}
         {privacyOpen && consentChecked && <CookieConsent initial={consent} onSave={savePrivacy} onClose={() => setPrivacyOpen(false)} />}
         {kind && !privacyOpen && (
           <div className="popup-scrim" role="presentation" onClick={(e) => { if (kind !== 'cooked' && e.target === e.currentTarget) closePopup(); }}>

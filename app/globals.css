@@ -357,7 +357,8 @@ button, a, [role="button"], [role="tab"], select, input { touch-action: manipula
 .vid-img { width: 120px; height: 68px; flex: none; border-radius: 10px; object-fit: cover; background: var(--track); }
 .vid b { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .live-dot::before, .skel i, .skel .dish-ico, .skel .vid-img { animation: none; } }
-.channel { flex-wrap: nowrap; gap: 10px; text-decoration: none; color: var(--fg); padding: 10px 12px 10px 16px; }
+.channel { flex-wrap: nowrap; gap: 10px; text-decoration: none; color: var(--fg); padding: 6px 6px 6px 12px; }
+.channel .yt-link { flex: 1; min-width: 0; flex-wrap: nowrap; gap: 10px; color: var(--fg); text-decoration: none; min-height: 44px; }
 .dflip .face.back { max-height: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; border-width: 0; transition: max-height .45s ease, padding .3s; }
 .dflip.on .face.back { max-height: 1600px; padding-top: 14px; padding-bottom: 14px; border-width: 1px; }
 .dflip.on .face.dish-row { max-height: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; }

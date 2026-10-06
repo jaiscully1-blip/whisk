@@ -7,7 +7,7 @@ import { usePantry, useSaved } from '@/components/usePantry';
 
 const PAGE = 12;
 import { canon, checkRecipe } from '@/lib/recipes/match';
-import { CHANNELS } from '@/lib/channels';
+import MyYouTubers from '@/components/MyYouTubers';
 import DishSearch from '@/components/DishSearch';
 
 const SKIP = ['Spices & Seasonings', 'Sauces & Oils', 'Baking'];
@@ -92,15 +92,7 @@ export default function Cook() {
 
       {mode === 'named' && ui.cookDish && <DishSearch q={ui.cookDish} pantry={pantry} />}
 
-      <h2 data-tour="channels" style={{ fontSize: 22, marginTop: 8 }}>Cooking channels</h2>
-      <div className="stack" style={{ gap: 8 }}>
-        {CHANNELS.map((c) => (
-          <a key={c.name} className="card row channel" href={c.youtube} target="_blank" rel="noopener noreferrer" aria-label={`${c.name} on YouTube`}>
-            <b style={{ flex: 1, minWidth: 0 }}>{c.name}</b>
-            <span className="social yt" aria-hidden="true"><Icon name="yt" size={22} /></span>
-          </a>
-        ))}
-      </div>
+      <MyYouTubers />
 
       {open && <RecipeSheet recipe={open} pantry={pantry || []} saved={saved?.get(open.id)} onClose={() => setOpen(null)} onChanged={() => { reload(); reloadSaved(); }} />}
     </div>

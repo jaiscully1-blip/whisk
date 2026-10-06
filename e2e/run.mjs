@@ -159,7 +159,6 @@ await step('cook', async () => {
   const n = await page.locator('main button.card:has(.chip.have)').count();
   check('cook shows web recipes the pantry can make', n >= 5, `${n} recipes`);
   check('no "Find more online" searches', (await page.getByText('Find more online').count()) === 0 && (await page.getByText('Only real recipes').count()) === 0);
-  check('no description under channel names', (await page.locator('a.channel .desc').count()) === 0);
   check('saved recipes moved off Cook', (await page.getByText('Your saved recipes').count()) === 0);
   await page.click('text=Fridge Raid (surprise me)');
   await page.getByText('Ingredients', { exact: true }).waitFor();
@@ -377,7 +376,21 @@ await step('free dish search', async () => {
   const free = await (await fetch('http://localhost:54321/__e2e/free-calls')).json();
   check('no AI used for search (costs nothing)', !free.anthropic.includes('web_search') && free.wiki >= 1 && free.youtube.length >= 1, JSON.stringify(free));
   await page.evaluate(() => window.scrollTo(0, 0));
-  check('3 cooking channels (no Nick DiGiovanni or Joshua Weissman), YouTube only, not numbered', (await page.locator('a.channel').count()) === 3 && (await page.getByText(/DiGiovanni|Weissman/).count()) === 0 && (await page.locator('a.channel[href^="https://www.youtube.com/@"]').count()) === 3 && (await page.locator('.rank, a.social.ig').count()) === 0);
+  check('no built-in YouTube channels; an Add a YouTuber button instead', (await page.locator('.channel').count()) === 0 && (await page.getByText(/You Suck at Cooking|Andy Cooks|Not Another Cooking Show|DiGiovanni|Weissman/).count()) === 0 && (await page.getByRole('button', { name: 'Add a YouTuber' }).count()) === 1);
+  await page.getByRole('button', { name: 'Add a YouTuber' }).click();
+  const yIn = page.getByPlaceholder(/@andy_cooks/);
+  await yIn.fill('javascript:alert(1)'); await page.getByRole('button', { name: 'Add', exact: true }).click();
+  check('a non-YouTube link is refused', (await page.getByRole('alert').filter({ hasText: 'doesn’t look like a YouTube channel' }).count()) === 1 && (await page.locator('.channel').count()) === 0);
+  await yIn.fill('https://m.youtube.com/@BabishCulinaryUniverse/videos'); await page.getByPlaceholder('Andy Cooks').fill('Babish');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  check('added YouTuber links to its channel on youtube.com', (await page.locator('.channel a[href="https://www.youtube.com/@BabishCulinaryUniverse"]', { hasText: 'Babish' }).count()) === 1);
+  await page.getByRole('button', { name: 'Add a YouTuber' }).click(); await yIn.fill('@babishculinaryuniverse'); await page.getByRole('button', { name: 'Add', exact: true }).click();
+  check('the same channel can’t be added twice', (await page.getByText('Already on your list.').count()) === 1);
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.waitForTimeout(900); await page.reload(); await page.getByRole('heading', { name: 'Your YouTubers' }).waitFor();
+  check('your YouTubers are saved with your game', (await page.locator('.channel', { hasText: 'Babish' }).count()) === 1);
+  await page.getByRole('button', { name: 'Remove Babish' }).click();
+  check('remove a YouTuber', (await page.locator('.channel').count()) === 0);
 });
 await step('activity backend', async () => {
   await page.waitForTimeout(4500); await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));

@@ -54,8 +54,8 @@ export default function Compete() {
   }
   const flip = (id) => setUi({ flipped: { ...flipped, [id]: !flipped[id] } });
 
-  const resetIn = useMemo(() => { const d = (8 - new Date().getUTCDay()) % 7 || 7; return `${d}d`; }, []);
-  const bingoIn = bingo?.ends ? Math.max(1, Math.ceil((new Date(bingo.ends + 'T00:00:00Z') - Date.now()) / 864e5)) : null;
+  // One timer for everything on this page: challenges and the bingo card both reset on Monday (the player's own calendar).
+  const resetIn = useMemo(() => { const n = new Date(); const d = (8 - n.getDay()) % 7 || 7; const mon = new Date(n.getFullYear(), n.getMonth(), n.getDate() + d); return `${Math.max(1, Math.ceil((mon - n) / 864e5))}d`; }, []);
 
   const recipeOf = (c) => recipes?.find((r) => r.id === c.recipe_id);
 
@@ -65,11 +65,11 @@ export default function Compete() {
       {bingo && (
         <section data-tour="bingo" className="stack" style={{ gap: 10 }} aria-labelledby="bingo-h">
           <div className="row" style={{ justifyContent: 'space-between' }}><h2 id="bingo-h" style={{ fontSize: 22 }}>Cuisine bingo</h2><span className="chip xp">+200 XP</span></div>
-          <p className="desc" style={{ margin: 0 }}>Cook a dish from each cuisine before the card resets{bingoIn ? ` in ${bingoIn}d` : ''}. Four in a row (across, down or diagonal) wins.</p>
+          <p className="desc" style={{ margin: 0 }}>Get four in a row.</p>
           <div role="grid" aria-label="Bingo card" className="bingo">
             {bingo.cells.map((cell, i) => { const hit = bingo.marks?.[i]; return <div key={i} role="gridcell" className={hit ? 'on' : ''} aria-label={`${cell}${hit ? ', cooked' : ''}`}>{hit ? <span><Icon name="check" size={16} /><br />{cell}</span> : cell}</div>; })}
           </div>
-          {bingo.claimed ? <span className="row" style={{ color: 'var(--fresh)', fontWeight: 800 }}><Icon name="check" />Bingo claimed · new card {bingoIn ? `in ${bingoIn}d` : 'soon'}</span>
+          {bingo.claimed ? <span className="row" style={{ color: 'var(--fresh)', fontWeight: 800 }}><Icon name="check" />Bingo claimed</span>
             : bingo.lines > 0 ? <button className="btn" onClick={claimBingo}>Claim BINGO · +200 XP</button>
             : <span className="muted" style={{ fontWeight: 800, fontSize: 13 }}>{(bingo.marks || []).filter(Boolean).length}/16 cooked</span>}
         </section>

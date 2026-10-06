@@ -263,7 +263,9 @@ await step('compete layout', async () => {
   await nav('Compete'); await page.getByText('Cuisine bingo').waitFor();
   const yB = (await page.getByRole('heading', { name: 'Cuisine bingo' }).boundingBox()).y, yQ = (await page.getByText('Daily quest').boundingBox()).y;
   check('cuisine bingo is at the top of Compete', yB < yQ, `${yB} < ${yQ}`);
-  check('bingo card resets every 5 days', /resets in [1-5]d/.test(await page.locator('section[aria-labelledby=bingo-h] p').first().innerText()));
+  check('bingo just says "Get four in a row." (no own timer)', (await page.locator('section[aria-labelledby=bingo-h] p').first().innerText()).trim() === 'Get four in a row.' && (await page.locator('section[aria-labelledby=bingo-h]').getByText(/resets|\d+d\b/i).count()) === 0);
+  const wantD = (() => { const n = new Date(); const d = (8 - n.getDay()) % 7 || 7; const mon = new Date(n.getFullYear(), n.getMonth(), n.getDate() + d); return Math.max(1, Math.ceil((mon - n) / 864e5)); })();
+  check('one reset timer at the top, counting to Monday like the challenges', (await page.getByText(/^Resets in \d+d$/).count()) === 1 && (await page.getByText(`Resets in ${wantD}d`).count()) === 1);
   await nav('Me'); await page.getByRole('heading', { name: 'Passport' }).waitFor();
 });
 await step('buy coins with Apple Pay', async () => {

@@ -438,6 +438,28 @@ const x20 = (await as(Q, () => db.query(`select public.log_meal('www-budgetbytes
 check('cooking a recipe and sending the photo: +20 XP for the cook', (await db.query(`select amount from xp_events where user_id = '${Q}' and kind = 'cook'`)).rows[0]?.amount === 20, JSON.stringify(x20));
 await expectFail('nobody can buy the retired chef coat', Q, `select public.buy_item('top-white-chef-coat')`);
 
+// ================= 0016: bingo runs the same week as the challenges =================
+try { const f = fs.readFileSync('./supabase/migrations/0016_bingo_weekly_with_challenges.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0016 runs (twice)', true); }
+catch (e) { check('0016 runs (twice)', false, e.message); }
+const r16 = (await db.query(`select public._bingo_round_start(date '2026-10-05') a, public._bingo_round_start(date '2026-10-08') b, public._bingo_round_start(date '2026-10-11') c, public._bingo_round_start(date '2026-10-12') d`)).rows[0];
+check('bingo rounds are Monday to Sunday', ds(r16.a) === '2026-10-05' && ds(r16.b) === '2026-10-05' && ds(r16.c) === '2026-10-05' && ds(r16.d) === '2026-10-12', JSON.stringify(r16));
+const B16 = '88888888-8888-8888-8888-888888888888';
+await db.exec(`insert into auth.users (id, email) values ('${B16}', null)`);
+const old16 = (await db.query(`select public._bingo_round_start(public._user_today('${B16}')) - 3 as d`)).rows[0].d;
+await db.exec(`insert into weekly_bingo (user_id, week_start, cells, claimed_at) select '${B16}', '${ds(old16)}', array_fill('Thai'::text, array[16]), now()`);
+const g16 = (await as(B16, () => db.query(`select public.get_bingo() as r`))).rows[0].r;
+const ch16 = (await db.query(`select date_trunc('week', public._user_today('${B16}'))::date as wk`)).rows[0].wk;
+check('bingo card week = challenges week, ends with it (7 days)', g16.week_start === ds(ch16) && (new Date(g16.ends) - new Date(g16.week_start)) === 7 * 864e5, JSON.stringify([g16.week_start, g16.ends, ds(ch16)]));
+check('a bingo already claimed on the overlapping old card is not paid twice', g16.claimed === true);
+await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${B16}/sun.jpg')`);
+await as(B16, () => db.query(`select public.log_meal('www-budgetbytes-com-picadillo', '${B16}/sun.jpg')`));
+const wkStart = new Date(g16.week_start + 'T12:00:00Z'); const sunday = new Date(wkStart.getTime() + 6 * 864e5);
+await db.exec(`update meals set cooked_at = '${sunday.toISOString()}' where photo_path = '${B16}/sun.jpg'`);
+const cu = (await db.query(`select cuisine from meals where photo_path = '${B16}/sun.jpg'`)).rows[0].cuisine;
+const sundayHit = (await db.query(`select public._bingo_marks('${B16}', '${g16.week_start}', array['Caribbean']) as m`)).rows[0].m[0];
+check('a meal on Sunday still counts on this week\'s card', sundayHit === true, cu);
+await expectFail('players cannot call _bingo_marks', B16, `select public._bingo_marks('${B16}', current_date, array['Thai'])`);
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

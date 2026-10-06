@@ -34,6 +34,8 @@ export function deviceLabel() {
 export default function AppShell({ initialProfile, initialLoadout, email, children }) {
   const supabase = supabaseBrowser();
   const pathname = usePathname();
+  const [pendingTab, setPendingTab] = useState(null);
+  useEffect(() => { setPendingTab(null); }, [pathname]);
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
   const [loadout, setLoadout] = useState(initialLoadout);
@@ -236,7 +238,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
       <div className={`shell ${night ? 'theme-night' : 'theme-day'}`}>
         <header className="hud">
           <div className="hud-in">
-            <Link href="/home" className="brand" aria-label="Whisk home"><img src="/icon.svg" alt="" />whisk</Link>
+            <Link href="/home" prefetch className="brand" aria-label="Whisk home"><img src="/icon.svg" alt="" />whisk</Link>
             {hello && <div className={`hud-hello ${helloOn ? 'on' : ''}`} role="status" aria-hidden={!helloOn}>
               <span>{hello.first ? 'Welcome to Whisk' : 'Welcome back'}{profile?.display_name ? `, ${profile.display_name}` : ''}!</span>
               {hello.gift > 0 && <small>+{fmt(hello.gift)} coins, a gift from Whisk</small>}
@@ -244,7 +246,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
             <div className={`pills ${helloOn ? 'away' : ''}`}>
               <RunningTimer />
               <span className="pill" title="Cooking streak"><Flame />{profile?.streak_days || 0}d</span>
-              <Link href="/me#shop" className="pill" title="Coins" style={{ textDecoration: 'none' }}><Coin />{fmt(profile?.coins)}</Link>
+              <Link href="/me#shop" prefetch className="pill" title="Coins" style={{ textDecoration: 'none' }}><Coin />{fmt(profile?.coins)}</Link>
             </div>
           </div>
         </header>
@@ -252,7 +254,9 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
         <nav className="nav" aria-label="Main">
           <div className="nav-in">
             {NAV.map(([href, label, icon]) => (
-              <Link key={href} href={href} aria-current={pathname.startsWith(href) ? 'page' : undefined}><Icon name={icon} size={24} />{label}</Link>
+              // prefetch: each tab is fetched ahead of time, so a tap switches straight away instead of waiting on the server.
+              // The tab lights up the moment it's touched (pendingTab), not when the page arrives.
+              <Link key={href} href={href} prefetch onClick={() => setPendingTab(href)} aria-current={(pendingTab ? pendingTab === href : pathname.startsWith(href)) ? 'page' : undefined}><Icon name={icon} size={24} />{label}</Link>
             ))}
           </div>
         </nav>

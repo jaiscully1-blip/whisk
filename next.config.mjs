@@ -2,6 +2,10 @@
 const nextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  // Keep tabs you've opened in the phone's memory for 5 minutes, so going back to one is instant.
+  // Safe: the pages hold no player data (each page loads its own data in the browser, guarded by RLS);
+  // nothing is stored in a shared/HTTP cache, and authenticated responses still send no-store.
+  experimental: { staleTimes: { dynamic: 300, static: 300 } },
   async headers() {
     // CSP is set per request (with a nonce) in middleware.js. These apply everywhere.
     return [

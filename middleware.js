@@ -10,7 +10,7 @@ function buildCsp(nonce) {
   const dev = process.env.NODE_ENV !== 'production';
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ''}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${dev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: https://i.ytimg.com ${supa}`,
     "font-src 'self'",
@@ -84,5 +84,5 @@ export async function middleware(req) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|sw.js|manifest.webmanifest|stamps/|thumbs/|.*\\.(?:png|jpg|jpeg|webp|svg|ico|woff2?)$).*)']
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|sw.js|manifest.webmanifest|stamps/|thumbs/|zxing/|.*\\.(?:png|jpg|jpeg|webp|svg|ico|woff2?)$).*)']
 };

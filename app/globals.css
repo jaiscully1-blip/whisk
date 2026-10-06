@@ -425,3 +425,24 @@ button, a, [role="button"], [role="tab"], select, input { touch-action: manipula
 
 .dc-device { background: var(--card); border: 2px dashed var(--line); border-radius: 12px; padding: 8px 10px; }
 .sr { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- live barcode scanner ---------- */
+.scanbox { position: relative; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; background: #141A12; display: grid; place-items: center; }
+.scanbox video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.scanbox:not(.live) video { opacity: 0; }
+.scan-frame { position: absolute; left: 7%; right: 7%; top: 25%; bottom: 25%; border-radius: 14px; box-shadow: 0 0 0 999px rgba(10, 14, 9, .45); border: 3px solid rgba(255, 255, 255, .9); pointer-events: none; }
+.scan-frame i { position: absolute; left: 6%; right: 6%; top: 50%; height: 2px; background: #FF5A4E; box-shadow: 0 0 8px #FF5A4E; animation: scanline 1.6s ease-in-out infinite alternate; }
+.scan-frame.hit { animation: scanhit .35s ease-out; }
+@keyframes scanline { from { transform: translateY(-34px); } to { transform: translateY(34px); } }
+@keyframes scanhit { 0% { border-color: #7BD36A; box-shadow: 0 0 0 999px rgba(60, 120, 50, .35); } 100% { border-color: rgba(255, 255, 255, .9); box-shadow: 0 0 0 999px rgba(10, 14, 9, .45); } }
+@media (prefers-reduced-motion: reduce) { .scan-frame i { animation: none; } .scan-frame.hit { animation: none; border-color: #7BD36A; } }
+.scan-hint { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; color: #fff; font-weight: 800; font-size: 13px; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
+.scan-msg { position: relative; color: #fff; padding: 18px; text-align: center; font-weight: 700; line-height: 1.4; }
+.scan-torch { position: absolute; top: 10px; right: 10px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .45); color: #fff; display: grid; place-items: center; }
+.scan-torch.on { background: #F4B740; color: #23301F; }
+.linkbtn { background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer; }
+.scan-item { padding: 8px 10px; flex-wrap: nowrap; gap: 8px; }
+.scan-item input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+.scan-item .input { padding: 6px 10px; min-height: 38px; }
+.skel-line { display: block; height: 38px; border-radius: 10px; background: linear-gradient(90deg, var(--track) 25%, var(--line) 50%, var(--track) 75%); background-size: 200% 100%; animation: skel 1.2s linear infinite; }
+@keyframes skel { from { background-position: 200% 0; } to { background-position: -200% 0; } }

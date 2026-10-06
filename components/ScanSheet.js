@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Icon from './Icon';
 import { CATEGORIES } from '@/lib/game';
 import { isFrozenMeat } from '@/lib/recipes/match';
+import LiveBarcode from './LiveBarcode';
 
 // Shrinks a photo to a JPEG data URL (default max 1600px). Also drops camera metadata such as GPS.
 async function toDataUrl(file, max = 1600) {
@@ -26,7 +27,6 @@ export default function ScanSheet({ mode, onAdd, onClose }) {
   const [error, setError] = useState('');
   const [found, setFound] = useState(null); // [{name, category, quantity, on}]
   const [store, setStore] = useState(null);
-  const [code, setCode] = useState('');
 
   async function readReceipt(file) {
     setBusy(true); setError('');
@@ -36,27 +36,6 @@ export default function ScanSheet({ mode, onAdd, onClose }) {
       if (!data.items.length) throw new Error('No groceries found on that receipt.');
       setStore(data.store); setFound(data.items.map((i) => ({ ...i, on: true })));
     } catch (e) { setError(e.message); } finally { setBusy(false); }
-  }
-
-  async function lookup(digits) {
-    setBusy(true); setError('');
-    try {
-      const d = await api(`/api/barcode?code=${encodeURIComponent(digits)}`);
-      setFound([{ name: d.name, category: CATEGORIES.includes(d.category) ? d.category : 'Other', quantity: d.quantity, on: true, brand: d.brand }]);
-    } catch (e) { setError(e.message); } finally { setBusy(false); }
-  }
-
-  async function readBarcodePhoto(file) {
-    setError('');
-    if (!('BarcodeDetector' in window)) { setError('This browser can’t read barcodes from photos. Type the numbers under the bars instead.'); return; }
-    setBusy(true);
-    try {
-      const bmp = await createImageBitmap(file);
-      const det = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
-      const [hit] = await det.detect(bmp);
-      if (!hit) throw new Error('Couldn’t spot a barcode. Get closer, or type the numbers.');
-      setCode(hit.rawValue); setBusy(false); await lookup(hit.rawValue);
-    } catch (e) { setError(e.message); setBusy(false); }
   }
 
   const picked = (found || []).filter((i) => i.on);
@@ -81,20 +60,7 @@ export default function ScanSheet({ mode, onAdd, onClose }) {
           </>
         )}
 
-        {!found && mode === 'barcode' && (
-          <>
-            <label className="card" style={{ display: 'grid', placeItems: 'center', minHeight: 140, cursor: busy ? 'wait' : 'pointer', borderStyle: 'dashed' }}>
-              <span className="row muted" style={{ fontWeight: 800 }}><Icon name="barcode" size={24} />{busy ? 'Looking it up…' : 'Photo of the barcode'}</span>
-              <input type="file" accept="image/*" capture="environment" hidden disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; if (f) readBarcodePhoto(f); e.target.value = ''; }} />
-            </label>
-            <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); if (/^\d{8,14}$/.test(code)) lookup(code); else setError('Barcodes are 8 to 14 digits.'); }}>
-              <label htmlFor="bc" hidden>Barcode number</label>
-              <input id="bc" className="input" inputMode="numeric" placeholder="or type the numbers" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 14))} />
-              <button className="btn" type="submit" disabled={busy}>Look up</button>
-            </form>
-            <p className="muted" style={{ margin: 0, fontSize: 12 }}>Product info from Open Food Facts.</p>
-          </>
-        )}
+        {mode === 'barcode' && <LiveBarcode onAdd={onAdd} onClose={onClose} />}
 
         {found && (
           <>
@@ -114,7 +80,7 @@ export default function ScanSheet({ mode, onAdd, onClose }) {
             <button className="btn wide" disabled={busy || !picked.length} onClick={async () => { setBusy(true); try { await onAdd(picked.map(({ name, category, quantity }) => ({ name: name.trim().slice(0, 60), category, quantity: quantity ? String(quantity).slice(0, 30) : null })).filter((x) => x.name)); onClose?.(); } finally { setBusy(false); } }}>
               {busy ? 'Adding…' : `Add ${picked.length} to pantry`}
             </button>
-            <button className="btn ghost wide" onClick={() => { setFound(null); setStore(null); setCode(''); }}>Scan again</button>
+            <button className="btn ghost wide" onClick={() => { setFound(null); setStore(null); }}>Scan again</button>
           </>
         )}
         {error && <p className="err" role="alert" style={{ margin: 0 }}>{error}</p>}

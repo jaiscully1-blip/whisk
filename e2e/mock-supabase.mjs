@@ -205,7 +205,7 @@ async function storage(req, res, uid, path, buf) {
 
 // ---------- Anthropic stand-in ----------
 export const anthropicCalls = [];
-const wikiCalls = [], ytCalls = [];
+const wikiCalls = [], ytCalls = [], offCalls = [];
 function fakeRecipe(title, cuisine, fromPantry) {
   return { title, cuisine, summary: `A quick ${cuisine.toLowerCase()} dinner.`, prep_minutes: 10, cook_minutes: 20, servings: 2, technique: 2, prep_level: 2, precision: 2, equipment: ['stove'],
     ingredients: [{ item: fromPantry[0] || 'Eggs', amount: '2', from_pantry: true }, { item: 'Fresh basil', amount: '1 handful', from_pantry: false }],
@@ -291,6 +291,13 @@ const server = http.createServer(async (req, res) => {
       if (p.get('action') === 'parse' && p.get('pageid') === '778') return send(res, 200, { parse: { title: 'Salsa macha', pageid: 778, wikitext: '{{Infobox food\n| name = Salsa macha\n| country = [[Mexico]]\n| main_ingredient = [[Chili pepper|Dried chiles]], [[garlic]], {{hlist|[[peanut]]s|sesame seeds}}, [[olive oil]]<ref>x</ref>\n| variations = \n}}\nSalsa macha is a sauce.' } });
       return send(res, 404, { error: 'mock' });
     }
+    // ---- Open Food Facts stand-in ----
+    if (path.startsWith('/off/api/v2/product/')) {
+      const code = path.split('/').pop().replace('.json', ''); offCalls.push(code);
+      const DB = { '0012345678905': { product_name: 'Black Beans', brands: 'Goya,Goya Foods', quantity: '15.5 oz', categories_tags: ['en:canned-foods', 'en:legumes'] } };
+      return DB[code] ? send(res, 200, { status: 1, product: DB[code] }) : send(res, 404, { status: 0 });
+    }
+    if (path === '/__e2e/off-calls') return send(res, 200, offCalls);
     // ---- YouTube Data API stand-in ----
     if (path.startsWith('/yt/youtube/v3/')) {
       if (url.searchParams.get('key') !== 'e2e-yt-key') return send(res, 403, { error: { code: 403, message: 'bad key' } });

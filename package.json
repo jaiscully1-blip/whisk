@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "seed:sql": "node scripts/gen-seed.mjs",
-    "seed:recipes": "node scripts/gen-recipes-sql.mjs"
+    "seed:recipes": "node scripts/gen-recipes-sql.mjs",
+    "prebuild": "node scripts/copy-zxing.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",
@@ -18,6 +19,7 @@
     "@supabase/supabase-js": "2.117.2",
     "@upstash/ratelimit": "2.2.0",
     "@upstash/redis": "1.39.0",
+    "barcode-detector": "3.2.2",
     "next": "15.5.27",
     "react": "19.3.0",
     "react-dom": "19.3.0",

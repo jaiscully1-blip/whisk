@@ -463,15 +463,20 @@ await step('cook off with a friend', async () => {
   check('the friend’s game picks up the invite from the link', /Invited by (?!a friend)/.test(invToast), invToast);
   // host makes a game
   const c0 = await pill(page);
-  await nav('Compete'); await page.waitForURL('**/compete'); await page.locator('.co-card').waitFor();
-  check('Compete has Cook Off: pick the time, make a game or join with a code', (await page.locator('.co-times [role=radio]').count()) === 4 && (await page.getByRole('button', { name: 'Make a game' }).count()) === 1 && (await page.getByPlaceholder('Game code').count()) === 1);
+  await nav('Compete'); await page.waitForURL('**/compete');
+  check('Compete is tidy: one Friends card, no Cook Off controls on it', (await page.locator('main .co-card').count()) === 0 && (await page.locator('.fr-card').count()) === 1);
+  await page.locator('.fr-card').click(); await page.waitForURL('**/compete/friends'); await page.locator('.co-card').waitFor();
+  check('inside Friends: Cook Off starts as two buttons', (await page.getByRole('button', { name: 'New game' }).count()) === 1 && (await page.getByRole('button', { name: 'Join a game' }).count()) === 1 && (await page.locator('.co-times').count()) === 0);
+  await page.getByRole('button', { name: 'New game' }).click();
+  check('New game: pick the time, then make it', (await page.locator('.co-times [role=radio]').count()) === 4 && (await page.getByRole('button', { name: /Make a \d+-minute game/ }).count()) === 1);
   await page.locator('.co-times [role=radio]', { hasText: '30 min' }).click();
-  await page.getByRole('button', { name: 'Make a game' }).click(); await page.waitForURL('**/compete/cookoff?code=*');
+  await page.getByRole('button', { name: 'Make a 30-minute game' }).click(); await page.waitForURL('**/compete/cookoff?code=*');
   const code = new URL(page.url()).searchParams.get('code');
   await page.locator('.co-code b').waitFor();
   check('the lobby shows the code big, and you (host)', (await page.locator('.co-code b').innerText()) === code && /\(you\)/.test(await page.locator('.co-chip.me').innerText()) && (await page.locator('.co-chip.me svg').count()) === 1);
   // friend joins with the code
   await fr.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await fr.waitForURL('**/compete');
+  await fr.locator('.fr-card').click(); await fr.waitForURL('**/compete/friends'); await fr.getByRole('button', { name: 'Join a game' }).click();
   await fr.getByPlaceholder('Game code').fill(code.toLowerCase()); await fr.getByRole('button', { name: 'Join', exact: true }).click();
   await fr.waitForURL('**/compete/cookoff?code=*'); await fr.getByText('Waiting for the host to start…').waitFor();
   await page.locator('.co-chip', { hasText: /^Cook 2/ }).waitFor({ timeout: 6000 });

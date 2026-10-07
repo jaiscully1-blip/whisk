@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useWhisk } from '@/components/AppShell';
 import Icon from '@/components/Icon';
+import CookOffCard from '@/components/CookOffCard';
 
 // Friends' plates. Step by step: add a friend with their code → they say yes → you see the plates they choose to
 // share (plates are private until shared), love them, or report one. Nothing here is public.
@@ -104,6 +105,8 @@ export default function Friends() {
         </section>
       )}
 
+      <CookOffCard />
+
       <section className="card stack" style={{ gap: 10 }} aria-label="Add a friend">
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <div><span className="eyebrow">Your friend code</span><div className="fr-code">{f?.code || '······'}</div></div>
@@ -114,8 +117,10 @@ export default function Friends() {
           <input id="fr-code" className="input co-code-in" maxLength={6} autoCapitalize="characters" autoComplete="off" placeholder="Friend’s code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} />
           <button className="btn" type="submit" disabled={busy}>Add</button>
         </form>
-        <span className="desc">Your plates are private. Only friends see the ones you share (tap “Share with friends” after you cook).</span>
       </section>
+
+      <h2 style={{ fontSize: 22, marginTop: 4 }}>Plates</h2>
+      <span className="desc" style={{ marginTop: -8 }}>Yours stay private until you tap “Share with friends” after cooking.</span>
 
       {feed === null ? <p className="muted">Loading plates…</p> : feed.length === 0 ? (
         <div className="empty"><b>No plates yet</b>{f?.friends?.length ? 'When your friends share a plate, it shows up here.' : 'Add a friend with their code to see what they cook.'}</div>

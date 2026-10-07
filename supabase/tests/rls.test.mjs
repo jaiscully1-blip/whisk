@@ -606,6 +606,68 @@ await as(V1, () => db.query(`select public.delete_my_account()`));
 const left19 = (await db.query(`select (select count(*) from auth.users where id = '${V1}')::int u, (select count(*) from profiles where id = '${V1}')::int p, (select count(*) from meals where user_id = '${V1}')::int m, (select count(*) from shopping_items where user_id = '${V1}')::int s, (select count(*) from profiles where id = '${V2}')::int other`)).rows[0];
 check('delete my data removes the account and everything tied to it (and only theirs)', left19.u === 0 && left19.p === 0 && left19.m === 0 && left19.s === 0 && left19.other === 1, JSON.stringify(left19));
 
+// ================= 0020: friends + plate feedOf =================
+try { const f = fs.readFileSync('./supabase/migrations/0020_friends_feed.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0020 runs (twice)', true); }
+catch (e) { check('0020 runs (twice)', false, e.message); }
+const [F1, F2, F3, F4] = ['11110000-0000-0000-0000-000000000001', '22220000-0000-0000-0000-000000000002', '33330000-0000-0000-0000-000000000003', '44440000-0000-0000-0000-000000000004'];
+for (const [u, n] of [[F1, 'Ana'], [F2, 'Ben'], [F3, 'Cy'], [F4, 'Dee']]) { await db.exec(`insert into auth.users (id, email) values ('${u}', null)`); await db.exec(`update profiles set display_name = '${n}' where id = '${u}'`); }
+const gf20 = async (u) => (await as(u, () => db.query(`select public.get_friends() as r`))).rows[0].r;
+const fc1 = (await gf20(F1)).code, fc2 = (await gf20(F2)).code, fc3 = (await gf20(F3)).code;
+check('everyone has a 6-letter friend code', [fc1, fc2, fc3].every((c) => /^[A-HJ-NP-Z2-9]{6}$/.test(c)));
+await expectFail('you can’t friend yourself', F1, `select public.add_friend('${fc1}')`);
+await expectFail('a made-up code finds nobody', F1, `select public.add_friend('ZZZZZZ')`);
+const ask20 = (await as(F1, () => db.query(`select public.add_friend('${fc2.toLowerCase()}') as r`))).rows[0].r;
+const g2 = await gf20(F2);
+check('adding a code sends a request; they see your name', ask20 === 'requested' && g2.requests.length === 1 && g2.requests[0].name === 'Ana' && g2.friends.length === 0);
+await as(F2, () => db.query(`select public.answer_friend('${fc1}', true)`));
+check('they say yes → friends both20 ways', (await gf20(F1)).friends.some((f) => f.name === 'Ben') && (await gf20(F2)).friends.some((f) => f.name === 'Ana'));
+const both20 = (await as(F3, () => db.query(`select public.add_friend('${fc1}') as r`))).rows[0].r;
+const back20 = (await as(F1, () => db.query(`select public.add_friend('${fc3}') as r`))).rows[0].r;
+check('if they already asked you, adding them back20 makes you friends', both20 === 'requested' && back20 === 'friends');
+await expectFail('players can’t read the friend tables', F1, `select * from friends`);
+// plates
+for (const [u, k] of [[F1, 'a1'], [F1, 'a2'], [F2, 'b1'], [F4, 'd1']]) { await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${u}/${k}.jpg')`); await as(u, () => db.query(`select public.log_meal('www-budgetbytes-com-picadillo', '${u}/${k}.jpg')`)); }
+const mid20 = async (u, k) => (await db.query(`select id from meals where photo_path = '${u}/${k}.jpg'`)).rows[0].id;
+const [a1x, a2x, b1x, d1x] = [await mid20(F1, 'a1'), await mid20(F1, 'a2'), await mid20(F2, 'b1'), await mid20(F4, 'd1')];
+const feedOf = async (u) => (await as(u, () => db.query(`select public.get_feed() as r`))).rows[0].r;
+check('plates are private by default (empty feedOf)', (await feedOf(F2)).length === 0);
+await as(F1, () => db.query(`select public.set_meal_shared('${a1x}', true)`));
+await as(F4, () => db.query(`select public.set_meal_shared('${d1x}', true)`));
+check('you can only share your own plate', (await as(F2, () => db.query(`select public.set_meal_shared('${a2x}', true) as r`))).rows[0].r === false);
+const fb20 = await feedOf(F2);
+check('friends see the shared plate (not the private one, not strangers’)', fb20.length === 1 && fb20[0].id === a1x && fb20[0].name === 'Ana' && !fb20[0].mine);
+check('strangers see nothing', (await feedOf(F4)).every((x) => x.mine));
+await db.exec(`grant select on storage.objects to authenticated`);
+const seePhotox = async (u, n) => (await as(u, () => db.query(`select count(*)::int n from storage.objects where name = '${n}'`))).rows[0].n;
+check('friends can open a shared plate photo; strangers and private photos stay closed', await seePhotox(F2, `${F1}/a1.jpg`) === 1 && await seePhotox(F4, `${F1}/a1.jpg`) === 0 && await seePhotox(F2, `${F1}/a2.jpg`) === 0);
+// love
+const l1x = (await as(F2, () => db.query(`select public.love_meal('${a1x}', true) as r`))).rows[0].r;
+const l2x = (await as(F2, () => db.query(`select public.love_meal('${a1x}', true) as r`))).rows[0].r;
+const l3x = (await as(F3, () => db.query(`select public.love_meal('${a1x}', true) as r`))).rows[0].r;
+check('anyone who can see it can love it, once each', l1x === 1 && l2x === 1 && l3x === 2 && (await feedOf(F2))[0].loved === true);
+await expectFail('no loving plates you can’t see', F4, `select public.love_meal('${a1x}', true)`);
+// report
+await expectFail('you can’t report your own plate', F1, `select public.report_meal('${a1x}', 'spam')`);
+await as(F2, () => db.query(`select public.report_meal('${a1x}', 'not_food')`));
+check('reporting hides it for you right away, not yet for others', (await feedOf(F2)).length === 0 && (await feedOf(F3)).length === 1);
+await as(F3, () => db.query(`select public.report_meal('${a1x}', 'rude')`));
+check('2 reports from different players hide it for everyone (even the owner’s feedOf)', (await feedOf(F1)).every((x) => x.id !== a1x) && (await db.query(`select hidden_at from meals where id = '${a1x}'`)).rows[0].hidden_at !== null);
+await expectFail('owners can’t un-hide a reported plate', F1, `update meals set hidden_at = null where id = '${a1x}'`);
+await as(F1, () => db.query(`select public.set_meal_shared('${a1x}', true)`));
+check('…or bring it back20 by sharing again', (await db.query(`select hidden_at from meals where id = '${a1x}'`)).rows[0].hidden_at !== null);
+await expectFail('reports are for admins only', F2, `select public.admin_reports()`);
+await db.exec(`update profiles set is_admin = true where id = '${F4}'`);
+const rep20 = (await as(F4, () => db.query(`select public.admin_reports() as r`))).rows[0].r;
+check('admins see reported plates with reasons', rep20.length === 1 && rep20[0].reports === 2 && rep20[0].hidden === true);
+check('admins can open a reported photo to check it', await seePhotox(F4, `${F1}/a1.jpg`) === 1 && await seePhotox(F4, `${F1}/a2.jpg`) === 0);
+await expectFail('only admins can un-hide', F2, `select public.admin_set_hidden('${a1x}', false)`);
+await as(F4, () => db.query(`select public.admin_set_hidden('${a1x}', false)`));
+check('an admin can put a wrongly reported plate back', (await feedOf(F3)).some((x) => x.id === a1x));
+// unfriend
+await as(F2, () => db.query(`select public.set_meal_shared('${b1x}', true)`));
+await as(F1, () => db.query(`select public.remove_friend('${fc2}')`));
+check('removing a friend: you stop seeing each other’s plates', (await feedOf(F1)).every((x) => x.mine) && (await feedOf(F2)).every((x) => x.mine));
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

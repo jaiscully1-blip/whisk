@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import PullToRefresh from './PullToRefresh';
 import UsedUp from './UsedUp';
+import ShareSwitch from './ShareSwitch';
 import { allowed } from '@/lib/recipes/never';
 import { loadProfile } from '@/lib/profile';
 import Tips from './Tips';
@@ -295,6 +296,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
                     <button type="button" className="down" aria-pressed={rating === 'down'} aria-label="Didn’t like it" onClick={() => rate('down')}><Icon name="down" size={26} /></button>
                   </div>
                   <span className="desc">Saved to your cookbook with your rating.</span>
+                  <ShareSwitch mealId={popup.mealId} />
                   {popup.recipe && <UsedUp recipe={popup.recipe} />}
                   <button className="btn wide" style={{ marginTop: 8 }} onClick={closePopup} autoFocus>Leave</button>
                 </>

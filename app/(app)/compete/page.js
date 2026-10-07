@@ -13,6 +13,7 @@ import { ServingsX, IngredientList, StepList } from '@/components/RecipeSteps';
 import { cultureStyle } from '@/lib/culture';
 import Scene from '@/components/Scene';
 import CookOffCard from '@/components/CookOffCard';
+import FriendsCard from '@/components/FriendsCard';
 
 const TIER = { 1: ['Small', 'var(--fresh-soft)', 'var(--fresh)'], 2: ['Medium', 'var(--warn-soft)', 'var(--warn)'], 3: ['Big', 'var(--pop-soft)', 'var(--bad)'] };
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
@@ -77,6 +78,7 @@ export default function Compete() {
     <div className="stack">
       <div className="page-title"><h1>Compete</h1><span className="muted">Resets in {resetIn}</span></div>
       <CookOffCard />
+      <FriendsCard />
       {bingo && (
         <section data-tour="bingo" data-tip="bingo" className="stack" style={{ gap: 10 }} aria-labelledby="bingo-h">
           <div className="row" style={{ justifyContent: 'space-between' }}><h2 id="bingo-h" style={{ fontSize: 22 }}>Cuisine bingo</h2><span className="chip xp">+200 XP</span></div>

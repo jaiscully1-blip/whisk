@@ -8,6 +8,7 @@ import GetCoinsSheet from '@/components/GetCoinsSheet';
 import Passport from '@/components/Passport';
 import ResetSheet from '@/components/ResetSheet';
 import NeverShowSheet from '@/components/NeverShowSheet';
+import ShareSwitch from '@/components/ShareSwitch';
 import DeleteDataSheet from '@/components/DeleteDataSheet';
 import RecipeSheet from '@/components/RecipeSheet';
 import { usePantry } from '@/components/usePantry';
@@ -46,7 +47,8 @@ export default function Me() {
       const [it, inv, m, h] = await Promise.all([
         supabase.from('items').select('id, slot, name, rarity, price, sort').eq('active', true).order('sort'),
         supabase.from('inventory').select('item_id'),
-        supabase.from('meals').select('id, title, photo_path, cooked_at, rating').order('cooked_at', { ascending: false }).limit(12),
+        supabase.from('meals').select('id, title, photo_path, cooked_at, rating, shared_at').order('cooked_at', { ascending: false }).limit(12)
+          .then((r) => (r.error?.code === '42703' ? supabase.from('meals').select('id, title, photo_path, cooked_at, rating').order('cooked_at', { ascending: false }).limit(12) : r)),
         supabase.from('meals').select('cuisine, country, cooked_at, ').order('cooked_at', { ascending: false }).limit(1000)
       ]);
       setItems(it.data || []); setOwned(new Set((inv.data || []).map((r) => r.item_id)));
@@ -174,6 +176,7 @@ export default function Me() {
                 {m.url ? <img src={m.url} alt={m.title} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 14 }} /> : <div className="card" style={{ aspectRatio: '1' }} />}
                 {m.rating && <span style={{ position: 'absolute', top: 6, right: 6, background: 'var(--card)', borderRadius: 99, padding: 3, display: 'grid', color: m.rating === 'up' ? 'var(--fresh)' : 'var(--bad)' }} aria-label={m.rating === 'up' ? 'Liked' : 'Disliked'}><Icon name={m.rating} size={16} /></span>}
                 <figcaption style={{ fontSize: 12, fontWeight: 700, marginTop: 4 }}>{m.title}<span className="muted"> · {new Date(m.cooked_at).toLocaleDateString()}</span></figcaption>
+                {'shared_at' in m && <ShareSwitch mealId={m.id} initial={!!m.shared_at} compact />}
               </figure>
             ))}
           </div>

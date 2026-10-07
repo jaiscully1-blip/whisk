@@ -35,6 +35,16 @@ export default function Admin() {
   const [who, setWho] = useState('');
   const [denied, setDenied] = useState(false);
   const [live, setLive] = useState(true);
+  const [reports, setReports] = useState([]);   // reported plates (friends feed)
+  const [thumbs, setThumbs] = useState({});
+  const loadReports = useCallback(async () => {
+    const { data, error } = await supabase.rpc('admin_reports'); if (error) return;
+    setReports(data || []);
+    const paths = (data || []).map((r) => r.photo).filter(Boolean);
+    if (paths.length) { const { data: s } = await supabase.storage.from('meal-photos').createSignedUrls(paths, 3600); setThumbs(Object.fromEntries((s || []).filter((x) => x.signedUrl).map((x) => [x.path, x.signedUrl]))); }
+  }, [supabase]);
+  useEffect(() => { if (ov) loadReports(); }, [ov ? 1 : 0, loadReports]); // eslint-disable-line react-hooks/exhaustive-deps   (admins only: after the overview loads)
+  async function setHidden(r, hidden) { await supabase.rpc('admin_set_hidden', { p_meal: r.meal, p_hidden: hidden }); loadReports(); }
 
   const load = useCallback(async () => {
     const [o, f] = await Promise.all([supabase.rpc('admin_overview', { p_days: days }), supabase.rpc('admin_events', { p_limit: 100, p_player: who.trim() || null })]);
@@ -64,6 +74,19 @@ export default function Admin() {
       <Table title="Pages" cols={[['page', 'Page'], ['n', 'Actions', true]]} rows={ov.by_page} />
       <Table title="Most-pressed buttons" cols={[['target', 'Button'], ['page', 'Page'], ['n', 'Taps', true]]} rows={ov.top_taps} />
       <Table title="Top searches" cols={[['q', 'Search'], ['n', 'Times', true]]} rows={ov.top_searches} />
+      {reports.length > 0 && (
+        <section className="adm-card">
+          <h3>Reported plates</h3>
+          <table><thead><tr><th>Plate</th><th>By</th><th>Reports</th><th></th></tr></thead>
+            <tbody>{reports.map((r) => (
+              <tr key={r.meal}>
+                <td>{thumbs[r.photo] ? <img src={thumbs[r.photo]} alt="" width="56" height="56" style={{ objectFit: 'cover', borderRadius: 8, verticalAlign: 'middle', marginRight: 8 }} /> : null}{r.title}</td>
+                <td>{r.name}</td><td>{r.reports} <span className="desc">({(r.reasons || []).join(', ')})</span></td>
+                <td>{r.hidden ? <button className="btn ghost sm" onClick={() => setHidden(r, false)}>Put back</button> : <button className="btn sm" onClick={() => setHidden(r, true)}>Hide</button>}</td>
+              </tr>
+            ))}</tbody></table>
+        </section>
+      )}
       <section className="adm-card">
         <div className="row" style={{ justifyContent: 'space-between' }}><h3>Activity feed</h3>
           <input className="input" style={{ maxWidth: 180, minHeight: 36 }} placeholder="Filter by player" value={who} onChange={(e) => setWho(e.target.value.slice(0, 40))} aria-label="Filter by player" /></div>

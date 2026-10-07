@@ -6,6 +6,7 @@ import { supabaseBrowser } from '@/lib/supabase/client';
 import PullToRefresh from './PullToRefresh';
 import UsedUp from './UsedUp';
 import { allowed } from '@/lib/recipes/never';
+import { loadProfile } from '@/lib/profile';
 import Tips from './Tips';
 import CookieConsent, { CONSENT_KEY, LOGIN_CHOICE_KEY, deviceTimeZone } from './CookieConsent';
 import { startActivity, setPage as trackPage } from '@/lib/activity';
@@ -22,7 +23,6 @@ export const useWhisk = () => useContext(Ctx);
 const TITLES = { cooked: 'Cooked it!', stamp: 'New stamp!' };
 const NAV = [['/home', 'Home', 'home'], ['/pantry', 'Pantry', 'pantry'], ['/cook', 'Cook', 'cook'], ['/compete', 'Compete', 'compete'], ['/me', 'Me', 'me']];
 const consentRef0 = (p) => { if (p?.consent) return p.consent; try { return JSON.parse(localStorage.getItem('whisk-consent') || 'null'); } catch { return null; } };
-const PROFILE_COLS = 'id, display_name, theme_pref, xp, coins, streak_days, streak_freezes, login_count, first_login_at, last_meal_at, weekly_goal, takeout_price, last_device, ui_state, time_zone, consent, first_open_date, onboarded_at, is_admin, never_show, vacation_since, repair_streak, repair_day';
 const UI_LOCAL = 'whisk-ui';
 
 export function deviceLabel() {
@@ -148,7 +148,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refreshProfile = useCallback(async () => {
-    const { data } = await supabase.from('profiles').select(PROFILE_COLS).eq('id', initialProfile.id).single();
+    const { data } = await loadProfile(supabase, initialProfile.id);
     if (data) {
       setProfile(data);
       const lv = levelFor(data.xp);

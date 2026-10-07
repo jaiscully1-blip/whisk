@@ -658,6 +658,16 @@ await step('get my game back', async () => {
   check('on a new phone: get a backed-up game back by email (no new game made)', (await (await fetch('http://localhost:54321/__e2e/backups')).json()).otps.includes('chef@example.com'));
   await ctx7.close();
 });
+await step('notifications', async () => {
+  await nav('Me'); await page.waitForURL('**/me');
+  check('Me has Notifications (off until you turn it on), with only-useful wording', (await page.getByRole('switch', { name: 'Notifications' }).getAttribute('aria-checked')) === 'false' && (await page.getByText(/Only useful ones/).count()) === 1);
+  const bad = await page.request.post(`${BASE}/api/push/due`, { headers: { Authorization: 'Bearer wrong' } });
+  check('the hourly sender refuses without the secret', bad.status() === 401);
+  const ok = await page.request.post(`${BASE}/api/push/due`, { headers: { Authorization: 'Bearer e2e-push-secret-0123456789abcdef' } });
+  check('…and runs with it', ok.status() === 200 && (await ok.json()).ok === true);
+  const co = await page.request.post(`${BASE}/api/push/cookoff`, { data: { code: 'ABCDEF' } });
+  check('the Cook Off push only works for your own new game (quietly does nothing otherwise)', co.status() === 200 && (await co.json()).sent === 0);
+});
 await step('delete my data', async () => {
   const ctx5 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const dp = await ctx5.newPage();
   await dp.goto(`${BASE}/login`); await dp.getByRole('radio', { name: 'Accept' }).click(); await dp.getByRole('button', { name: 'Start playing' }).click(); await dp.waitForURL('**/cook');

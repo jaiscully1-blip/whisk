@@ -23,6 +23,7 @@
     "react-dom": "19.3.0",
     "server-only": "0.0.1",
     "three": "0.128.0",
+    "web-push": "3.6.7",
     "zod": "4.6.5"
   },
   "engines": {

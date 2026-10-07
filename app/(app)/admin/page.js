@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import PushSetup from '@/components/PushSetup';
 import { useWhisk } from '@/components/AppShell';
 import { fmt } from '@/lib/game';
 
@@ -74,6 +75,7 @@ export default function Admin() {
       <Table title="Pages" cols={[['page', 'Page'], ['n', 'Actions', true]]} rows={ov.by_page} />
       <Table title="Most-pressed buttons" cols={[['target', 'Button'], ['page', 'Page'], ['n', 'Taps', true]]} rows={ov.top_taps} />
       <Table title="Top searches" cols={[['q', 'Search'], ['n', 'Times', true]]} rows={ov.top_searches} />
+      <PushSetup />
       {reports.length > 0 && (
         <section className="adm-card">
           <h3>Reported plates</h3>

@@ -24,6 +24,7 @@ function CookOff() {
   const sp = useSearchParams();
   const code = (sp.get('code') || '').toUpperCase();
   const asJudge = sp.get('as') === 'judge';
+  const asCook = sp.get('as') === 'cook';
   const router = useRouter();
   const { supabase, recipes, profile, refreshProfile, say } = useWhisk();
   const [pantry] = usePantry();
@@ -35,14 +36,17 @@ function CookOff() {
   const [pick, setPick] = useState(null);   // the plate you've chosen, before you submit the vote
   const off = useRef(0);   // server clock − this phone's clock
   const asked = useRef(false);
+  const joinTried = useRef(false);
 
   const load = useCallback(async () => {
     let { data, error } = await supabase.rpc('get_cookoff', { p_code: code });
     // came from a judge link and not in the game yet: join as a judge
     if (error && asJudge && /not in this game/.test(error.message || '')) ({ data, error } = await supabase.rpc('join_cookoff_judge', { p_code: code }));
+    // came from a friend's "started a Cook Off" notification: join as a cook (once)
+    if (error && asCook && !joinTried.current && /not in this game/.test(error.message || '')) { joinTried.current = true; ({ data, error } = await supabase.rpc('join_cookoff', { p_code: code })); }
     if (error) { setErr(errText(error)); return null; }
     off.current = new Date(data.now).getTime() - Date.now(); setG(data); setErr(''); return data;
-  }, [supabase, code, asJudge]);
+  }, [supabase, code, asJudge, asCook]);
   useEffect(() => { load(); }, [load]);
   // Ask the server what's happening: often in the lobby and while voting, less while cooking.
   useEffect(() => {

@@ -668,6 +668,59 @@ await as(F2, () => db.query(`select public.set_meal_shared('${b1x}', true)`));
 await as(F1, () => db.query(`select public.remove_friend('${fc2}')`));
 check('removing a friend: you stop seeing each other’s plates', (await feedOf(F1)).every((x) => x.mine) && (await feedOf(F2)).every((x) => x.mine));
 
+// ================= 0021: notifications =================
+try { const f = fs.readFileSync('./supabase/migrations/0021_notifications.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0021 runs (twice)', true); }
+catch (e) { check('0021 runs (twice)', false, e.message); }
+await db.exec(`insert into private.app_secrets (name, sha256_hex) values ('push_sender', encode(sha256(convert_to('cron-secret-123', 'UTF8')), 'hex')) on conflict (name) do update set sha256_hex = excluded.sha256_hex`);
+const [N1, N2, N3] = ['5a000000-0000-0000-0000-00000000005a', '5b000000-0000-0000-0000-00000000005b', '5c000000-0000-0000-0000-00000000005c'];
+for (const u of [N1, N2, N3]) await db.exec(`insert into auth.users (id, email) values ('${u}', null)`);
+await db.exec(`update profiles set time_zone = 'America/New_York', display_name = 'Nia' where id = '${N1}'; update profiles set time_zone = 'Not/AZone' where id = '${N2}'`);
+const hourIn = async (tz) => (await db.query(`select extract(hour from now() at time zone '${tz}')::int h`)).rows[0].h;
+const sub = (u, k) => `select public.save_push('https://push.example.com/${k}', 'BPkey${k}', 'auth${k}')`;
+await as(N1, () => db.query(sub(N1, 'n1')));
+await expectFail('players can’t read push subscriptions', N2, `select * from push_subs`);
+await expectFail('the sender needs the secret', null, `select public.push_due('wrong')`);
+await expectFail('players can’t call the sender without it', N1, `select public.push_due(null)`);
+const due0 = (await as(null, () => db.query(`select public.push_due('cron-secret-123') as r`))).rows[0].r;
+check('notifications are off until the player turns them on', due0.length === 0);
+const nyHour = await hourIn('America/New_York');
+await as(N1, () => db.query(`select public.set_notify_hour(${nyHour})`));
+const due1 = (await as(null, () => db.query(`select public.push_due('cron-secret-123') as r`))).rows[0].r;
+check('nothing useful to say → no notification (never “we miss you”)', due1.length === 0);
+const todayNY = (await db.query(`select (now() at time zone 'America/New_York')::date d`)).rows[0].d;
+await db.exec(`insert into pantry_items (user_id, name, category, expires_on) values ('${N1}', 'Chicken', 'Proteins', '${ds(new Date(new Date(ds(todayNY) + 'T12:00:00Z').getTime() + 864e5))}')`);
+await db.exec(`insert into pantry_items (user_id, name, category) values ('${N1}', 'Frozen ground beef', 'Frozen')`);
+const due2 = (await as(null, () => db.query(`select public.push_due('cron-secret-123') as r`))).rows[0].r;
+check('at the picked hour: “Chicken expires tomorrow” (expiring beats defrost)', due2.length === 1 && due2[0].title === 'Chicken expires tomorrow' && due2[0].endpoint === 'https://push.example.com/n1' && due2[0].url === '/home?n=1', JSON.stringify(due2));
+const due3 = (await as(null, () => db.query(`select public.push_due('cron-secret-123') as r`))).rows[0].r;
+check('at most one a day', due3.length === 0);
+await db.exec(`update profiles set notify_last = null where id = '${N1}'; delete from pantry_items where user_id = '${N1}' and name = 'Chicken'`);
+const due4 = (await as(null, () => db.query(`select public.push_due('cron-secret-123') as r`))).rows[0].r;
+check('frozen meat not thawing → “Defrost the ground beef tonight”', due4.length === 1 && due4[0].title === 'Defrost the ground beef tonight', JSON.stringify(due4.map((d) => d.title)));
+await db.exec(`update profiles set notify_last = null, notify_hour = (extract(hour from now() at time zone 'America/New_York')::int + 3) % 24 where id = '${N1}'`);
+check('not at the picked hour → nothing', (await as(null, () => db.query(`select public.push_due('cron-secret-123') as r`))).rows[0].r.length === 0);
+// a bad time zone doesn't break everyone else
+const utcHour = await hourIn('UTC');
+await as(N2, () => db.query(sub(N2, 'n2'))); await db.exec(`update profiles set notify_hour = ${utcHour} where id = '${N2}'`);
+await db.exec(`insert into pantry_items (user_id, name, category, expires_on) values ('${N2}', 'Milk', 'Dairy & Eggs', (now() at time zone 'UTC')::date)`);
+const due5 = (await as(null, () => db.query(`select public.push_due('cron-secret-123') as r`))).rows[0].r;
+check('an unknown time zone falls back to UTC (and doesn’t break the run)', due5.length === 1 && due5[0].title === 'Milk expires today', JSON.stringify(due5.map((d) => d.title)));
+// Cook Off: friends with notifications on get one message, once
+const n3code = (await as(N3, () => db.query(`select public.get_friends() as r`))).rows[0].r.code;
+const n1code = (await as(N1, () => db.query(`select public.get_friends() as r`))).rows[0].r.code;
+await as(N1, () => db.query(`select public.add_friend('${n3code}')`));
+await as(N3, () => db.query(`select public.answer_friend('${n1code}', true)`));
+for (const n of ['Rice', 'Eggs', 'Garlic', 'Onion', 'Soy sauce']) await db.exec(`insert into pantry_items (user_id, name, category) values ('${N3}', '${n}', 'Other')`);
+const g21 = (await as(N3, () => db.query(`select public.create_cookoff(30) as r`))).rows[0].r;
+const pc = (await as(null, () => db.query(`select public.push_cookoff('cron-secret-123', '${N3}', '${g21.code}') as r`))).rows[0].r;
+const pc2 = (await as(null, () => db.query(`select public.push_cookoff('cron-secret-123', '${N3}', '${g21.code}') as r`))).rows[0].r;
+check('a friend’s new Cook Off → one message to friends who turned notifications on, once per game', pc.length === 1 && pc[0].endpoint.endsWith('/n1') && /started a Cook Off/.test(pc[0].title) && pc2.length === 0, JSON.stringify(pc));
+check('…and only for a game that player is really hosting', (await as(null, () => db.query(`select public.push_cookoff('cron-secret-123', '${N1}', '${g21.code}') as r`))).rows[0].r.length === 0);
+await as(null, () => db.query(`select public.push_gone('cron-secret-123', array['https://push.example.com/n1'])`));
+check('dead phones are forgotten', (await db.query(`select count(*)::int n from push_subs where endpoint = 'https://push.example.com/n1'`)).rows[0].n === 0);
+await as(N2, () => db.query(`select public.set_notify_hour(null)`));
+check('turning notifications off forgets the phone', (await db.query(`select count(*)::int n from push_subs where user_id = '${N2}'`)).rows[0].n === 0);
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

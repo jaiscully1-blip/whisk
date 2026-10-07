@@ -9,6 +9,7 @@ import Passport from '@/components/Passport';
 import ResetSheet from '@/components/ResetSheet';
 import NeverShowSheet from '@/components/NeverShowSheet';
 import BackupSheet from '@/components/BackupSheet';
+import NotifySettings from '@/components/NotifySettings';
 import ShareSwitch from '@/components/ShareSwitch';
 import DeleteDataSheet from '@/components/DeleteDataSheet';
 import RecipeSheet from '@/components/RecipeSheet';
@@ -202,6 +203,7 @@ export default function Me() {
         <button className="row setbtn" onClick={() => setNever(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
           <Icon name="shield" /><span style={{ flex: 1, fontWeight: 700 }}>Never show me</span><span className="desc">{(profile?.never_show || []).length ? `${profile.never_show.length} hidden` : 'Allergies, dislikes'}</span><Icon name="chevron" />
         </button>
+        <NotifySettings />
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
           <Icon name="plane" /><span style={{ flex: 1, fontWeight: 700 }}>Vacation mode</span>
           <button role="switch" aria-checked={!!profile?.vacation_since} aria-label="Vacation mode" onClick={toggleVacation} className={`switch ${profile?.vacation_since ? 'on' : ''}`}><span /></button>

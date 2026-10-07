@@ -1,13 +1,13 @@
 'use client';
 import { useEffect, useMemo, useRef } from 'react';
 
-// The Cook Off wheel, arcade style (like the "Big Bass Wheel"): a tall drum of painted wooden planks that rolls
-// top-to-bottom behind glass, a recipe on every plank, two arrows pointing at the middle. It rolls fast (motion-blurred
+// The Cook Off wheel, arcade style (like the "Big Bass Wheel"): a drum of painted wooden planks that fills the whole
+// screen, bursting out of the phone toward you when the game starts, a recipe on every plank, two arrows at the middle. It rolls fast (motion-blurred
 // up and down), slows, and stops with your recipe between the arrows exactly when the shared spin ends (`endsAt`).
 // Real 3D: each plank sits on a cylinder (CSS 3D); only the drum's angle changes per frame.
 const WOOD = [['#5E9BD1', '#4C86BB'], ['#F2A65A', '#E08C3E'], ['#5E9BD1', '#4C86BB'], ['#F2A65A', '#E08C3E'], ['#8CC56B', '#73AD54'], ['#F2A65A', '#E08C3E']];
 const BADGE = ['#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#2E9E4F', '#B14FC5'];
-const N = 24, STEP = 360 / N, H = 116;
+const N = 24, STEP = 360 / N, H = 150;
 const R = Math.round(H / 2 / Math.tan(Math.PI / N));   // drum radius so the planks meet edge to edge
 
 export default function CookWheel({ pool, target, endsAt, onDone }) {
@@ -44,7 +44,6 @@ export default function CookWheel({ pool, target, endsAt, onDone }) {
   return (
     <div className="bw" aria-live="polite" aria-label={target ? 'Spinning the recipe wheel' : 'Getting your recipe'}>
       <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true"><filter id="bw-blur" x="0" y="-20%" width="100%" height="140%"><feGaussianBlur ref={blur} stdDeviation="0 0" /></filter></svg>
-      <div className="bw-sign" aria-hidden="true"><span>BIG WHISK</span><b>SPIN</b></div>
       <div className="bw-cab">
         <div className="bw-window">
           <div className="bw-blur">

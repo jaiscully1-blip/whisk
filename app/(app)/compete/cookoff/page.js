@@ -170,7 +170,7 @@ function CookOff() {
   if (g.status === 'cooking' && (phase === 'spin' || !myRecipe)) {
     return (
       <div className="co-full co-spin">
-        <h2 className="co-big">{myRecipe ? 'Spinning…' : err || 'Getting your recipe…'}</h2>
+        {!myRecipe && <h2 className="co-big">{err || 'Getting your recipe…'}</h2>}
         {myRecipe && <CookWheel pool={wheelPool} target={myRecipe} endsAt={local(g.started_at) + SPIN_MS} onDone={() => setPhase('cook')} />}
         {err && <Link className="btn ghost" href="/compete">Back to Compete</Link>}
       </div>

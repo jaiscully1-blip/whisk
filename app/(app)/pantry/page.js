@@ -129,7 +129,7 @@ export default function Pantry() {
               <div><label className="lbl" htmlFor="p-exp">Expires</label><input id="p-exp" className="input" type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} /></div>
             </div>
             <button data-tour="add" data-tip="add" className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
-            <span className="desc">Whisk puts it on the right shelf for you. Frozen food gets a defrost reminder.</span>
+            <span className="desc">Frozen food gets a defrost reminder.</span>
           </form>
 
           <div className="row">

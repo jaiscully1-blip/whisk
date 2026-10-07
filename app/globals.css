@@ -71,7 +71,7 @@ h1, h2, h3 { font-family: var(--f-display); margin: 0; letter-spacing: -.01em; t
 .btn.wide { width: 100%; }
 .input, select.input { width: 100%; min-height: 46px; padding: 10px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); }
 .input:focus { outline: none; border-color: var(--accent); }
-label.lbl { font-size: 13px; font-weight: 800; color: var(--muted); display: block; margin-bottom: 4px; }
+label.lbl, span.lbl { font-size: 13px; font-weight: 800; color: var(--muted); display: block; margin-bottom: 4px; }
 .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 99px; background: var(--track); font-size: 13px; font-weight: 700; }
 .chip.xp { background: var(--gold-soft); font-weight: 800; }
 .chip.have { background: var(--fresh-soft); color: var(--fresh); font-weight: 800; }
@@ -638,3 +638,11 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .judge-note { margin: 0; padding: 10px 14px; border-radius: 14px; background: var(--gold-soft); border: 2px solid var(--gold); font-weight: 800; }
 .co-chip.judge { background: #EAF2FB; }
 .co-submit { position: sticky; bottom: 8px; min-height: 58px; font-size: 19px; }
+
+/* Cook: pick a diet. One scrolling row of the same coloured tags the recipes wear; the picked one fills in. */
+.diet-pick { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 6px; margin: 0 -2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.diet-pick::-webkit-scrollbar { display: none; }
+.diet-pick .chip { flex: none; min-height: 34px; padding: 0 12px; font-size: 13px; cursor: pointer; border: 2px solid transparent; font-family: inherit; }
+.diet-pick .chip.any { background: var(--track); color: var(--fg); }
+.diet-pick .chip.on { border-color: currentColor; box-shadow: 0 2px 0 currentColor; }
+.diet-pick .chip:active { transform: scale(.95); }

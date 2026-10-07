@@ -28,12 +28,10 @@ export default function Me() {
   const [meals, setMeals] = useState([]);
   const [history, setHistory] = useState([]);
   const [editing, setEditing] = useState(false);
-  const [editTakeout, setEditTakeout] = useState(false);
   const [resetting, setResetting] = useState(false);
     const [recipe, setRecipe] = useState(null);
   const [pantry] = usePantry();
   const [nameDraft, setNameDraft, clearName] = useDraft('nm', profile?.display_name || '');
-  const [takeout, setTakeout, clearTakeout] = useDraft('takeout', String(profile?.takeout_price ?? 15));
   const outfit = outfitFrom(loadout);
   const scaleAt = Math.max(0, TEXT_SCALES.indexOf(ui.textScale || 1));
   const lvl = levelFor(profile?.xp);
@@ -191,14 +189,6 @@ export default function Me() {
           <output style={{ minWidth: 44, textAlign: 'center', fontWeight: 800 }} aria-live="polite">{Math.round(TEXT_SCALES[scaleAt] * 100)}%</output>
           <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Bigger text" disabled={scaleAt === TEXT_SCALES.length - 1} onClick={() => setUi({ textScale: TEXT_SCALES[Math.min(TEXT_SCALES.length - 1, scaleAt + 1)] })}>+</button>
         </div>
-        <form className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }} onSubmit={async (e) => { e.preventDefault(); const v = Math.round(Number(takeout) * 100) / 100; if (!(v >= 0 && v <= 200)) { say('Pick a price from $0 to $200.'); return; } if (await saveSetting({ takeout_price: v })) { clearTakeout(); setEditTakeout(false); e.target.querySelector('input')?.blur(); } }}>
-          <Icon name="gift" /><label htmlFor="takeout" style={{ flex: 1, fontWeight: 700 }}>Typical takeout meal ($)</label>
-          <input id="takeout" className="input" inputMode="decimal" style={{ width: 84, background: editTakeout ? 'var(--card)' : 'transparent', borderColor: editTakeout ? 'var(--accent)' : 'var(--line)', fontWeight: 800, textAlign: 'center' }}
-            value={editTakeout ? takeout : String(profile?.takeout_price ?? 15)} readOnly={!editTakeout}
-            onFocus={() => { if (!editTakeout) { setTakeout(String(profile?.takeout_price ?? 15)); setEditTakeout(true); } }} onClick={() => setEditTakeout(true)}
-            onChange={(e) => setTakeout(e.target.value.replace(/[^0-9.]/g, '').slice(0, 6))} aria-label="Typical takeout meal in dollars. Tap to edit." />
-          {editTakeout && <button className="btn sm" type="submit">Submit</button>}
-        </form>
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="snow" /><span style={{ flex: 1, fontWeight: 700 }}>Streak freezes</span><b>{profile?.streak_freezes ?? 1}</b><span className="desc" style={{ width: '100%' }}>Miss one day and a freeze keeps your streak. You get one each week; it doesn’t stack.</span></div>
         <button className="row setbtn" onClick={openPrivacy} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
           <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Cookies &amp; privacy</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />

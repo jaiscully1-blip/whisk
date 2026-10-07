@@ -147,6 +147,15 @@ await step('cook', async () => {
   check('cook shows web recipes the pantry can make', n >= 5, `${n} recipes`);
   check('no "Find more online" searches', (await page.getByText('Find more online').count()) === 0 && (await page.getByText('Only real recipes').count()) === 0);
   check('saved recipes moved off Cook', (await page.getByText('Your saved recipes').count()) === 0);
+  // Diet filter: every card left wears that tag; Any brings them all back
+  const total = parseInt(await page.getByText(/recipes? you can make right now/).innerText(), 10);
+  await page.getByRole('radio', { name: 'Vegetarian' }).click(); await page.waitForTimeout(300);
+  const veg = await page.locator('main button.card:has(.chip.have)').count();
+  const vegTotal = parseInt(await page.getByText(/recipes? you can make right now/).innerText(), 10);
+  const vegTagged = await page.locator('main button.card:has(.chip.have):has(.chip.diet.veg), main button.card:has(.chip.have):has(.chip.diet.vegan)').count();
+  check('Diet filter: Vegetarian keeps only vegetarian/vegan recipes', veg > 0 && vegTotal < total && veg === vegTagged, `${vegTotal} of ${total}`);
+  await page.getByRole('radio', { name: 'Any' }).click(); await page.waitForTimeout(300);
+  check('Diet filter: Any shows them all again', (await page.locator('main button.card:has(.chip.have)').count()) === n);
   await page.click('text=Fridge Raid (surprise me)');
   await page.getByText('Ingredients', { exact: true }).waitFor();
   check('Fridge Raid says "Ingredients" and "recipes you can make right now"', (await page.getByText('your hand').count()) === 0 && (await page.getByText(/you can make right now/).count()) >= 1);
@@ -292,11 +301,7 @@ await step('me settings', async () => {
   await page.getByRole('button', { name: 'Smaller text' }).click(); await page.waitForTimeout(200);
   check('text size goes back down', ['1', 'normal'].includes(await page.locator('main').evaluate((m) => getComputedStyle(m).zoom)));
   check('reset game is a tiny link', (await page.getByRole('button', { name: 'Reset game' }).evaluate((b) => parseFloat(getComputedStyle(b).fontSize))) <= 12);
-  check('takeout shows just the number (no button)', (await page.locator('form:has(#takeout) button').count()) === 0);
-  await page.click('#takeout'); await page.fill('#takeout', '18');
-  await page.locator('form:has(#takeout)').getByRole('button', { name: 'Submit' }).click();
-  await page.waitForTimeout(600);
-  check('takeout saves and goes back to just the number', (await page.locator('form:has(#takeout) button').count()) === 0 && (await page.inputValue('#takeout')) === '18');
+  check('no takeout price setting on Me', (await page.locator('#takeout').count()) === 0 && (await page.getByText('Typical takeout').count()) === 0);
   await page.getByRole('button', { name: 'Reset game' }).click();
   check('reset: type RESET (no password, no Google)', (await page.locator('[aria-label="Reset game"] input[type=password]').count()) === 0 && await page.getByRole('button', { name: 'Reset my game' }).isDisabled());
   await page.fill('#rs-word', 'reset');

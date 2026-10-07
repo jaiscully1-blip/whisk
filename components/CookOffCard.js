@@ -24,7 +24,7 @@ export default function CookOffCard() {
   }
   return (
     <section className="card stack co-card" data-tip="cookoff" aria-labelledby="co-h">
-      <div className="row" style={{ justifyContent: 'space-between' }}><h2 id="co-h" style={{ fontSize: 24 }}>Cook Off</h2><span className="chip xp">Live with friends</span></div>
+      <div className="row" style={{ justifyContent: 'space-between' }}><h2 id="co-h" style={{ fontSize: 24 }}>Cook Off</h2><span className="chip xp" style={{ border: 0 }}>Live with friends</span></div>
       <div className="row co-times" role="radiogroup" aria-label="Game time">
         {TIMES.map((m) => <button key={m} type="button" role="radio" aria-checked={mins === m} className={`chip ${mins === m ? 'on' : ''}`} onClick={() => setMins(m)}>{m} min</button>)}
       </div>

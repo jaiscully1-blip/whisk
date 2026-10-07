@@ -53,7 +53,6 @@ export default function Passport({ counts, onOpenRecipe }) {
       <div className="album-pages" ref={scroller} onScroll={onScroll} tabIndex={0} aria-label="Stamp album pages. Swipe left or right.">
         {PAGES.map((list, p) => (
           <div key={p} className="album-page" role="group" aria-label={`Page ${p + 1} of ${PAGES.length}`}>
-            <div className="album-range">{list[0][1]} – {list[list.length - 1][1]}</div>
             <div className="album-grid">
               {list.map((c, i) => <Stamp key={c[0]} c={c} i={p * STAMPS_PER_PAGE + i} n={counts.get(c[0]) || 0} onOpen={setOpen} />)}
             </div>

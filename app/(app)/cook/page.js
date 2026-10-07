@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DietTags from '@/components/DietTags';
+import { DIET_ORDER, DIET_CLASS, fitsDiet } from '@/lib/recipes/diet';
 import { useWhisk, useDraft } from '@/components/AppShell';
 import RecipeSheet from '@/components/RecipeSheet';
 import Icon from '@/components/Icon';
@@ -26,7 +27,7 @@ export default function Cook() {
   const [hand, setHand] = useState(null);
   const [open, setOpen] = useState(null);
   const [asked, setAsked] = useState(false);   // "Nothing fits yet" only shows right after you ask, never on its own
-  const savedMode = ui.cookMode || null; const time = ui.cookTime || ''; const cu = ui.cookCuisine || ''; 
+  const savedMode = ui.cookMode || null; const time = ui.cookTime || ''; const cu = ui.cookCuisine || ''; const diet = ui.cookDiet || '';
 
   const mode = savedMode === 'raid' && !hand ? 'pantry' : savedMode;
   const inStock = useMemo(() => (pantry || []).filter((p) => p.status !== 'out'), [pantry]);
@@ -35,15 +36,15 @@ export default function Cook() {
 
   const results = useMemo(() => {
     if (!mode) return null;
-    let list = makeable.filter(({ r }) => (!+time || r.minutes <= +time) && (!cu || r.cuisine === cu));
+    let list = makeable.filter(({ r }) => (!+time || r.minutes <= +time) && (!cu || r.cuisine === cu) && fitsDiet(r, diet));
     if (mode === 'raid' && hand) { const hc = new Set(hand.map(canon)); list = list.map((x) => ({ ...x, hits: x.r.key.filter((k) => hc.has(canon(k))).length })).filter((x) => x.hits > 0).sort((a, b) => b.hits - a.hits); }
     if (mode === 'named') { const words = (ui.cookDish || '').toLowerCase().split(/\s+/).filter((w) => w.length > 2); list = list.filter(({ r }) => words.some((w) => `${r.title} ${r.cuisine}`.toLowerCase().includes(w.replace(/s$/, '')))); }
     return list;
-  }, [mode, makeable, time, cu, hand, ui.cookDish]);
+  }, [mode, makeable, time, cu, diet, hand, ui.cookDish]);
 
   const names = inStock.filter((p) => !SKIP.includes(p.category)).map((p) => p.name);
   // Keep loading more as you scroll, until every recipe your pantry can make is on screen.
-  useEffect(() => { setShown(PAGE); }, [mode, time, cu, hand, ui.cookDish]);
+  useEffect(() => { setShown(PAGE); }, [mode, time, cu, diet, hand, ui.cookDish]);
   useEffect(() => {
     const el = moreRef.current; if (!el || !results || shown >= results.length) return;
     const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) setShown((n) => n + PAGE); }, { rootMargin: '400px' });
@@ -63,6 +64,14 @@ export default function Cook() {
         <div className="grid2">
           <div><label className="lbl" htmlFor="o-time">Time limit</label><select id="o-time" className="input" value={time} onChange={(e) => setUi({ cookTime: e.target.value })}>{[['', 'Any'], ['20', '20 min'], ['30', '30 min'], ['45', '45 min'], ['60', '1 hour'], ['120', '2 hours']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
           <div><label className="lbl" htmlFor="o-cu">Cuisine</label><select id="o-cu" className="input" value={cu} onChange={(e) => setUi({ cookCuisine: e.target.value })}><option value="">Any</option>{cuisines.map((c) => <option key={c}>{c}</option>)}</select></div>
+        </div>
+        <div>
+          <span className="lbl" id="o-diet">Diet</span>
+          <div className="diet-pick" role="radiogroup" aria-labelledby="o-diet">
+            {['', ...DIET_ORDER].map((d) => (
+              <button key={d || 'any'} type="button" role="radio" aria-checked={diet === d} className={`chip diet ${d ? DIET_CLASS[d] : 'any'} ${diet === d ? 'on' : ''}`} onClick={() => setUi({ cookDiet: d })}>{d || 'Any'}</button>
+            ))}
+          </div>
         </div>
         <button data-tour="make" data-tip="make" className="btn wide" onClick={() => { setHand(null); setAsked(true); setUi({ cookMode: 'pantry' }); }}>What can I make?</button>
         <button className="btn ghost wide" data-tip="fridge" onClick={raid}><Icon name="gift" size={18} />Fridge Raid (surprise me)</button>

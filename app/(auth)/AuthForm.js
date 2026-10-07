@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import { LOGIN_CHOICE_KEY } from '@/components/CookieConsent';
+import BackupSheet from '@/components/BackupSheet';
 
-// One phone, no account: no email, no password, no Google. "Start playing" makes a private game for this phone
+// One phone, no account to start: "Start playing" makes a private game for this phone
 // (Supabase anonymous sign-in), so the database still keeps every player's data to themselves.
 // First, a plain-words disclaimer: Whisk records what you do in the app. Accept → recorded, Decline → you still
 // play and nothing is recorded. The choice is saved with the game (see AppShell) and can be changed in Settings.
@@ -12,6 +13,7 @@ export default function AuthForm() {
   const router = useRouter();
   const [choice, setChoice] = useState(null);   // 'accept' | 'decline'
   const [busy, setBusy] = useState(false);
+  const [restoring, setRestoring] = useState(false);   // "Get my game back" (a game backed up on another phone)
   const [error, setError] = useState('');
   const [judge, setJudge] = useState('');
   const [deleted, setDeleted] = useState(false);   // just deleted their data (Me → Delete my data)   // came from a "come vote in my Cook Off" link
@@ -55,6 +57,8 @@ export default function AuthForm() {
         </section>
 
         <button className="btn wide startbtn" type="button" onClick={start} disabled={!choice || busy}>{busy ? 'Setting up your kitchen…' : 'Start playing'}</button>
+        <button type="button" className="linkbtn restore-link" onClick={() => setRestoring(true)}>Backed up a game before? Get it back</button>
+        {restoring && <BackupSheet supabase={supabaseBrowser()} mode="restore" onClose={() => setRestoring(false)} />}
         {!choice && <p className="desc" style={{ margin: 0 }}>Pick Accept or Decline first.</p>}
         {error && <p className="err" role="alert" style={{ margin: 0 }}>{error}</p>}
         <p className="desc" style={{ margin: 0 }}>No account, no email, no password.</p>

@@ -751,3 +751,12 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .more-btn { border: 0; background: none; padding: 6px; color: var(--muted); border-radius: 10px; }
 .menu-sheet .btn { justify-content: flex-start; }
 @media (prefers-reduced-motion: reduce) { .love svg { transition: none; } }
+
+/* back up / get my game back */
+.btn.sso { border: 0; }
+.btn.sso.apple { background: #111; color: #fff; box-shadow: 0 4px 0 #000; }
+.btn.sso.google { background: #fff; color: #1F1F1F; border: 2px solid var(--tile-edge, var(--line)); box-shadow: 0 4px 0 var(--tile-edge, var(--line)); }
+.backup-nudge { display: flex; align-items: center; gap: 10px; background: var(--gold-soft); }
+.backup-nudge > span { flex: 1; min-width: 0; line-height: 1.25; }
+.backup-nudge b { display: block; }
+.restore-link { align-self: center; font-size: 14px; color: var(--muted); margin-top: 4px; }

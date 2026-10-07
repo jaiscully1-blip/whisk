@@ -9,7 +9,7 @@ export async function GET(req) {
   const code = url.searchParams.get('code');
   const supabase = await supabaseServer();
   let ok = false;
-  if (tokenHash && ['email', 'signup', 'recovery', 'email_change'].includes(type || '')) {
+  if (tokenHash && ['email', 'signup', 'recovery', 'email_change', 'magiclink'].includes(type || '')) {
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
     ok = !error;
   } else if (code) {

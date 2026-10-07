@@ -34,7 +34,7 @@ export function deviceLabel() {
   return `${os} · ${br}`;
 }
 
-export default function AppShell({ initialProfile, initialLoadout, email, children }) {
+export default function AppShell({ initialProfile, initialLoadout, email, account = { anon: true, providers: [] }, children }) {
   const supabase = supabaseBrowser();
   const pathname = usePathname();
   const [pendingTab, setPendingTab] = useState(null);
@@ -249,8 +249,8 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
   // "Never show me": recipes using anything the player listed are gone from every list in the app.
   const neverKey = (profile?.never_show || []).join('|');
   const shownRecipes = useMemo(() => (recipes && neverKey ? recipes.filter((r) => allowed(r, profile.never_show)) : recipes), [recipes, neverKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const value = useMemo(() => ({ profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes: shownRecipes, allRecipes: recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump }),
-    [profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, shownRecipes, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump]);
+  const value = useMemo(() => ({ profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, recipes: shownRecipes, allRecipes: recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump }),
+    [profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, shownRecipes, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump]);
   const outfit = outfitFrom(loadout);
 
   return (

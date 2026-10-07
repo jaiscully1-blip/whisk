@@ -8,6 +8,7 @@ import GetCoinsSheet from '@/components/GetCoinsSheet';
 import Passport from '@/components/Passport';
 import ResetSheet from '@/components/ResetSheet';
 import NeverShowSheet from '@/components/NeverShowSheet';
+import BackupSheet from '@/components/BackupSheet';
 import ShareSwitch from '@/components/ShareSwitch';
 import DeleteDataSheet from '@/components/DeleteDataSheet';
 import RecipeSheet from '@/components/RecipeSheet';
@@ -20,7 +21,7 @@ const RARITY_ORDER = ['common', 'rare', 'epic', 'exotic', 'mythic'];
 const EMPTY = { top: 'White chef coat', hat: 'Classic toque', glasses: 'None', shoes: 'Bare feet', acc: 'Nothing' };   // top + hat: free, always yours
 
 export default function Me() {
-  const { supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, say, ui, setUi, openPrivacy, replayTour } = useWhisk();
+  const { account, supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, say, ui, setUi, openPrivacy, replayTour } = useWhisk();
   const [dancing, setDancing] = useState(false);   // the Dance button; stops on its own when you leave or the screen turns off
   const [items, setItems] = useState([]);
   const [owned, setOwned] = useState(new Set());
@@ -33,6 +34,7 @@ export default function Me() {
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [never, setNever] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
   const [deleting, setDeleting] = useState(false);
     const [recipe, setRecipe] = useState(null);
   const [pantry] = usePantry();
@@ -220,8 +222,14 @@ export default function Me() {
         </button>
         {profile?.is_admin && <Link href="/admin" className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', textDecoration: 'none', color: 'var(--fg)', flexWrap: 'nowrap' }}><Icon name="compete" /><span style={{ flex: 1, fontWeight: 700 }}>Backend dashboard</span><Icon name="chevron" /></Link>}
         <div className="stack" style={{ padding: '12px 16px', gap: 4 }}>
-          <span className="row" style={{ gap: 8, fontWeight: 700, flexWrap: 'nowrap' }}><Icon name="me" />Your game is saved on this phone</span>
-          <span className="desc">No account needed. Deleting the app or clearing this browser’s data starts a new game.</span>
+          {account?.anon ? <>
+            <span className="row" style={{ gap: 8, fontWeight: 700, flexWrap: 'nowrap' }}><Icon name="me" />Your game is saved on this phone</span>
+            <span className="desc">Deleting the app or clearing this browser’s data would start a new game. Back it up to keep it safe.</span>
+            <button className="btn sm" style={{ alignSelf: 'flex-start', marginTop: 4 }} onClick={() => setBackingUp(true)}><Icon name="shield" size={16} />Back up your game</button>
+          </> : <>
+            <span className="row" style={{ gap: 8, fontWeight: 700, flexWrap: 'nowrap', color: 'var(--fresh)' }}><Icon name="check" />Your game is backed up</span>
+            <span className="desc">With {(account?.providers || []).map((p) => ({ google: 'Google', apple: 'Apple', email: 'email' }[p] || p)).join(' and ') || 'email'}{account?.email ? ` (${account.email})` : ''}. On a new phone, choose “Get it back” on the start screen.</span>
+          </>}
           <span className="desc" style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Player ID: <span className="mono" style={{ userSelect: 'all' }}>{profile?.id}</span></span>
         </div>
       </div>
@@ -229,6 +237,7 @@ export default function Me() {
       <button onClick={() => setResetting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, color: 'var(--muted)', fontSize: 11, textDecoration: 'underline', padding: 8, minHeight: 32 }}>Reset game</button>
       {resetting && <ResetSheet onClose={() => setResetting(false)} />}
       {never && <NeverShowSheet onClose={() => setNever(false)} />}
+      {backingUp && <BackupSheet supabase={supabase} onClose={() => setBackingUp(false)} />}
       {deleting && <DeleteDataSheet onClose={() => setDeleting(false)} />}
       {recipe && <RecipeSheet recipe={recipe} pantry={pantry || []} onClose={() => setRecipe(null)} />}
       {buying && (

@@ -64,7 +64,8 @@ function session(uid) {
   tokens.set(access, uid);
   return { access_token: access, token_type: 'bearer', expires_in: 3600, expires_at: now + 3600, refresh_token: randomUUID(), user: userObj(uid) };
 }
-const userObj = (uid) => ({ id: uid, aud: 'authenticated', role: 'authenticated', email: E2E_USER.email, email_confirmed_at: '2026-01-01T00:00:00Z', app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, identities: [], created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' });
+const isAnon = (uid) => (amrByUid.get(uid) || []).some((m) => m.method === 'anonymous') && !backups.some((b) => b.uid === uid && b.confirmed);
+const userObj = (uid) => ({ id: uid, aud: 'authenticated', role: 'authenticated', is_anonymous: isAnon(uid), email: isAnon(uid) ? '' : E2E_USER.email, email_confirmed_at: '2026-01-01T00:00:00Z', app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, identities: [], created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' });
 const uidFrom = (req) => tokens.get((req.headers.authorization || '').replace(/^Bearer /, '')) || null;
 const refreshes = new Map();   // refresh token → user (so a second phone stays its own player)
 const amrByUid = new Map(); let anonSignups = 0;
@@ -220,6 +221,7 @@ async function storage(req, res, uid, path, buf) {
 // ---------- Anthropic stand-in ----------
 export const anthropicCalls = [];
 const wikiCalls = [], ytCalls = [];
+const backups = [], otps = [];
 function fakeRecipe(title, cuisine, fromPantry) {
   return { title, cuisine, summary: `A quick ${cuisine.toLowerCase()} dinner.`, prep_minutes: 10, cook_minutes: 20, servings: 2, technique: 2, prep_level: 2, precision: 2, equipment: ['stove'],
     ingredients: [{ item: fromPantry[0] || 'Eggs', amount: '2', from_pantry: true }, { item: 'Fresh basil', amount: '1 handful', from_pantry: false }],
@@ -272,7 +274,14 @@ const server = http.createServer(async (req, res) => {
       const s = session(who); s.user = { ...s.user, email: '', is_anonymous: true, app_metadata: { provider: 'anonymous', providers: ['anonymous'] } }; refreshes.set(s.refresh_token, who); return send(res, 200, s);
     }
     if (path === '/__e2e/anon-signups') return send(res, 200, { n: anonSignups });
-    if (path === '/auth/v1/user') { const uid = uidFrom(req); return uid ? send(res, 200, userObj(uid)) : send(res, 401, { code: 401, error_code: 'bad_jwt', msg: 'invalid JWT' }); }
+    if (path === '/auth/v1/user' && req.method !== 'PUT') { const uid = uidFrom(req); return uid ? send(res, 200, userObj(uid)) : send(res, 401, { code: 401, error_code: 'bad_jwt', msg: 'invalid JWT' }); }
+    // public auth settings: which sign-in ways are switched on (the app shows only those backup buttons)
+    if (path === '/auth/v1/settings') return send(res, 200, { external: { anonymous_users: true, email: true, google: true, apple: false }, disable_signup: false });
+    // back up by email (anonymous user adds an email): Supabase sends a confirm link; the mock records it
+    if (path === '/auth/v1/user' && req.method === 'PUT') { const uid = uidFrom(req); if (!uid) return send(res, 401, {}); const b = json(); backups.push({ uid, email: b.email }); return send(res, 200, { ...userObj(uid), new_email: b.email }); }
+    if (path === '/auth/v1/otp' && req.method === 'POST') { const b = json(); otps.push(b.email); return send(res, 200, {}); }
+    if (path === '/__e2e/backups') return send(res, 200, { backups, otps });
+    if (path === '/__e2e/play-days') { await db.query(`update profiles set first_open_date = current_date - $1::int, first_login_at = now() - make_interval(days => $1::int) where id = $2`, [Number(url.searchParams.get('n')) || 0, E2E_USER.id]); return send(res, 200, { ok: true }); }
     if (path === '/auth/v1/logout') return send(res, 204, null);
     if (path === '/anthropic/v1/messages' && req.method === 'POST') return send(res, 200, anthropic(json()));
     if (path === '/__e2e/calls') return send(res, 200, anthropicCalls);

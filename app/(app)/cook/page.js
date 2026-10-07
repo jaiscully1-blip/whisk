@@ -10,6 +10,7 @@ import { usePantry, useSaved } from '@/components/usePantry';
 const PAGE = 12;
 import { canon, checkRecipe, usesSoon } from '@/lib/recipes/match';
 import WeekGoal from '@/components/WeekGoal';
+import BackupNudge from '@/components/BackupNudge';
 import MyYouTubers from '@/components/MyYouTubers';
 import DishSearch from '@/components/DishSearch';
 
@@ -62,6 +63,7 @@ export default function Cook() {
   return (
     <div className="stack">
       <div className="page-title"><h1>Cook</h1><WeekGoal /></div>
+      <BackupNudge />
       <div className="card stack">
         <div className="grid2">
           <div><label className="lbl" htmlFor="o-time">Time limit</label><select id="o-time" className="input" value={time} onChange={(e) => setUi({ cookTime: e.target.value })}>{[['', 'Any'], ['20', '20 min'], ['30', '30 min'], ['45', '45 min'], ['60', '1 hour'], ['120', '2 hours']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>

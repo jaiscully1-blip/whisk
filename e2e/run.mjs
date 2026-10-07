@@ -629,6 +629,35 @@ await step('friends and the plate feed', async () => {
   check('one report doesn’t hide it for others', (await page.locator('article.post').count()) === 1);
   await ctx6.close();
 });
+await step('back up your game', async () => {
+  await nav('Me'); await page.waitForURL('**/me');
+  check('an unsaved game says so and offers a backup', (await page.getByText('Your game is saved on this phone').count()) === 1);
+  await page.getByRole('button', { name: 'Back up your game' }).click();
+  const bk = page.getByRole('dialog', { name: 'Back up your game' });
+  await bk.getByRole('button', { name: 'Continue with Google' }).waitFor();
+  check('only the switched-on ways show (Google + email here, no Apple)', (await bk.getByRole('button', { name: 'Continue with Apple' }).count()) === 0 && (await bk.locator('#bk-email').count()) === 1);
+  await bk.locator('#bk-email').fill('chef@example.com'); await bk.getByRole('button', { name: 'Email me a link' }).click();
+  await bk.getByText('Check your email').waitFor();
+  const bks = await (await fetch('http://localhost:54321/__e2e/backups')).json();
+  check('back up by email: the game gets that email (a confirm link is sent)', bks.backups.some((b) => b.email === 'chef@example.com'));
+  await bk.getByRole('button', { name: 'OK' }).click();
+  await fetch('http://localhost:54321/__e2e/play-days?n=3');
+  await page.reload(); await page.waitForURL('**/cook'); await page.waitForTimeout(1000); await closePopups();
+  await page.locator('.backup-nudge').waitFor({ timeout: 6000 });
+  check('from day 3, Cook shows a small Back up card', true);
+  await page.locator('.backup-nudge').getByRole('button', { name: 'Later' }).click(); await page.waitForTimeout(300);
+  check('Later hides it', (await page.locator('.backup-nudge').count()) === 0);
+});
+await step('get my game back', async () => {
+  const ctx7 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const rp = await ctx7.newPage();
+  await rp.goto(`${BASE}/login`);
+  await rp.getByRole('button', { name: /Get it back/ }).click();
+  const gb = rp.getByRole('dialog', { name: 'Get my game back' });
+  await gb.locator('#bk-email').fill('chef@example.com'); await gb.getByRole('button', { name: 'Email me a link' }).click();
+  await gb.getByText('Check your email').waitFor();
+  check('on a new phone: get a backed-up game back by email (no new game made)', (await (await fetch('http://localhost:54321/__e2e/backups')).json()).otps.includes('chef@example.com'));
+  await ctx7.close();
+});
 await step('delete my data', async () => {
   const ctx5 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const dp = await ctx5.newPage();
   await dp.goto(`${BASE}/login`); await dp.getByRole('radio', { name: 'Accept' }).click(); await dp.getByRole('button', { name: 'Start playing' }).click(); await dp.waitForURL('**/cook');

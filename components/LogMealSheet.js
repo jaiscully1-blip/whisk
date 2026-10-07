@@ -4,15 +4,7 @@ import { useWhisk, useDraft } from './AppShell';
 import Icon from './Icon';
 import { fmt } from '@/lib/game';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
-
-// Shrinks the photo in the browser before upload (max 1600px JPEG) — faster, and strips camera metadata like GPS.
-async function compress(file) {
-  const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
-  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
-  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-  return await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.85));
-}
+import { compress } from '@/lib/photo';
 
 // Photo of your plate → log_meal. Title, cuisine and nutrition come from the recipe on the server.
 // Or a dish from the search (`dish` = { name, countries }): it counts toward that country's passport stamp.

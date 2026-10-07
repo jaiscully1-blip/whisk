@@ -8,6 +8,7 @@ import { checkRecipe, searchLinks } from '@/lib/recipes/match';
 import { guessCategory } from '@/lib/game';
 import { ServingsX, IngredientList, StepList } from './RecipeSteps';
 import { cultureStyle, motifFor } from '@/lib/culture';
+import Scene from './Scene';
 
 // A real recipe from the web: every ingredient measured and beginner steps from the source page, scaled to any servings.
 export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChanged, challenge = null }) {
@@ -46,6 +47,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
   return (
     <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
       <div className="sheet stack cx" style={cultureStyle(r.country, r.cuisine)} data-motif={motifFor(r.country, r.cuisine)} data-tip="recipe" role="dialog" aria-modal="true" aria-label={r.title}>
+        <Scene iso={r.country} cuisine={r.cuisine} title={r.title} className="scene-bleed" />
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'nowrap' }}>
           <div><span className="eyebrow">{r.cuisine}</span><h2 style={{ fontSize: 26 }}>{r.title}</h2></div>
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button>

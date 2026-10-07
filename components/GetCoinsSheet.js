@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useWhisk } from './AppShell';
 import Icon, { Coin } from './Icon';
+import InviteFriend from './InviteFriend';
 import { fmt } from '@/lib/game';
 
 // Coin packs paid with Apple Pay, Google Pay or a card (Stripe Checkout). Coins arrive as soon as the payment goes through.
@@ -29,6 +30,8 @@ export default function GetCoinsSheet({ onClose }) {
           <h2 style={{ fontSize: 26 }}>Get coins</h2>
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
         </div>
+        <InviteFriend />
+        <h3 style={{ fontSize: 20, marginTop: 4 }}>Buy coins</h3>
         <p className="muted" style={{ margin: 0 }}>Pay with Apple Pay, Google Pay or a card. Coins land in your game right after you pay.</p>
         <p className="err" style={{ margin: 0, fontSize: 14 }}>Coins live on this phone. If you delete the app or clear this browser’s data, they’re gone and can’t be moved.</p>
         {packs === null ? <p className="muted">Loading…</p> : (

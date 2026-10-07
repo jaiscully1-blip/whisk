@@ -7,8 +7,8 @@
 
 /* Pistachio Pop. Day is the default at all hours; Night only when the player switches it on. */
 :root, .theme-day {
-  --bg: #CFE4BD; --card: #FFFBF1; --line: #E0E2CF; --fg: #23301F; --muted: #4E5A4A;
-  --edge: #2B3A26; --edge-soft: rgba(43, 58, 38, .28); --world-a: #D7EAC6; --world-b: #BFDCA8; --tile: rgba(255, 255, 255, .28); --field: #FFFFFF;
+  --bg: #FFF1E0; --card: #FFFDF8; --line: #F0E2D2; --fg: #2E2620; --muted: #6A5A4E;
+  --edge: #3B2C24; --edge-soft: rgba(59, 44, 36, .24); --world-a: #FFF6EA; --world-b: #FFE7D1; --doodle-op: 1; --field: #FFFFFF;
   --accent: #4E9A2F; --btn: #3F7F25; --btn-ink: #FFFFFF; --btn-shadow: #2A5918;
   --pop: #FF6B57; --pop-soft: #FFE9E4; --track: #ECEFE4; --stage: #E6F2DC;
   --fresh: #17695F; --fresh-soft: #DDF2EC; --warn: #8A5A00; --warn-soft: #FFF0CC; --warn-bar: #E6A324;
@@ -20,8 +20,8 @@
   color-scheme: light;
 }
 .theme-night {
-  --bg: #16201A; --card: #222B21; --line: #333D30; --fg: #E7EDE3; --muted: #A9B6A4;
-  --edge: #0B100A; --edge-soft: rgba(0, 0, 0, .45); --world-a: #1B2A1E; --world-b: #121A14; --tile: rgba(255, 255, 255, .035); --field: #1A2119;
+  --bg: #221B1C; --card: #2D2425; --line: #3E3334; --fg: #F2E9E2; --muted: #BBAAA0;
+  --edge: #0E0A0A; --edge-soft: rgba(0, 0, 0, .45); --world-a: #2A2122; --world-b: #1D1718; --doodle-op: .35; --field: #251E1F;
   --accent: #8FD46A; --btn: #8FD46A; --btn-ink: #171C16; --btn-shadow: #5C9240;
   --pop: #FF8A7A; --pop-soft: #3A2623; --track: #2E362C; --stage: #26331F;
   --fresh: #72D9C9; --fresh-soft: #1D3532; --warn: #F2C063; --warn-soft: #3A3020; --warn-bar: #F2C063;
@@ -450,7 +450,7 @@ button, a, [role="button"], [role="tab"], select, input { touch-action: manipula
    A light wash plus a faint traditional pattern that is strongest at the top and fades out under the text. */
 .cx { position: relative; isolation: isolate; background: var(--cx-wash) !important; }
 .theme-night .cx { background: var(--cx-wash-d) !important; }
-.cx::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit;
+.cx::before { display: none; content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit;
   background-image: var(--cx-pat); background-size: var(--cx-size) var(--cx-size);
   -webkit-mask-image: linear-gradient(180deg, #000 0, rgba(0, 0, 0, .55) 180px, rgba(0, 0, 0, .28) 100%); mask-image: linear-gradient(180deg, #000 0, rgba(0, 0, 0, .55) 180px, rgba(0, 0, 0, .28) 100%); }
 .theme-night .cx::before { opacity: .55; filter: brightness(1.8); }
@@ -462,10 +462,9 @@ button, a, [role="button"], [role="tab"], select, input { touch-action: manipula
    cream game panels with dark outlines and solid drop shadows, outlined resource badges, a floating tab dock.
    ===================================================================== */
 html, body, .shell { background-color: var(--bg); }
-.shell, .auth, .landing { background:
-  linear-gradient(var(--tile) 1.5px, transparent 1.5px) 0 0 / 56px 56px,
-  linear-gradient(90deg, var(--tile) 1.5px, transparent 1.5px) 0 0 / 56px 56px,
-  linear-gradient(180deg, var(--world-a), var(--world-b)) fixed; }
+.shell, .auth, .landing { position: relative; isolation: isolate; background: linear-gradient(170deg, var(--world-a), var(--world-b)) fixed; }
+/* the café wallpaper: soft food doodles, very light (dimmer at night) */
+.shell::before, .auth::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: url('/doodles.svg') 0 0 / 320px 320px; opacity: var(--doodle-op); }
 
 /* top bar: the world shows through; counters are outlined badges */
 .hud { background: color-mix(in srgb, var(--world-a) 82%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 0; }
@@ -489,7 +488,7 @@ html, body, .shell { background-color: var(--bg); }
 .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
 
 /* titles stand on the world like game headings */
-.page-title h1 { font-size: 34px; text-shadow: 0 3px 0 color-mix(in srgb, var(--world-a) 40%, #fff); }
+.page-title h1 { font-size: 34px; text-shadow: 0 3px 0 rgba(242, 184, 75, .35); }
 .theme-night .page-title h1 { text-shadow: 0 3px 0 rgba(0, 0, 0, .5); }
 .chip { border: 1.5px solid var(--edge-soft); }
 
@@ -525,3 +524,45 @@ html, body, .shell { background-color: var(--bg); }
 .vc-btns .btn { min-height: 64px; font-size: 18px; border-radius: 18px; }
 .vc-ing-h { background: none; border: 0; padding: 0; color: var(--fg); width: 100%; text-align: left; font-size: 16px; min-height: 44px; }
 .vc-ing { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+
+/* ---------- restaurant scene across the top of a dish / recipe (components/Scene.js) ---------- */
+.scene { position: relative; border-radius: 16px; overflow: hidden; border: 2px solid var(--edge); flex: none; background: var(--track); }
+.scene-art, .scene-art svg { width: 100%; height: 100%; display: block; }
+.scene-name { position: absolute; left: 10px; bottom: 8px; padding: 3px 10px; border-radius: 99px; background: rgba(255, 253, 248, .92); color: #2E2620; font-size: 12px; font-weight: 800; border: 1.5px solid rgba(59, 44, 36, .35); }
+.sheet > .scene-bleed { margin: -4px -2px 0; }
+
+/* ---------- Cook Off ---------- */
+.co-card { background: linear-gradient(160deg, #FFF3D6, #FFE2C9) !important; }
+.theme-night .co-card { background: linear-gradient(160deg, #3A2E22, #33251F) !important; }
+.co-times .chip { border: 2px solid var(--edge-soft); background: var(--card); font: inherit; font-weight: 800; min-height: 40px; padding: 0 14px; cursor: pointer; }
+.co-times .chip.on { background: var(--accent); color: #fff; border-color: var(--edge); }
+.co-code-in { text-transform: uppercase; letter-spacing: .18em; font-weight: 800; font-family: var(--f-display); font-size: 20px; }
+.co-code { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.co-code b { font-family: var(--f-display); font-size: 48px; letter-spacing: .14em; line-height: 1.1; }
+.co-players { display: flex; flex-wrap: wrap; gap: 8px; }
+.co-chip { display: inline-flex; align-items: center; gap: 4px; padding: 7px 14px; border-radius: 99px; background: var(--card); border: 2px solid var(--edge); box-shadow: 0 2px 0 var(--edge); font-weight: 800; animation: tipIn .3s cubic-bezier(.2, 1.4, .4, 1); }
+.co-chip.me { background: var(--gold-soft); }
+.co-start { min-height: 60px; font-size: 20px; }
+.co-full { position: fixed; inset: 0; z-index: 300; overflow-y: auto; background: linear-gradient(170deg, var(--world-a), var(--world-b)); padding: calc(14px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
+.co-big { font-family: var(--f-display); font-size: 30px; text-align: center; margin: 8px 0 0; }
+.co-spin { justify-content: center; align-items: center; background: radial-gradient(circle at 50% 45%, #FFE9B8, #F7B267 70%, #E9874A); }
+.wheel-wrap { position: relative; width: min(92vw, 520px); aspect-ratio: 1; }
+.wheel { width: 100%; height: 100%; will-change: transform, filter; }
+.wheel-pointer { position: absolute; left: 50%; top: -8px; z-index: 2; width: 0; height: 0; transform: translateX(-50%); border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 40px solid #E5484D; filter: drop-shadow(0 3px 0 #3B2C24); }
+.co-cook { padding: 0; gap: 0; }
+.co-cook > .scene { border-radius: 0; border-width: 0 0 2.5px; }
+.co-cook-in { padding: 14px 16px calc(28px + env(safe-area-inset-bottom)); }
+.co-timer { position: sticky; top: 8px; z-index: 3; align-self: center; display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; border-radius: 99px; background: var(--card); border: 2.5px solid var(--edge); box-shadow: 0 4px 0 var(--edge); font-family: var(--f-display); font-size: 30px; font-variant-numeric: tabular-nums; }
+.co-timer[data-low] { background: #FFE1DC; color: #B83A1E; }
+.co-snap { min-height: 64px; font-size: 19px; cursor: pointer; }
+.co-plates { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.co-plate { display: flex; flex-direction: column; gap: 6px; padding: 8px; text-align: left; color: var(--fg); }
+.co-plate img, .co-plate .co-ph { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; background: var(--track); display: block; }
+.co-plate.picked, .co-plate.won { outline: 4px solid var(--gold); }
+.co-plate:disabled { opacity: 1; cursor: default; }
+.co-reward { text-align: center; font-family: var(--f-display); font-size: 24px; margin: 0; display: flex; gap: 8px; justify-content: center; align-items: center; }
+
+.invite { background: linear-gradient(160deg, #EAF6E1, #FFF6DD) !important; }
+.theme-night .invite { background: linear-gradient(160deg, #23301F, #33291D) !important; }
+.invite-code { display: flex; align-items: baseline; justify-content: center; gap: 10px; }
+.invite-code b { font-family: var(--f-display); font-size: 34px; letter-spacing: .14em; }

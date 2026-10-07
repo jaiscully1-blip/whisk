@@ -8,6 +8,8 @@ import { checkRecipe } from '@/lib/recipes/match';
 import { fmt } from '@/lib/game';
 import { ServingsX, IngredientList, StepList } from '@/components/RecipeSteps';
 import { cultureStyle } from '@/lib/culture';
+import Scene from '@/components/Scene';
+import CookOffCard from '@/components/CookOffCard';
 
 const TIER = { 1: ['Small', 'var(--fresh-soft)', 'var(--fresh)'], 2: ['Medium', 'var(--warn-soft)', 'var(--warn)'], 3: ['Big', 'var(--pop-soft)', 'var(--bad)'] };
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
@@ -63,6 +65,7 @@ export default function Compete() {
   return (
     <div className="stack">
       <div className="page-title"><h1>Compete</h1><span className="muted">Resets in {resetIn}</span></div>
+      <CookOffCard />
       {bingo && (
         <section data-tour="bingo" data-tip="bingo" className="stack" style={{ gap: 10 }} aria-labelledby="bingo-h">
           <div className="row" style={{ justifyContent: 'space-between' }}><h2 id="bingo-h" style={{ fontSize: 22 }}>Cuisine bingo</h2><span className="chip xp">+200 XP</span></div>
@@ -110,6 +113,7 @@ export default function Compete() {
             <div className="flip-in">
               <button className="card face" onClick={() => flip(c.id)} aria-label={`${r.title}: show instructions`} tabIndex={on ? -1 : 0} aria-hidden={on}>{front}</button>
               <div className="card face back stack cx" style={{ gap: 8, ...cultureStyle(r.country, r.cuisine) }} aria-hidden={!on} onClick={(e) => { if (e.target.closest('.flip-cta')) complete(); }}>
+                {on && <Scene iso={r.country} cuisine={r.cuisine} title={r.title} height={140} className="scene-bleed" />}
                 <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
                   <b style={{ fontFamily: 'var(--f-display)', fontSize: 18 }}>{r.title}</b>
                   <button className="btn ghost sm" style={{ width: 40, padding: 0 }} onClick={() => flip(c.id)} aria-label="Flip back" tabIndex={on ? 0 : -1}><Icon name="flip" size={18} /></button>

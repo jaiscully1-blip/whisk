@@ -31,7 +31,7 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on sequences to anon, authenticated;
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
-for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql', '0012_dishes_and_stamp_coins.sql', '0013_one_phone_play.sql', '0014_recipe_steps.sql', '0015_free_chef_coat_pilot_coat_xp.sql', '0016_bingo_weekly_with_challenges.sql']) {
+for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql', '0012_dishes_and_stamp_coins.sql', '0013_one_phone_play.sql', '0014_recipe_steps.sql', '0015_free_chef_coat_pilot_coat_xp.sql', '0016_bingo_weekly_with_challenges.sql', '0017_cookoff_and_invites.sql']) {
   await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8').replace('create extension if not exists pgcrypto;', ''));
 }
 await db.exec(`insert into auth.users (id, email) values ('${E2E_USER.id}', '${E2E_USER.email}')`);
@@ -66,7 +66,7 @@ function session(uid) {
 }
 const userObj = (uid) => ({ id: uid, aud: 'authenticated', role: 'authenticated', email: E2E_USER.email, email_confirmed_at: '2026-01-01T00:00:00Z', app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, identities: [], created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' });
 const uidFrom = (req) => tokens.get((req.headers.authorization || '').replace(/^Bearer /, '')) || null;
-const refreshes = new Set();
+const refreshes = new Map();   // refresh token → user (so a second phone stays its own player)
 const amrByUid = new Map(); let anonSignups = 0;
 
 // ---------- PostgREST subset ----------
@@ -242,16 +242,20 @@ const server = http.createServer(async (req, res) => {
       const b = json() || {};
       if (url.searchParams.get('grant_type') === 'password') {
         if (b.email !== E2E_USER.email || b.password !== E2E_USER.password) return send(res, 400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' });
-        const s = session(E2E_USER.id); refreshes.add(s.refresh_token); return send(res, 200, s);
+        const s = session(E2E_USER.id); refreshes.set(s.refresh_token, E2E_USER.id); return send(res, 200, s);
       }
-      if (url.searchParams.get('grant_type') === 'refresh_token') { const s = session(E2E_USER.id); refreshes.add(s.refresh_token); return send(res, 200, s); }
+      if (url.searchParams.get('grant_type') === 'refresh_token') { const who = refreshes.get(b.refresh_token) || E2E_USER.id; const s = session(who); refreshes.set(s.refresh_token, who); if (who !== E2E_USER.id) s.user = { ...s.user, email: '', is_anonymous: true }; return send(res, 200, s); }
       return send(res, 400, { msg: 'unsupported grant' });
     }
     if (path === '/auth/v1/signup' && req.method === 'POST') {
       // "Start playing": Supabase anonymous sign-in (no email, no password). The test player is the anonymous user here.
       const b = json() || {}; if (b.email || b.password) return send(res, 422, { code: 422, error_code: 'email_provider_disabled', msg: 'Email signups are disabled' });
-      anonSignups++; amrByUid.set(E2E_USER.id, [{ method: 'anonymous', timestamp: Math.floor(Date.now() / 1000) }]);
-      const s = session(E2E_USER.id); s.user = { ...s.user, email: '', is_anonymous: true, app_metadata: { provider: 'anonymous', providers: ['anonymous'] } }; refreshes.add(s.refresh_token); return send(res, 200, s);
+      anonSignups++;
+      // The first "Start playing" is the main test player; any later one (a friend's phone) is a brand-new player with the same starter pantry.
+      let who = E2E_USER.id;
+      if (anonSignups > 1) { who = randomUUID(); await db.exec(`insert into auth.users (id, email) values ('${who}', null)`); await db.exec(`insert into public.pantry_items (user_id, name, category) values ${START.map(([n, c]) => `('${who}', '${n.replace(/'/g, "''")}', '${c}')`).join(', ')}`); }
+      amrByUid.set(who, [{ method: 'anonymous', timestamp: Math.floor(Date.now() / 1000) }]);
+      const s = session(who); s.user = { ...s.user, email: '', is_anonymous: true, app_metadata: { provider: 'anonymous', providers: ['anonymous'] } }; refreshes.set(s.refresh_token, who); return send(res, 200, s);
     }
     if (path === '/__e2e/anon-signups') return send(res, 200, { n: anonSignups });
     if (path === '/auth/v1/user') { const uid = uidFrom(req); return uid ? send(res, 200, userObj(uid)) : send(res, 401, { code: 401, error_code: 'bad_jwt', msg: 'invalid JWT' }); }

@@ -66,6 +66,14 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
     setWelcome(true); setProfile((p) => ({ ...p, onboarded_at: p.onboarded_at || new Date().toISOString() }));
     supabase.rpc('set_onboarded', { p_done: true });
   }, [privacyOpen, profile?.id, profile?.onboarded_at]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Started Whisk from a friend's invite link: use their code once (the server checks it's a new game).
+  useEffect(() => {
+    if (!profile?.id) return;
+    let ref = null; try { ref = localStorage.getItem('whisk-ref'); } catch {}
+    if (!ref) return;
+    try { localStorage.removeItem('whisk-ref'); } catch {}
+    supabase.rpc('claim_invite', { p_code: ref }).then(({ data, error }) => { if (!error && data) setTimeout(() => say(`Invited by ${data.invited_by || 'a friend'}! Finish a Cook Off together for 1,000 coins each`), 2500); });
+  }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const tipSeen = useCallback((id) => setUiQuiet((cur) => ({ tips: [...new Set([...(cur.tips || []), id])] })), []); // eslint-disable-line react-hooks/exhaustive-deps
   const replayTour = useCallback(() => { setUi({ tips: [] }); setWelcome(true); setTipsKey((k) => k + 1); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const touring = false;

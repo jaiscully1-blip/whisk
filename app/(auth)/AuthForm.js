@@ -14,6 +14,7 @@ export default function AuthForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   useEffect(() => {
+    try { const ref = new URLSearchParams(window.location.search).get('ref'); if (ref && /^[A-Za-z0-9]{6}$/.test(ref)) localStorage.setItem('whisk-ref', ref.toUpperCase()); } catch {}
     try { const c = JSON.parse(localStorage.getItem(LOGIN_CHOICE_KEY) || 'null'); if (c && typeof c.usage === 'boolean') setChoice(c.usage ? 'accept' : 'decline'); } catch {}
   }, []);
 

@@ -460,6 +460,76 @@ const sundayHit = (await db.query(`select public._bingo_marks('${B16}', '${g16.w
 check('a meal on Sunday still counts on this week\'s card', sundayHit === true, cu);
 await expectFail('players cannot call _bingo_marks', B16, `select public._bingo_marks('${B16}', current_date, array['Thai'])`);
 
+// ================= 0017: Cook Off + invite a friend =================
+try { const f = fs.readFileSync('./supabase/migrations/0017_cookoff_and_invites.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0017 runs (twice)', true); }
+catch (e) { check('0017 runs (twice)', false, e.message); }
+const [X, Y, Z, W] = ['a1000000-0000-0000-0000-00000000000a', 'b2000000-0000-0000-0000-00000000000b', 'c3000000-0000-0000-0000-00000000000c', 'd4000000-0000-0000-0000-00000000000d'];
+for (const u of [X, Y, Z, W]) await db.exec(`insert into auth.users (id, email) values ('${u}', null)`);
+await db.exec(`update profiles set display_name = 'Ana' where id = '${X}'; update profiles set display_name = 'Ben' where id = '${Y}';`);
+for (const u of [X, Y, Z]) for (const n of ['Rice', 'Eggs', 'Garlic', 'Onion', 'Chicken thighs', 'Soy sauce']) await db.exec(`insert into pantry_items (user_id, name, category) values ('${u}', '${n}', 'Other')`);
+await expectFail('a cook with an empty pantry can’t make a game', W, `select public.create_cookoff(30)`);
+// invite: Ben (new) enters Ana's code before they play
+const inv = (await as(X, () => db.query(`select public.get_my_invite() as r`))).rows[0].r;
+check('everyone gets a 6-letter invite code', /^[A-HJ-NP-Z2-9]{6}$/.test(inv.code) && inv.max === 10, JSON.stringify(inv));
+await expectFail('you can’t use your own invite code', X, `select public.claim_invite('${inv.code}')`);
+const cl = (await as(Y, () => db.query(`select public.claim_invite('${inv.code}') as r`))).rows[0].r;
+check('a new player enters a friend’s code', cl.invited_by === 'Ana' && cl.can_enter === false, JSON.stringify(cl));
+await expectFail('only one invite code per player', Y, `select public.claim_invite('${inv.code}')`);
+await db.exec(`update profiles set created_at = now() - interval '10 days' where id = '${W}'`);
+await expectFail('invite codes are only for new players', W, `select public.claim_invite('${inv.code}')`);
+// game
+const g0 = (await as(X, () => db.query(`select public.create_cookoff(30) as r`))).rows[0].r;
+check('make a game: a 6-letter code, you’re in it with your name, you’re the host', /^[A-HJ-NP-Z2-9]{6}$/.test(g0.code) && g0.players.length === 1 && g0.players[0].name === 'Ana' && g0.is_host && g0.status === 'lobby', JSON.stringify(g0));
+const code = g0.code;
+await expectFail('can’t join without a stocked pantry', W, `select public.join_cookoff('${code}')`);
+const gj = (await as(Y, () => db.query(`select public.join_cookoff('${code.toLowerCase()}') as r`))).rows[0].r;
+await as(Z, () => db.query(`select public.join_cookoff('${code}')`));
+check('friends join with the code (any case); names come from their game', gj.players.map((p) => p.name).join() === 'Ana,Ben' && !gj.is_host);
+await expectFail('players can’t read the game tables directly', X, `select * from cookoff_players`);
+await expectFail('only the host can start', Y, `select public.start_cookoff('${code}')`);
+await expectFail('you can’t peek at a game you’re not in', W, `select public.get_cookoff('${code}')`);
+const st = (await as(X, () => db.query(`select public.start_cookoff('${code}') as r`))).rows[0].r;
+check('start: everyone gets the same clock (8 s spin + 30 min)', st.status === 'cooking' && Math.round((new Date(st.ends_at) - new Date(st.started_at)) / 1000) === 8 + 30 * 60, JSON.stringify([st.started_at, st.ends_at]));
+await expectFail('no joining after the start', W, `select public.join_cookoff('${code}')`);
+const fit = (await db.query(`select id from web_recipes where active and minutes <= 30 order by id limit 3`)).rows.map((r) => r.id);
+const slow = (await db.query(`select id from web_recipes where active and minutes > 30 order by id limit 1`)).rows.map((r) => r.id);
+if (slow.length) await expectFail('a recipe longer than the game is never picked', X, `select public.set_cookoff_recipe('${code}', array['${slow[0]}'])`);
+const pickX = (await as(X, () => db.query(`select public.set_cookoff_recipe('${code}', array['${fit.join("','")}']) as r`))).rows[0].r;
+const pickX2 = (await as(X, () => db.query(`select public.set_cookoff_recipe('${code}', array['${fit[0]}']) as r`))).rows[0].r;
+check('the server picks one of your pantry recipes, once (no re-spins)', fit.includes(pickX) && pickX2 === pickX, `${pickX} ${pickX2}`);
+for (const u of [Y, Z]) await as(u, () => db.query(`select public.set_cookoff_recipe('${code}', array['${fit[1]}'])`));
+const view = (await as(Y, () => db.query(`select public.get_cookoff('${code}') as r`))).rows[0].r;
+check('while cooking you only see your own recipe and photo', view.players.filter((p) => !p.me).every((p) => p.recipe_id === null && p.photo === null) && view.players.find((p) => p.me).recipe_id === fit[1]);
+for (const u of [X, Y]) await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${u}/co.jpg')`);
+await expectFail('a photo must be your own upload', X, `select public.submit_cookoff('${code}', '${Y}/co.jpg')`);
+await as(X, () => db.query(`select public.submit_cookoff('${code}', '${X}/co.jpg')`));
+await as(Y, () => db.query(`select public.submit_cookoff('${code}', '${Y}/co.jpg')`));
+await db.exec(`grant select on storage.objects to authenticated; drop policy if exists own_read on storage.objects; create policy own_read on storage.objects for select to authenticated using ((storage.foldername(name))[1] = (select auth.uid())::text)`);
+const zSees0 = (await as(Z, () => db.query(`select count(*)::int n from storage.objects where name = '${X}/co.jpg'`))).rows[0].n;
+check('nobody sees other plates while cooking', zSees0 === 0);
+await expectFail('no voting while cooking', Z, `select public.vote_cookoff('${code}', 1)`);
+await db.exec(`update cookoff_games set ends_at = now() - interval '1 second' where code = '${code}'`);
+const vv = (await as(Z, () => db.query(`select public.get_cookoff('${code}') as r`))).rows[0].r;
+check('when time’s up, voting starts and everyone sees the plates', vv.status === 'voting' && vv.players.filter((p) => p.photo).length === 2);
+const zSees1 = (await as(Z, () => db.query(`select count(*)::int n from storage.objects where name = '${X}/co.jpg'`))).rows[0].n;
+const wSees = (await as(W, () => db.query(`select count(*)::int n from storage.objects where name = '${X}/co.jpg'`))).rows[0].n;
+check('during voting players in the game can open the photos; outsiders can’t', zSees1 === 1 && wSees === 0);
+await expectFail('you can’t vote for your own plate', X, `select public.vote_cookoff('${code}', 1)`);
+await expectFail('you can’t vote for someone without a plate', X, `select public.vote_cookoff('${code}', 3)`);
+const coins0 = Object.fromEntries((await db.query(`select id, coins from profiles where id in ('${X}','${Y}','${Z}')`)).rows.map((r) => [r.id, r.coins]));
+await as(X, () => db.query(`select public.vote_cookoff('${code}', 2)`));
+await expectFail('one vote each', X, `select public.vote_cookoff('${code}', 2)`);
+await as(Y, () => db.query(`select public.vote_cookoff('${code}', 1)`));
+const fin = (await as(Z, () => db.query(`select public.vote_cookoff('${code}', 2) as r`))).rows[0].r;
+const coins1 = Object.fromEntries((await db.query(`select id, coins from profiles where id in ('${X}','${Y}','${Z}')`)).rows.map((r) => [r.id, r.coins]));
+check('everyone voted → the game ends; most votes wins', fin.status === 'done' && fin.players.find((p) => p.seat === 2).winner === true && fin.players.find((p) => p.seat === 1).winner === false);
+check('coins: finisher +200, winner +1,000, didn’t finish +0; invite pair +1,000 each', coins1[X] - coins0[X] === 200 + 1000 && coins1[Y] - coins0[Y] === 1000 + 1000 && coins1[Z] - coins0[Z] === 0, JSON.stringify([coins0, coins1]));
+await as(Z, () => db.query(`select public.get_cookoff('${code}')`)); await as(X, () => db.query(`select public.get_cookoff('${code}')`));
+const coins2 = (await db.query(`select coins from profiles where id = '${X}'`)).rows[0].coins;
+check('paid out once only', coins2 === coins1[X]);
+const inv2 = (await as(X, () => db.query(`select public.get_my_invite() as r`))).rows[0].r;
+check('invite counted (1 of 10)', inv2.earned === 1 && inv2.waiting === 0, JSON.stringify(inv2));
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

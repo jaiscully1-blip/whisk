@@ -73,7 +73,7 @@ await step('log in', async () => {
   check('each tip shows only once', (await page.locator('.tip-card').count()) === 0);
   await page.fill('#p-name', 'Bananas'); await page.locator('[data-tour="add"]').click();
   await page.locator('.tip-card', { hasText: 'Add to pantry' }).waitFor({ timeout: 4000 });
-  check('first Add explains XP; the item is still added', (await page.locator('main').innerText()).includes('Bananas'));
+  check('first Add explains XP; the item is still added', await page.locator('main').getByText('Bananas', { exact: true }).first().waitFor({ timeout: 6000 }).then(() => true, () => false));
   // name + the first shirt (no tour now: from the Me page)
   await page.locator('.nav a[href="/me"]').click(); await page.waitForURL('**/me');
   await page.locator('.namebtn').click(); await page.locator('#nm').fill('Jai'); await page.locator('#nm').press('Enter');
@@ -402,6 +402,67 @@ await step('free dish search', async () => {
   await page.goto(`${BASE}/cook`); await page.getByRole('button', { name: 'Add Channel' }).waitFor();
   await page.getByRole('button', { name: 'Remove Mock Kitchen' }).click();
   check('remove a channel', (await page.locator('.channel').count()) === 0);
+});
+await step('cook off with a friend', async () => {
+  const pill = async (pg) => Number((await pg.locator('header .pill').last().innerText()).replace(/\D/g, ''));
+  // your invite code (Get coins → Invite a friend)
+  await nav('Me'); await page.waitForURL('**/me'); await page.getByRole('button', { name: /Get coins/ }).first().click();
+  await page.locator('.invite-code b').waitFor();
+  const myCode = (await page.locator('.invite-code b').innerText()).trim();
+  check('Get coins has Invite a friend with your 6-letter code (1,000 each)', /^[A-Z2-9]{6}$/.test(myCode) && /1,000 each/.test(await page.locator('.invite').innerText()));
+  await shot('06a-invite');
+  await page.locator('[role=dialog][aria-label="Get coins"] button[aria-label="Close"]').click();
+  // a friend starts Whisk from the invite link on their own phone
+  const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: 'America/New_York' });
+  const fr = await ctx2.newPage();
+  await fr.goto(`${BASE}/login?ref=${myCode}`); await fr.getByRole('radio', { name: 'Accept' }).click(); await fr.getByRole('button', { name: 'Start playing' }).click();
+  await fr.waitForURL('**/cook'); const invToast = await fr.locator('.toast', { hasText: /Invited by/ }).waitFor({ timeout: 10000 }).then(() => fr.locator('.toast').innerText(), () => '');
+  check('the friend’s game picks up the invite from the link', /Invited by (?!a friend)/.test(invToast), invToast);
+  // host makes a game
+  const c0 = await pill(page);
+  await nav('Compete'); await page.waitForURL('**/compete'); await page.locator('.co-card').waitFor();
+  check('Compete has Cook Off: pick the time, make a game or join with a code', (await page.locator('.co-times [role=radio]').count()) === 4 && (await page.getByRole('button', { name: 'Make a game' }).count()) === 1 && (await page.getByPlaceholder('Game code').count()) === 1);
+  await page.locator('.co-times [role=radio]', { hasText: '30 min' }).click();
+  await page.getByRole('button', { name: 'Make a game' }).click(); await page.waitForURL('**/compete/cookoff?code=*');
+  const code = new URL(page.url()).searchParams.get('code');
+  await page.locator('.co-code b').waitFor();
+  check('the lobby shows the code big, and you (host)', (await page.locator('.co-code b').innerText()) === code && /\(you\)/.test(await page.locator('.co-chip.me').innerText()) && (await page.locator('.co-chip.me svg').count()) === 1);
+  // friend joins with the code
+  await fr.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await fr.waitForURL('**/compete');
+  await fr.getByPlaceholder('Game code').fill(code.toLowerCase()); await fr.getByRole('button', { name: 'Join', exact: true }).click();
+  await fr.waitForURL('**/compete/cookoff?code=*'); await fr.getByText('Waiting for the host to start…').waitFor();
+  await page.locator('.co-chip', { hasText: /^Cook 2/ }).waitFor({ timeout: 6000 });
+  check('a friend joins with the code; both screens list both cooks', (await page.locator('.co-chip').count()) === 2 && (await fr.locator('.co-chip').count()) === 2);
+  await shot('06b-lobby');
+  check('only the host has Start', (await fr.getByRole('button', { name: 'Start the Cook Off' }).count()) === 0);
+  await page.getByRole('button', { name: 'Start the Cook Off' }).click();
+  await page.locator('.co-full .wheel').waitFor({ timeout: 8000 });
+  await fr.locator('.co-full .wheel').waitFor({ timeout: 8000 });
+  check('start: both phones go full screen and spin the wheel', (await page.locator('.nav').isVisible()) === true && (await page.locator('.co-full').evaluate((e) => getComputedStyle(e).position === 'fixed' && e.getBoundingClientRect().height >= innerHeight - 1)));
+  await page.waitForTimeout(1500); await shot('06c-wheel');
+  const blur = await page.locator('.wheel').evaluate((e) => e.style.filter);
+  check('the wheel is blurred while it spins fast', /blur\((?!0\.00)/.test(blur), blur);
+  await page.locator('.co-timer').waitFor({ timeout: 15000 }); await fr.locator('.co-timer').waitFor({ timeout: 15000 });
+  const t1 = await page.locator('.co-timer').innerText(), t2 = await fr.locator('.co-timer').innerText();
+  const secs = (t) => { const [m, s] = t.replace(/[^\d:]/g, '').split(':').map(Number); return m * 60 + s; };
+  check('then your recipe with ingredients, steps and one shared clock', Math.abs(secs(t1) - secs(t2)) <= 2 && secs(t1) > 25 * 60 && secs(t1) <= 30 * 60 && (await page.locator('.co-cook .ing-list li').count()) > 2 && (await page.locator('.co-cook ol.steps li').count()) > 2, `${t1} / ${t2}`);
+  check('the restaurant scene of that dish is behind it', (await page.locator('.co-cook .scene svg image').count()) >= 3);
+  await shot('06d-cook');
+  for (const pg of [page, fr]) await pg.locator('.co-snap input[type=file]').setInputFiles('e2e/plate.jpg');
+  await page.locator('.co-plates').waitFor({ timeout: 15000 }); await fr.locator('.co-plates').waitFor({ timeout: 15000 });
+  check('both plates in → voting starts on every phone', /Vote for the best plate/.test(await page.locator('.co-big').innerText()) && (await page.locator('.co-plate img').count()) === 2);
+  check('you can’t vote for your own plate', await page.locator('.co-plate', { hasText: '(you)' }).isDisabled());
+  await shot('06e-vote');
+  await page.locator('.co-plate:not([disabled])').click(); await fr.locator('.co-plate:not([disabled])').click();
+  await page.getByText(/It’s a tie!|wins!/).waitFor({ timeout: 10000 });
+  check('everyone voted → winner screen', /It’s a tie!/.test(await page.locator('.co-big').innerText()));
+  check('your coins: +1,000 for the win', /\+1,000 coins/.test(await page.locator('.co-reward').innerText()));
+  await shot('06f-winner');
+  await page.getByRole('link', { name: 'Back to Compete' }).click(); await page.waitForURL('**/compete');
+  await page.waitForTimeout(800);
+  const c1 = await pill(page);
+  check('coins: win (+1,000) + invite reward (+1,000)', c1 - c0 === 2000, `${c0} → ${c1}`);
+  await ctx2.close();
 });
 await step('activity backend', async () => {
   await page.waitForTimeout(4500); await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));

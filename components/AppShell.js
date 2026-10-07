@@ -248,7 +248,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
 
   return (
     <Ctx.Provider value={value}>
-      <div className={`shell ${night ? 'theme-night' : 'theme-day'}`}>
+      <div className={`shell ${night ? 'theme-night' : 'theme-day'}`} data-tab={((pendingTab || pathname || '').split('/')[1]) || 'home'}>
         <header className="hud">
           <div className="hud-in">
             <Link href="/home" prefetch className="brand" aria-label="Whisk home"><img src="/icon.svg" alt="" />whisk</Link>

@@ -435,13 +435,23 @@ await step('cook off with a friend', async () => {
   check('a friend joins with the code; both screens list both cooks', (await page.locator('.co-chip').count()) === 2 && (await fr.locator('.co-chip').count()) === 2);
   await shot('06b-lobby');
   check('only the host has Start', (await fr.getByRole('button', { name: 'Start the Cook Off' }).count()) === 0);
+  // a judge: someone new opens the "Invite judges" link, starts Whisk, lands in the game just to vote
+  check('the lobby has "Invite judges to vote"', (await page.getByRole('button', { name: 'Invite judges to vote' }).count()) === 1);
+  const ctx3 = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: 'America/New_York' });
+  const jd = await ctx3.newPage();
+  await jd.goto(`${BASE}/vote/${code}`); await jd.waitForURL('**/login?vote=*');
+  check('a judge link sends someone new to the start screen with an invite note', /invited to judge a Cook Off/.test(await jd.locator('.judge-note').innerText()));
+  await jd.getByRole('radio', { name: 'Accept' }).click(); await jd.getByRole('button', { name: 'Start playing' }).click();
+  await jd.waitForURL('**/compete/cookoff?code=*&as=judge'); await jd.getByText('You’re a judge.', { exact: false }).waitFor({ timeout: 10000 });
+  await page.locator('.co-chip.judge').waitFor({ timeout: 6000 });
+  check('…and joins as a judge (no pantry needed); the host sees them under Judges', (await page.locator('.co-chip.judge').count()) === 1 && (await jd.getByRole('button', { name: 'Start the Cook Off' }).count()) === 0);
   await page.getByRole('button', { name: 'Start the Cook Off' }).click();
-  await page.locator('.co-full .wheel').waitFor({ timeout: 8000 });
-  await fr.locator('.co-full .wheel').waitFor({ timeout: 8000 });
+  await page.locator('.co-full .bw').waitFor({ timeout: 8000 });
+  await fr.locator('.co-full .bw').waitFor({ timeout: 8000 });
   check('start: both phones go full screen and spin the wheel', (await page.locator('.nav').isVisible()) === true && (await page.locator('.co-full').evaluate((e) => getComputedStyle(e).position === 'fixed' && e.getBoundingClientRect().height >= innerHeight - 1)));
   await page.waitForTimeout(1500); await shot('06c-wheel');
-  const blur = await page.locator('.wheel').evaluate((e) => e.style.filter);
-  check('the wheel is blurred while it spins fast', /blur\((?!0\.00)/.test(blur), blur);
+  const blur = await page.locator('#bw-blur feGaussianBlur').getAttribute('stdDeviation');
+  check('arcade drum: wooden planks with recipes roll between two arrows, motion-blurred up and down while fast', (await page.locator('.bw-plank').count()) === 24 && (await page.locator('.bw-arrow').count()) === 2 && /^0 (?!0(\.00)?$)/.test(blur), blur);
   await page.locator('.co-timer').waitFor({ timeout: 15000 }); await fr.locator('.co-timer').waitFor({ timeout: 15000 });
   const t1 = await page.locator('.co-timer').innerText(), t2 = await fr.locator('.co-timer').innerText();
   const secs = (t) => { const [m, s] = t.replace(/[^\d:]/g, '').split(':').map(Number); return m * 60 + s; };
@@ -450,19 +460,26 @@ await step('cook off with a friend', async () => {
   await shot('06d-cook');
   for (const pg of [page, fr]) await pg.locator('.co-snap input[type=file]').setInputFiles('e2e/plate.jpg');
   await page.locator('.co-plates').waitFor({ timeout: 15000 }); await fr.locator('.co-plates').waitFor({ timeout: 15000 });
-  check('both plates in → voting starts on every phone', /Vote for the best plate/.test(await page.locator('.co-big').innerText()) && (await page.locator('.co-plate img').count()) === 2);
+  await jd.locator('.co-plates').waitFor({ timeout: 15000 });
+  check('both plates in → voting starts on every phone, judges included', /Vote for the best plate/.test(await page.locator('.co-big').innerText()) && (await page.locator('.co-plate img').count()) === 2 && /Judge: pick the best plate/.test(await jd.locator('.co-big').innerText()));
   check('you can’t vote for your own plate', await page.locator('.co-plate', { hasText: '(you)' }).isDisabled());
   await shot('06e-vote');
-  await page.locator('.co-plate:not([disabled])').click(); await fr.locator('.co-plate:not([disabled])').click();
+  check('voting is pick, then Submit', (await page.getByRole('button', { name: 'Tap a plate to pick it' }).isDisabled()));
+  for (const pg of [page, fr]) { await pg.locator('.co-plate:not([disabled])').click(); await pg.getByRole('button', { name: 'Submit vote' }).click(); }
+  await jd.locator('.co-plate', { hasText: /\(you\)/ }).count();
+  const hostName = (await page.locator('.co-plate', { hasText: '(you)' }).locator('b').innerText()).replace(' (you)', '');
+  await jd.locator('.co-plate', { hasText: hostName }).click(); await jd.getByRole('button', { name: 'Submit vote' }).click();
+  await jd.waitForURL('**/cook', { timeout: 8000 });
+  check('after the judge submits, Whisk takes them to the start of the app', jd.url().endsWith('/cook'));
   await page.getByText(/It’s a tie!|wins!/).waitFor({ timeout: 10000 });
-  check('everyone voted → winner screen', /It’s a tie!/.test(await page.locator('.co-big').innerText()));
+  check('everyone voted → winner screen (the judge broke the tie)', /wins!/.test(await page.locator('.co-big').innerText()));
   check('your coins: +1,000 for the win', /\+1,000 coins/.test(await page.locator('.co-reward').innerText()));
   await shot('06f-winner');
   await page.getByRole('link', { name: 'Back to Compete' }).click(); await page.waitForURL('**/compete');
   await page.waitForTimeout(800);
   const c1 = await pill(page);
   check('coins: win (+1,000) + invite reward (+1,000)', c1 - c0 === 2000, `${c0} → ${c1}`);
-  await ctx2.close();
+  await ctx2.close(); await ctx3.close();
 });
 await step('activity backend', async () => {
   await page.waitForTimeout(4500); await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));

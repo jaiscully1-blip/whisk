@@ -21,7 +21,9 @@ const errText = (e) => String(e?.message || '').replace(/^.*?: /, '').replace(/^
 export default function CookOffPage() { return <Suspense fallback={null}><CookOff /></Suspense>; }
 
 function CookOff() {
-  const code = (useSearchParams().get('code') || '').toUpperCase();
+  const sp = useSearchParams();
+  const code = (sp.get('code') || '').toUpperCase();
+  const asJudge = sp.get('as') === 'judge';
   const router = useRouter();
   const { supabase, recipes, profile, refreshProfile, say } = useWhisk();
   const [pantry] = usePantry();
@@ -30,14 +32,17 @@ function CookOff() {
   const [phase, setPhase] = useState('');   // local: '' | 'spin' | 'cook'
   const [busy, setBusy] = useState(false);
   const [photos, setPhotos] = useState({});
+  const [pick, setPick] = useState(null);   // the plate you've chosen, before you submit the vote
   const off = useRef(0);   // server clock − this phone's clock
   const asked = useRef(false);
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase.rpc('get_cookoff', { p_code: code });
+    let { data, error } = await supabase.rpc('get_cookoff', { p_code: code });
+    // came from a judge link and not in the game yet: join as a judge
+    if (error && asJudge && /not in this game/.test(error.message || '')) ({ data, error } = await supabase.rpc('join_cookoff_judge', { p_code: code }));
     if (error) { setErr(errText(error)); return null; }
     off.current = new Date(data.now).getTime() - Date.now(); setG(data); setErr(''); return data;
-  }, [supabase, code]);
+  }, [supabase, code, asJudge]);
   useEffect(() => { load(); }, [load]);
   // Ask the server what's happening: often in the lobby and while voting, less while cooking.
   useEffect(() => {
@@ -51,6 +56,9 @@ function CookOff() {
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(t); }, []);
 
   const me = g?.players?.find((p) => p.me);
+  const judging = me?.role === 'judge';
+  const cooks = (g?.players || []).filter((p) => p.role !== 'judge');
+  const judges = (g?.players || []).filter((p) => p.role === 'judge');
   const byId = useMemo(() => new Map((recipes || []).map((r) => [r.id, r])), [recipes]);
   // Recipes this phone's pantry can make within the game's time: what goes on the wheel.
   const pool = useMemo(() => (recipes && pantry && g ? recipes.filter((r) => r.minutes <= g.minutes && checkRecipe(r, pantry).ok) : null), [recipes, pantry, g?.minutes]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -59,7 +67,7 @@ function CookOff() {
 
   // Cooking started: get my recipe (the server picks one of mine at random), then spin to it.
   useEffect(() => {
-    if (g?.status !== 'cooking' || !pool || asked.current) return;
+    if (g?.status !== 'cooking' || !pool || asked.current || judging) return;
     asked.current = true;
     if (me?.recipe_id) { setPhase(Date.now() < local(g.started_at) + SPIN_MS ? 'spin' : 'cook'); return; }
     if (!pool.length) { setErr('Your pantry can’t make anything that fits this game’s time. Stock up for the next one.'); return; }
@@ -67,7 +75,17 @@ function CookOff() {
       if (error) { setErr(errText(error)); return; }
       load().then(() => setPhase(Date.now() < local(g.started_at) + SPIN_MS ? 'spin' : 'cook'));
     });
-  }, [g?.status, pool]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [g?.status, pool, judging]); // eslint-disable-line react-hooks/exhaustive-deps
+  async function submitVote() {
+    if (pick == null) return;
+    const data = await act('vote_cookoff', { p_code: code, p_seat: pick });
+    if (data && judging) { say('Thanks for judging! Now start cooking your own'); setTimeout(() => router.replace('/cook'), 1200); }
+  }
+  async function inviteJudges() {
+    const url = `${window.location.origin}/vote/${code}`;
+    const text = `Come judge my Whisk Cook Off! Vote for the best plate:`;
+    try { if (navigator.share) await navigator.share({ text, url }); else { await navigator.clipboard.writeText(`${text} ${url}`); say('Judge link copied'); } } catch {}
+  }
   // Keep the screen on during the game.
   useEffect(() => {
     if (!g || g.status === 'done') return undefined;
@@ -121,10 +139,13 @@ function CookOff() {
             <b>{code}</b>
             <button className="btn ghost sm" onClick={async () => { const text = `Join my Whisk Cook Off! Code: ${code}`; try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(code); say('Code copied'); } } catch {} }}>Share code</button>
           </div>
-          {!canPlay && <p className="err" role="alert" style={{ margin: 0 }}>Your pantry can’t make any recipe in {g.minutes} minutes yet. Add more to your pantry before the host starts.</p>}
-          <span className="eyebrow">Cooks in the kitchen · {g.players.length}</span>
-          <div className="co-players">{g.players.map((p) => <span key={p.seat} className={`co-chip ${p.me ? 'me' : ''}`}>{p.host && <Icon name="star" size={14} />}{p.name}{p.me ? ' (you)' : ''}</span>)}</div>
-          {g.is_host
+          {judging && <p className="judge-note" style={{ textAlign: 'center' }}>You’re a judge. When the cooking’s done, you’ll vote for the best plate.</p>}
+          {!canPlay && !judging && <p className="err" role="alert" style={{ margin: 0 }}>Your pantry can’t make any recipe in {g.minutes} minutes yet. Add more to your pantry before the host starts.</p>}
+          <span className="eyebrow">Cooks in the kitchen · {cooks.length}</span>
+          <div className="co-players">{cooks.map((p) => <span key={p.seat} className={`co-chip ${p.me ? 'me' : ''}`}>{p.host && <Icon name="star" size={14} />}{p.name}{p.me ? ' (you)' : ''}</span>)}</div>
+          {judges.length > 0 && <><span className="eyebrow">Judges · {judges.length}</span><div className="co-players">{judges.map((p) => <span key={p.seat} className={`co-chip judge ${p.me ? 'me' : ''}`}>{p.name}{p.me ? ' (you)' : ''}</span>)}</div></>}
+          {!judging && <button className="btn ghost wide" onClick={inviteJudges}><Icon name="link" size={18} />Invite judges to vote</button>}
+          {g.is_host && !judging
             ? <button className="btn wide co-start" disabled={busy} onClick={() => act('start_cookoff', { p_code: code })}>Start the Cook Off</button>
             : <p className="muted" style={{ textAlign: 'center', margin: 0 }}>Waiting for the host to start…</p>}
           <button className="btn ghost wide" disabled={busy} onClick={async () => { await supabase.rpc('leave_cookoff', { p_code: code }); router.push('/compete'); }}>{g.is_host ? 'Close this game' : 'Leave'}</button>
@@ -135,6 +156,17 @@ function CookOff() {
 
   // ---------- full screen from here on ----------
   const endAt = local(g.ends_at), left = endAt - now;
+  if (g.status === 'cooking' && judging) {
+    return (
+      <div className="co-full co-vote">
+        <div className="co-timer"><Icon name="timer" size={22} />{mmss(left)}</div>
+        <h2 className="co-big">You’re judging</h2>
+        <p style={{ textAlign: 'center', margin: 0 }}>{cooks.filter((p) => p.done).length} of {cooks.length} cooks have a plate in. Voting opens when time’s up or everyone’s done.</p>
+        <div className="co-players" style={{ justifyContent: 'center' }}>{cooks.map((p) => <span key={p.seat} className="co-chip">{p.done ? '✓ ' : ''}{p.name}</span>)}</div>
+        <button className="btn ghost wide" onClick={inviteJudges}><Icon name="link" size={18} />Invite more judges</button>
+      </div>
+    );
+  }
   if (g.status === 'cooking' && (phase === 'spin' || !myRecipe)) {
     return (
       <div className="co-full co-spin">
@@ -145,14 +177,14 @@ function CookOff() {
     );
   }
   if (g.status === 'cooking' && myRecipe) {
-    const done = g.players.filter((p) => p.done).length;
+    const done = cooks.filter((p) => p.done).length;
     return (
       <div className="co-full co-cook">
         <Scene iso={myRecipe.country} cuisine={myRecipe.cuisine} title={myRecipe.title} height={190} />
         <div className="co-cook-in stack">
           <div className="co-timer" role="timer" aria-live="off" data-low={left < 60000 ? 'true' : undefined}><Icon name="timer" size={22} />{mmss(left)}</div>
           <div><span className="eyebrow">{myRecipe.cuisine} · {myRecipe.minutes} min</span><h2 style={{ fontSize: 28 }}>{myRecipe.title}</h2></div>
-          <span className="desc">{done} of {g.players.length} plates in</span>
+          <span className="desc">{done} of {cooks.length} plates in{judges.length ? ` · ${judges.length} judge${judges.length === 1 ? '' : 's'} waiting` : ''}</span>
           {me.done ? <div className="empty"><b>Your plate is in</b>Waiting for the others, or the clock.</div> : (
             <label className={`btn wide co-snap ${busy ? 'busy' : ''}`}><Icon name="camera" size={20} />{busy ? 'Sending…' : 'Done! Snap your plate'}<input type="file" accept="image/*" capture="environment" hidden onChange={submitPhoto} disabled={busy} /></label>
           )}
@@ -170,16 +202,17 @@ function CookOff() {
     return (
       <div className="co-full co-vote">
         <div className="co-timer"><Icon name="timer" size={22} />{mmss(vleft)}</div>
-        <h2 className="co-big">{voted ? 'Vote in! Waiting for the rest…' : 'Vote for the best plate'}</h2>
-        <div className="co-plates">
+        <h2 className="co-big">{voted ? 'Vote in! Waiting for the rest…' : judging ? 'Judge: pick the best plate' : 'Vote for the best plate'}</h2>
+        <div className="co-plates" role="radiogroup" aria-label="Plates">
           {plates.map((p) => { const r = byId.get(p.recipe_id); return (
-            <button key={p.seat} className={`card co-plate ${me?.my_vote === p.seat ? 'picked' : ''}`} disabled={p.me || voted || busy} onClick={() => act('vote_cookoff', { p_code: code, p_seat: p.seat })} aria-label={`${p.name}: ${r?.title || ''}${p.me ? ' (yours)' : ''}`}>
+            <button key={p.seat} role="radio" aria-checked={(voted ? me?.my_vote : pick) === p.seat} className={`card co-plate ${(voted ? me?.my_vote : pick) === p.seat ? 'picked' : ''}`} disabled={p.me || voted || busy} onClick={() => setPick(p.seat)} aria-label={`${p.name}: ${r?.title || ''}${p.me ? ' (yours)' : ''}`}>
               {photos[p.photo] ? <img src={photos[p.photo]} alt="" /> : <span className="co-ph" />}
               <b>{p.name}{p.me ? ' (you)' : ''}</b><span className="desc">{r?.title}</span>
             </button>
           ); })}
         </div>
         {!plates.length && <p className="muted">Nobody sent a plate this time.</p>}
+        {!voted && plates.length > 0 && <button className="btn wide co-submit" disabled={pick == null || busy} onClick={submitVote}>{pick == null ? 'Tap a plate to pick it' : 'Submit vote'}</button>}
       </div>
     );
   }

@@ -128,12 +128,13 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
     return () => document.removeEventListener('visibilitychange', onHide);
   }, [flushUi]);
 
-  // Every time the app opens it starts on Cook (except coming back from the coin checkout). Scroll spots are remembered.
+  // Every time the app opens it starts on Cook (except coming back from the coin checkout, or opening a Cook Off
+  // link to join or judge a game). Scroll spots are remembered.
   const restored = useRef(false);
   useEffect(() => {
     if (!restored.current) {
       restored.current = true;
-      if (pathname !== '/cook' && !pathname.startsWith('/admin') && !/[?&](paid|reset)=1/.test(window.location.search)) { router.replace('/cook'); return; }
+      if (pathname !== '/cook' && !pathname.startsWith('/admin') && !pathname.startsWith('/compete/cookoff') && !/[?&](paid|reset)=1/.test(window.location.search)) { router.replace('/cook'); return; }
     }
     setUi({ path: pathname });
     const y = uiRef.current.scroll?.[pathname] || 0;

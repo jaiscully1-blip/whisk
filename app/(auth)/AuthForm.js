@@ -13,7 +13,9 @@ export default function AuthForm() {
   const [choice, setChoice] = useState(null);   // 'accept' | 'decline'
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [judge, setJudge] = useState('');   // came from a "come vote in my Cook Off" link
   useEffect(() => {
+    try { const v = new URLSearchParams(window.location.search).get('vote'); if (v && /^[A-Za-z0-9]{6}$/.test(v)) setJudge(v.toUpperCase()); } catch {}
     try { const ref = new URLSearchParams(window.location.search).get('ref'); if (ref && /^[A-Za-z0-9]{6}$/.test(ref)) localStorage.setItem('whisk-ref', ref.toUpperCase()); } catch {}
     try { const c = JSON.parse(localStorage.getItem(LOGIN_CHOICE_KEY) || 'null'); if (c && typeof c.usage === 'boolean') setChoice(c.usage ? 'accept' : 'decline'); } catch {}
   }, []);
@@ -26,7 +28,7 @@ export default function AuthForm() {
     setBusy(true); setError('');
     const { error: e } = await supabaseBrowser().auth.signInAnonymously();
     if (e) { setBusy(false); setError(/rate|many/i.test(e.message || '') ? 'Too many new games from this network. Try again in a bit.' : 'Couldn’t start the game. Check your connection and try again.'); return; }
-    router.replace('/cook'); router.refresh();
+    router.replace(judge ? `/compete/cookoff?code=${judge}&as=judge` : '/cook'); router.refresh();
   }
 
   return (
@@ -35,6 +37,7 @@ export default function AuthForm() {
         <img src="/icon.svg" alt="" width="64" height="64" style={{ borderRadius: 18 }} />
         <h1>Welcome to Whisk</h1>
         <p className="muted" style={{ margin: 0 }}>Cook real food, earn coins, fill your passport.</p>
+        {judge && <p className="judge-note" role="status">You’re invited to judge a Cook Off! Start playing to vote for the best plate.</p>}
 
         <section className="disclaimer" aria-labelledby="dc-h">
           <h2 id="dc-h">Before you start</h2>

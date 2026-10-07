@@ -1,65 +1,73 @@
 'use client';
 import { useEffect, useMemo, useRef } from 'react';
 
-// The Cook Off wheel: a big arcade wheel with every recipe that fits the game's time on it, mixed easy to hard.
-// It spins fast (blurred with speed), slows down, and stops with your recipe under the pointer exactly when the
-// shared spin ends (`endsAt`, already corrected to this phone's clock). Drawn once as SVG, then only rotated.
-const COLORS = ['#F08A6E', '#F2B84B', '#8CC56B', '#7FBFE3', '#B48ED8', '#E5808F'];
-const N = 24;
+// The Cook Off wheel, arcade style (like the "Big Bass Wheel"): a tall drum of painted wooden planks that rolls
+// top-to-bottom behind glass, a recipe on every plank, two arrows pointing at the middle. It rolls fast (motion-blurred
+// up and down), slows, and stops with your recipe between the arrows exactly when the shared spin ends (`endsAt`).
+// Real 3D: each plank sits on a cylinder (CSS 3D); only the drum's angle changes per frame.
+const WOOD = [['#5E9BD1', '#4C86BB'], ['#F2A65A', '#E08C3E'], ['#5E9BD1', '#4C86BB'], ['#F2A65A', '#E08C3E'], ['#8CC56B', '#73AD54'], ['#F2A65A', '#E08C3E']];
+const BADGE = ['#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#2E9E4F', '#B14FC5'];
+const N = 24, STEP = 360 / N, H = 116;
+const R = Math.round(H / 2 / Math.tan(Math.PI / N));   // drum radius so the planks meet edge to edge
 
 export default function CookWheel({ pool, target, endsAt, onDone }) {
-  const wheel = useRef(null);
+  const drum = useRef(null);
+  const blur = useRef(null);
   const done = useRef(false);
   const doneRef = useRef(onDone); doneRef.current = onDone;
   const endRef = useRef(endsAt);   // fixed when the spin starts: later clock corrections must not restart it
-  // 24 slices: your recipe plus a random mix of the rest (titles shortened to fit).
-  const slices = useMemo(() => {
+  const planks = useMemo(() => {
     const rest = pool.filter((r) => r.id !== target?.id).sort(() => Math.random() - 0.5).slice(0, N - 1);
     const list = [...rest]; list.splice(Math.floor(Math.random() * N), 0, target);
     return list.filter(Boolean).slice(0, N);
   }, [pool, target]);
-  const n = slices.length || 1, seg = 360 / n;
-  const at = Math.max(0, slices.findIndex((r) => r?.id === target?.id));
+  const at = Math.max(0, planks.findIndex((r) => r?.id === target?.id));
 
   useEffect(() => {
-    if (!wheel.current || !target) return undefined;
+    if (!drum.current || !target) return undefined;
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const start = performance.now(), dur = Math.max(2500, endRef.current - Date.now());
-    const final = 360 * (reduce ? 1 : 9) + (360 - (at * seg + seg / 2));   // that slice's middle ends under the pointer (top)
+    const final = 360 * (reduce ? 1 : 7) + at * STEP;   // your plank ends facing you
     const ease = (t) => 1 - (1 - t) ** 4;
     let raf = 0, prev = 0;
     const frame = (now) => {
       const t = Math.min(1, (now - start) / dur), a = final * ease(t), v = Math.abs(a - prev); prev = a;
-      wheel.current.style.transform = `rotate(${a}deg)`;
-      wheel.current.style.filter = reduce ? 'none' : `blur(${Math.min(7, v / 6).toFixed(2)}px)`;
+      drum.current.style.transform = `translateZ(${-R}px) rotateX(${a}deg)`;
+      if (blur.current) blur.current.setAttribute('stdDeviation', reduce ? '0 0' : `0 ${Math.min(14, v * 1.4).toFixed(2)}`);
       if (t < 1) raf = requestAnimationFrame(frame);
-      else if (!done.current) { done.current = true; wheel.current.style.filter = 'none'; try { navigator.vibrate?.([30, 40, 60]); } catch {} setTimeout(() => doneRef.current?.(), 700); }
+      else if (!done.current) { done.current = true; blur.current?.setAttribute('stdDeviation', '0 0'); try { navigator.vibrate?.([30, 40, 90]); } catch {} setTimeout(() => doneRef.current?.(), 900); }
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [target?.id, at, seg]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [target?.id, at]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const R = 190, C = 200;
-  const pt = (deg, r) => { const a = ((deg - 90) * Math.PI) / 180; return [C + r * Math.cos(a), C + r * Math.sin(a)]; };
   return (
-    <div className="wheel-wrap" aria-live="polite" aria-label={target ? 'Spinning the recipe wheel' : 'Getting your recipe'}>
-      <div className="wheel-pointer" aria-hidden="true" />
-      <svg ref={wheel} className="wheel" viewBox="0 0 400 400" aria-hidden="true">
-        {slices.map((r, i) => {
-          const [x1, y1] = pt(i * seg, R), [x2, y2] = pt((i + 1) * seg, R), [tx, ty] = pt(i * seg + seg / 2, R * 0.6);
-          const label = (r?.title || '').replace(/\s*\(.*?\)/g, ''); const short = label.length > 16 ? label.slice(0, 15) + '…' : label;
-          return (
-            <g key={i}>
-              <path d={`M${C} ${C}L${x1} ${y1}A${R} ${R} 0 0 1 ${x2} ${y2}z`} fill={COLORS[i % COLORS.length]} stroke="#3B2C24" strokeWidth="2" />
-              <text x={tx} y={ty} transform={`rotate(${i * seg + seg / 2 - 90} ${tx} ${ty})`} textAnchor="middle" dominantBaseline="middle" fontSize="11" fontWeight="800" fill="#2E2620">{short}</text>
-            </g>
-          );
-        })}
-        <circle cx={C} cy={C} r={R} fill="none" stroke="#3B2C24" strokeWidth="6" />
-        {Array.from({ length: n }, (_, i) => { const [x, y] = pt(i * seg, R - 6); return <circle key={i} cx={x} cy={y} r="4" fill="#FFF3C4" stroke="#3B2C24" strokeWidth="1.5" />; })}
-        <circle cx={C} cy={C} r="34" fill="#FFFDF8" stroke="#3B2C24" strokeWidth="5" />
-        <image href="/icon.svg" x={C - 26} y={C - 26} width="52" height="52" />
-      </svg>
+    <div className="bw" aria-live="polite" aria-label={target ? 'Spinning the recipe wheel' : 'Getting your recipe'}>
+      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true"><filter id="bw-blur" x="0" y="-20%" width="100%" height="140%"><feGaussianBlur ref={blur} stdDeviation="0 0" /></filter></svg>
+      <div className="bw-sign" aria-hidden="true"><span>BIG WHISK</span><b>SPIN</b></div>
+      <div className="bw-cab">
+        <div className="bw-window">
+          <div className="bw-blur">
+            <div className="bw-drum" ref={drum} style={{ transform: `translateZ(${-R}px)` }}>
+              {planks.map((r, i) => {
+                const [w1, w2] = WOOD[i % WOOD.length], badge = BADGE[i % BADGE.length], dark = badge !== '#FFFFFF';
+                const title = (r?.title || '').replace(/\s*\(.*?\)/g, '').trim();
+                return (
+                  <div key={i} className="bw-plank" style={{ transform: `rotateX(${-i * STEP}deg) translateZ(${R}px)`, '--w1': w1, '--w2': w2 }} aria-hidden="true">
+                    <span className="bw-badge" style={{ background: badge, color: dark ? '#FFFFFF' : '#2E2620' }}>
+                      <b>{title.length > 34 ? title.slice(0, 33) + '…' : title}</b>
+                      <small>{r?.minutes} MIN</small>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="bw-glass" aria-hidden="true" />
+        </div>
+        <span className="bw-arrow l" aria-hidden="true" /><span className="bw-arrow r" aria-hidden="true" />
+      </div>
     </div>
   );
 }
+export const PLANK_HEIGHT = H;

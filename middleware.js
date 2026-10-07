@@ -64,6 +64,14 @@ export async function middleware(req) {
   const isPublic = PUBLIC_PATHS.includes(pathname);
   const isApi = pathname.startsWith('/api/');
 
+  // Judge invite link /vote/ABC123: new people start Whisk first, then land in the game as a judge.
+  const vote = pathname.match(/^\/vote\/([A-Za-z0-9]{6})$/);
+  if (vote) {
+    const url = req.nextUrl.clone(); url.search = '';
+    if (user) { url.pathname = '/compete/cookoff'; url.searchParams.set('code', vote[1].toUpperCase()); url.searchParams.set('as', 'judge'); }
+    else { url.pathname = '/login'; url.searchParams.set('vote', vote[1].toUpperCase()); }
+    return NextResponse.redirect(url);
+  }
   // 4) Protect the app: signed-out users go to /login; signed-in users skip login/signup
   if (!user && !isPublic && !isApi) {
     const url = req.nextUrl.clone(); url.pathname = '/login'; url.search = '';

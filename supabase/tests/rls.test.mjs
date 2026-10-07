@@ -530,6 +530,27 @@ check('paid out once only', coins2 === coins1[X]);
 const inv2 = (await as(X, () => db.query(`select public.get_my_invite() as r`))).rows[0].r;
 check('invite counted (1 of 10)', inv2.earned === 1 && inv2.waiting === 0, JSON.stringify(inv2));
 
+// ================= 0018: Cook Off judges =================
+try { const f = fs.readFileSync('./supabase/migrations/0018_cookoff_judges.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0018 runs (twice)', true); }
+catch (e) { check('0018 runs (twice)', false, e.message); }
+const j0 = (await as(X, () => db.query(`select public.create_cookoff(15) as r`))).rows[0].r; const jc = j0.code;
+await as(Y, () => db.query(`select public.join_cookoff('${jc}')`));
+const jv = (await as(W, () => db.query(`select public.join_cookoff_judge('${jc}') as r`))).rows[0].r;
+check('anyone can join as a judge, no pantry needed', jv.players.find((p) => p.me).role === 'judge' && /^Judge \d+$/.test(jv.players.find((p) => p.me).name), JSON.stringify(jv.players));
+await as(X, () => db.query(`select public.start_cookoff('${jc}')`));
+const fit15 = (await db.query(`select id from web_recipes where active and minutes <= 15 order by id limit 2`)).rows.map((r) => r.id);
+await expectFail('judges don’t cook', W, `select public.set_cookoff_recipe('${jc}', array['${fit15[0]}'])`);
+for (const u of [X, Y]) { await as(u, () => db.query(`select public.set_cookoff_recipe('${jc}', array['${fit15.join("','")}'])`)); await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${u}/j.jpg')`); await as(u, () => db.query(`select public.submit_cookoff('${jc}', '${u}/j.jpg')`)); }
+const jv2 = (await as(W, () => db.query(`select public.get_cookoff('${jc}') as r`))).rows[0].r;
+check('cooking ends when every cook is done (judges don’t hold it up)', jv2.status === 'voting');
+const wc0 = (await db.query(`select coins from profiles where id = '${W}'`)).rows[0].coins;
+await as(W, () => db.query(`select public.vote_cookoff('${jc}', 2)`));
+await as(X, () => db.query(`select public.vote_cookoff('${jc}', 2)`));
+const jfin = (await as(Y, () => db.query(`select public.vote_cookoff('${jc}', 1) as r`))).rows[0].r;
+check('the judge’s vote counts: Ben wins 2–1', jfin.status === 'done' && jfin.players.find((p) => p.seat === 2).winner && jfin.players.find((p) => p.seat === 2).votes === 2);
+check('judges win no coins', (await db.query(`select coins from profiles where id = '${W}'`)).rows[0].coins === wc0);
+await expectFail('no judging a finished game', Z, `select public.join_cookoff_judge('${jc}')`);
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

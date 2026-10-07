@@ -43,7 +43,9 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
       onClose?.();
       showPopup({ kind: 'cooked', mealId: data.meal_id, recipe });
       if (data.stamp) showPopup({ kind: 'stamp', country: data.stamp });
-      say(`+${data.xp} XP${data.coins ? ` · +${fmt(data.coins)} coins` : ''}${data.used_freeze ? ' · streak freeze used' : ''}`);
+      say(data.repaired ? `Streak saved! ${data.streak} days · +${data.xp} XP`
+        : data.repair_ready ? `Missed a day? Cook one more meal today to save your ${data.repair_ready}-day streak`
+        : `+${data.xp} XP${data.coins ? ` · +${fmt(data.coins)} coins` : ''}${data.used_freeze ? ' · streak freeze used' : ''}`);
     } catch (err) {
       setError(err?.message || 'Could not save that meal.');
     } finally { setBusy(false); }

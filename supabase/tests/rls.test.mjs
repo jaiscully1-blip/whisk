@@ -551,6 +551,61 @@ check('the judge’s vote counts: Ben wins 2–1', jfin.status === 'done' && jfi
 check('judges win no coins', (await db.query(`select coins from profiles where id = '${W}'`)).rows[0].coins === wc0);
 await expectFail('no judging a finished game', Z, `select public.join_cookoff_judge('${jc}')`);
 
+// ================= 0019: never show, vacation, streak repair, shared list, delete my data =================
+try { const f = fs.readFileSync('./supabase/migrations/0019_safety_streaks_sharing.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0019 runs (twice)', true); }
+catch (e) { check('0019 runs (twice)', false, e.message); }
+const [V1, V2] = ['e5000000-0000-0000-0000-00000000000e', 'f6000000-0000-0000-0000-00000000000f'];
+for (const u of [V1, V2]) await db.exec(`insert into auth.users (id, email) values ('${u}', null)`);
+const ns = (await as(V1, () => db.query(`select public.set_never_show(array[' Peanuts ', 'shellfish', 'peanuts', '']) as r`))).rows[0].r;
+check('never show: trimmed, lower-case, no repeats', JSON.stringify(ns) === JSON.stringify(['peanuts', 'shellfish']), JSON.stringify(ns));
+await expectFail('never show: max 40 items', V1, `select public.set_never_show(array(select 'x' || g from generate_series(1, 41) g))`);
+await expectFail('never show: signed-in only', null, `select public.set_never_show(array['milk'])`);
+// streak repair: a 5-day streak, one missed day, no freeze → first meal back = 1, second meal = 6
+const today19 = ds((await db.query(`select public._user_today('${V1}') d`)).rows[0].d);
+const minus = (n) => ds(new Date(new Date(today19 + 'T12:00:00Z').getTime() - n * 864e5));
+await db.exec(`update profiles set streak_days = 5, streak_last_date = '${minus(2)}', streak_freezes = 0, streak_freeze_week = date_trunc('week', '${today19}'::date)::date where id = '${V1}'`);
+for (const k of [1, 2]) await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${V1}/r${k}.jpg')`);
+const lm1 = (await as(V1, () => db.query(`select public.log_meal('www-budgetbytes-com-picadillo', '${V1}/r1.jpg') as r`))).rows[0].r;
+check('missed one day, no freeze: streak restarts but offers a repair', lm1.streak === 1 && lm1.repair_ready === 5 && !lm1.repaired, JSON.stringify(lm1));
+const lm2 = (await as(V1, () => db.query(`select public.log_meal('www-budgetbytes-com-picadillo', '${V1}/r2.jpg') as r`))).rows[0].r;
+check('a second meal the same day repairs it (5 + today = 6)', lm2.streak === 6 && lm2.repaired === true, JSON.stringify(lm2));
+// vacation: 4 days away don't break the streak
+await db.exec(`update profiles set streak_days = 9, streak_last_date = '${minus(5)}', vacation_since = '${minus(4)}' where id = '${V2}'`);
+const vac = (await as(V2, () => db.query(`select public.set_vacation(false) as r`))).rows[0].r;
+const vlast = ds((await db.query(`select streak_last_date d from profiles where id = '${V2}'`)).rows[0].d);
+check('vacation off: the days away are skipped (streak last day moves forward)', vac.vacation_since === null && vlast === minus(1), vlast);
+await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${V2}/v.jpg')`);
+const lmv = (await as(V2, () => db.query(`select public.log_meal('www-budgetbytes-com-picadillo', '${V2}/v.jpg') as r`))).rows[0].r;
+check('…so cooking the next day keeps the streak going (9 → 10)', lmv.streak === 10, JSON.stringify(lmv));
+await as(V2, () => db.query(`select public.set_vacation(true)`));
+check('vacation on: remembers the day it started', ds((await db.query(`select vacation_since d from profiles where id = '${V2}'`)).rows[0].d) === today19);
+// shared list
+await db.exec(`insert into shopping_items (user_id, name, category) values ('${V1}', 'Milk', 'Dairy & Eggs'), ('${V1}', 'Basil', 'Produce'), ('${V2}', 'Secret', 'Other')`);
+const tok = (await as(V1, () => db.query(`select public.share_my_list() as t`))).rows[0].t;
+const tok2 = (await as(V1, () => db.query(`select public.share_my_list() as t`))).rows[0].t;
+check('share link: a long random token, the same one until you make a new one', /^[a-f0-9]{32}$/.test(tok) && tok === tok2);
+const pub = (await as(null, () => db.query(`select public.get_shared_list('${tok}') as r`))).rows[0].r;
+check('anyone with the link (no account) sees just that list', pub.items.length === 2 && pub.items.every((i) => i.name !== 'Secret') && !JSON.stringify(pub).includes(V1));
+const basil = pub.items.find((i) => i.name === 'Basil').id;
+const okTick = (await as(null, () => db.query(`select public.tick_shared_item('${tok}', '${basil}', true) as r`))).rows[0].r;
+const secret = (await db.query(`select id from shopping_items where name = 'Secret'`)).rows[0].id;
+const badTick = (await as(null, () => db.query(`select public.tick_shared_item('${tok}', '${secret}', true) as r`))).rows[0].r;
+check('the link can tick its own list only', okTick === true && badTick === false && (await db.query(`select checked from shopping_items where id = '${secret}'`)).rows[0].checked === false);
+const wrong = (await as(null, () => db.query(`select public.get_shared_list('${'0'.repeat(32)}') as r, public.get_shared_list('nope') as s`))).rows[0];
+check('a wrong or made-up link shows nothing', wrong.r === null && wrong.s === null);
+check('nobody else can read someone’s share token', (await as(V2, () => db.query(`select count(*)::int n from list_shares where user_id = '${V1}'`))).rows[0].n === 0);
+const newTok = (await as(V1, () => db.query(`select public.share_my_list(true) as t`))).rows[0].t;
+const oldGone = (await as(null, () => db.query(`select public.get_shared_list('${tok}') as r`))).rows[0].r;
+check('making a new link turns the old one off', newTok !== tok && oldGone === null);
+await as(V1, () => db.query(`select public.stop_sharing_list()`));
+check('stop sharing: the link stops working', (await as(null, () => db.query(`select public.get_shared_list('${newTok}') as r`))).rows[0].r === null);
+await expectFail('the link page can’t touch the owner’s list directly', null, `update shopping_items set checked = true`);
+// delete my data
+await expectFail('delete my data: signed-in only', null, `select public.delete_my_account()`);
+await as(V1, () => db.query(`select public.delete_my_account()`));
+const left19 = (await db.query(`select (select count(*) from auth.users where id = '${V1}')::int u, (select count(*) from profiles where id = '${V1}')::int p, (select count(*) from meals where user_id = '${V1}')::int m, (select count(*) from shopping_items where user_id = '${V1}')::int s, (select count(*) from profiles where id = '${V2}')::int other`)).rows[0];
+check('delete my data removes the account and everything tied to it (and only theirs)', left19.u === 0 && left19.p === 0 && left19.m === 0 && left19.s === 0 && left19.other === 1, JSON.stringify(left19));
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

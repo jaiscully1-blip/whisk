@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import PullToRefresh from './PullToRefresh';
 import UsedUp from './UsedUp';
+import { allowed } from '@/lib/recipes/never';
 import Tips from './Tips';
 import CookieConsent, { CONSENT_KEY, LOGIN_CHOICE_KEY, deviceTimeZone } from './CookieConsent';
 import { startActivity, setPage as trackPage } from '@/lib/activity';
@@ -21,7 +22,7 @@ export const useWhisk = () => useContext(Ctx);
 const TITLES = { cooked: 'Cooked it!', stamp: 'New stamp!' };
 const NAV = [['/home', 'Home', 'home'], ['/pantry', 'Pantry', 'pantry'], ['/cook', 'Cook', 'cook'], ['/compete', 'Compete', 'compete'], ['/me', 'Me', 'me']];
 const consentRef0 = (p) => { if (p?.consent) return p.consent; try { return JSON.parse(localStorage.getItem('whisk-consent') || 'null'); } catch { return null; } };
-const PROFILE_COLS = 'id, display_name, theme_pref, xp, coins, streak_days, streak_freezes, login_count, first_login_at, last_meal_at, weekly_goal, takeout_price, last_device, ui_state, time_zone, consent, first_open_date, onboarded_at, is_admin';
+const PROFILE_COLS = 'id, display_name, theme_pref, xp, coins, streak_days, streak_freezes, login_count, first_login_at, last_meal_at, weekly_goal, takeout_price, last_device, ui_state, time_zone, consent, first_open_date, onboarded_at, is_admin, never_show, vacation_since, repair_streak, repair_day';
 const UI_LOCAL = 'whisk-ui';
 
 export function deviceLabel() {
@@ -244,8 +245,11 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
     await Promise.all([refreshProfile(), refreshLoadout?.(), new Promise((r) => setTimeout(r, 450))]);
     bump(); setRefreshKey((k) => k + 1);
   }, [refreshProfile, refreshLoadout, bump]);
-  const value = useMemo(() => ({ profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump }),
-    [profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump]);
+  // "Never show me": recipes using anything the player listed are gone from every list in the app.
+  const neverKey = (profile?.never_show || []).join('|');
+  const shownRecipes = useMemo(() => (recipes && neverKey ? recipes.filter((r) => allowed(r, profile.never_show)) : recipes), [recipes, neverKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const value = useMemo(() => ({ profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, recipes: shownRecipes, allRecipes: recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump }),
+    [profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, supabase, shownRecipes, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump]);
   const outfit = outfitFrom(loadout);
 
   return (
@@ -260,7 +264,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
             </div>}
             <div className={`pills ${helloOn ? 'away' : ''}`}>
               <RunningTimer />
-              <span className="pill" data-tip="streak" title="Cooking streak"><Flame />{profile?.streak_days || 0}d</span>
+              <span className="pill" data-tip="streak" title={profile?.vacation_since ? 'Vacation mode: your streak is paused' : 'Cooking streak'}>{profile?.vacation_since ? <Icon name="plane" size={16} /> : <Flame />}{profile?.streak_days || 0}d</span>
               <Link href="/me#shop" prefetch className="pill" data-tip="coins" title="Coins" style={{ textDecoration: 'none' }}><Coin />{fmt(profile?.coins)}</Link>
             </div>
           </div>

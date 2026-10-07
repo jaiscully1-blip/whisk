@@ -61,7 +61,8 @@ export async function middleware(req) {
   });
   const { data: { user } } = await supabase.auth.getUser();
 
-  const isPublic = PUBLIC_PATHS.includes(pathname);
+  // /list/<32 hex>: a player's shared shopping list, for anyone with the link (no account)
+  const isPublic = PUBLIC_PATHS.includes(pathname) || /^\/list\/[a-f0-9]{32}$/.test(pathname);
   const isApi = pathname.startsWith('/api/');
 
   // Judge invite link /vote/ABC123: new people start Whisk first, then land in the game as a judge.
@@ -84,7 +85,9 @@ export async function middleware(req) {
 
   res.headers.set('Content-Security-Policy', csp);
   // 5) Never cache authenticated pages or API responses (shared caches, back button, CDN)
-  if (user || isApi) {
+  const isShared = pathname.startsWith('/list/');   // the link itself is the secret: never cache it or leak it as a referrer
+  if (isShared) res.headers.set('Referrer-Policy', 'no-referrer');
+  if (user || isApi || isShared) {
     res.headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
     res.headers.set('Pragma', 'no-cache');
     res.headers.set('Expires', '0');

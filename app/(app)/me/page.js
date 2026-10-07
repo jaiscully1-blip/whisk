@@ -7,6 +7,8 @@ import Icon, { Coin } from '@/components/Icon';
 import GetCoinsSheet from '@/components/GetCoinsSheet';
 import Passport from '@/components/Passport';
 import ResetSheet from '@/components/ResetSheet';
+import NeverShowSheet from '@/components/NeverShowSheet';
+import DeleteDataSheet from '@/components/DeleteDataSheet';
 import RecipeSheet from '@/components/RecipeSheet';
 import { usePantry } from '@/components/usePantry';
 import { levelFor, fmt, dayNumber } from '@/lib/game';
@@ -29,6 +31,8 @@ export default function Me() {
   const [history, setHistory] = useState([]);
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [never, setNever] = useState(false);
+  const [deleting, setDeleting] = useState(false);
     const [recipe, setRecipe] = useState(null);
   const [pantry] = usePantry();
   const [nameDraft, setNameDraft, clearName] = useDraft('nm', profile?.display_name || '');
@@ -79,6 +83,13 @@ export default function Me() {
     const it = buying; window.dispatchEvent(new CustomEvent('whisk:bought', { detail: it.id }));   // the first-time tour listens for this
     setOwned((s) => new Set(s).add(it.id)); setBuying(null); refreshProfile();
     await equip(it.id); say(`${it.name} is yours!`);
+  }
+  async function toggleVacation() {
+    const on = !profile?.vacation_since;
+    const { data, error } = await supabase.rpc('set_vacation', { p_on: on });
+    if (error) { say('Couldn’t change vacation mode.'); return; }
+    setProfile({ ...profile, vacation_since: data?.vacation_since || null, streak_days: data?.streak_days ?? profile.streak_days });
+    say(on ? 'Vacation mode on · your streak is paused' : 'Welcome back! Your streak carries on');
   }
   async function saveSetting(patch, msg) {
     const { error } = await supabase.from('profiles').update(patch).eq('id', profile.id);
@@ -183,13 +194,21 @@ export default function Me() {
           <output style={{ minWidth: 28, textAlign: 'center', fontWeight: 800 }}>{goal}</output>
           <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="More meals" onClick={() => saveSetting({ weekly_goal: Math.min(14, goal + 1) }, `Goal: ${Math.min(14, goal + 1)} meals a week`)}>+</button>
         </div>
+        <button className="row setbtn" onClick={() => setNever(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
+          <Icon name="shield" /><span style={{ flex: 1, fontWeight: 700 }}>Never show me</span><span className="desc">{(profile?.never_show || []).length ? `${profile.never_show.length} hidden` : 'Allergies, dislikes'}</span><Icon name="chevron" />
+        </button>
+        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
+          <Icon name="plane" /><span style={{ flex: 1, fontWeight: 700 }}>Vacation mode</span>
+          <button role="switch" aria-checked={!!profile?.vacation_since} aria-label="Vacation mode" onClick={toggleVacation} className={`switch ${profile?.vacation_since ? 'on' : ''}`}><span /></button>
+          <span className="desc" style={{ width: '100%' }}>{profile?.vacation_since ? 'Your streak is paused. It picks up where you left off when you cook again or turn this off (up to 30 days).' : 'Going away? Pause your streak so the days away don’t count.'}</span>
+        </div>
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }}>
           <span style={{ width: 24, textAlign: 'center', fontWeight: 900, fontFamily: 'var(--f-display)' }} aria-hidden="true">Aa</span><span style={{ flex: 1, fontWeight: 700 }}>Text size</span>
           <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Smaller text" disabled={scaleAt === 0} onClick={() => setUi({ textScale: TEXT_SCALES[Math.max(0, scaleAt - 1)] })}>−</button>
           <output style={{ minWidth: 44, textAlign: 'center', fontWeight: 800 }} aria-live="polite">{Math.round(TEXT_SCALES[scaleAt] * 100)}%</output>
           <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Bigger text" disabled={scaleAt === TEXT_SCALES.length - 1} onClick={() => setUi({ textScale: TEXT_SCALES[Math.min(TEXT_SCALES.length - 1, scaleAt + 1)] })}>+</button>
         </div>
-        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="snow" /><span style={{ flex: 1, fontWeight: 700 }}>Streak freezes</span><b>{profile?.streak_freezes ?? 1}</b><span className="desc" style={{ width: '100%' }}>Miss one day and a freeze keeps your streak. You get one each week; it doesn’t stack.</span></div>
+        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="snow" /><span style={{ flex: 1, fontWeight: 700 }}>Streak freezes</span><b>{profile?.streak_freezes ?? 1}</b><span className="desc" style={{ width: '100%' }}>Miss one day and a freeze keeps your streak. You get one each week; it doesn’t stack. Out of freezes? Cook twice the next day and your streak comes back, free.</span></div>
         <button className="row setbtn" onClick={openPrivacy} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
           <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Cookies &amp; privacy</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />
         </button>
@@ -203,8 +222,11 @@ export default function Me() {
           <span className="desc" style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Player ID: <span className="mono" style={{ userSelect: 'all' }}>{profile?.id}</span></span>
         </div>
       </div>
+      <button className="row setbtn danger-row" onClick={() => setDeleting(true)} style={{ alignSelf: 'stretch', justifyContent: 'center', background: 'none', border: 0, padding: 10 }}><Icon name="trash" size={18} />Delete my data</button>
       <button onClick={() => setResetting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, color: 'var(--muted)', fontSize: 11, textDecoration: 'underline', padding: 8, minHeight: 32 }}>Reset game</button>
       {resetting && <ResetSheet onClose={() => setResetting(false)} />}
+      {never && <NeverShowSheet onClose={() => setNever(false)} />}
+      {deleting && <DeleteDataSheet onClose={() => setDeleting(false)} />}
       {recipe && <RecipeSheet recipe={recipe} pantry={pantry || []} onClose={() => setRecipe(null)} />}
       {buying && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setBuying(null); }}>

@@ -693,3 +693,31 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 /* recipes that use food about to go bad */
 .chip.soon { background: var(--warn-soft); color: var(--warn); font-weight: 800; border: 0; align-self: flex-start; }
 .away-h.soon-h { color: var(--warn); }
+
+/* settings bits: a switch, the never-show picker, the delete button */
+.switch { width: 56px; height: 34px; border-radius: 99px; border: 0; padding: 4px; background: var(--line); display: flex; justify-content: flex-start; transition: background .15s; flex: none; }
+.switch.on { background: var(--accent); justify-content: flex-end; }
+.switch span { width: 26px; height: 26px; border-radius: 99px; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+.never-pick .chip, .sheet .chip.on { cursor: pointer; font-family: inherit; min-height: 36px; padding: 0 12px; font-weight: 800; }
+.never-pick .chip { background: var(--card); }
+.never-pick .chip.on, .sheet .chip.on { background: var(--bad-soft); color: var(--bad); border-color: var(--bad); }
+.warnbox { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 14px; background: var(--warn-soft); color: var(--warn); font-weight: 700; }
+.warnbox svg { flex: none; margin-top: 2px; }
+.btn.danger { background: var(--bad); box-shadow: 0 4px 0 color-mix(in srgb, var(--bad) 65%, #000); color: #fff; }
+.danger-row { color: var(--bad); font-weight: 800; gap: 6px; }
+
+/* the shared shopping-list page (no app needed) */
+.shared-list { max-width: 560px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px 40px; display: flex; flex-direction: column; gap: 14px; min-height: 100dvh; background: var(--surface); }
+.sl-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 22px; background: #FF9600; color: #fff; box-shadow: 0 5px 0 #B86C00; }
+.sl-head img { border-radius: 50%; background: #fff; }
+.sl-head h1 { font-size: 26px; color: #fff; }
+.sl-head .muted { color: rgba(255, 255, 255, .9); font-weight: 800; }
+.sl-item { display: flex; align-items: center; gap: 12px; text-align: left; padding: 14px 14px; font: inherit; color: var(--fg); width: 100%; }
+.sl-box { width: 28px; height: 28px; border-radius: 9px; border: 2.5px solid var(--tile-edge, var(--line)); display: grid; place-items: center; flex: none; background: var(--card); }
+.sl-item.done .sl-box { background: var(--accent); border-color: var(--accent); color: #fff; }
+.sl-item.done b { text-decoration: line-through; color: var(--muted); }
+.sl-foot { text-align: center; margin-top: auto; }
+.card.ticked { background: var(--fresh-soft); }
+.card.ticked b { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--fg) 40%, transparent); }
+.card.ticked .desc { text-decoration: none; display: inline; }
+.share-btn { min-height: 44px; }

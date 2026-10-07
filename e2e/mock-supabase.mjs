@@ -31,7 +31,7 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on sequences to anon, authenticated;
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
-for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql', '0012_dishes_and_stamp_coins.sql', '0013_one_phone_play.sql', '0014_recipe_steps.sql', '0015_free_chef_coat_pilot_coat_xp.sql', '0016_bingo_weekly_with_challenges.sql', '0017_cookoff_and_invites.sql', '0018_cookoff_judges.sql']) {
+for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql', '0012_dishes_and_stamp_coins.sql', '0013_one_phone_play.sql', '0014_recipe_steps.sql', '0015_free_chef_coat_pilot_coat_xp.sql', '0016_bingo_weekly_with_challenges.sql', '0017_cookoff_and_invites.sql', '0018_cookoff_judges.sql', '0019_safety_streaks_sharing.sql']) {
   await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8').replace('create extension if not exists pgcrypto;', ''));
 }
 await db.exec(`insert into auth.users (id, email) values ('${E2E_USER.id}', '${E2E_USER.email}')`);
@@ -192,6 +192,20 @@ async function storage(req, res, uid, path, buf) {
     const f = files.get(`${m[1]}/${decodeURIComponent(m[2])}`);
     if (!f) return send(res, 404, { error: 'not found' });
     res.writeHead(200, { 'Content-Type': f.type, ...cors(req) }); return res.end(f.buf);
+  }
+  // list a folder (POST /object/list/:bucket {prefix, limit}) and remove files (DELETE /object/:bucket {prefixes}), as the user
+  if (req.method === 'POST' && (m = path.match(/^\/storage\/v1\/object\/list\/([^/]+)$/))) {
+    const { prefix = '', limit = 100 } = JSON.parse(buf.toString() || '{}');
+    const r = await asUser(uid, (tx) => tx.query(`select name from storage.objects where bucket_id = $1 and name like $2 order by name limit $3`, [m[1], `${prefix.replace(/\/$/, '')}/%`, limit]));
+    return send(res, 200, r.rows.map((x) => ({ name: x.name.slice(prefix.replace(/\/$/, '').length + 1), id: randomUUID() })));
+  }
+  if (req.method === 'DELETE' && (m = path.match(/^\/storage\/v1\/object\/([^/]+)$/))) {
+    const { prefixes = [] } = JSON.parse(buf.toString() || '{}');
+    if (!uid) return send(res, 403, { error: 'Unauthorized' });
+    const own = prefixes.filter((p) => p.split('/')[0] === uid);
+    if (own.length) await db.query(`delete from storage.objects where bucket_id = $1 and name = any($2)`, [m[1], own]);
+    own.forEach((p) => files.delete(`${m[1]}/${p}`));
+    return send(res, 200, own.map((name) => ({ name })));
   }
   if ((req.method === 'POST' || req.method === 'PUT') && (m = path.match(/^\/storage\/v1\/object\/([^/]+)\/(.+)$/))) {
     const [, bucket, name] = m; const objName = decodeURIComponent(name);

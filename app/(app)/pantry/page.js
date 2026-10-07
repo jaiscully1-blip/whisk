@@ -6,6 +6,7 @@ import Icon from '@/components/Icon';
 import { CATEGORIES, freshness, guessCategory } from '@/lib/game';
 import ScanSheet from '@/components/ScanSheet';
 import SavedRecipes from '@/components/SavedRecipes';
+import ShareListSheet from '@/components/ShareListSheet';
 
 const NEXT_STATUS = { stocked: 'low', low: 'out', out: 'stocked' };
 const STATUS_LABEL = { stocked: 'Stocked', low: 'Low', out: 'Out' };
@@ -30,6 +31,9 @@ export default function Pantry() {
   const setForm = (next) => { const f = typeof next === 'function' ? next(form) : next; if (f.name !== fName) setFName(f.name); if (f.quantity !== fQty) setFQty(f.quantity); if (f.expires_on !== fExp) setFExp(f.expires_on); };
   const [newItem, setNewItem, clrNewItem] = useDraft('s-new');
   const [scan, setScan] = useState(null); // 'receipt' | 'barcode'
+  const [sharing, setSharing] = useState(false);
+  // ticks made on the shared link show up when you come back to the app
+  useEffect(() => { const vis = () => { if (!document.hidden && tab === 'list') load(); }; document.addEventListener('visibilitychange', vis); return () => document.removeEventListener('visibilitychange', vis); }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function load() {
     const [p, s] = await Promise.all([
@@ -203,6 +207,7 @@ export default function Pantry() {
         </>
       ) : (
         <>
+          <button type="button" className="btn ghost wide share-btn" onClick={() => setSharing(true)}><Icon name="share" size={18} />Share list · no app needed</button>
           <form className="row" onSubmit={addToList} style={{ flexWrap: 'nowrap' }}>
             <label htmlFor="s-new" className="lbl" hidden>Add item</label>
             <input id="s-new" className="input" maxLength={60} placeholder="Add an item" value={newItem} onChange={(e) => setNewItem(e.target.value)} />
@@ -212,9 +217,9 @@ export default function Pantry() {
             <section key={aisle} className="stack" style={{ gap: 6 }}>
               <span className="eyebrow">{aisle} · {rows.length}</span>
               {rows.map((it) => (
-                <div key={it.id} className="card row" style={{ padding: '10px 12px', flexWrap: 'nowrap' }}>
+                <div key={it.id} className={`card row ${it.checked ? 'ticked' : ''}`} style={{ padding: '10px 12px', flexWrap: 'nowrap' }}>
                   <button className="btn ghost sm" style={{ width: 38, padding: 0 }} onClick={() => bought(it)} aria-label={`Bought ${it.name}`}><Icon name="check" size={18} /></button>
-                  <b style={{ flex: 1 }}>{it.name}</b>
+                  <b style={{ flex: 1 }}>{it.name}{it.checked && <span className="desc"> · ticked on the shared list</span>}</b>
                   <button className="btn ghost sm" style={{ border: 0 }} onClick={() => removeFromList(it)} aria-label={`Remove ${it.name}`}><Icon name="trash" size={18} /></button>
                 </div>
               ))}
@@ -223,6 +228,7 @@ export default function Pantry() {
           {list?.length > 0 && <p className="desc" style={{ margin: 0 }}>Tap ✓ when you buy something. It goes back into your pantry as stocked.</p>}
         </>
       )}
+      {sharing && <ShareListSheet onClose={() => setSharing(false)} />}
       {scan && <ScanSheet mode={scan} onAdd={addMany} onClose={() => setScan(null)} />}
     </div>
   );

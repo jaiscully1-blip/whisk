@@ -721,6 +721,12 @@ check('dead phones are forgotten', (await db.query(`select count(*)::int n from 
 await as(N2, () => db.query(`select public.set_notify_hour(null)`));
 check('turning notifications off forgets the phone', (await db.query(`select count(*)::int n from push_subs where user_id = '${N2}'`)).rows[0].n === 0);
 
+// ================= fair play: coins only ever buy outfits =================
+const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
+check('the only thing that spends coins is buying an outfit', JSON.stringify(spenders) === JSON.stringify(['buy_item']), JSON.stringify(spenders));
+const slots = (await db.query(`select array_agg(distinct slot order by slot) s from items`)).rows[0].s;
+check('everything in the shop is something to wear', slots.every((x) => ['top', 'hat', 'glasses', 'shoes', 'acc'].includes(x)), JSON.stringify(slots));
+
 const fails = results.filter((r) => r[0] === 'FAIL');
 results.forEach(([s, n, d]) => console.log(`${s}  ${n}${d ? '  — ' + d : ''}`));
 console.log(`\n${results.length - fails.length}/${results.length} passed`);

@@ -243,7 +243,7 @@ await step('cook', async () => {
 });
 await step('compete', async () => {
   await nav('Compete');
-  await page.getByText('Daily quest').waitFor();
+  await page.locator('.eyebrow', { hasText: 'Daily quest' }).waitFor();
   await page.locator('.flip .face').first().waitFor({ timeout: 15000 });
   const cards = await page.locator('.flip').count();
   check('3 challenges picked from your pantry', cards === 3, `${cards}`);
@@ -683,6 +683,16 @@ await step('delete my data', async () => {
   await dp.goto(`${BASE}/me`); check('the old game is gone (signed out)', dp.url().includes('/login'));
   check('the player’s id is a real one (sanity)', /^[0-9a-f-]{36}$/.test(uid), uid);
   await ctx5.close();
+});
+await step('tabs open instantly from memory', async () => {
+  await page.goto(`${BASE}/cook`); await page.waitForTimeout(2500); await closePopups();   // the app fills every tab's memory in the background
+  for (const t of ['Home', 'Pantry', 'Compete', 'Cook']) { await nav(t); await page.waitForTimeout(700); }
+  await ctx.setOffline(true);
+  const t0 = Date.now(); await nav('Pantry'); await page.locator('main [aria-label^="Remove "]').first().waitFor({ timeout: 3000 });
+  const tp = Date.now() - t0;
+  await nav('Compete'); await page.locator('main .bingo').waitFor({ timeout: 3000 });
+  check('with the network off, Pantry and Compete still open with everything on them', tp < 1500, `${tp} ms`);
+  await ctx.setOffline(false);
 });
 await step('no-store', async () => { const r = await page.request.get(`${BASE}/home`); check('signed-in pages are Cache-Control no-store', /no-store/.test(r.headers()['cache-control'] || '')); });
 

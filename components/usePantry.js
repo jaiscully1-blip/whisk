@@ -1,25 +1,26 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
 import { useWhisk } from './AppShell';
+import { useCached } from '@/lib/cache';
+
+// Shared, remembered lists (see lib/cache.js): every page shows them instantly and refreshes them quietly.
+export const PANTRY_COLS = 'id, name, category, status, quantity, expires_on, thaw_started_at, added_at';
+export const fetchPantry = (supabase) => supabase.from('pantry_items').select(PANTRY_COLS).order('name').then(({ data, error }) => (error ? undefined : data || []));
+export const fetchSaved = (supabase) => supabase.from('saved_recipes').select('recipe_id, rating, saved_at').order('saved_at', { ascending: false })
+  .then(({ data, error }) => (error ? undefined : new Map((data || []).map((s) => [s.recipe_id, s]))));
+export const fetchList = (supabase) => supabase.from('shopping_items').select('*').order('created_at').then(({ data, error }) => (error ? undefined : data || []));
 
 export function usePantry() {
   const { supabase, dataVersion } = useWhisk();
-  const [items, setItems] = useState(null);
-  const load = useCallback(async () => {
-    const { data } = await supabase.from('pantry_items').select('id, name, category, status, quantity, expires_on, thaw_started_at, added_at').order('name');
-    setItems(data || []);
-  }, [supabase]);
-  useEffect(() => { load(); }, [load, dataVersion]);
-  return [items, load, setItems];
+  const [items, setItems, reload] = useCached('pantry', () => fetchPantry(supabase), [dataVersion]);
+  return [items ?? null, reload, setItems];
 }
-
 export function useSaved() {
   const { supabase, dataVersion } = useWhisk();
-  const [saved, setSaved] = useState(null);
-  const load = useCallback(async () => {
-    const { data } = await supabase.from('saved_recipes').select('recipe_id, rating, saved_at').order('saved_at', { ascending: false });
-    setSaved(new Map((data || []).map((s) => [s.recipe_id, s])));
-  }, [supabase]);
-  useEffect(() => { load(); }, [load, dataVersion]);
-  return [saved, load];
+  const [saved, , reload] = useCached('saved', () => fetchSaved(supabase), [dataVersion]);
+  return [saved ?? null, reload];
+}
+export function useList() {
+  const { supabase, dataVersion } = useWhisk();
+  const [list, setList, reload] = useCached('list', () => fetchList(supabase), [dataVersion]);
+  return [list ?? null, reload, setList];
 }

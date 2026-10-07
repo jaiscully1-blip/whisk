@@ -8,6 +8,7 @@ import UsedUp from './UsedUp';
 import ShareSwitch from './ShareSwitch';
 import { allowed } from '@/lib/recipes/never';
 import { loadProfile } from '@/lib/profile';
+import { warmCache } from './tabData';
 import Tips from './Tips';
 import CookieConsent, { CONSENT_KEY, LOGIN_CHOICE_KEY, deviceTimeZone } from './CookieConsent';
 import { startActivity, setPage as trackPage } from '@/lib/activity';
@@ -242,6 +243,12 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
     if (tz && (tz !== profile?.time_zone || !profile?.first_open_date)) supabase.rpc('set_privacy', { p_preferences: !!consent.preferences, p_local_time: true, p_time_zone: tz, p_usage: !!consent.usage }).then(({ data }) => { if (data) setProfile((p) => ({ ...p, time_zone: data.time_zone, first_open_date: data.first_open_date })); });
   }, [consent]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fill every tab's data in the background once the app is open, so tapping a tab is instant (lib/cache.js).
+  useEffect(() => {
+    const go = () => warmCache(supabase);
+    const id = typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(go, { timeout: 1500 }) : setTimeout(go, 400);
+    return () => { if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(id); else clearTimeout(id); };
+  }, [supabase]);
   const pullRefresh = useCallback(async () => {
     await Promise.all([refreshProfile(), refreshLoadout?.(), new Promise((r) => setTimeout(r, 450))]);
     bump(); setRefreshKey((k) => k + 1);

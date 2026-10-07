@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCached } from '@/lib/cache';
+import { fetchFriends } from './tabData';
 import Link from 'next/link';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
@@ -7,8 +8,8 @@ import Icon from './Icon';
 // Compete → Friends' plates: the way into the friends feed, with a dot when someone wants to be friends.
 export default function FriendsCard() {
   const { supabase } = useWhisk();
-  const [f, setF] = useState(null);
-  useEffect(() => { supabase.rpc('get_friends').then(({ data, error }) => setF(error ? false : data)); }, [supabase]);
+  const [f0] = useCached('friends', () => fetchFriends(supabase));
+  const f = f0 === undefined ? null : f0;
   if (f === false) return null;   // friends aren't set up on this server yet
   const asks = f?.requests?.length || 0;
   return (

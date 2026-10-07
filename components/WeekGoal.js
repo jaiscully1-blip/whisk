@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCached } from '@/lib/cache';
+import { fetchWeek } from './tabData';
 import { useWhisk } from './AppShell';
 import { fmt, weekStart, HOME_MEAL_COST } from '@/lib/game';
 
@@ -7,12 +8,7 @@ import { fmt, weekStart, HOME_MEAL_COST } from '@/lib/game';
 // cooking has saved vs takeout once there's something to show.
 export default function WeekGoal() {
   const { supabase, profile, dataVersion } = useWhisk();
-  const [meals, setMeals] = useState(null);
-  useEffect(() => {
-    let live = true;
-    supabase.from('meals').select('cooked_at').order('cooked_at', { ascending: false }).limit(1000).then(({ data }) => { if (live) setMeals(data || []); });
-    return () => { live = false; };
-  }, [supabase, dataVersion]);
+  const [meals] = useCached('week', () => fetchWeek(supabase), [dataVersion]);   // remembered between tabs
   if (!meals) return null;
   const goal = profile?.weekly_goal || 4;
   const since = weekStart();

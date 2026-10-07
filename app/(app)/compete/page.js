@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { useCached } from '@/lib/cache';
+import { fetchCompete } from '@/components/tabData';
 import DietTags from '@/components/DietTags';
 import CookMode from '@/components/CookMode';
 import { sceneSvg } from '@/lib/scenes';
@@ -26,14 +28,16 @@ function proposeChallenges(recipes, pantry) {
 }
 
 export default function Compete() {
-  const { supabase, refreshProfile, say, recipes, ui, setUi } = useWhisk();
+  const { supabase, refreshProfile, say, recipes, ui, setUi, dataVersion } = useWhisk();
   const [pantry] = usePantry();
-  const [challenges, setChallenges] = useState(null);
-  const [quest, setQuest] = useState(null);
+  const [cdata, setCdata] = useCached('compete', () => fetchCompete(supabase), [dataVersion]);   // remembered between tabs
+  const challenges = cdata?.challenges ?? null, quest = cdata?.quest ?? null, bingo = cdata?.bingo ?? null;
+  const setChallenges = (v) => setCdata((x) => ({ ...(x || {}), challenges: typeof v === 'function' ? v(x?.challenges) : v }));
+  const setQuest = (v) => setCdata((x) => ({ ...(x || {}), quest: typeof v === 'function' ? v(x?.quest) : v }));
+  const setBingo = (v) => setCdata((x) => ({ ...(x || {}), bingo: typeof v === 'function' ? v(x?.bingo) : v }));
   const [logging, setLogging] = useState(null);
   const [factors, setFactors] = useState({});
   const [cookMode, setCookMode] = useState(null);   // { c, r } while a challenge is open in Cook mode   // servings × per challenge card
-  const [bingo, setBingo] = useState(null);
   // Boxes you've already seen cooked stay flipped; a newly cooked one flips over the first time you see it.
   const bingoSeen = useMemo(() => { try { return new Set(JSON.parse(localStorage.getItem(`whisk-bingo:${bingo?.cells?.join('|')}`) || '[]')); } catch { return new Set(); } }, [bingo?.cells]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -43,12 +47,7 @@ export default function Compete() {
   }, [bingo]);
   const flipped = ui.flipped || {};
 
-  async function load() {
-    const [c, b, q] = await Promise.all([supabase.rpc('get_weekly_challenges'), supabase.rpc('get_bingo'), supabase.rpc('get_daily_quest')]);
-    setChallenges(c.data || []);
-    if (!b.error) setBingo(b.data); if (!q.error) setQuest(q.data);
-  }
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const load = async () => { const d = await fetchCompete(supabase); if (d) setCdata(d); };
   // No challenges yet this week? Pick them from what your pantry can make.
   useEffect(() => {
     if (!challenges || challenges.length || !recipes || !pantry) return;

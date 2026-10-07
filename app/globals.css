@@ -760,3 +760,10 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .backup-nudge > span { flex: 1; min-width: 0; line-height: 1.25; }
 .backup-nudge b { display: block; }
 .restore-link { align-self: center; font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+/* Chef fades in once built (he's built just after the page appears, so the page itself shows instantly) */
+.stage3d canvas { animation: stageIn .25s ease both; }
+@keyframes stageIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .stage3d canvas { animation: none; } }
+/* the Passport sits below the fold on Me: the phone skips drawing it until you scroll near it */
+.album { content-visibility: auto; contain-intrinsic-size: auto 620px; }

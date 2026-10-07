@@ -8,7 +8,9 @@ export default function WhiskStage({ pose = 'default', outfit, interactive = tru
   const endRef = useRef(onDanceEnd); endRef.current = onDanceEnd;
   useEffect(() => {
     let alive = true;
-    import('@/lib/whisk3d/engine').then(({ mountStage }) => {
+    // Let the page appear first; Chef is built a moment later (when the phone is free) and fades in.
+    const after = (fn) => (typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(fn, { timeout: 350 }) : setTimeout(fn, 60));
+    new Promise((ok) => requestAnimationFrame(() => after(ok))).then(() => import('@/lib/whisk3d/engine')).then(({ mountStage }) => {
       if (!alive || !ref.current) return;
       stage.current = mountStage(ref.current, { pose, interactive, zoom, onDanceEnd: () => endRef.current?.() });
       if (dancing) stage.current.setDancing(true);
@@ -20,7 +22,7 @@ export default function WhiskStage({ pose = 'default', outfit, interactive = tru
   useEffect(() => { stage.current?.setPose(pose); }, [pose]);
   useEffect(() => { stage.current?.setDancing(dancing); }, [dancing]);
   useEffect(() => { stage.current?.setOutfit(outfit || {}); }, [outfit?.top, outfit?.hat, outfit?.glasses, outfit?.shoes, outfit?.acc]);
-  return <div ref={ref} role="img" aria-label={label} style={{ width: '100%', height }} />;
+  return <div ref={ref} className="stage3d" role="img" aria-label={label} style={{ width: '100%', height }} />;
 }
 
 export const outfitFrom = (lo) => ({ top: lo?.top_id || null, hat: lo?.hat_id || null, glasses: lo?.glasses_id || null, shoes: lo?.shoes_id || null, acc: lo?.acc_id || null });

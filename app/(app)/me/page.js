@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { useCached } from '@/lib/cache';
+import { fetchMe } from '@/components/tabData';
 import Link from 'next/link';
 import { useWhisk, useDraft } from '@/components/AppShell';
 import WhiskStage, { outfitFrom } from '@/components/WhiskStage';
@@ -16,22 +18,23 @@ import RecipeSheet from '@/components/RecipeSheet';
 import { usePantry } from '@/components/usePantry';
 import { levelFor, fmt, dayNumber } from '@/lib/game';
 
+const EMPTY_LIST = [];
 const SLOTS = [['top', 'Top', 'shirt'], ['hat', 'Hat', 'hat'], ['glasses', 'Glasses', 'glasses'], ['shoes', 'Shoes', 'shoe'], ['acc', 'Accessory', 'bag']];
 const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
 const RARITY_ORDER = ['common', 'rare', 'epic', 'exotic', 'mythic'];
 const EMPTY = { top: 'White chef coat', hat: 'Classic toque', glasses: 'None', shoes: 'Bare feet', acc: 'Nothing' };   // top + hat: free, always yours
 
 export default function Me() {
-  const { account, supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, say, ui, setUi, openPrivacy, replayTour } = useWhisk();
+  const { account, supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, say, ui, setUi, openPrivacy, replayTour, dataVersion } = useWhisk();
   const [dancing, setDancing] = useState(false);   // the Dance button; stops on its own when you leave or the screen turns off
-  const [items, setItems] = useState([]);
-  const [owned, setOwned] = useState(new Set());
+  const [medata, setMedata] = useCached('me', () => fetchMe(supabase), [dataVersion]);   // remembered between tabs (lib/cache.js)
+  const items = medata?.items || EMPTY_LIST, meals = medata?.meals || EMPTY_LIST, history = medata?.history || EMPTY_LIST;
+  const owned = useMemo(() => new Set(medata?.owned || []), [medata?.owned]);
+  const setOwned = (fn) => setMedata((x) => ({ ...x, owned: [...fn(new Set(x?.owned || []))] }));
   const [buying, setBuying] = useState(null);
   const [busy, setBusy] = useState(false);
   const [getCoins, setGetCoins] = useState(false);
   const slot = ui.closetSlot || 'top';
-  const [meals, setMeals] = useState([]);
-  const [history, setHistory] = useState([]);
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [never, setNever] = useState(false);
@@ -45,24 +48,6 @@ export default function Me() {
   const lvl = levelFor(profile?.xp);
   const name = profile?.display_name || 'Me';
 
-  useEffect(() => {
-    (async () => {
-      const [it, inv, m, h] = await Promise.all([
-        supabase.from('items').select('id, slot, name, rarity, price, sort').eq('active', true).order('sort'),
-        supabase.from('inventory').select('item_id'),
-        supabase.from('meals').select('id, title, photo_path, cooked_at, rating, shared_at').order('cooked_at', { ascending: false }).limit(12)
-          .then((r) => (r.error?.code === '42703' ? supabase.from('meals').select('id, title, photo_path, cooked_at, rating').order('cooked_at', { ascending: false }).limit(12) : r)),
-        supabase.from('meals').select('cuisine, country, cooked_at, ').order('cooked_at', { ascending: false }).limit(1000)
-      ]);
-      setItems(it.data || []); setOwned(new Set((inv.data || []).map((r) => r.item_id)));
-      setHistory(h.data || []);
-      const rows = m.data || [];
-      if (rows.length) {
-        const { data: signed } = await supabase.storage.from('meal-photos').createSignedUrls(rows.map((r) => r.photo_path), 3600);
-        setMeals(rows.map((r, i) => ({ ...r, url: signed?.[i]?.signedUrl })));
-      }
-    })();
-  }, [supabase]);
 
   // Back from the checkout
   useEffect(() => { if (new URLSearchParams(window.location.search).get('paid') === '1') { say('Payment done · your coins are on the way'); window.history.replaceState(null, '', '/me'); const t = setInterval(refreshProfile, 15000); return () => clearInterval(t); } }, []); // eslint-disable-line react-hooks/exhaustive-deps

@@ -6,6 +6,7 @@ import Icon from '@/components/Icon';
 import { CATEGORIES, freshness, guessCategory } from '@/lib/game';
 import ScanSheet from '@/components/ScanSheet';
 import SavedRecipes from '@/components/SavedRecipes';
+import { usePantry, useList } from '@/components/usePantry';
 import ShareListSheet from '@/components/ShareListSheet';
 
 const NEXT_STATUS = { stocked: 'low', low: 'out', out: 'stocked' };
@@ -21,8 +22,8 @@ export default function Pantry() {
   const { supabase, say, refreshProfile, ui, setUi } = useWhisk();
   const tab = ui.pantryTab || 'pantry'; const setTab = (t) => setUi({ pantryTab: t });
   const filter = ui.pantryFilter || 'All'; const setFilter = (f) => setUi({ pantryFilter: f });
-  const [items, setItems] = useState(null);
-  const [list, setList] = useState(null);
+  const [items, reloadItems, setItems] = usePantry();   // remembered between tabs (lib/cache.js)
+  const [list, reloadList, setList] = useList();
   // Everything you type here is remembered until you add it, even across devices.
   const [fName, setFName, clrName] = useDraft('p-name');
   const [fQty, setFQty, clrQty] = useDraft('p-qty');
@@ -35,14 +36,7 @@ export default function Pantry() {
   // ticks made on the shared link show up when you come back to the app
   useEffect(() => { const vis = () => { if (!document.hidden && tab === 'list') load(); }; document.addEventListener('visibilitychange', vis); return () => document.removeEventListener('visibilitychange', vis); }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function load() {
-    const [p, s] = await Promise.all([
-      supabase.from('pantry_items').select('*').order('name'),
-      supabase.from('shopping_items').select('*').order('created_at')
-    ]);
-    setItems(p.data || []); setList(s.data || []);
-  }
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const load = () => Promise.all([reloadItems(), reloadList()]);
 
   async function addPantry(e) {
     e.preventDefault();

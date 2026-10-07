@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import DietTags from '@/components/DietTags';
+import { sceneSvg } from '@/lib/scenes';
 import { useWhisk } from '@/components/AppShell';
 import LogMealSheet from '@/components/LogMealSheet';
 import Icon, { Coin } from '@/components/Icon';
@@ -29,6 +31,13 @@ export default function Compete() {
   const [logging, setLogging] = useState(null);
   const [factors, setFactors] = useState({});   // servings × per challenge card
   const [bingo, setBingo] = useState(null);
+  // Boxes you've already seen cooked stay flipped; a newly cooked one flips over the first time you see it.
+  const bingoSeen = useMemo(() => { try { return new Set(JSON.parse(localStorage.getItem(`whisk-bingo:${bingo?.cells?.join('|')}`) || '[]')); } catch { return new Set(); } }, [bingo?.cells]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!bingo?.cells) return;
+    const hits = bingo.cells.filter((c, i) => bingo.marks?.[i]);
+    try { localStorage.setItem(`whisk-bingo:${bingo.cells.join('|')}`, JSON.stringify(hits)); } catch {}
+  }, [bingo]);
   const flipped = ui.flipped || {};
 
   async function load() {
@@ -70,7 +79,14 @@ export default function Compete() {
         <section data-tour="bingo" data-tip="bingo" className="stack" style={{ gap: 10 }} aria-labelledby="bingo-h">
           <div className="row" style={{ justifyContent: 'space-between' }}><h2 id="bingo-h" style={{ fontSize: 22 }}>Cuisine bingo</h2><span className="chip xp">+200 XP</span></div>
           <div role="grid" aria-label="Bingo card" className="bingo">
-            {bingo.cells.map((cell, i) => { const hit = bingo.marks?.[i]; return <div key={i} role="gridcell" className={hit ? 'on' : ''} aria-label={`${cell}${hit ? ', cooked' : ''}`}>{hit ? <span><Icon name="check" size={16} /><br />{cell}</span> : cell}</div>; })}
+            {bingo.cells.map((cell, i) => { const hit = bingo.marks?.[i]; return (
+              <div key={i} role="gridcell" className={`${hit ? 'on' : ''} ${hit && !bingoSeen.has(cell) ? 'fresh' : ''}`} style={{ '--d': `${(i % 4) * 90}ms` }} aria-label={`${cell}${hit ? ', cooked' : ''}`}>
+                <div className="b-in">
+                  <span className="b-face">{cell}</span>
+                  {hit && <span className="b-face b-back"><span className="b-art" aria-hidden="true" dangerouslySetInnerHTML={{ __html: sceneSvg({ cuisine: cell }, (k) => `/tw/${k}.svg`) }} /><b><Icon name="check" size={13} />{cell}</b></span>}
+                </div>
+              </div>
+            ); })}
           </div>
           {bingo.claimed ? <span className="row" style={{ color: 'var(--fresh)', fontWeight: 800 }}><Icon name="check" />Bingo claimed</span>
             : bingo.lines > 0 ? <button className="btn" onClick={claimBingo}>Claim BINGO · +200 XP</button>
@@ -89,7 +105,7 @@ export default function Compete() {
 
       <h2 data-tour="challenges" data-tip="challenges" style={{ fontSize: 22 }}>This week’s challenges</h2>
       {challenges === null || !recipes ? <p className="muted">Loading…</p> : challenges.length === 0 ? (
-        <div className="empty"><b>No challenges yet</b>Stock your pantry so Whisk can pick recipes you can actually make.</div>
+        <div className="empty"><b>No challenges yet</b></div>
       ) : challenges.map((c) => {
         const r = recipeOf(c); if (!r) return null;
         const [tier, bg, ink] = TIER[c.slot] || TIER[3]; const on = !!flipped[c.id];
@@ -102,6 +118,7 @@ export default function Compete() {
             <span style={{ fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 20, display: 'block', margin: '8px 0' }}>{r.title}</span>
             <span className="row" style={{ flexWrap: 'nowrap' }}><span style={{ fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap' }}>Difficulty {c.score}/100</span><span className="bar" style={{ flex: 1 }}><i style={{ width: `${c.score}%`, background: ink }} /></span></span>
             <span className="row" style={{ marginTop: 8 }}><span className="chip">{hrs(r.minutes)}</span><span className="chip">{r.cuisine}</span><span className="chip">{r.steps.length} steps</span><span className="chip">Serves {r.servings}</span></span>
+            <span style={{ display: 'block', marginTop: 6 }}><DietTags recipe={r} max={3} /></span>
             {c.completed_at ? <span className="row" style={{ color: 'var(--fresh)', fontWeight: 800, marginTop: 10 }}><Icon name="check" />Done · coins added</span>
               : <span className="row muted" style={{ marginTop: 10, fontSize: 12, fontWeight: 800 }}><Icon name="flip" size={16} />Tap to flip for instructions</span>}
           </>

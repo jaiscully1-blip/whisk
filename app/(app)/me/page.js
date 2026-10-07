@@ -9,7 +9,7 @@ import Passport from '@/components/Passport';
 import ResetSheet from '@/components/ResetSheet';
 import RecipeSheet from '@/components/RecipeSheet';
 import { usePantry } from '@/components/usePantry';
-import { levelFor, fmt, weekStart, HOME_MEAL_COST, dayNumber } from '@/lib/game';
+import { levelFor, fmt, dayNumber } from '@/lib/game';
 
 const SLOTS = [['top', 'Top', 'shirt'], ['hat', 'Hat', 'hat'], ['glasses', 'Glasses', 'glasses'], ['shoes', 'Shoes', 'shoe'], ['acc', 'Accessory', 'bag']];
 const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
@@ -45,7 +45,7 @@ export default function Me() {
         supabase.from('items').select('id, slot, name, rarity, price, sort').eq('active', true).order('sort'),
         supabase.from('inventory').select('item_id'),
         supabase.from('meals').select('id, title, photo_path, cooked_at, rating').order('cooked_at', { ascending: false }).limit(12),
-        supabase.from('meals').select('cuisine, country, cooked_at, calories, protein_g, carbs_g, fat_g').order('cooked_at', { ascending: false }).limit(1000)
+        supabase.from('meals').select('cuisine, country, cooked_at, ').order('cooked_at', { ascending: false }).limit(1000)
       ]);
       setItems(it.data || []); setOwned(new Set((inv.data || []).map((r) => r.item_id)));
       setHistory(h.data || []);
@@ -65,16 +65,8 @@ export default function Me() {
   const thumb = (id) => `/thumbs/${id}.webp`;
 
   const byId = useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
-  const countryCounts = useMemo(() => { const m = new Map(); history.forEach((x) => { if (x.country) m.set(x.country, (m.get(x.country) || 0) + 1); }); return m; }, [history]);
-  const macros = useMemo(() => {
-    const since = Date.now() - 7 * 864e5;
-    const wk = history.filter((m) => new Date(m.cooked_at).getTime() >= since && m.calories != null);
-    const sum = (k) => wk.reduce((a, m) => a + (m[k] || 0), 0);
-    return { n: wk.length, calories: sum('calories'), protein: sum('protein_g'), carbs: sum('carbs_g'), fat: sum('fat_g') };
-  }, [history]);
-  const weekCount = useMemo(() => history.filter((m) => new Date(m.cooked_at) >= weekStart()).length, [history]);
   const goal = profile?.weekly_goal || 4;
-  const pct = Math.min(1, weekCount / goal), rr = 30, cc = 2 * Math.PI * rr;
+  const countryCounts = useMemo(() => { const m = new Map(); history.forEach((x) => { if (x.country) m.set(x.country, (m.get(x.country) || 0) + 1); }); return m; }, [history]);
 
   async function equip(itemId) {
     const { error } = await supabase.rpc('equip_item', { p_slot: slot, p_item_id: itemId });
@@ -113,7 +105,7 @@ export default function Me() {
         ) : (
           <>
             <button className="namebtn" onClick={() => { setNameDraft(nameDraft || profile?.display_name || ''); setEditing(true); }} aria-label={`Edit name: ${name}`}><h1>{name}</h1><Icon name="pencil" size={18} /></button>
-            <span className="muted" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>Lv {lvl.level} · {lvl.title}</span>
+            {lvl.level > 0 && <span className="muted" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>Lv {lvl.level} · {lvl.title}</span>}
           </>
         )}
       </div>
@@ -162,30 +154,7 @@ export default function Me() {
         })}
       </div>
 
-      <div className="card row" style={{ gap: 14, flexWrap: 'nowrap' }}>
-        <svg width="76" height="76" viewBox="0 0 76 76" role="img" aria-label={`${weekCount} of ${goal} meals this week`} style={{ flex: 'none' }}>
-          <circle cx="38" cy="38" r={rr} fill="none" stroke="var(--track)" strokeWidth="9" />
-          <circle cx="38" cy="38" r={rr} fill="none" stroke="var(--accent)" strokeWidth="9" strokeLinecap="round" strokeDasharray={`${pct * cc} ${cc}`} transform="rotate(-90 38 38)" />
-          <text x="38" y="44" textAnchor="middle" style={{ font: '700 20px var(--f-display)', fill: 'var(--fg)' }}>{weekCount}/{goal}</text>
-        </svg>
-        <div style={{ flex: 1 }}>
-          <b style={{ fontSize: 16 }}>{weekCount >= goal ? 'Weekly goal hit!' : `${goal - weekCount} more meal${goal - weekCount === 1 ? '' : 's'} this week`}</b>
-          {history.length > 0 && <div style={{ fontSize: 13, fontWeight: 800, marginTop: 4, color: 'var(--fresh)' }}>~${fmt(Math.round(history.length * Math.max(0, Number(profile?.takeout_price ?? 15) - HOME_MEAL_COST)))} saved vs takeout <span className="muted" style={{ fontWeight: 600 }}>(estimate)</span></div>}
-        </div>
-      </div>
-
       <Passport counts={countryCounts} onOpenRecipe={setRecipe} />
-
-      <section className="card stack" style={{ gap: 8 }}>
-        <div className="row" style={{ justifyContent: 'space-between' }}><h3>Last 7 days</h3><span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>From the recipe pages</span></div>
-        {macros.n === 0 ? <p className="desc" style={{ margin: 0 }}>Cook a recipe that lists nutrition and log it to see calories and macros here.</p> : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6, textAlign: 'center' }}>
-            {[['kcal', fmt(macros.calories)], ['protein', macros.protein + 'g'], ['carbs', macros.carbs + 'g'], ['fat', macros.fat + 'g']].map(([l, v]) => (
-              <div key={l}><div style={{ fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 20 }}>{v}</div><span className="eyebrow" style={{ fontSize: 10 }}>{l}</span></div>
-            ))}
-          </div>
-        )}
-      </section>
 
       {meals.length > 0 && (
         <>

@@ -330,7 +330,8 @@ const server = http.createServer(async (req, res) => {
       // n meals from one country, for the stamp test (only the 10th needs to come through the app)
       const c = url.searchParams.get('country'), n = Number(url.searchParams.get('n'));
       if (!/^[A-Z]{2}$/.test(c) || !(n > 0 && n < 20)) return send(res, 400, {});
-      for (let k = 0; k < n; k++) await db.query(`insert into meals (user_id, title, cuisine, country, photo_path) values ($1, 'Seed', 'Seed', $2, $3)`, [E2E_USER.id, c, `${E2E_USER.id}/seed${k}.jpg`]);
+      const cu = String(url.searchParams.get('cuisine') || 'Seed').slice(0, 40);   // optional: count toward a bingo box
+      for (let k = 0; k < n; k++) await db.query(`insert into meals (user_id, title, cuisine, country, photo_path) values ($1, 'Seed', $4, $2, $3)`, [E2E_USER.id, c, `${E2E_USER.id}/seed${k}.jpg`, cu]);
       return send(res, 200, { ok: true });
     }
     if (path.startsWith('/rest/v1/rpc/')) return await rpc(res, uidFrom(req), path.slice('/rest/v1/rpc/'.length), json(), (req.headers.accept || '').includes('vnd.pgrst.object'));

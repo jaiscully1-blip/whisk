@@ -125,11 +125,11 @@ export default function Pantry() {
           <form className="card stack" onSubmit={addPantry}>
             <div className="grid2">
               <div style={{ gridColumn: '1 / -1' }}><label className="lbl" htmlFor="p-name">Item</label><input id="p-name" className="input" maxLength={60} placeholder="e.g. Frozen chicken breast" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-              <div><label className="lbl" htmlFor="p-qty">Amount (optional)</label><input id="p-qty" className="input" maxLength={30} placeholder="2 lb" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
-              <div><label className="lbl" htmlFor="p-exp">Expires (optional)</label><input id="p-exp" className="input" type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} /></div>
+              <div><label className="lbl" htmlFor="p-qty">Amount</label><input id="p-qty" className="input" maxLength={30} placeholder="2 lb" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
+              <div><label className="lbl" htmlFor="p-exp">Expires</label><input id="p-exp" className="input" type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} /></div>
             </div>
             <button data-tour="add" data-tip="add" className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
-            <span className="desc">Whisk puts it on the right shelf for you. Frozen meat or seafood gets a defrost reminder.</span>
+            <span className="desc">Whisk puts it on the right shelf for you. Frozen food gets a defrost reminder.</span>
           </form>
 
           <div className="row">
@@ -137,7 +137,7 @@ export default function Pantry() {
           </div>
 
           {items === null ? <p className="muted">Loading your pantry…</p> : items.length === 0 ? (
-            <div className="empty"><b>Your pantry is empty</b>Add what’s in your fridge and cupboards. Tap an item’s status to mark it low or out.</div>
+            <div className="empty"><b>Your pantry is empty</b></div>
           ) : groups.map(([cat, list]) => (
             <section key={cat} className="stack" style={{ gap: 8 }}>
               <span className="eyebrow">{cat} · {list.length}</span>

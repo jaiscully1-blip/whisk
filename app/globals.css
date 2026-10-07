@@ -138,8 +138,19 @@ button.face { text-align: left; color: var(--fg); width: 100%; }
 .namebtn { background: none; border: 0; padding: 0; display: inline-flex; align-items: center; gap: 8px; color: var(--fg); text-align: left; }
 .namebtn h1 { overflow-wrap: anywhere; }
 .bingo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-.bingo > div { aspect-ratio: 1; border-radius: 14px; display: grid; place-items: center; text-align: center; padding: 4px; font-size: clamp(10.5px, 3vw, 12.5px); font-weight: 800; line-height: 1.1; background: var(--card); border: 1.5px solid var(--line); overflow-wrap: anywhere; }
-.bingo > div.on { background: var(--accent); color: var(--btn-ink); border-color: var(--accent); }
+/* bingo: each box is a card; a cooked cuisine flips over to that cuisine's restaurant picture */
+.bingo > div { aspect-ratio: 1; perspective: 600px; font-size: clamp(10.5px, 3vw, 12.5px); font-weight: 800; line-height: 1.1; }
+.bingo .b-in { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.3, 1.3, .5, 1); }
+.bingo > div.on .b-in { transform: rotateY(180deg); }
+.bingo > div.fresh .b-in { animation: bflip .7s cubic-bezier(.3, 1.3, .5, 1) calc(.35s + var(--d, 0ms)) both; }
+@keyframes bflip { from { transform: rotateY(0); } to { transform: rotateY(180deg); } }
+.bingo .b-face { position: absolute; inset: 0; border-radius: 14px; display: grid; place-items: center; text-align: center; padding: 4px; overflow-wrap: anywhere; overflow: hidden; -webkit-backface-visibility: hidden; backface-visibility: hidden; background: var(--card); border: 2px solid var(--tile-edge, var(--line)); box-shadow: 0 3px 0 var(--tile-edge, var(--line)); }
+.bingo .b-back { transform: rotateY(180deg); padding: 0; border-color: var(--tab, var(--accent)); box-shadow: 0 3px 0 var(--tab-d, var(--btn-shadow)); }
+.bingo .b-art { position: absolute; inset: 0; }
+.bingo .b-art svg { width: 100%; height: 100%; display: block; }
+.bingo .b-back b { position: absolute; left: 3px; right: 3px; bottom: 3px; display: flex; align-items: center; justify-content: center; gap: 2px; padding: 2px 3px; border-radius: 8px; background: rgba(255, 255, 255, .92); color: #2E2620; font-size: clamp(9px, 2.6vw, 11px); line-height: 1.05; }
+.bingo .b-back b svg { flex: none; color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .bingo .b-in { transition: none; } .bingo > div.fresh .b-in { animation: none; } }
 .notebook { position: relative; color: #23301F; border-radius: 10px 22px 22px 10px; padding: 34px 14px 20px 30px; box-shadow: 0 2px 0 #E4DCC4, 0 10px 24px rgba(30, 40, 20, .14);
   background-image: linear-gradient(90deg, transparent 22px, var(--margin) 22px, var(--margin) 24px, transparent 24px), repeating-linear-gradient(180deg, transparent 0 31px, var(--rule) 31px 32px); background-color: var(--paper); }
 .notebook::before { content: ''; position: absolute; left: 6px; top: 18px; bottom: 18px; width: 10px; background: radial-gradient(circle at 5px 8px, var(--ring) 3.5px, transparent 4px) 0 0 / 10px 26px repeat-y; opacity: .75; }
@@ -507,6 +518,33 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .page-title .muted { color: rgba(255, 255, 255, .9); font-weight: 800; }
 .page-title .namebtn, .page-title .namebtn svg { color: #fff; }
 .page-title .btn.ghost { color: var(--fg); border-color: transparent; box-shadow: 0 3px 0 var(--tab-d); }
+/* a link-style button that sits in the banner: same colour, only the word itself is tappable */
+.title-link { background: none; border: 0; padding: 4px 2px; margin: -4px -2px; color: #fff; font: inherit; font-family: var(--f-display); font-weight: 700; font-size: 18px; display: inline-flex; align-items: center; gap: 5px; text-shadow: 0 2px 0 var(--tab-d); flex: none; }
+.title-link svg { filter: drop-shadow(0 2px 0 var(--tab-d)); }
+.title-link:active { transform: scale(.94); }
+/* weekly goal in the Cook banner */
+.weekgoal { display: flex; align-items: center; gap: 8px; color: #fff; min-width: 0; }
+.weekgoal svg { flex: none; }
+.weekgoal text { font: 700 11px var(--f-display); fill: #fff; }
+.weekgoal > span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.weekgoal b { font-size: 14px; font-weight: 800; }
+.weekgoal small { font-size: 12px; font-weight: 700; opacity: .9; }
+.page-title:has(.weekgoal) { flex-wrap: nowrap; }
+/* diet tags and nutrition on recipes */
+.chip.diet { font-size: 12px; font-weight: 800; padding: 3px 9px; border: 0; }
+.chip.diet.protein { background: #FFE3E0; color: #B5321F; }
+.chip.diet.keto { background: #EFE3FF; color: #6B35C9; }
+.chip.diet.lowcarb { background: #FFF0CF; color: #8A5A00; }
+.chip.diet.cal { background: #DDF4FF; color: #0D6E9E; }
+.chip.diet.wl { background: #E0F7EE; color: #12735A; }
+.chip.diet.vegan, .chip.diet.veg { background: #E5F6D8; color: #3B7A1E; }
+.theme-night .chip.diet { background: color-mix(in srgb, currentColor 18%, transparent); }
+.theme-night .chip.diet.protein { color: #FF9C8C; } .theme-night .chip.diet.keto { color: #C7A6FF; } .theme-night .chip.diet.lowcarb { color: #F2C063; }
+.theme-night .chip.diet.cal { color: #8AD3FF; } .theme-night .chip.diet.wl { color: #7FE0BF; } .theme-night .chip.diet.vegan, .theme-night .chip.diet.veg { color: #A6E07C; }
+.macros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; text-align: center; padding: 10px 8px 6px; border-radius: 16px; background: color-mix(in srgb, var(--card) 86%, transparent); border: 2px solid var(--tile-edge, var(--line)); position: relative; }
+.macros b { display: block; font-family: var(--f-display); font-weight: 700; font-size: 20px; }
+.macros span { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.macros small { grid-column: 1 / -1; font-size: 11px; font-weight: 700; color: var(--muted); }
 
 /* bottom tabs: a floating dock; the current tab pops up in a bubble of its colour */
 .nav { left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); padding-bottom: 0; border-radius: 26px; background: var(--card); border: 2px solid var(--tile-edge); box-shadow: 0 5px 0 var(--tile-edge); max-width: 560px; margin: 0 auto; }

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import DietTags from '@/components/DietTags';
 import Link from 'next/link';
 import { useWhisk } from '@/components/AppShell';
 import RecipeSheet from '@/components/RecipeSheet';
@@ -52,7 +53,7 @@ export default function Home() {
   return (
     <div className="stack" style={{ paddingTop: 16 }}>
       {frozen.length > 0 && <ThawBanner items={frozen} onChanged={reload} />}
-      <div className="page-title" style={{ margin: '6px 0 0' }}><h1>Almost ready</h1>{almost && !sorted && almost.length > 1 && <button type="button" className="btn ghost sm" onClick={shuffle}><Icon name="shuffle" size={18} />Shuffle</button>}</div>
+      <div className="page-title" style={{ margin: '6px 0 0' }}><h1>Almost ready</h1>{almost && !sorted && almost.length > 1 && <button type="button" className="title-link" onClick={shuffle}><Icon name="shuffle" size={18} />Shuffle</button>}</div>
       {almost === null ? <p className="muted">Checking your pantry…</p> : almost.length === 0 ? (
         <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">Add pantry items</Link><Link className="btn ghost" href="/cook">What can I make?</Link></div></div>
       ) : almost.slice(0, shown).map(({ r, c }, i, arr) => (
@@ -62,6 +63,7 @@ export default function Home() {
           <span className="eyebrow">{r.cuisine}</span>
           <h2 style={{ fontSize: 22 }}>{r.title}</h2>
           <span className="src"><a href={r.url} target="_blank" rel="noopener noreferrer">Full recipe</a> · {r.minutes} min</span>
+          <DietTags recipe={r} max={3} />
           <div className="row">{c.missing.map((m) => <span key={m} className="chip need">+ {m}</span>)}</div>
           <div className="row" style={{ flexWrap: 'nowrap' }}>
             <button className="btn ghost" style={{ flex: 1 }} onClick={() => addToList(r, c.missing)}>Add to list</button>

@@ -8,6 +8,7 @@ import { checkRecipe, searchLinks } from '@/lib/recipes/match';
 import { guessCategory } from '@/lib/game';
 import { ServingsX, IngredientList, StepList } from './RecipeSteps';
 import { cultureStyle, motifFor } from '@/lib/culture';
+import DietTags from '@/components/DietTags';
 import Scene from './Scene';
 
 // A real recipe from the web: every ingredient measured and beginner steps from the source page, scaled to any servings.
@@ -55,9 +56,17 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         <span className="src">Recipe from <a href={r.url} target="_blank" rel="noopener noreferrer">{r.source}</a>{r.video && <> · <a href={r.video} target="_blank" rel="noopener noreferrer">Watch the video</a></>}</span>
         <div className="row">
           <span className="chip">{r.minutes} min</span><span className="chip xp">+20 XP when you cook it</span>
-          {r.nutrition && <span className="chip" title="Per serving, from the recipe page">{r.nutrition.calories} kcal · {r.nutrition.protein_g}g protein</span>}
           {c.missing.length ? <span className="chip need">{c.missing.length} missing</span> : <span className="chip have">You have everything</span>}
         </div>
+        {r.nutrition && (
+          <div className="macros" aria-label="Nutrition per serving, from the recipe page">
+            {[['kcal', r.nutrition.calories], ['protein', `${r.nutrition.protein_g}g`], ['carbs', `${r.nutrition.carbs_g}g`], ['fat', `${r.nutrition.fat_g}g`]].map(([l, v]) => (
+              <div key={l}><b>{v}</b><span>{l}</span></div>
+            ))}
+            <small>per serving</small>
+          </div>
+        )}
+        <DietTags recipe={r} />
         {c.frozen.length > 0 && <ThawBanner items={c.frozen} onChanged={onChanged} />}
         <ServingsX base={r.servings} factor={factor} onChange={setFactor} id={`sx-${r.id}`} />
         <h3>What you have</h3>

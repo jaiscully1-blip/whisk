@@ -9,7 +9,7 @@ export const LOGIN_CHOICE_KEY = 'whisk-login-choice';   // Accept / Decline pick
 export const deviceTimeZone = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch { return null; } };
 
 const PURPOSES = [
-  { k: 'essential', title: 'Essential', body: 'Keeps you signed in and your account secure. The game can’t run without it.', locked: true },
+  { k: 'essential', title: 'Essential', body: 'Keeps you signed in and your account secure. The game can’t run without it. Whisk does not use third party cookies, only a single in-house cookie is used. Your data is never sold or shared for ads or tracking.', locked: true },
   { k: 'preferences', title: 'Remember my place', body: 'Saves your tab, scroll spot and half-typed text on this device, so you pick up right where you left off.' },
   { k: 'local_time', title: 'My local time', body: 'Uses your time zone so days, streaks and daily rewards reset at midnight where you live, not on a server clock.' },
   { k: 'usage', title: 'Help improve Whisk', body: 'Records what you tap, pick and search in the app (not what you type elsewhere), so we can see what works and make the game better. Turning it off deletes what was recorded.' }

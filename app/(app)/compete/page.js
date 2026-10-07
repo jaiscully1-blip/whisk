@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import DietTags from '@/components/DietTags';
+import CookMode from '@/components/CookMode';
 import { sceneSvg } from '@/lib/scenes';
 import { useWhisk } from '@/components/AppShell';
 import LogMealSheet from '@/components/LogMealSheet';
@@ -29,7 +30,8 @@ export default function Compete() {
   const [challenges, setChallenges] = useState(null);
   const [quest, setQuest] = useState(null);
   const [logging, setLogging] = useState(null);
-  const [factors, setFactors] = useState({});   // servings × per challenge card
+  const [factors, setFactors] = useState({});
+  const [cookMode, setCookMode] = useState(null);   // { c, r } while a challenge is open in Cook mode   // servings × per challenge card
   const [bingo, setBingo] = useState(null);
   // Boxes you've already seen cooked stay flipped; a newly cooked one flips over the first time you see it.
   const bingoSeen = useMemo(() => { try { return new Set(JSON.parse(localStorage.getItem(`whisk-bingo:${bingo?.cells?.join('|')}`) || '[]')); } catch { return new Set(); } }, [bingo?.cells]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -137,6 +139,7 @@ export default function Compete() {
                 </div>
                 <ServingsX base={r.servings} factor={factors[c.id] || 1} onChange={(f) => setFactors((x) => ({ ...x, [c.id]: f }))} id={`sx-${c.id}`} />
                 <IngredientList r={r} factor={factors[c.id] || 1} />
+                <button type="button" className="btn sm cm-open" style={{ alignSelf: 'flex-start' }} tabIndex={on ? 0 : -1} onClick={() => setCookMode({ c, r, complete })}><Icon name="play" size={16} />Cook mode</button>
                 <StepList r={r} factor={factors[c.id] || 1} compact />
                 <span className="src">Full page with photos: <a href={r.url} target="_blank" rel="noopener noreferrer" tabIndex={on ? 0 : -1}>{r.source}</a></span>
                 <button className="btn flip-cta" tabIndex={on ? 0 : -1}><Icon name="camera" size={18} />Cooked it? Add a photo &amp; complete</button>
@@ -146,6 +149,7 @@ export default function Compete() {
         );
       })}
 
+      {cookMode && <CookMode r={cookMode.r} factor={factors[cookMode.c.id] || 1} canFinish onFinish={() => { const f = cookMode.complete; setCookMode(null); f(); }} onClose={() => setCookMode(null)} />}
       {logging && <LogMealSheet recipe={logging.r} challenge={logging.c} onClose={() => setLogging(null)} onDone={() => { setUi({ flipped: { ...flipped, [logging.c.id]: false } }); load(); }} />}
     </div>
   );

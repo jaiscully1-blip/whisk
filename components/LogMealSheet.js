@@ -41,7 +41,7 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
       await refreshProfile();
       onDone?.(data);
       onClose?.();
-      showPopup({ kind: 'cooked', mealId: data.meal_id });
+      showPopup({ kind: 'cooked', mealId: data.meal_id, recipe });
       if (data.stamp) showPopup({ kind: 'stamp', country: data.stamp });
       say(`+${data.xp} XP${data.coins ? ` · +${fmt(data.coins)} coins` : ''}${data.used_freeze ? ' · streak freeze used' : ''}`);
     } catch (err) {

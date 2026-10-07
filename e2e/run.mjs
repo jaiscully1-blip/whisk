@@ -137,6 +137,21 @@ await step('pantry draft is remembered', async () => {
   await page.getByRole('button', { name: /Frozen meat · tap to start thawing/ }).first().click();
   await page.getByText(/is thawing in the fridge/).waitFor();
   check('start thawing from the pantry', true);
+  // Quick add: star a staple, then one tap restocks it
+  const eggs = page.locator('main .card', { hasText: /^Eggs/ }).first();
+  await eggs.getByRole('button', { name: 'Put Eggs in Quick add' }).click();
+  await page.locator('.quick-chip', { hasText: 'Eggs' }).waitFor();
+  check('★ puts an item in Quick add', true);
+  await eggs.getByRole('button', { name: /^Eggs:/ }).click(); await page.waitForTimeout(300);   // stocked → low
+  await page.locator('.quick-chip', { hasText: 'Eggs' }).click(); await page.waitForTimeout(500);
+  check('one tap on a Quick add chip restocks it', (await page.locator('.quick-chip.have', { hasText: 'Eggs' }).count()) === 1);
+  // Undo a delete
+  const before = await page.locator('main .card button[aria-label^="Remove "]').count();
+  const victim = (await page.locator('main .card button[aria-label^="Remove "]').first().getAttribute('aria-label')).replace('Remove ', '');
+  await page.locator('main .card button[aria-label^="Remove "]').first().click();
+  await page.locator('.toast.act').getByRole('button', { name: 'Undo' }).click(); await page.waitForTimeout(6000);
+  await page.reload(); await page.waitForTimeout(1500); await closePopups(); await nav('Pantry'); await page.locator('#p-name').waitFor(); await page.waitForTimeout(800);
+  check('Undo brings a deleted item back (and it stays)', (await page.locator('main .card button[aria-label^="Remove "]').count()) === before && (await page.locator(`main .card button[aria-label="Remove ${victim}"]`).count()) === 1, victim);
   await shot('02-pantry');
 });
 await step('cook', async () => {
@@ -186,6 +201,19 @@ await step('cook', async () => {
     await tmr.dblclick(); await page.waitForTimeout(300);
     check('double-tap stops and resets the timer', /min$/.test((await tmr.innerText()).trim()) && (await page.locator('header .pill').count()) === 2);
   } else check('recipe has a step timer', false);
+  // Cook mode: big text, one step at a time, tap anywhere for the next step
+  await dlg.getByRole('button', { name: 'Cook mode' }).click();
+  const cm = page.locator('.cookmode');
+  await cm.waitFor();
+  check('Cook mode opens on "Get ready" with every ingredient', (await cm.locator('.cm-count').innerText()) === 'Get ready' && (await cm.locator('.cm-ready li').count()) >= 6);
+  await cm.locator('.cm-page').click({ position: { x: 300, y: 200 } });
+  check('tap anywhere → step 1, in big text', /^Step 1 of \d+$/.test(await cm.locator('.cm-count').innerText()) && parseFloat(await cm.locator('.cm-step p').evaluate((e) => getComputedStyle(e).fontSize)) >= 24);
+  await cm.locator('.cm-page').click({ position: { x: 300, y: 200 } });
+  await cm.locator('.cm-page').click({ position: { x: 20, y: 200 } });
+  check('tap the left edge → back a step', /^Step 1 of/.test(await cm.locator('.cm-count').innerText()));
+  await shot('02c-cook-mode');
+  await cm.getByRole('button', { name: 'Leave cook mode' }).click();
+  check('leaving Cook mode goes back to the recipe', (await page.locator('.cookmode').count()) === 0 && (await dlg.getByText('Recipe from').count()) === 1);
   await page.click('[role=dialog] >> text=Save · +5 XP');
   await page.getByText(/Saved to your cookbook/).waitFor();
   await page.click('[role=dialog] >> text=I cooked it');
@@ -194,6 +222,12 @@ await step('cook', async () => {
   await page.getByRole('heading', { name: 'Cooked it!' }).waitFor({ timeout: 15000 });
   check('submit photo → "Cooked it!" popup', true);
   await page.click('[aria-label="Liked it"]'); await page.waitForTimeout(500);
+  await page.locator('.usedup-row').first().waitFor({ timeout: 6000 });
+  const usedName = (await page.locator('.usedup-row b').first().innerText()).trim();
+  check('after cooking: "Out of … now?" for what the recipe used', /^Out of .+ now\?$/.test((await page.locator('.usedup-row span').first().innerText()).trim()), usedName);
+  await page.locator('.usedup-row').first().getByRole('button', { name: 'Yes' }).click();
+  await page.locator('.usedup-row', { hasText: 'is out' }).waitFor();
+  check('Yes marks it out and puts it on the list', true);
   await shot('03-cooked');
   await page.click('[role=dialog] >> text=Leave');
   await page.waitForTimeout(600); await closePopups();

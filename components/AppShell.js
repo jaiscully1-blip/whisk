@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import PullToRefresh from './PullToRefresh';
+import UsedUp from './UsedUp';
 import Tips from './Tips';
 import CookieConsent, { CONSENT_KEY, LOGIN_CHOICE_KEY, deviceTimeZone } from './CookieConsent';
 import { startActivity, setPage as trackPage } from '@/lib/activity';
@@ -159,7 +160,8 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
     const { data } = await supabase.from('loadouts').select('top_id, hat_id, glasses_id, shoes_id, acc_id').eq('user_id', initialProfile.id).maybeSingle();
     if (data) setLoadout(data);
   }, [supabase, initialProfile.id]);
-  const say = useCallback((msg) => { setToast(msg); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(''), 2800); }, []);
+  // say('Saved') · say('Removed eggs', { label: 'Undo', run: fn }): a toast with one button, shown a little longer
+  const say = useCallback((msg, action = null) => { setToast(action ? { msg, action } : msg); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(''), action ? 5000 : 2800); }, []);
   const showPopup = useCallback((p) => setPopups((q) => [...q, p]), []);
 
   // Real web recipes (read-only catalog), loaded once.
@@ -289,6 +291,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
                     <button type="button" className="down" aria-pressed={rating === 'down'} aria-label="Didn’t like it" onClick={() => rate('down')}><Icon name="down" size={26} /></button>
                   </div>
                   <span className="desc">Saved to your cookbook with your rating.</span>
+                  {popup.recipe && <UsedUp recipe={popup.recipe} />}
                   <button className="btn wide" style={{ marginTop: 8 }} onClick={closePopup} autoFocus>Leave</button>
                 </>
               )}
@@ -304,7 +307,8 @@ export default function AppShell({ initialProfile, initialLoadout, email, childr
             </div>
           </div>
         )}
-        {toast && <div className="toast" role="status">{toast}</div>}
+        {toast && (typeof toast === 'string' ? <div className="toast" role="status">{toast}</div>
+          : <div className="toast act" role="status"><span>{toast.msg}</span><button type="button" onClick={() => { const run = toast.action.run; setToast(''); run(); }}><Icon name="undo" size={16} />{toast.action.label}</button></div>)}
         {levelUp && !popup && !privacyOpen && <LevelUp level={levelUp} onClose={() => setLevelUp(null)} />}
       </div>
     </Ctx.Provider>

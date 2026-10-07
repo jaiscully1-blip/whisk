@@ -9,6 +9,12 @@ import SavedRecipes from '@/components/SavedRecipes';
 
 const NEXT_STATUS = { stocked: 'low', low: 'out', out: 'stocked' };
 const STATUS_LABEL = { stocked: 'Stocked', low: 'Low', out: 'Out' };
+// The shopping list follows a walk through the store: fresh stuff first, frozen last so it stays cold.
+const AISLES = ['Produce', 'Proteins', 'Dairy & Eggs', 'Carbs & Grains', 'Canned & Jarred', 'Sauces & Oils', 'Spices & Seasonings', 'Baking', 'Frozen', 'Other'];
+// Deletes wait a few seconds so Undo can take them back. Kept outside the page so leaving the page still deletes.
+const pending = new Map();
+const later = (key, fn) => { clearTimeout(pending.get(key)); pending.set(key, setTimeout(() => { pending.delete(key); fn(); }, 5200)); };
+const cancel = (key) => { clearTimeout(pending.get(key)); pending.delete(key); };
 
 export default function Pantry() {
   const { supabase, say, refreshProfile, ui, setUi } = useWhisk();
@@ -75,9 +81,35 @@ export default function Pantry() {
     const { error } = await supabase.from('pantry_items').update({ thaw_started_at: at }).eq('id', item.id);
     say(error ? 'Couldn’t update that item.' : `${item.name} is thawing in the fridge · ready in about ${THAW_HOURS} hours`);
   }
-  async function remove(item) {
+  function remove(item) {
     setItems((x) => x.filter((i) => i.id !== item.id));
-    await supabase.from('pantry_items').delete().eq('id', item.id);
+    later('p' + item.id, () => supabase.from('pantry_items').delete().eq('id', item.id));
+    say(`Removed ${item.name}`, { label: 'Undo', run: () => { cancel('p' + item.id); setItems((x) => [...x.filter((i) => i.id !== item.id), item].sort((a, b) => a.name.localeCompare(b.name))); } });
+  }
+  function removeFromList(it) {
+    setList((l) => l.filter((x) => x.id !== it.id));
+    later('s' + it.id, () => supabase.from('shopping_items').delete().eq('id', it.id));
+    say(`Removed ${it.name}`, { label: 'Undo', run: () => { cancel('s' + it.id); setList((l) => [...l.filter((x) => x.id !== it.id), it]); } });
+  }
+  // Quick add: the staples you pick (★ on an item). One tap puts it back in the pantry, stocked.
+  const quick = ui.quickAdd || [];
+  const isQuick = (name) => quick.some((q) => q.name.toLowerCase() === name.toLowerCase());
+  function toggleQuick(item) {
+    setUi({ quickAdd: isQuick(item.name) ? quick.filter((q) => q.name.toLowerCase() !== item.name.toLowerCase()) : [...quick, { name: item.name, category: item.category }].slice(-24) });
+    say(isQuick(item.name) ? `${item.name} left Quick add` : `${item.name} is in Quick add`);
+  }
+  async function quickAdd(q) {
+    const ex = (items || []).find((i) => i.name.toLowerCase() === q.name.toLowerCase());
+    if (ex && ex.status === 'stocked') { say(`${ex.name} is already stocked`); return; }
+    if (ex) {
+      setItems((x) => x.map((i) => (i.id === ex.id ? { ...i, status: 'stocked', thaw_started_at: null } : i)));
+      await supabase.from('pantry_items').update({ status: 'stocked', added_at: new Date().toISOString(), thaw_started_at: null }).eq('id', ex.id);
+    } else {
+      const { data, error } = await supabase.from('pantry_items').insert({ name: q.name, category: q.category || guessCategory(q.name) }).select().single();
+      if (error) { say('Couldn’t add that.'); return; }
+      setItems((x) => [...x, data].sort((a, b) => a.name.localeCompare(b.name)));
+    }
+    say(`${q.name} is stocked`); refreshProfile();
   }
   async function addToList(e) {
     e.preventDefault();
@@ -104,7 +136,7 @@ export default function Pantry() {
   const aisles = useMemo(() => {
     const g = {};
     (list || []).forEach((i) => { const c = CATEGORIES.includes(i.category) && i.category !== 'Other' ? i.category : guessCategory(i.name); (g[c] ||= []).push(i); });
-    return CATEGORIES.filter((c) => g[c]).map((c) => [c, g[c]]);
+    return AISLES.filter((c) => g[c]).map((c) => [c, g[c]]);
   }, [list]);
 
   return (
@@ -122,6 +154,14 @@ export default function Pantry() {
             <button data-tour="scan" data-tip="receipt" className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('receipt')}><Icon name="receipt" size={22} />Scan receipt</button>
             <button className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} data-tip="barcode" onClick={() => setScan('barcode')}><Icon name="barcode" size={22} />Scan barcode</button>
           </div>
+          {quick.length > 0 && (
+            <section className="quick" aria-label="Quick add">
+              <span className="eyebrow">Quick add</span>
+              <div className="quick-row">{quick.map((q) => { const ex = (items || []).find((i) => i.name.toLowerCase() === q.name.toLowerCase()); const stocked = ex?.status === 'stocked'; return (
+                <button key={q.name} type="button" className={`chip quick-chip ${stocked ? 'have' : ''}`} onClick={() => quickAdd(q)} aria-label={stocked ? `${q.name} is stocked` : `Quick add ${q.name}`}>{stocked ? <Icon name="check" size={14} /> : <Icon name="plus" size={14} />}{q.name}</button>
+              ); })}</div>
+            </section>
+          )}
           <form className="card stack" onSubmit={addPantry}>
             <div className="grid2">
               <div style={{ gridColumn: '1 / -1' }}><label className="lbl" htmlFor="p-name">Item</label><input id="p-name" className="input" maxLength={60} placeholder="e.g. Frozen chicken breast" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
@@ -152,7 +192,8 @@ export default function Pantry() {
                         {f && <div className="row" style={{ gap: 8, flexWrap: 'nowrap', marginTop: 4 }}><div className="bar" style={{ flex: 1 }}><i style={{ width: `${f.pct}%`, background: `var(--${f.tone === 'fresh' ? 'accent' : f.tone + '-bar'})` }} /></div><span style={{ fontSize: 12, fontWeight: 800, color: `var(--${f.tone})` }}>{f.label}</span></div>}
                       </div>
                       <button className="chip" style={{ border: 0, background: i.status === 'stocked' ? 'var(--fresh-soft)' : i.status === 'low' ? 'var(--warn-soft)' : 'var(--bad-soft)', color: i.status === 'stocked' ? 'var(--fresh)' : i.status === 'low' ? 'var(--warn)' : 'var(--bad)' }} onClick={() => cycle(i)} aria-label={`${i.name}: ${STATUS_LABEL[i.status]}. Tap to change.`}>{STATUS_LABEL[i.status]}</button>
-                      <button className="btn ghost sm" style={{ border: 0 }} onClick={() => remove(i)} aria-label={`Remove ${i.name}`}><Icon name="trash" size={18} /></button>
+                      <button className={`btn ghost sm star ${isQuick(i.name) ? 'on' : ''}`} style={{ border: 0, width: 36, padding: 0 }} onClick={() => toggleQuick(i)} aria-pressed={isQuick(i.name)} aria-label={isQuick(i.name) ? `Take ${i.name} out of Quick add` : `Put ${i.name} in Quick add`}><Icon name="star" size={18} /></button>
+                      <button className="btn ghost sm" style={{ border: 0, width: 36, padding: 0 }} onClick={() => remove(i)} aria-label={`Remove ${i.name}`}><Icon name="trash" size={18} /></button>
                     </div>
                   </div>
                 );
@@ -174,7 +215,7 @@ export default function Pantry() {
                 <div key={it.id} className="card row" style={{ padding: '10px 12px', flexWrap: 'nowrap' }}>
                   <button className="btn ghost sm" style={{ width: 38, padding: 0 }} onClick={() => bought(it)} aria-label={`Bought ${it.name}`}><Icon name="check" size={18} /></button>
                   <b style={{ flex: 1 }}>{it.name}</b>
-                  <button className="btn ghost sm" style={{ border: 0 }} onClick={async () => { setList((l) => l.filter((x) => x.id !== it.id)); await supabase.from('shopping_items').delete().eq('id', it.id); }} aria-label={`Remove ${it.name}`}><Icon name="trash" size={18} /></button>
+                  <button className="btn ghost sm" style={{ border: 0 }} onClick={() => removeFromList(it)} aria-label={`Remove ${it.name}`}><Icon name="trash" size={18} /></button>
                 </div>
               ))}
             </section>

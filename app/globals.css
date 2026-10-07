@@ -646,3 +646,50 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .diet-pick .chip.any { background: var(--track); color: var(--fg); }
 .diet-pick .chip.on { border-color: currentColor; box-shadow: 0 2px 0 currentColor; }
 .diet-pick .chip:active { transform: scale(.95); }
+
+/* Cook mode: one big step at a time, for messy hands */
+.cookmode { position: fixed; inset: 0; z-index: 400; background: var(--surface, var(--bg)); display: flex; flex-direction: column; padding: calc(10px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); }
+.cm-top { display: flex; align-items: center; gap: 10px; }
+.cm-progress { flex: 1; height: 12px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.cm-progress i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .25s ease; }
+.cm-count { font-family: var(--f-display); font-size: 15px; white-space: nowrap; }
+.cm-page { flex: 1; overflow-y: auto; display: flex; align-items: center; justify-content: center; padding: 18px 4px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
+.cm-step { max-width: 620px; animation: cmIn .22s ease both; }
+@keyframes cmIn { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+.cm-n { display: inline-grid; place-items: center; width: 54px; height: 54px; border-radius: 18px; background: var(--accent); color: #fff; font: 700 28px var(--f-display); box-shadow: 0 4px 0 var(--btn-shadow); margin-bottom: 14px; }
+.cm-step p { font-size: clamp(24px, 6.6vw, 34px); line-height: 1.3; font-weight: 700; margin: 0 0 18px; }
+.cm-step p b { color: var(--accent); }
+.cm-step .timer { min-height: 54px; font-size: 20px; padding: 0 20px; }
+.cm-ready { width: 100%; max-width: 620px; align-self: flex-start; }
+.cm-ready h2 { font-size: 28px; margin-bottom: 10px; }
+.cm-ready ul { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
+.cm-ready li { font-size: 20px; font-weight: 700; padding: 10px 14px; border-radius: 14px; background: var(--card); border: 2px solid var(--tile-edge, var(--line)); }
+.cm-ready li b { color: var(--accent); }
+.cm-bottom { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.cm-bottom .btn { min-height: 60px; font-size: 18px; }
+.cm-hint { text-align: center; font-size: 12px; font-weight: 800; color: var(--muted); margin-top: 8px; }
+.cm-open { background: var(--pop, #FF6B57); box-shadow: 0 3px 0 color-mix(in srgb, var(--pop, #FF6B57) 70%, #000); color: #fff; }
+@media (prefers-reduced-motion: reduce) { .cm-step { animation: none; } .cm-progress i { transition: none; } }
+
+/* toast with an Undo button */
+.toast.act { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; }
+.toast.act button { display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: 10px; padding: 8px 12px; font: inherit; font-weight: 800; background: color-mix(in srgb, var(--bg) 18%, transparent); color: var(--bg); }
+/* Quick add: staples you starred */
+.quick { display: flex; flex-direction: column; gap: 6px; }
+.quick-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.quick-chip { min-height: 36px; padding: 0 12px; font-weight: 800; cursor: pointer; background: var(--card); box-shadow: 0 2px 0 var(--tile-edge, var(--line)); }
+.quick-chip:active { transform: translateY(2px); box-shadow: none; }
+.btn.star { color: var(--muted); }
+.btn.star.on { color: var(--gold); }
+.btn.star.on svg { fill: var(--gold); }
+
+/* after cooking: "Out of eggs now?" */
+.usedup { display: grid; gap: 6px; margin-top: 10px; text-align: left; }
+.usedup-row { display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px; border-radius: 14px; background: var(--track); font-size: 14px; }
+.usedup-row > span { flex: 1; min-width: 0; }
+.usedup-row .btn.sm { min-height: 34px; padding: 0 12px; }
+.linkbtn { background: none; border: 0; padding: 6px 8px; font: inherit; font-weight: 800; color: var(--accent); text-decoration: underline; }
+
+/* recipes that use food about to go bad */
+.chip.soon { background: var(--warn-soft); color: var(--warn); font-weight: 800; border: 0; align-self: flex-start; }
+.away-h.soon-h { color: var(--warn); }

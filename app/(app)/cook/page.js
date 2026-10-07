@@ -8,7 +8,7 @@ import Icon from '@/components/Icon';
 import { usePantry, useSaved } from '@/components/usePantry';
 
 const PAGE = 12;
-import { canon, checkRecipe } from '@/lib/recipes/match';
+import { canon, checkRecipe, usesSoon } from '@/lib/recipes/match';
 import WeekGoal from '@/components/WeekGoal';
 import MyYouTubers from '@/components/MyYouTubers';
 import DishSearch from '@/components/DishSearch';
@@ -39,8 +39,10 @@ export default function Cook() {
     let list = makeable.filter(({ r }) => (!+time || r.minutes <= +time) && (!cu || r.cuisine === cu) && fitsDiet(r, diet));
     if (mode === 'raid' && hand) { const hc = new Set(hand.map(canon)); list = list.map((x) => ({ ...x, hits: x.r.key.filter((k) => hc.has(canon(k))).length })).filter((x) => x.hits > 0).sort((a, b) => b.hits - a.hits); }
     if (mode === 'named') { const words = (ui.cookDish || '').toLowerCase().split(/\s+/).filter((w) => w.length > 2); list = list.filter(({ r }) => words.some((w) => `${r.title} ${r.cuisine}`.toLowerCase().includes(w.replace(/s$/, '')))); }
+    // food about to go bad first (Fridge Raid keeps its own order: most of your dealt cards first)
+    if (mode !== 'raid') { list = list.map((x) => ({ ...x, soon: usesSoon(x.r, pantry || []) })); list = [...list.filter((x) => x.soon.length), ...list.filter((x) => !x.soon.length)]; }
     return list;
-  }, [mode, makeable, time, cu, diet, hand, ui.cookDish]);
+  }, [mode, makeable, pantry, time, cu, diet, hand, ui.cookDish]);
 
   const names = inStock.filter((p) => !SKIP.includes(p.category)).map((p) => p.name);
   // Keep loading more as you scroll, until every recipe your pantry can make is on screen.
@@ -90,11 +92,12 @@ export default function Cook() {
       {mode === 'named' && ui.cookDish && results?.length === 0 ? null : results && (results.length ? (
         <>
           <span className="eyebrow">{mode === 'named' ? `From your Whisk recipes · ${results.length}` : `${results.length} recipe${results.length === 1 ? '' : 's'} you can make right now`}</span>
-          {results.slice(0, shown).map(({ r, c }) => (
+          {results.slice(0, shown).map(({ r, c, soon }) => (
             <button key={r.id} className="card stack" style={{ gap: 8, textAlign: 'left' }} onClick={() => setOpen(r)}>
               <span className="eyebrow">{r.cuisine} · {r.source}</span>
               <h2 style={{ fontSize: 20 }}>{r.title}</h2>
               <div className="row"><span className="chip">{hrs(r.minutes)}</span><span className="chip">Serves {r.servings}</span><span className="chip have">You have everything</span>{c.frozen.length > 0 && <span className="chip ice"><Icon name="snow" size={14} />Defrost first</span>}</div>
+              {soon?.length > 0 && <span className="chip soon"><Icon name="timer" size={14} />Uses your {soon.map((p) => p.name.toLowerCase()).slice(0, 2).join(' and ')} before it goes bad</span>}
               <DietTags recipe={r} max={3} />
             </button>
           ))}

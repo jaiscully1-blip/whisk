@@ -10,6 +10,7 @@ import { ServingsX, IngredientList, StepList } from './RecipeSteps';
 import { cultureStyle, motifFor } from '@/lib/culture';
 import DietTags from '@/components/DietTags';
 import Scene from './Scene';
+import CookMode from './CookMode';
 
 // A real recipe from the web: every ingredient measured and beginner steps from the source page, scaled to any servings.
 export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChanged, challenge = null }) {
@@ -17,6 +18,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
   const [isSaved, setSaved] = useState(!!saved);
   const [logging, setLogging] = useState(false);
   const [factor, setFactor] = useState(1);
+  const [cooking, setCooking] = useState(false);   // Cook mode
   const [added, setAdded] = useState([]);   // ingredients just added from this sheet (shown as ✓ straight away)
   const c0 = checkRecipe(r, pantry);
   const c = { ...c0, missing: c0.missing.filter((m) => !added.includes(m)) };
@@ -43,6 +45,8 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
     if (error) { setAdded((a) => a.filter((x) => x !== k)); say('Couldn’t add that.'); return; }
     say(`${name} is in your pantry`); refreshProfile(); onChanged?.();
   }
+  const finish = () => { if (c.frozen.length) { say(`Defrost ${c.frozen.map((p) => p.name).join(', ')} first`); return; } setCooking(false); setLogging(true); };
+  if (cooking) return <CookMode r={r} factor={factor} canFinish={c.ok} onFinish={finish} onClose={() => setCooking(false)} />;
   if (logging) return <LogMealSheet recipe={r} challenge={challenge} onClose={() => { setLogging(false); onClose?.(); }} onDone={onChanged} />;
 
   return (
@@ -79,7 +83,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         {c.missing.length > 0 && <button className="btn ghost" onClick={addMissing}>Add {c.missing.length} missing to shopping list</button>}
         <h3>Ingredients</h3>
         <IngredientList r={r} factor={factor} missing={c.missing} />
-        <h3>Steps</h3>
+        <div className="row" style={{ justifyContent: 'space-between' }}><h3>Steps</h3><button type="button" className="btn sm cm-open" onClick={() => setCooking(true)}><Icon name="play" size={16} />Cook mode</button></div>
         <StepList r={r} factor={factor} />
         <div className="links">
           <a href={r.url} target="_blank" rel="noopener noreferrer"><Icon name="link" size={15} />Open on {r.source}</a>

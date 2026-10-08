@@ -164,7 +164,7 @@ export default function Pantry() {
             <div className="grid2">
               <div style={{ gridColumn: '1 / -1' }}><label className="lbl" htmlFor="p-name">Item</label><input id="p-name" className="input" maxLength={60} placeholder="e.g. Frozen chicken breast" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
               <div><label className="lbl" htmlFor="p-qty">Amount</label><input id="p-qty" className="input" maxLength={30} placeholder="2 lb" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
-              <div style={{ minWidth: 0 }}><label className="lbl" htmlFor="p-exp">Expires</label><div className="date-wrap"><input id="p-exp" className="input" type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} />{!form.expires_on && <span className="date-hint" aria-hidden="true">Pick a date</span>}</div></div>
+              <div style={{ minWidth: 0 }}><label className="lbl" htmlFor="p-exp">Expires</label><div className="date-wrap"><input id="p-exp" className={`input ${form.expires_on ? '' : 'empty'}`} type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} />{!form.expires_on && <span className="date-hint" aria-hidden="true">Pick a date</span>}</div></div>
             </div>
             <button data-tour="add" data-tip="add" className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
             <span className="desc">Frozen food gets a defrost reminder.</span>
@@ -202,13 +202,13 @@ export default function Pantry() {
         </>
       ) : (
         <>
-          <button type="button" className="btn ghost wide share-btn" onClick={() => setSharing(true)}><Icon name="share" size={18} />Share list · no app needed</button>
+          <button type="button" className="btn ghost wide share-btn" onClick={() => setSharing(true)}><Icon name="share" size={18} />Share list</button>
           <form className="row" onSubmit={addToList} style={{ flexWrap: 'nowrap' }}>
             <label htmlFor="s-new" className="lbl" hidden>Add item</label>
             <input id="s-new" className="input" maxLength={60} placeholder="Add an item" value={newItem} onChange={(e) => setNewItem(e.target.value)} />
             <button className="btn" type="submit" aria-label="Add"><Icon name="plus" size={18} /></button>
           </form>
-          {list === null ? <p className="muted">Loading…</p> : list.length === 0 ? <div className="empty"><b>Nothing to buy</b>Items you mark as out show up here.</div> : aisles.map(([aisle, rows]) => (
+          {list === null ? <p className="muted">Loading…</p> : list.length === 0 ? <div className="empty"><b>Nothing to buy</b></div> : aisles.map(([aisle, rows]) => (
             <section key={aisle} className="stack" style={{ gap: 6 }}>
               <span className="eyebrow">{aisle} · {rows.length}</span>
               {rows.map((it) => (

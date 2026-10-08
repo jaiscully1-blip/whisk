@@ -130,7 +130,7 @@ export default function PutAway() {
             {earned > 0 && <span className="chip xp">+{earned} XP</span>}
           </div>
 
-          <KitchenStage mode="view" place={home.key} pieces={pieces} title={home.name} open={open} openAll={!!carrying} spot={spot} height="min(50vh, 440px)" scale={0.85}
+          <KitchenStage mode="view" place={home.key} pieces={pieces} title={home.key === 'void' ? 'Kitchen' : home.name} open={open} openAll={!!carrying} spot={spot} height="min(50vh, 440px)" scale={0.85}
             onToggle={(k) => setOpen((o) => ({ ...o, [k]: !o[k] }))} onSpot={onSpot} className={carrying ? 'carrying' : ''} />
 
           {picked && !carrying && (

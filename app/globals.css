@@ -1039,9 +1039,12 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .nav { transform: translateZ(0); will-change: transform; }
 html.kb-open .nav { display: none; }
 /* iPhone date fields: fill the column instead of spilling out of the card, and show a hint while empty */
-input[type="date"].input { -webkit-appearance: none; appearance: none; min-width: 0; width: 100%; display: block; box-sizing: border-box; min-height: 48px; text-align: left; }
+input[type="date"].input { -webkit-appearance: none; appearance: none; min-width: 0; width: 100%; display: block; box-sizing: border-box; text-align: left; }
 input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .date-wrap { position: relative; min-width: 0; }
+.date-wrap input.empty::-webkit-datetime-edit { color: transparent; }   /* our hint replaces the browser's mm/dd/yyyy */
+.date-wrap input.empty:focus::-webkit-datetime-edit { color: inherit; }
+.date-wrap input:focus + .date-hint { display: none; }
 .date-wrap .date-hint { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; font-size: 15px; }
 .flagimg { border-radius: 4px; box-shadow: 0 0 0 1px rgba(0,0,0,.18); object-fit: cover; flex: none; vertical-align: middle; }
 .me-title { flex-direction: column; align-items: flex-start !important; gap: 4px; }

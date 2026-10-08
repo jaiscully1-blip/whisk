@@ -54,7 +54,7 @@ export function MyKitchen() {
   const pieces = useMemo(() => (shown ? K.cleanPieces(shown.pieces) : []), [shown]);
   if (kitchens === null) return <div className="card" style={{ height: 300 }} aria-busy="true" />;
   // the kitchen's own name, or where it is (e.g. "Riverwalk Apartment") until you name it
-  const title = shown && shown.name && shown.name !== 'My kitchen' ? shown.name : place.name;
+  const title = shown && shown.name && shown.name !== 'My kitchen' ? shown.name : place.key === 'void' ? 'My Kitchen' : place.name;
   async function rename(e) {
     e.preventDefault();
     const name = (naming || '').trim().slice(0, 40) || 'My kitchen';

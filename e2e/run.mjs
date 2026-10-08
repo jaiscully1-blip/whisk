@@ -686,7 +686,33 @@ await step('kitchen layout', async () => {
   check('…and understands everyday words (“deep freeze” → chest freezer)', /Chest freezer/.test(await page.locator('.kd-res').first().innerText()));
   await page.locator('.kd-res').first().click();
   check('adding a piece drops it on the floor, picked up', (await page.locator('.kbox').count()) === 10 && (await page.locator('.kbox.sel').count()) === 1);
-  check('a picked piece shows yellow dots to stretch it', (await page.locator('.kbox.sel .kknob').count()) === 5);
+  check('a picked piece shows 3 plain dots to stretch it (left, right, taller), no arrows', (await page.locator('.kbox.sel .kknob').count()) === 3 && (await page.locator('.kbox.sel .kknob svg').count()) === 0);
+  const topOf = () => page.locator('.kbox.sel').evaluate((el) => `${el.style.top}|${el.style.transform}`);
+  const before = await topOf();
+  await page.getByRole('button', { name: /Bring it toward you|Push it back/ }).click();
+  check('one small button moves it toward you (or back)', (await topOf()) !== before);
+  const sb = await page.locator('.kbox.sel').boundingBox();
+  const hit = await page.evaluate(([x, y]) => !!document.elementFromPoint(x, y)?.closest('.kbox.sel'), [sb.x + sb.width / 2, sb.y + sb.height / 2]);
+  if (hit) {
+    const z0 = await topOf();
+    await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2); await page.mouse.down(); await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2 - 90, { steps: 8 }); await page.mouse.up();
+    check('drag a piece up and it lifts up', (await topOf()).split('|')[1] !== z0.split('|')[1], await topOf());
+    const sb2 = await page.locator('.kbox.sel').boundingBox();
+    await page.mouse.move(sb2.x + sb2.width / 2, sb2.y + sb2.height / 2); await page.mouse.down(); await page.mouse.move(sb2.x + sb2.width / 2, sb2.y + sb2.height / 2 + 200, { steps: 8 }); await page.mouse.up();
+    check('…and drag it down to set it back on the floor', /translateZ\(0px\)/.test(await topOf()), await topOf());
+  }
+  const camT = () => page.locator('.kd-stage .k3-cam').evaluate((el) => el.style.transform);
+  const c0 = await camT();
+  const st = await page.locator('.kd-stage .k3').boundingBox();
+  await page.mouse.move(st.x + st.width / 2, st.y + st.height / 2); await page.mouse.wheel(0, -500); await page.waitForTimeout(200);
+  const sc = (t) => Number(t.match(/scale\(([\d.]+)\)/)[1]);
+  check('scroll (or pinch) zooms in', sc(await camT()) > sc(c0) * 1.3, `${c0} → ${await camT()}`);
+  await page.getByRole('button', { name: 'Zoom out' }).click();
+  check('…and the − button zooms out', sc(await camT()) < sc(await camT()) + 1);
+  const rz = (t) => Number(t.match(/rotateZ\((-?[\d.]+)deg\)/)[1]);
+  const r0 = rz(await camT());
+  await page.mouse.move(st.x + 30, st.y + 60); await page.mouse.down(); await page.mouse.move(st.x + 150, st.y + 60, { steps: 6 }); await page.mouse.up();
+  check('swipe right → the kitchen turns right with your finger', rz(await camT()) < r0, `${r0} → ${rz(await camT())}`);
   await page.locator('.kd-tools').getByRole('button', { name: 'Paint' }).click();
   const tex = await page.locator('.kd-tex').allInnerTexts();
   check('a freezer can’t be marble: steel, matte or gloss only', tex.join('|') === 'Brushed steel|Matte|Gloss', tex.join('|'));

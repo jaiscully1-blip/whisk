@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useWhisk } from '@/components/AppShell';
 import Icon from '@/components/Icon';
 import { useKitchens } from '@/components/usePantry';
-import Kitchen3D from '@/components/kitchen/Kitchen3D';
+import Kitchen3D, { ZOOM } from '@/components/kitchen/Kitchen3D';
 import Flat from '@/components/kitchen/Flat';
 import * as K from '@/lib/kitchen/models';
 
@@ -21,7 +21,8 @@ export default function Design() {
   const [sheet, setSheet] = useState(null);       // 'add' | 'paint' | 'new' | 'mine'
   const [look, setLook] = useState(false);        // preview with doors on
   const [open, setOpen] = useState({});
-  const [cam, setCam] = useState({ rz: -24, rx: 56 });
+  const [cam, setCam] = useState({ rz: -24, rx: 56, zoom: 1 });
+  const [dir, setDir] = useState(1);              // the one depth button: 1 = toward you, -1 = away
   const [busy, setBusy] = useState(false);
   const [spun, setSpun] = useState(false);
   const taught = !!ui.kitchenTaught;
@@ -94,7 +95,17 @@ export default function Design() {
   const removeSel = () => { setPieces((p) => p.filter((x) => x.id !== sel)); setSel(null); };
 
   if (!edit) return <p className="muted" style={{ marginTop: 24 }}>Loading your kitchen…</p>;
-  const hint = look ? 'Tap a door' : !selB ? (spun ? 'Tap a piece' : 'Drag to spin') : !taught ? 'Drag a yellow dot' : 'Drag it to move';
+  const hint = look ? 'Tap a door' : !selB ? (spun ? 'Tap a piece' : 'Drag to spin · pinch to zoom') : taught ? 'Drag it anywhere' : 'Drag it anywhere · pull a dot to stretch';
+  // one small button moves it toward you; at the front it flips and goes back the other way
+  function nudge() {
+    if (!selB) return;
+    const at = (d) => { const n = { ...selB, y: selB.y + d }; return K.clash(edit.pieces, n) ? null : n; };
+    let n = at(dir), d = dir;
+    if (!n) { d = -dir; n = at(d); }
+    if (!n) { say('Something’s in the way'); return; }
+    setPieces((p) => p.map((x) => (x.id === n.id ? n : x)));
+    setDir(K.clash(edit.pieces, { ...n, y: n.y + d }) ? -d : d);   // can't go further → the arrow flips
+  }
 
   return (
     <div className="stack kd">
@@ -120,11 +131,15 @@ export default function Design() {
           sel={sel} onSelect={setSel} onChange={(p) => setPieces(p)} taught={taught} onTaught={() => setUi({ kitchenTaught: true })}
           open={open} onToggle={(k) => setOpen((o) => ({ ...o, [k]: !o[k] }))} />
         <span className="kd-hint">{hint}</span>
+        <div className="kd-zoom">
+          <button type="button" className="kd-round" onClick={() => setCam((c) => ({ ...c, zoom: K.clamp((c.zoom || 1) * 1.25, ZOOM[0], ZOOM[1]) }))} aria-label="Zoom in"><Icon name="plus" size={18} /></button>
+          <button type="button" className="kd-round" onClick={() => setCam((c) => ({ ...c, zoom: K.clamp((c.zoom || 1) / 1.25, ZOOM[0], ZOOM[1]) }))} aria-label="Zoom out"><b style={{ fontSize: 22, lineHeight: 1 }}>−</b></button>
+        </div>
         <div className="kd-cam">
-          <button type="button" className="kd-round" onClick={() => setCam((c) => ({ ...c, rz: c.rz - 45 }))} aria-label="Spin left"><Icon name="undo" size={18} /></button>
+          <button type="button" className="kd-round" onClick={() => setCam((c) => ({ ...c, rz: c.rz + 45 }))} aria-label="Spin left"><Icon name="undo" size={18} /></button>
           <button type="button" className={`kd-round ${look ? 'on' : ''}`} onClick={() => { setLook((l) => !l); setSel(null); setOpen({}); }} aria-pressed={look} aria-label={look ? 'Back to building' : 'Look with doors on'}><Icon name={look ? 'pencil' : 'pantry'} size={18} /></button>
-          <button type="button" className="kd-round" onClick={() => setCam({ rz: -24, rx: 56 })} aria-label="Reset view"><Icon name="shuffle" size={18} /></button>
-          <button type="button" className="kd-round" onClick={() => setCam((c) => ({ ...c, rz: c.rz + 45 }))} aria-label="Spin right"><Icon name="undo" size={18} style={{ transform: 'scaleX(-1)' }} /></button>
+          <button type="button" className="kd-round" onClick={() => setCam({ rz: -24, rx: 56, zoom: 1 })} aria-label="Reset view"><Icon name="shuffle" size={18} /></button>
+          <button type="button" className="kd-round" onClick={() => setCam((c) => ({ ...c, rz: c.rz - 45 }))} aria-label="Spin right"><Icon name="undo" size={18} style={{ transform: 'scaleX(-1)' }} /></button>
         </div>
       </div>
 
@@ -136,6 +151,7 @@ export default function Design() {
             <div className="desc">{selB.w} × {selB.d} ft · {selB.h} ft tall</div>
           </div>
           <div className="kd-tools">
+            <button type="button" className="kd-depth" onClick={nudge} aria-label={dir > 0 ? 'Bring it toward you' : 'Push it back'}><Icon name="chevron" size={20} style={{ transform: `rotate(${dir > 0 ? 90 : -90}deg)` }} /></button>
             <button type="button" className="btn ghost sm" onClick={() => setSheet('paint')}>Paint</button>
             <button type="button" className="btn ghost sm" onClick={copySel} aria-label="Copy it"><Icon name="plus" size={16} /></button>
             <button type="button" className="btn ghost sm" onClick={removeSel} aria-label="Remove it" style={{ color: 'var(--bad)' }}><Icon name="trash" size={16} /></button>

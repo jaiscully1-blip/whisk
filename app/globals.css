@@ -896,3 +896,7 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .tabrow { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 2px 2px 6px; margin: 0 -2px; }
 .tabrow::-webkit-scrollbar { display: none; }
 .tabrow .btn { flex: none; }
+.kknob { width: 22px; height: 22px; border: 3px solid #fff; box-shadow: 0 2px 0 rgba(0, 0, 0, .28), 0 0 0 1px rgba(0, 0, 0, .12); }
+.kknob::before { content: ""; position: absolute; inset: -11px; border-radius: 50%; }
+.kd-depth { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--tile-edge); background: var(--card); color: var(--fg); box-shadow: 0 3px 0 var(--tile-edge); display: grid; place-items: center; padding: 0; flex: none; }
+.kd-zoom { position: absolute; right: 10px; top: 54px; display: grid; gap: 6px; }

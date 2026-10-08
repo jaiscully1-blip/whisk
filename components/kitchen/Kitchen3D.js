@@ -1,57 +1,96 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as K from '@/lib/kitchen/models';
 
 // The kitchen in 3D, drawn with CSS 3D boxes (no WebGL, so it's light and works everywhere).
 // mode: 'view'  — doors and drawers open with a tap; lit spots can be tapped
-//       'build' — doors off so every shelf shows; drag a piece to move it, drag a yellow dot to stretch it
+//       'build' — doors off so every shelf shows; drag a piece anywhere (left/right along the floor, up/down to lift it),
+//                 pull a yellow dot to make it wider or taller
 //       'mini'  — a small floating picture (tap anywhere → onTap)
+// Camera: drag to spin (the model follows your finger), pinch or scroll to zoom.
 // Spots are tagged with data-spot="<piece>|<compartment>|<spot>" so drag-and-drop can find them with elementFromPoint.
+export const ZOOM = [0.45, 2.6];
 export default function Kitchen3D({
   pieces, mode = 'view', height = 420, scale = 1, cam, onCam, open = {}, openAll = false, onToggle,
   spot = {}, onSpot, sel = null, onSelect, onChange, onTap, taught = true, onTaught, float = false, className = ''
 }) {
-  const [own, setOwn] = useState({ rz: -24, rx: 56 });
+  const [own, setOwn] = useState({ rz: -24, rx: 56, zoom: 1 });
   const camera = cam || own; const setCam = onCam || setOwn;
+  const zoom = camera.zoom || 1, S = scale * zoom;
   const drag = useRef(null); const moved = useRef(false);
+  const fingers = useRef(new Map());
+  const root = useRef(null);
+  const camRef = useRef(camera); camRef.current = camera;
   const build = mode === 'build', view = mode === 'view', mini = mode === 'mini';
   const { idx } = K.spotsOf(pieces, []);
   const C = K.C, HU = K.HU;
 
-  function floorDelta(dx, dy) {
-    const r = camera.rz * Math.PI / 180, cx = Math.max(0.2, Math.cos(camera.rx * Math.PI / 180));
-    const fy = dy / cx / scale, fx = dx / scale;
-    return { u: (fx * Math.cos(r) + fy * Math.sin(r)) / C, v: (-fx * Math.sin(r) + fy * Math.cos(r)) / C };
+  // scroll wheel / trackpad pinch zooms (needs a non-passive listener so the page doesn't scroll instead)
+  useEffect(() => {
+    const el = root.current; if (!el || mini) return undefined;
+    const onWheel = (e) => { e.preventDefault(); const c = camRef.current; setCam({ ...c, zoom: K.clamp((c.zoom || 1) * Math.exp(-e.deltaY * 0.0018), ZOOM[0], ZOOM[1]) }); };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [mini, setCam]);
+
+  // How many floor cells a screen move covers along the floor's x and y directions (camera spin + tilt + zoom aware).
+  function axisCells(dx, dy) {
+    const r = camera.rz * Math.PI / 180, t = Math.cos(camera.rx * Math.PI / 180);
+    const ex = [Math.cos(r) * C * S, Math.sin(r) * t * C * S], ey = [-Math.sin(r) * C * S, Math.cos(r) * t * C * S];
+    const along = (a) => (dx * a[0] + dy * a[1]) / (a[0] * a[0] + a[1] * a[1] || 1);
+    return { u: along(ex), v: along(ey), ex, ey };
   }
+  const lift = (dy) => -dy / (HU * S * Math.max(0.35, Math.sin(camera.rx * Math.PI / 180)));
   function update(id, fn) {
     const next = pieces.map((b) => { if (b.id !== id) return b; const n = { ...b }; fn(n); return K.clash(pieces, n) ? b : n; });
     if (next.some((b, i) => b !== pieces[i])) onChange?.(next);
   }
-  const down = (e) => { if (mini) return; drag.current = { mode: 'spin', x: e.clientX, y: e.clientY, rz: camera.rz, rx: camera.rx }; moved.current = false; };
+  const dist = () => { const [a, b] = [...fingers.current.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+  // every finger is counted here first (capture phase), so a second finger anywhere turns the gesture into a pinch
+  const capDown = (e) => {
+    if (mini) return;
+    fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (fingers.current.size === 2) { drag.current = { mode: 'pinch', d0: dist(), z0: zoom }; moved.current = true; }
+  };
+  const down = (e) => { if (mini || drag.current?.mode === 'pinch') return; drag.current = { mode: 'spin', x: e.clientX, y: e.clientY, rz: camera.rz, rx: camera.rx }; moved.current = false; };
   const move = (e) => {
+    if (fingers.current.has(e.pointerId)) fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const d = drag.current; if (!d) return;
+    if (d.mode === 'pinch') { if (fingers.current.size >= 2) setCam({ ...camera, zoom: K.clamp(d.z0 * dist() / d.d0, ZOOM[0], ZOOM[1]) }); return; }
     const dx = e.clientX - d.x, dy = e.clientY - d.y;
     if (!moved.current) {
       if (Math.abs(dx) + Math.abs(dy) < 6) return;
       moved.current = true;
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ }
     }
-    if (d.mode === 'spin') { setCam({ rz: d.rz + dx * 0.45, rx: K.clamp(d.rx - dy * 0.3, 8, 82) }); return; }
-    const fd = floorDelta(dx, dy);
-    if (d.mode === 'move') update(d.id, (n) => { n.x = K.clamp(Math.round(d.x0 + fd.u), 0, K.GW - n.w); n.y = K.clamp(Math.round(d.y0 + fd.v), 0, K.GD - n.d); });
-    if (d.mode === 'grow') {
-      const b0 = d.b0;
+    // swipe right → the model turns right with your finger
+    if (d.mode === 'spin') { setCam({ ...camera, rz: d.rz - dx * 0.45, rx: K.clamp(d.rx - dy * 0.3, 8, 82) }); return; }
+    if (d.mode === 'move') {
+      // left/right on screen slides it along whichever floor direction looks most left/right; up/down lifts it
+      const h = axisCells(dx, 0);
+      const useX = Math.abs(h.ex[0]) >= Math.abs(h.ey[0]);
+      const side = useX ? dx * h.ex[0] / (h.ex[0] * h.ex[0] + h.ex[1] * h.ex[1]) : dx * h.ey[0] / (h.ey[0] * h.ey[0] + h.ey[1] * h.ey[1]);
       update(d.id, (n) => {
-        if (d.side === 'e') n.w = K.clamp(Math.round(b0.w + fd.u), 1, K.GW - b0.x);
-        if (d.side === 'w') { const nx = K.clamp(Math.round(b0.x + fd.u), 0, b0.x + b0.w - 1); n.x = nx; n.w = b0.w + (b0.x - nx); }
-        if (d.side === 's') n.d = K.clamp(Math.round(b0.d + fd.v), 1, K.GD - b0.y);
-        if (d.side === 'n') { const ny = K.clamp(Math.round(b0.y + fd.v), 0, b0.y + b0.d - 1); n.y = ny; n.d = b0.d + (b0.y - ny); }
-        if (d.side === 'up') { const sn = Math.max(0.35, Math.sin(camera.rx * Math.PI / 180)); n.h = K.clamp(Math.round((b0.h - dy / (HU * sn * scale)) * 2) / 2, 1, 9 - b0.z); }
+        if (useX) n.x = K.clamp(Math.round(d.b0.x + side), 0, K.GW - n.w); else n.y = K.clamp(Math.round(d.b0.y + side), 0, K.GD - n.d);
+        n.z = K.clamp(Math.round((d.b0.z + lift(dy)) * 2) / 2, 0, 9 - n.h);
+      });
+      return;
+    }
+    if (d.mode === 'grow') {
+      const b0 = d.b0, { u } = axisCells(dx, dy);
+      update(d.id, (n) => {
+        if (d.side === 'e') n.w = K.clamp(Math.round(b0.w + u), 1, K.GW - b0.x);
+        if (d.side === 'w') { const nx = K.clamp(Math.round(b0.x + u), 0, b0.x + b0.w - 1); n.x = nx; n.w = b0.w + (b0.x - nx); }
+        if (d.side === 'up') n.h = K.clamp(Math.round((b0.h + lift(dy)) * 2) / 2, 1, 9 - b0.z);
       });
     }
   };
-  const up = () => { drag.current = null; setTimeout(() => { moved.current = false; }, 0); };
-  const grow = (b, side) => (e) => { e.stopPropagation(); drag.current = { mode: 'grow', side, id: b.id, x: e.clientX, y: e.clientY, b0: { ...b } }; moved.current = false; if (!taught) onTaught?.(); };
+  const up = (e) => {
+    fingers.current.delete(e?.pointerId);
+    if (drag.current?.mode === 'pinch' && fingers.current.size > 0) return;
+    drag.current = null; setTimeout(() => { moved.current = false; }, 0);
+  };
+  const grow = (b, side) => (e) => { if (drag.current?.mode === 'pinch') return; e.stopPropagation(); drag.current = { mode: 'grow', side, id: b.id, x: e.clientX, y: e.clientY, b0: { ...b } }; moved.current = false; if (!taught) onTaught?.(); };
   const tapFloor = () => { if (mini) { onTap?.(); return; } if (!moved.current && build && sel) onSelect?.(null); };
   const guard = (fn) => (e) => { e.stopPropagation(); if (moved.current) return; fn(); };
 
@@ -60,12 +99,12 @@ export default function Kitchen3D({
     : { background: 'repeating-linear-gradient(90deg,rgba(90,60,30,.18) 0 1px,rgba(0,0,0,0) 1px 26px),repeating-linear-gradient(0deg,rgba(255,255,255,.08) 0 2px,rgba(0,0,0,0) 2px 9px),linear-gradient(135deg,#E4CBA4,#D2B183)', borderRadius: 6, boxShadow: '0 0 0 8px rgba(120,90,50,.14)' };
 
   return (
-    <div className={`k3 ${mode} ${float ? 'floaty' : ''} ${className}`} style={{ height }} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={tapFloor}>
-      <div className="k3-cam" style={{ transform: `scale(${scale}) rotateX(${camera.rx}deg) rotateZ(${camera.rz}deg)` }}>
+    <div ref={root} className={`k3 ${mode} ${float ? 'floaty' : ''} ${className}`} style={{ height }} onPointerDownCapture={capDown} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={tapFloor}>
+      <div className="k3-cam" style={{ transform: `scale(${S}) rotateX(${camera.rx}deg) rotateZ(${camera.rz}deg)` }}>
         <div className="k3-sway">
           <div className="k3-floor" style={{ width: K.GW * C, height: K.GD * C, marginLeft: -K.GW * C / 2, marginTop: -K.GD * C / 2, ...floor }}>
             {pieces.map((b) => <Piece key={b.id} b={b} {...{ build, view, mini, open, openAll, onToggle, spot, onSpot, sel, idx, guard, grow, taught }}
-              onDown={build ? (e) => { e.stopPropagation(); drag.current = { mode: 'move', id: b.id, x: e.clientX, y: e.clientY, x0: b.x, y0: b.y }; moved.current = false; if (sel !== b.id) onSelect?.(b.id); } : undefined} />)}
+              onDown={build ? (e) => { e.stopPropagation(); if (drag.current?.mode === 'pinch') return; drag.current = { mode: 'move', id: b.id, x: e.clientX, y: e.clientY, b0: { ...b } }; moved.current = false; if (sel !== b.id) onSelect?.(b.id); } : undefined} />)}
           </div>
         </div>
       </div>
@@ -79,7 +118,7 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
   const W = b.w * C, D = b.d * C, H = Math.round(b.h * HU), Z = Math.round(b.z * HU);
   const selected = build && sel === b.id, ap = K.cold(m), nick = idx.nick[b.id];
   const slide = Math.round(Math.min(D * 0.8, 46));
-  const kh = 17;
+  const kh = 11;
   const comp = (c, ci, onTop) => {
     const FW = W, FH = onTop ? D : H;
     const cx = c.x * FW, cy = c.y * FH, cw = c.w * FW, ch = c.h * FH;
@@ -152,11 +191,7 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
     );
   };
   const topCss = m.gen === 'chest' ? 'background:#E3E7EA;' : m.top ? K.skin(tfin, 0.06) : K.skin(fin, 0.14);
-  const knob = (side, left, top, deg, label) => (
-    <button key={side} type="button" className="kknob" style={{ left, top }} onPointerDown={grow(b, side)} aria-label={label}>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: `rotate(${deg}deg)` }}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-    </button>
-  );
+
   return (
     <div className={`kbox ${selected ? 'sel' : ''}`} style={{ left: b.x * C, top: b.y * C, width: W, height: D, transform: `translateZ(${Z}px)` }} onPointerDown={onDown} data-piece={b.id}>
       {!build && b.z === 0 && <div className="kface" style={{ left: -6, top: -4, width: W + 12, height: D + 14, background: 'radial-gradient(closest-side,rgba(70,45,20,.35),rgba(70,45,20,0))', transform: 'translateZ(.4px)' }} />}
@@ -166,8 +201,12 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
       <div className="kface" style={{ left: 0, top: D - H, width: W, height: H, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', ...css(K.skin(fin, 0)), borderRadius: m.round ? '22px 22px 3px 3px' : 0 }}>
         {K.faceDeco(m, fin, tfin, g.ts, g.tb).map((d, i) => <span key={i} className="kdeco" style={css(d.st)} />)}
         {g.front.map((c, i) => comp(c, i, false))}
-        {selected && <button type="button" className="kknob" style={{ left: W / 2 - kh, top: -kh }} onPointerDown={grow(b, 'up')} aria-label="Drag to make it taller">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20V5M6 11l6-6 6 6" /></svg></button>}
+        {selected && <>
+          <button type="button" className="kknob" style={{ left: -kh - 8, top: H / 2 - kh }} onPointerDown={grow(b, 'w')} aria-label="Drag to make it wider on the left" />
+          <button type="button" className="kknob" style={{ left: W - kh + 8, top: H / 2 - kh }} onPointerDown={grow(b, 'e')} aria-label="Drag to make it wider on the right" />
+          <button type="button" className="kknob" style={{ left: W / 2 - kh, top: -kh - 8 }} onPointerDown={grow(b, 'up')} aria-label="Drag to make it taller" />
+          {!taught && <span className="khand" style={{ left: W + 4, top: H / 2 }} aria-hidden="true">👆</span>}
+        </>}
       </div>
       <div className="kface" style={{ left: 0, top: 0, width: W, height: D, transform: `translateZ(${H}px)`, borderRadius: 2, ...css(topCss) }}>
         {m.gen === 'sink' && <>
@@ -175,13 +214,6 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
           <span className="kdeco" style={css('left:46%;top:5%;width:8%;height:14%;background:linear-gradient(90deg,#eef0f2,#9aa0a7);border-radius:3px;box-shadow:0 2px 2px rgba(0,0,0,.35)')} />
         </>}
         {g.top.map((c, i) => comp(c, g.front.length + i, true))}
-        {selected && <>
-          {knob('e', W - kh, D / 2 - kh, 0, 'Drag to make it wider on the right')}
-          {knob('w', -kh, D / 2 - kh, 180, 'Drag to make it wider on the left')}
-          {knob('s', W / 2 - kh, D - kh, 90, 'Drag to make it deeper')}
-          {knob('n', W / 2 - kh, -kh, -90, 'Drag to make it deeper at the back')}
-          {!taught && <span className="khand" style={{ left: W - 4, top: D / 2 + 4 }} aria-hidden="true">👆</span>}
-        </>}
       </div>
     </div>
   );

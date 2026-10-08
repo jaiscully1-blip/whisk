@@ -18,6 +18,7 @@ import WhiskStage, { outfitFrom } from './WhiskStage';
 import { fmt, levelFor } from '@/lib/game';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 import { countryArt } from '@/lib/world/flair';
+import { ITEMS, itemUrl } from '@/lib/art/items';
 import LevelUp from './LevelUp';
 
 const Ctx = createContext(null);
@@ -315,7 +316,12 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
                 <>
                   <p style={{ margin: '4px 0 0', fontWeight: 800, fontSize: 18, textAlign: 'center' }}>{COUNTRY_BY_ISO[popup.country]?.[1] || 'That country'} is Gold. It’s painted on your globe.</p>
                   <p className="row" style={{ justifyContent: 'center', gap: 6, margin: 0, fontFamily: 'var(--f-display)', fontSize: 28, fontWeight: 700 }}><Coin />+3,000 coins · +300 XP</p>
-                  <span className="desc" style={{ textAlign: 'center' }}>New kitchen things from there are in the shop, plus 2 harder challenges.</span>
+                  {Object.entries(ITEMS).some(([, v]) => v[3] === popup.country) && (
+                    <div className="unlocked" aria-label="Unlocked in the Kitchen shop">
+                      <span className="eyebrow">Unlocked in the shop</span>
+                      <div className="unlocked-row">{Object.entries(ITEMS).filter(([, v]) => v[3] === popup.country).map(([id, v]) => <span key={id} className="unlocked-it"><img src={itemUrl(id)} alt="" width="56" height="56" /><b>{v[0]}</b></span>)}</div>
+                    </div>
+                  )}
                   <button className="btn wide" style={{ marginTop: 8 }} onClick={closePopup} autoFocus>Nice!</button>
                 </>
               )}

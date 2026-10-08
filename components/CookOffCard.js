@@ -28,7 +28,7 @@ export default function CookOffCard() {
   // Two buttons to start with; each opens just what it needs (pick a time, or type a code).
   return (
     <section className="card stack co-card" data-tip="cookoff" aria-labelledby="co-h">
-      <div><h2 id="co-h" style={{ fontSize: 22 }}>Cook Off</h2><span className="desc">Everyone gets a recipe, cooks against the same clock, then votes.</span></div>
+      <div><h2 id="co-h" style={{ fontSize: 22 }}>Cook Off</h2><span className="desc">The clock is ticking. The competition is heating up. And one winning dish.</span></div>
       <div className="grid2">
         <button type="button" className={`btn ${open === 'make' ? '' : 'ghost'}`} aria-expanded={open === 'make'} onClick={() => setOpen(open === 'make' ? null : 'make')}><Icon name="plus" size={18} />New game</button>
         <button type="button" className={`btn ${open === 'join' ? '' : 'ghost'}`} aria-expanded={open === 'join'} onClick={() => setOpen(open === 'join' ? null : 'join')}>Join a game</button>

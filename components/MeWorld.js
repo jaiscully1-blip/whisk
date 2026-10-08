@@ -5,13 +5,13 @@ import { useWhisk } from './AppShell';
 import Icon, { Coin } from './Icon';
 import { useKitchens } from './usePantry';
 import Kitchen3D from './kitchen/Kitchen3D';
-import Flat from './kitchen/Flat';
 import { usePlace } from './kitchen/KitchenPanels';
 import * as K from '@/lib/kitchen/models';
 import { itemUrl } from '@/lib/art/items';
+import { MAGNETS, magnetUrl } from '@/lib/art/magnets';
 import { teamColors, COUNTRY_NAME } from '@/lib/world/flair';
-import { nextPlace, placeUrl } from '@/lib/art/tampa';
-import { fmt } from '@/lib/game';
+import { nextPlace } from '@/lib/art/tampa';
+import { fmt, LEVELS } from '@/lib/game';
 
 export const tierOf = (n, done) => (done || n >= 5 ? 'gold' : n >= 3 ? 'silver' : n >= 1 ? 'bronze' : '');
 export function FlagBar({ iso, size = 22 }) {
@@ -19,57 +19,64 @@ export function FlagBar({ iso, size = 22 }) {
   return <span className="flagbar" style={{ width: size, height: size, gridTemplateRows: `repeat(${c.length}, 1fr)` }} aria-hidden="true">{c.map((x, i) => <i key={i} style={{ background: x }} />)}</span>;
 }
 
-// Gold / Silver / Bronze: every country you've cooked from, by how many of its dishes you've made.
-export function TierList({ countries }) {
-  const rows = [['gold', 'Gold', '5 dishes'], ['silver', 'Silver', '3 dishes'], ['bronze', 'Bronze', '1 dish']];
-  const by = { gold: [], silver: [], bronze: [] };
-  for (const c of countries) { const t = tierOf(c.n, c.done); if (t) by[t].push(c); }
-  return (
-    <section className="tiers" aria-label="Your country tier list">
-      {rows.map(([t, label, need]) => (
-        <div key={t} className={`tier-row ${t}`}>
-          <span className="tier-tag"><b>{label}</b><small>{need}</small></span>
-          <div className="tier-items">
-            {by[t].length ? by[t].map((c) => (
-              <span key={c.country} className="tier-chip" title={`${COUNTRY_NAME[c.country] || c.country}: ${c.n} ${c.n === 1 ? 'dish' : 'dishes'}`}>
-                <FlagBar iso={c.country} />{COUNTRY_NAME[c.country] || c.country}{t !== 'gold' && <i>{c.n}/{t === 'bronze' ? 3 : 5}</i>}
-              </span>
-            )) : <span className="tier-empty">{t === 'bronze' && !countries.length ? 'Cook a dish from any country to start' : '—'}</span>}
-          </div>
-        </div>
-      ))}
-    </section>
-  );
-}
-
 // Level, where your kitchen is, and what you've collected.
-export function ProfileCard({ level, recipes, ingredients, countries, streak }) {
+export function ProfileCard({ level, xp, recipes, ingredients, countries, streak }) {
   const place = usePlace();
   const next = nextPlace(level.level);
-  const stats = [['Level', `${level.level}`], ['Restaurant', place.name], ['Recipes', fmt(recipes)], ['Ingredients', fmt(ingredients)], ['Countries', fmt(countries)], ['Streak', `${streak} ${streak === 1 ? 'day' : 'days'}`]];
+  const stats = [['Level', `${level.level}`], ['Recipes', fmt(recipes)], ['Ingredients', fmt(ingredients)], ['Countries', fmt(countries)], ['Streak', `${streak} ${streak === 1 ? 'day' : 'days'}`]];
+  // progress toward the next home
+  const xpAt = (lv) => (LEVELS.find((l) => l[0] === lv) || [0, 0])[1];
+  const a = xpAt(place.from), b = next ? xpAt(next.from) : 0;
+  const pct = next ? Math.max(0, Math.min(100, Math.floor(((xp - a) / Math.max(1, b - a)) * 100))) : 100;
   return (
     <section className="card pcard" aria-label="Profile">
       <dl className="pcard-grid">
-        {stats.map(([k, v]) => <div key={k} className={k === 'Restaurant' ? 'wide' : ''}><dt>{k}</dt><dd>{v}</dd></div>)}
+        {stats.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
       </dl>
-      {next && <span className="desc">Level {next.from}: move to the {next.name}</span>}
+      {next && (
+        <div className="pcard-next" aria-label={`${pct}% of the way to ${next.name}`}>
+          <div className="bar"><i style={{ width: `${pct}%` }} /></div>
+          <b>{next.name}</b>
+        </div>
+      )}
     </section>
   );
 }
 
 // The kitchen on display, where you live (by level). Things you buy show up in it.
 export function MyKitchen() {
-  const [kitchens] = useKitchens();
+  const { supabase, say } = useWhisk();
+  const [kitchens, , setKitchens] = useKitchens();
+  const [naming, setNaming] = useState(null);
   const place = usePlace();
   const shown = kitchens?.find((k) => k.is_display) || null;
   const pieces = useMemo(() => (shown ? K.cleanPieces(shown.pieces) : []), [shown]);
   const [cam, setCam] = useState({ rz: -24, rx: 56, zoom: 1, px: 0, py: 0 });
   if (kitchens === null) return <div className="card" style={{ height: 300 }} aria-busy="true" />;
+  const title = shown && shown.name && shown.name !== 'My kitchen' ? shown.name : 'Your kitchen';
+  async function rename(e) {
+    e.preventDefault();
+    const name = (naming || '').trim().slice(0, 40) || 'My kitchen';
+    setNaming(null);
+    if (!shown || name === shown.name) return;
+    setKitchens((l) => (l || []).map((k) => (k.id === shown.id ? { ...k, name } : k)));
+    const { error } = await supabase.from('kitchen_layouts').update({ name }).eq('id', shown.id);
+    if (error) say('Couldn’t rename it.');
+  }
   return (
     <section className="mykitchen" id="my-kitchen" aria-label="Your kitchen">
-      <Kitchen3D mode="view" place={place.key} pieces={pieces} cam={cam} onCam={setCam} height={320} />
+      {naming !== null ? (
+        <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={rename}>
+          <label htmlFor="mk-name" hidden>Kitchen name</label>
+          <input id="mk-name" className="input" maxLength={40} value={naming} onChange={(e) => setNaming(e.target.value)} autoFocus onBlur={rename} onKeyDown={(e) => { if (e.key === 'Escape') setNaming(null); }} />
+          <button className="btn sm" type="submit">Save</button>
+        </form>
+      ) : (
+        <button type="button" className="mk-title" onClick={() => (shown ? setNaming(title === 'Your kitchen' ? '' : title) : say('Build your kitchen first'))} aria-label={`${title}. Tap to rename`}><h2>{title}</h2></button>
+      )}
+      <Kitchen3D mode="view" place={place.key} pieces={pieces} cam={cam} onCam={setCam} height={400} scale={0.74} />
       <div className="mk-bar">
-        <span className="chip mk-where"><img src={placeUrl(place.key)} alt="" width="34" height="22" />{place.name}</span>
+        <span className="mk-where">{place.name}</span>
         <Link href="/pantry/kitchen/design" className="btn ghost sm"><Icon name="pencil" size={16} />{shown ? 'Edit' : 'Build it'}</Link>
       </div>
       {!shown && <span className="desc" style={{ textAlign: 'center' }}>{place.key === 'void' ? 'Nothing here yet. Cook a meal to move in, then build your kitchen.' : 'Build your kitchen, then everything you buy goes in it.'}</span>}
@@ -78,10 +85,13 @@ export function MyKitchen() {
 }
 
 // Coins buy things for your kitchen; each one lands in the kitchen on display straight away.
-const KINDS = [['all', 'All'], ['appliance', 'Appliances'], ['gear', 'Gear'], ['decor', 'Decor'], ['finish', 'Finishes'], ['country', 'From your countries']];
+// shop sections: kitchen things, finishes, then fridge magnets by kind
+const KINDS = [['kitchen', 'Kitchen'], ['dog', 'Dogs'], ['cat', 'Cats'], ['pet', 'Pets'], ['place', 'Places'], ['paper', 'Cards & art'], ['cool', 'Cool magnets'], ['finish', 'Finishes'], ['country', 'From your countries']];
+const SECTION = { city: 'place', postcard: 'place', art: 'paper', drawing: 'paper', test: 'paper', report: 'paper', wedding: 'paper', xmas: 'paper' };
+const sectionOf = (it) => (it.country ? 'country' : it.kind === 'magnet' ? (SECTION[MAGNETS[it.id]?.group] || MAGNETS[it.id]?.group || 'cool') : it.kind === 'finish' ? 'finish' : 'kitchen');
 const FIN_SAMPLE = { fin_terrazzo: ['terrazzo', 'top'], fin_lacquer: ['lacquer', 'cabinet'], fin_copper: ['copper', 'appliance'], fin_goldmarble: ['goldmarble', 'top'] };
 function ItemPic({ it, size = 64 }) {
-  if (it.kind === 'appliance') return <span style={{ width: size, height: size, display: 'grid', placeItems: 'center' }}><Flat mid={it.id} box={[size, size]} /></span>;
+  if (it.kind === 'magnet') return <img src={magnetUrl(it.id)} alt="" width={size} height={size} draggable={false} />;
   if (it.kind === 'finish') {
     const [tex, grp] = FIN_SAMPLE[it.id] || ['marble', 'top'];
     const fin = { tex, color: K.colorsFor(grp, tex)[0]?.[0] || '#ccc' };
@@ -93,19 +103,23 @@ function ItemPic({ it, size = 64 }) {
 export function KitchenShop({ world, setWorld, onGetCoins }) {
   const { supabase, profile, refreshProfile, say } = useWhisk();
   const [kitchens, reloadKitchens, setKitchens] = useKitchens();
-  const [kind, setKind] = useState('all');
+  const [kind, setKind] = useState('kitchen');
   const [buying, setBuying] = useState(null);
   const [busy, setBusy] = useState(false);
   const owned = useMemo(() => new Set(world?.owned || []), [world]);
   const doneSet = useMemo(() => new Set((world?.countries || []).filter((c) => c.done).map((c) => c.country)), [world]);
   // country things stay hidden until you've finished that country
   const shop = useMemo(() => (world?.shop || []).filter((it) => !it.country || doneSet.has(it.country)), [world, doneSet]);
-  const hiddenCountries = (world?.shop || []).some((it) => it.country && !doneSet.has(it.country));
-  const list = shop.filter((it) => kind === 'all' || (kind === 'country' ? !!it.country : it.kind === kind && !it.country)).sort((a, b) => (owned.has(a.id) - owned.has(b.id)) || a.price - b.price);
-  const kinds = KINDS.filter(([k]) => k !== 'country' || shop.some((it) => it.country));
+  const list = shop.filter((it) => it.kind !== 'appliance' && sectionOf(it) === kind)
+    .sort((a, b) => (owned.has(a.id) - owned.has(b.id)) || (a.kind === 'magnet' && a.price === b.price ? a.name.localeCompare(b.name) : a.price - b.price));
+  const kinds = KINDS.filter(([k]) => shop.some((it) => it.kind !== 'appliance' && sectionOf(it) === k));
 
   // put what you bought into the kitchen on display (or a starter kitchen if you don't have one yet)
   async function addToKitchen(it) {
+    if (it.kind === 'magnet') {
+      const shownK = (kitchens || []).find((k) => k.is_display);
+      return shownK && K.cleanPieces(shownK.pieces).some((p) => K.MODEL[p.mid]?.cat === 'fridge') ? 'on your fridge' : 'yours (add a fridge in Layout kitchen to show it off)';
+    }
     let shown = (kitchens || []).find((k) => k.is_display);
     let pieces = shown ? K.cleanPieces(shown.pieces) : K.starterKitchen();
     let where = 'in your kitchen';
@@ -149,7 +163,7 @@ export function KitchenShop({ world, setWorld, onGetCoins }) {
     const where = await addToKitchen(it);
     setBusy(false); setBuying(null);
     say(`${it.name}: ${where}!`);
-    if (where === 'in your kitchen') document.getElementById('my-kitchen')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (where === 'in your kitchen' || where === 'on your fridge') document.getElementById('my-kitchen')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     void data;
   }
 
@@ -170,7 +184,7 @@ export function KitchenShop({ world, setWorld, onGetCoins }) {
           {list.map((it) => {
             const have = owned.has(it.id);
             return (
-              <button key={it.id} type="button" className={`card tile ${have ? 'have' : ''}`} onClick={() => (have ? say(it.kind === 'finish' ? 'Yours · pick it in Paint' : 'Yours · it’s in your things') : setBuying(it))}
+              <button key={it.id} type="button" className={`card tile ${have ? 'have' : ''}`} onClick={() => (have ? say(it.kind === 'finish' ? 'Yours · pick it in Paint' : it.kind === 'magnet' ? 'Yours · it’s on your fridge' : 'Yours · it’s in your things') : setBuying(it))}
                 aria-label={have ? `${it.name}, yours` : `${it.name}, ${fmt(it.price)} coins`}>
                 <ItemPic it={it} />
                 {it.country && <span className="shop-from"><FlagBar iso={it.country} size={14} /></span>}
@@ -180,14 +194,13 @@ export function KitchenShop({ world, setWorld, onGetCoins }) {
             );
           })}
         </div>
-        {hiddenCountries && <p className="desc shop-teaser"><Icon name="lock" size={14} /> Finish a country (5 dishes) and its kitchen things show up here.</p>}
       </>}
       {buying && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setBuying(null); }}>
           <div className="sheet stack" role="dialog" aria-modal="true" aria-label={`Buy ${buying.name}`} style={{ alignItems: 'center', textAlign: 'center' }}>
             <span className="shop-big"><ItemPic it={buying} size={140} /></span>
             <h2 style={{ fontSize: 26, margin: 0 }}>{buying.name}</h2>
-            <p className="muted" style={{ margin: 0 }}>{buying.kind === 'finish' ? 'Goes on everything it fits in your kitchen. Change it any time in Paint.' : 'Goes straight into your kitchen. Move it around in Layout kitchen.'}</p>
+            <p className="muted" style={{ margin: 0 }}>{buying.kind === 'finish' ? 'Goes on everything it fits in your kitchen. Change it any time in Paint.' : buying.kind === 'magnet' ? 'Sticks to the fridge in your kitchen.' : 'Goes straight into your kitchen. Move it around in Layout kitchen.'}</p>
             <p className="muted" style={{ margin: 0 }}>You have {fmt(profile?.coins)} coins.</p>
             {(profile?.coins || 0) >= buying.price
               ? <button data-tour="buy" className="btn wide" onClick={buy} disabled={busy}><Coin />{busy ? 'Buying…' : `Buy for ${fmt(buying.price)}`}</button>

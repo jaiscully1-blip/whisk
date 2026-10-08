@@ -95,7 +95,7 @@ function DishCard({ d, have, country }) {
           <Icon name="flip" size={18} />
         </button>
         <div className="card face back stack dish-back cx" style={cultureStyle(d.countries?.[0])} data-motif={motifFor(d.countries?.[0])} aria-hidden={!on}>
-          {on && <Scene iso={d.countries?.[0]} title={d.name} height={130} className="scene-bleed" />}
+          {on && <Scene iso={d.countries?.[0]} title={d.name} ingredients={d.ingredients || (info?.ingredients || []).map((x) => x.name)} height={130} className="scene-bleed" />}
           <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
             <b style={{ fontFamily: 'var(--f-display)', fontSize: 19 }}>{d.name}</b>
             <button className="btn ghost sm" style={{ width: 40, padding: 0 }} onClick={() => setOn(false)} aria-label="Flip back" tabIndex={t}><Icon name="flip" size={18} /></button>

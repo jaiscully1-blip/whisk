@@ -14,6 +14,7 @@ import Icon from './Icon';
 const W = 360, H = 430, CX = 180, CY = 182, R = 142, TILT = 23.5, PHI = -12;
 export const GLOBE_ZOOM = [0.85, 1.5];
 const SPIN = 0.045;              // deg/ms: faster than this counts as "spinning" (the dart button wakes up)
+const FLING = 1.0, FRICTION = 0.99945;   // a swipe throws it into a fast spin that lasts about 5 seconds (count 5-4-3-2-1)
 const DRIFT = 0.006;             // the slow idle turn
 const tierOf = (n, done) => (done || n >= 5 ? 'gold' : n >= 3 ? 'silver' : n >= 1 ? 'bronze' : '');
 const FILL = { '': '#A7ADB4', bronze: '#CD8A4A', silver: '#E3E8EE' };
@@ -44,7 +45,14 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook }) 
   const [spinning, setSpinning] = useState(false);
   const [phase, setPhase] = useState('idle');     // idle | aim | done
   const [result, setResult] = useState(null);     // { iso, name } | { miss: true }
-  const svg = useRef(null);
+  const svg = useRef(null), box = useRef(null);
+  // while a finger is on the globe's box the page stays put (iOS needs a non-passive touchmove for that)
+  useEffect(() => {
+    const el = box.current; if (!el) return undefined;
+    const stop = (e) => { if (!e.target.closest?.('button')) e.preventDefault(); };
+    el.addEventListener('touchmove', stop, { passive: false });
+    return () => el.removeEventListener('touchmove', stop);
+  }, []);
   const els = useRef({});                           // index → { path, clip, art, edge }
   const st = useRef({ lam: -20, vel: 0.12, drag: null, aim: null, dart: null, zoom: 1, pins: new Map(), run: true });
   st.current.zoom = zoom;
@@ -68,7 +76,7 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook }) 
         if (t >= 1) { const a = s.aim; s.aim = null; s.vel = 0; a.end(); }
       } else if (!s.drag) {
         s.lam += s.vel * dt;
-        s.vel *= Math.pow(0.9975, dt);
+        s.vel *= Math.pow(FRICTION, dt);
         if (!reduce && Math.abs(s.vel) < DRIFT) s.vel = (s.vel >= 0 ? 1 : -1) * DRIFT;
         if (reduce && Math.abs(s.vel) < 0.002) s.vel = 0;
       }
@@ -118,7 +126,7 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook }) 
   // swipe left/right to spin; two fingers pinch to zoom (kept tight)
   const fingers = useRef(new Map());
   const down = (e) => {
-    const s = st.current; if (s.aim) return;
+    const s = st.current; if (s.aim || e.target.closest?.('button')) return;
     fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ }
     if (fingers.current.size === 2) { const [a, b] = [...fingers.current.values()]; s.pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, z0: s.zoom }; s.drag = null; return; }
@@ -140,12 +148,14 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook }) 
     if (s.pinch) { if (fingers.current.size < 2) s.pinch = null; return; }
     if (!s.drag) return;
     if (performance.now() - s.drag.t > 120) s.dragVel = 0;   // held still before letting go: no fling
-    s.vel = Math.max(-1.4, Math.min(1.4, s.dragVel || 0)); s.drag = null;
+    const v = s.dragVel || 0;
+    s.vel = Math.abs(v) > 0.12 ? Math.sign(v) * Math.min(1.6, Math.max(FLING, Math.abs(v))) : v;
+    s.drag = null;
   };
   const key = (e) => { const s = st.current; if (s.aim) return; if (e.key === 'ArrowRight') { s.vel += 0.25; e.preventDefault(); } if (e.key === 'ArrowLeft') { s.vel -= 0.25; e.preventDefault(); } };
   const ctrlWheel = useRef(null);
   useEffect(() => {
-    const el = svg.current; if (!el) return undefined;
+    const el = box.current; if (!el) return undefined;
     const onWheel = (e) => { if (!e.ctrlKey) return; e.preventDefault(); setZoom((z) => Math.min(GLOBE_ZOOM[1], Math.max(GLOBE_ZOOM[0], z * Math.exp(-e.deltaY * 0.01)))); };
     ctrlWheel.current = onWheel; el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
@@ -176,10 +186,9 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook }) 
   const ringBottom = [CX - Math.sin(ringA) * RR, CY + Math.cos(ringA) * RR];
   return (
     <div className="globe">
-      <div className="globe-box">
+      <div className="globe-box" ref={box} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
         <svg ref={svg} viewBox={`0 0 ${W} ${H}`} className="globe-svg" role="img" tabIndex={0}
-          aria-label={`Globe. Swipe to spin. ${cooked.length} countries cooked from.`}
-          onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={key}>
+          aria-label={`Globe. Swipe to spin. ${cooked.length} countries cooked from.`} onKeyDown={key}>
           <defs>
             <radialGradient id="gl-sea" cx="42%" cy="36%" r="70%"><stop offset="0" stopColor="#EEF3F7" /><stop offset="1" stopColor="#C9D5DE" /></radialGradient>
             <radialGradient id="gl-shade" cx="36%" cy="30%" r="75%"><stop offset="0" stopColor="#fff" stopOpacity=".55" /><stop offset=".35" stopColor="#fff" stopOpacity="0" /><stop offset=".8" stopColor="#1B2430" stopOpacity=".12" /><stop offset="1" stopColor="#1B2430" stopOpacity=".42" /></radialGradient>
@@ -235,8 +244,8 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook }) 
         <span className="globe-hint">{phase === 'aim' ? 'Here it comes…' : spinning ? 'It’s spinning: throw!' : 'Swipe to spin'}</span>
       </div>
       <button type="button" className={`btn wide globe-throw ${spinning && phase !== 'aim' ? 'ready' : ''}`} onClick={throwDart} disabled={!world || !spinning || phase === 'aim'}
-        aria-label={spinning ? 'Throw a dart' : 'Throw a dart (spin the globe first)'}>
-        <Icon name="dart" size={20} />{phase === 'aim' ? 'Throwing…' : spinning ? 'Throw a dart' : 'Spin it to throw'}
+>
+        <Icon name="dart" size={20} />Throw a dart
       </button>
       {result && (
         <div className={`card globe-hit ${result.miss ? 'miss' : ''}`} role="status">
@@ -245,10 +254,7 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook }) 
           ) : (
             <>
               <span className="globe-flagbar" aria-hidden="true">{teamColors(result.iso).slice(0, 4).map((c, i) => <i key={i} style={{ background: c }} />)}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <b>{result.name}!</b>
-                <span className="desc" style={{ display: 'block' }}>{(counts.get(result.iso) || 0) ? `${counts.get(result.iso)} of 5 dishes cooked` : `Cook something from ${result.name}`}{result.dish ? ` · try ${result.dish}` : ''}</span>
-              </div>
+              <b style={{ flex: 1, minWidth: 0, fontSize: 18 }}>{result.name}!</b>
               <button type="button" className="btn sm" onClick={() => onCook?.(result)}>Cook it</button>
             </>
           )}

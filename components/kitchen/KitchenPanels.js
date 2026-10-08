@@ -94,7 +94,7 @@ export function KitchenTab({ items }) {
   const here = picked ? at[picked] || [] : [];
   return (
     <div className="stack">
-      <Kitchen3D mode="view" place={place.key} pieces={pieces} cam={cam} onCam={setCam} open={open} spot={spot} height={400}
+      <Kitchen3D mode="view" place={place.key} pieces={pieces} cam={cam} onCam={setCam} open={open} spot={spot} height={440} scale={0.78}
         onToggle={(k) => setOpen((o) => ({ ...o, [k]: !o[k] }))} onSpot={(k) => setPicked(k)} />
       {picked && (
         <div className="card row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>

@@ -7,7 +7,7 @@ import { useWhisk, useDraft } from '@/components/AppShell';
 import Icon from '@/components/Icon';
 import GetCoinsSheet from '@/components/GetCoinsSheet';
 import Globe from '@/components/Globe';
-import { TierList, ProfileCard, MyKitchen, KitchenShop, CountryChallenges } from '@/components/MeWorld';
+import { ProfileCard, MyKitchen, KitchenShop, CountryChallenges } from '@/components/MeWorld';
 import ResetSheet from '@/components/ResetSheet';
 import NeverShowSheet from '@/components/NeverShowSheet';
 import BackupSheet from '@/components/BackupSheet';
@@ -92,8 +92,7 @@ export default function Me() {
           </form>
         ) : (
           <>
-            <button className="namebtn" onClick={() => { setNameDraft(nameDraft || profile?.display_name || ''); setEditing(true); }} aria-label={`Edit name: ${name}`}><h1>{name}</h1><Icon name="pencil" size={18} /></button>
-            {lvl.level > 0 && <span className="muted" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>Lv {lvl.level} · {lvl.title}</span>}
+            <button className="namebtn" onClick={() => { setNameDraft(nameDraft || profile?.display_name || ''); setEditing(true); }} aria-label={`Edit name: ${name}`}><h1>{name}</h1></button>
           </>
         )}
       </div>
@@ -102,13 +101,10 @@ export default function Me() {
         <div className="bar" style={{ height: 10, marginTop: 4 }}><i style={{ width: `${lvl.pct}%` }} /></div>
       </div>
 
-      <TierList countries={countries} />
-      <ProfileCard level={lvl} recipes={recipesCooked} ingredients={ingredients} countries={countries.length} streak={profile?.streak_days || 0} />
+      <ProfileCard level={lvl} xp={profile?.xp || 0} recipes={recipesCooked} ingredients={ingredients} countries={countries.length} streak={profile?.streak_days || 0} />
 
-      <h2 style={{ fontSize: 22, margin: '4px 0 -4px' }}>Your kitchen</h2>
       <MyKitchen />
 
-      <h2 style={{ fontSize: 22, margin: '4px 0 -4px' }} data-tip="album">Your world</h2>
       <div data-tour="stage" data-tip="stage"><Globe counts={counts} done={doneSet} onCook={cookFrom} /></div>
 
       <CountryChallenges challenges={world?.challenges} onOpen={openChallenge} />

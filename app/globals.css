@@ -769,7 +769,7 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .album { content-visibility: auto; contain-intrinsic-size: auto 620px; }
 
 /* ---------- Kitchen 3D (components/kitchen) ---------- */
-.k3 { position: relative; perspective: 1100px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; border-radius: 22px; }
+.k3 { position: relative; perspective: 1100px; overflow: hidden; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; border-radius: 22px; }
 .k3.view { background: radial-gradient(ellipse at 50% 30%, #FFF8EC, #EADBC3); }
 .k3.build { background: #F2F7FC; }
 .k3.mini { background: radial-gradient(ellipse at 50% 35%, #FFF6E6, #EFDDBF); cursor: pointer; touch-action: pan-y; }
@@ -944,13 +944,11 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .kd-texlock { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.35); border-radius: 9px; color: #fff; }
 .kflat-thing { display: block; -webkit-user-drag: none; }
 /* where your kitchen is (lib/art/tampa.js): a Tampa home that moves up with your level */
-.k3-bg { position: absolute; inset: 0; background-size: cover; background-position: center 30%; pointer-events: none; }
-.k3-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,.18)); }
 .k3.placed.at-void .k3-floor { box-shadow: 0 0 0 8px rgba(255,255,255,.06), 0 0 40px rgba(140,170,255,.25); }
 /* the globe (components/Globe.js) */
 .globe { display: grid; gap: 10px; }
-.globe-box { position: relative; border-radius: 26px; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(120% 90% at 50% 30%, var(--card) 0%, var(--stage) 75%); }
-.globe-svg { display: block; width: 100%; max-width: 420px; margin: 0 auto; aspect-ratio: 360 / 430; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; outline: none; }
+.globe-box { position: relative; border-radius: 26px; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(120% 90% at 50% 30%, var(--card) 0%, var(--stage) 75%); touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.globe-svg { display: block; width: 100%; max-width: 420px; margin: 0 auto; aspect-ratio: 360 / 430; touch-action: none; user-select: none; -webkit-user-select: none; outline: none; }
 .globe-svg:active { cursor: grabbing; }
 .globe-svg:focus-visible { box-shadow: inset 0 0 0 3px var(--accent); border-radius: 26px; }
 .globe-zoom { position: absolute; right: 10px; top: 10px; display: grid; gap: 6px; }
@@ -1004,3 +1002,36 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .shop-teaser { display: flex; align-items: center; gap: 6px; margin: 0; }
 .cchal { display: flex; align-items: center; gap: 12px; text-align: left; }
 .cchal.hard { border-color: #E0A93B; box-shadow: inset 0 0 0 1px #E0A93B; }
+
+.pcard-next { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
+.pcard-next .bar { height: 10px; }
+.pcard-next b { font-family: var(--f-display); font-size: 15px; white-space: nowrap; }
+.mk-title { background: none; border: 0; padding: 0; text-align: left; color: var(--fg); cursor: pointer; justify-self: start; }
+.mk-title h2 { font-size: 22px; margin: 0; }
+.mk-where { font-weight: 800; color: var(--muted); }
+
+.unlocked { display: grid; gap: 6px; justify-items: center; }
+.unlocked-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.unlocked-it { display: grid; justify-items: center; gap: 2px; font-size: 13px; animation: gl-in .4s ease-out both; }
+
+.kmag { position: absolute; width: 13px; height: 13px; pointer-events: none; -webkit-user-drag: none; filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); }
+
+/* the dollhouse room around the 3D kitchen */
+.kwall, .kslab { position: absolute; backface-visibility: hidden; -webkit-backface-visibility: hidden; background-size: 100% 100%; pointer-events: none; }
+.kwall-turn { position: absolute; width: 0; height: 0; transform-style: preserve-3d; transform-origin: 0 0; }
+.kwall { transform-style: preserve-3d; }
+.kwall-img { position: absolute; inset: 0; background-size: 100% 100%; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.k3.placed, .k3.placed.view, .k3.placed.mini { background: transparent; border: 0 !important; box-shadow: none !important; border-radius: 0; }
+
+.kknob.side { transform: translateZ(-3px); }
+.kc-wall { backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+.kc-board { position: absolute; display: block; }
+.kc-sign { position: absolute; font-size: 9px; font-weight: 800; color: #fff; background: rgba(0,0,0,.45); padding: 1px 6px; border-radius: 99px; pointer-events: none; white-space: nowrap; }
+.k3.view .kcloset { cursor: zoom-in; }
+
+.fr-copy { display: block; background: none; border: 0; padding: 0; color: var(--fg); cursor: copy; text-align: left; }
+.fr-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.fr-chip { gap: 6px; font-weight: 800; }
+.post-av.sm { width: 22px; height: 22px; font-size: 12px; }
+
+.k3.placed:not(.mini) .k3-cam { top: 64%; }

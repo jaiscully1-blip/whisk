@@ -81,10 +81,8 @@ export default function Friends() {
     await supabase.rpc('set_meal_shared', { p_meal: p.id, p_shared: false });
     setFeed((x) => x.filter((y) => y.id !== p.id)); say('Only you can see it now');
   }
-  async function shareCode() {
-    const text = `Add me on Whisk! My friend code is ${f.code}`;
-    try { if (navigator.share) { await navigator.share({ text, url: `${window.location.origin}/login?ref=${f.code}` }); return; } } catch { return; }
-    try { await navigator.clipboard.writeText(f.code); say('Code copied'); } catch {}
+  async function copyCode() {
+    try { await navigator.clipboard.writeText(f.code); say('Code copied'); } catch { say(`Your code: ${f.code}`); }
   }
 
   return (
@@ -108,22 +106,26 @@ export default function Friends() {
       <CookOffCard />
 
       <section className="card stack" style={{ gap: 10 }} aria-label="Add a friend">
-        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <div><span className="eyebrow">Your friend code</span><div className="fr-code">{f?.code || '······'}</div></div>
-          <button className="btn ghost sm" onClick={shareCode} disabled={!f?.code}><Icon name="share" size={16} />Share</button>
+        <div><span className="eyebrow">Your friend code</span>
+          <button type="button" className="fr-code fr-copy" onClick={copyCode} disabled={!f?.code} aria-label={f?.code ? `Your friend code ${f.code}. Tap to copy` : 'Your friend code'}>{f?.code || '······'}</button>
         </div>
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={add}>
           <label htmlFor="fr-code" hidden>Friend’s code</label>
-          <input id="fr-code" className="input co-code-in" maxLength={6} autoCapitalize="characters" autoComplete="off" placeholder="Friend’s code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} />
+          <input id="fr-code" className="input co-code-in" maxLength={6} autoCapitalize="characters" autoComplete="off" value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} />
           <button className="btn" type="submit" disabled={busy}>Add</button>
         </form>
+        {f?.friends?.length > 0 && (
+          <div className="fr-list" aria-label="Your friends">
+            {f.friends.map((x) => <span key={x.code} className="chip fr-chip"><span className="post-av sm" style={{ background: color(x.name) }} aria-hidden="true">{x.name.slice(0, 1).toUpperCase()}</span>{x.name}</span>)}
+          </div>
+        )}
       </section>
 
       <h2 style={{ fontSize: 22, marginTop: 4 }}>Plates</h2>
-      <span className="desc" style={{ marginTop: -8 }}>Yours stay private until you tap “Share with friends” after cooking.</span>
+      <span className="desc" style={{ marginTop: -8 }}>Add a friend to see what they cook.</span>
 
       {feed === null ? <p className="muted">Loading plates…</p> : feed.length === 0 ? (
-        <div className="empty"><b>No plates yet</b>{f?.friends?.length ? 'When your friends share a plate, it shows up here.' : 'Add a friend with their code to see what they cook.'}</div>
+        <div className="empty"><b>No plates yet</b>{f?.friends?.length ? 'When your friends share a plate, it shows up here.' : ''}</div>
       ) : feed.map((p) => (
         <article key={p.id} className="card post" aria-label={`${p.mine ? 'Your' : `${p.name}’s`} plate: ${p.title}`}>
           <div className="post-head">

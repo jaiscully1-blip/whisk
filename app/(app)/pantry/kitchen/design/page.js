@@ -51,7 +51,7 @@ export default function Design() {
     const n = (list?.length || 0) + 1;
     const pieces = kind === 'starter' ? K.starterKitchen() : kind === 'copy' ? edit.pieces.map((p) => ({ ...p, id: K.newId() })) : [];
     setEdit({ id: null, name: kind === 'copy' ? `${edit.name} copy`.slice(0, 40) : kind === 'dream' ? 'Dream kitchen' : `Kitchen ${n}`, pieces, saved: '' });
-    setSel(null); setSheet(kind === 'blank' || kind === 'dream' ? 'add' : null); setLook(false);
+    setSel(null); setSheet(null); setLook(false);
   }
   async function save() {
     if (!edit || busy) return null;
@@ -93,6 +93,7 @@ export default function Design() {
     const nb = m.thing ? K.placeThing(edit.pieces, K.piece(mid)) : K.placeFree(edit.pieces, K.piece(mid));
     if (!nb) { say('No room left on the floor. Shrink or remove something.'); return; }
     setPieces((p) => [...p, nb]); setSel(nb.id); setSheet(null); setLook(false);
+    if (K.isRoom(nb)) setCam((c) => ({ ...c, zoom: Math.min(c.zoom || 1, 0.62), px: 0, py: 0 }));   // step back so the new room shows next to the kitchen
     say(`+ ${m.nick}`);
   }
   const copySel = () => { if (!selB) return; if (K.isThing(selB)) { say('You have one of those'); return; } const nb = K.placeFree(edit.pieces, { ...selB, id: K.newId() }); if (!nb) { say('No room left on the floor.'); return; } setPieces((p) => [...p, nb]); setSel(nb.id); };
@@ -163,9 +164,15 @@ export default function Design() {
           </div>
         </div>
       ) : (
-        <div className="grid2">
-          <button type="button" className="btn ghost" onClick={() => setSheet('add')}><Icon name="plus" size={18} />Add</button>
-          <Link href="/pantry/kitchen" className="btn">Put food away</Link>
+        <div className="stack" style={{ gap: 8 }}>
+          <div className="grid2">
+            <button type="button" className="btn ghost" onClick={() => addModel('closet')}><Icon name="pantry" size={18} />Pantry closet</button>
+            <button type="button" className="btn ghost" onClick={() => addModel('spice')}><Icon name="plus" size={18} />Spice cabinet</button>
+          </div>
+          <div className="grid2">
+            <button type="button" className="btn ghost" onClick={() => setSheet('add')}><Icon name="plus" size={18} />Add</button>
+            <Link href="/pantry/kitchen" className="btn">Put food away</Link>
+          </div>
         </div>
       )}
       <p className="desc" style={{ margin: 0, textAlign: 'center' }}>{edit.pieces.length} pieces · {K.index(edit.pieces).total} spots{isShown ? ' · on display in your Pantry' : ''}</p>
@@ -248,7 +255,7 @@ function AddSheet({ onAdd, owned, placed, onClose }) {
         <div className="row" style={{ flexWrap: 'nowrap' }}>
           <div className="kd-search">
             <div className="kd-ghost" aria-hidden="true"><span style={{ color: 'transparent' }}>{q}</span>{ghost}</div>
-            <input className="input" value={q} onChange={(e) => { setQ(e.target.value); if (cat === 'mine') setCat('all'); }} placeholder="Describe it… “fridge with 2 doors”" aria-label="Describe it" autoComplete="off" spellCheck={false} autoFocus
+            <input className="input" value={q} onChange={(e) => { setQ(e.target.value); if (cat === 'mine') setCat('all'); }} placeholder="Describe it… “fridge with 2 doors”" aria-label="Describe it" autoComplete="off" spellCheck={false}
               onKeyDown={(e) => { if ((e.key === 'Tab' || e.key === 'ArrowRight') && ghost) { e.preventDefault(); setQ(guess.desc); } if (e.key === 'Enter' && ranked[0]) { e.preventDefault(); onAdd(ranked[0].m.id); } }} />
           </div>
           {ghost && <button type="button" className="btn sm kd-accept" onClick={() => setQ(guess.desc)} aria-label={`Use ${guess.desc}`}><Icon name="chevron" size={18} /></button>}

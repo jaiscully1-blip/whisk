@@ -822,6 +822,22 @@ await db.exec(`update profiles set coins = 5000 where id = '${W2}'`);
 check('a completed country unlocks its shop things', (await as(W2, () => db.query(`select public.buy_kitchen_item('mx_press') as r`))).rows[0].r.coins === 3000);
 check('other people can’t see your countries or challenges', (await as(W1, () => db.query(`select (select count(*) from country_done)::int a, (select count(*) from country_challenges)::int b`))).rows[0].a === 0);
 
+// ================= 0025: fridge magnets, free appliances, night mode =================
+await db.exec(`insert into auth.users (id) values ('00000000-0000-4000-8000-00000000d0d0') on conflict do nothing`);
+try { const f = fs.readFileSync('./supabase/migrations/0025_magnets_night.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0025 runs (twice)', true); }
+catch (e) { check('0025 runs (twice)', false, e.message); }
+const mg = (await db.query(`select count(*)::int n, count(distinct price) filter (where id like 'md\\_%' or id like 'mc\\_%' or id like 'mp\\_%')::int p from kitchen_items where kind = 'magnet' and active`)).rows[0];
+check('the shop sells 200+ fridge magnets; every animal costs the same', mg.n >= 200 && mg.p === 1, JSON.stringify(mg));
+check('appliances aren’t sold any more', (await db.query(`select count(*)::int n from kitchen_items where kind = 'appliance' and active`)).rows[0].n === 0);
+check('…and are free to put in any kitchen', !!(await as(W2, () => db.query(`insert into kitchen_layouts (name, pieces) values ('Pro', ${pcs('prorange')}) returning id`))).rows[0]);
+await expectFail('gear you don’t own still needs buying', W2, `insert into kitchen_layouts (name, pieces) values ('Mine2', ${pcs('x:robot_arm')})`);
+await db.exec(`update profiles set coins = 600 where id = '${W2}'`);
+check('a magnet can be bought', (await as(W2, () => db.query(`select public.buy_kitchen_item('md_golden_retriever') as r`))).rows[0].r.coins === 100);
+check('night mode is the default look', (await db.query(`select column_default d from information_schema.columns where table_name = 'profiles' and column_name = 'theme_pref'`)).rows[0].d.includes('night'));
+await db.exec(`insert into public.profiles (id) values ('00000000-0000-4000-8000-00000000d0d0') on conflict (id) do update set theme_pref = 'day'`);
+await db.exec(fs.readFileSync('./supabase/migrations/0025_magnets_night.sql', 'utf8'));
+check('running setup 18 again doesn’t undo a player’s choice of day mode', (await db.query(`select theme_pref from profiles where id = '00000000-0000-4000-8000-00000000d0d0'`)).rows[0].theme_pref === 'day');
+
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

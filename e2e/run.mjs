@@ -288,19 +288,32 @@ await step('compete', async () => {
 });
 await step('me', async () => {
   await nav('Me');
-  await page.getByRole('heading', { name: 'Your world' }).waitFor();
-  check('no pose buttons on Me', (await page.getByRole('button', { name: 'We’re so back!' }).count()) === 0);
-  check('tier list at the top: Gold, Silver, Bronze', (await page.locator('.tier-row').count()) === 3 && (await page.locator('.tier-row').first().innerText()).includes('Gold'));
-  check('cooking Mexican puts Mexico on the tier list', await page.locator('.tier-row .tier-chip', { hasText: 'Mexico' }).waitFor({ timeout: 8000 }).then(() => true, () => false));
+  await page.locator('.globe').waitFor();
+  check('no pose buttons, no tier list, no "Your world" heading on Me', (await page.getByRole('button', { name: 'We’re so back!' }).count()) === 0 && (await page.locator('.tier-row').count()) === 0 && (await page.getByRole('heading', { name: 'Your world' }).count()) === 0);
+  check('cooking Mexican shows on the globe (Bronze)', await page.locator('.globe-svg path.gl-c.bronze').first().waitFor({ state: 'attached', timeout: 8000 }).then(() => true, () => false));
   const pc = await page.locator('.pcard').innerText();
-  check('profile: Level, Restaurant, Recipes, Ingredients, Countries, Streak', ['Level', 'Restaurant', 'Recipes', 'Ingredients', 'Countries', 'Streak'].every((k) => new RegExp(k, 'i').test(pc)), pc);
-  check('kitchen sits in a Tampa home by level (the Riverwalk apartment at level 1+)', /Riverwalk apartment|Ybor City loft|Hyde Park bungalow|Bayshore condo/.test(pc) && (await page.locator('#my-kitchen .k3-bg').count()) === 1);
-  check('tier list is above the profile, the kitchen above the globe', (await page.locator('.tiers').boundingBox()).y < (await page.locator('.pcard').boundingBox()).y && (await page.locator('#my-kitchen').boundingBox()).y < (await page.locator('.globe').boundingBox()).y);
-  check('Kitchen shop: appliances, gear, decor, finishes with prices', (await page.locator('.shop-grid .tile').count()) >= 25 && /\d/.test(await page.locator('.shop-grid .tile .tprice').first().innerText()));
-  check('country things stay hidden until that country is done', (await page.locator('.shop-grid .tile', { hasText: 'Molcajete' }).count()) === 0 && (await page.getByText(/Finish a country \(5 dishes\)/).count()) === 1);
+  check('profile: Level, Recipes, Ingredients, Countries, Streak (no Restaurant)', ['Level', 'Recipes', 'Ingredients', 'Countries', 'Streak'].every((k) => new RegExp(k, 'i').test(pc)) && !/Restaurant|Riverwalk Apartment/i.test(pc), pc);
+  check('a progress bar to the next home, named only', /Ybor City Loft|Hyde Park Bungalow|Bayshore Condo/.test(pc) && !/Level \d+: move/.test(pc) && (await page.locator('.pcard-next .bar').count()) === 1);
+  check('the kitchen stands in a cut-away room (floor slab + walls that hide on the near side), no box or wallpaper', (await page.locator('#my-kitchen .kwall').count()) === 4 && (await page.locator('#my-kitchen .k3-bg').count()) === 0 && (await page.locator('#my-kitchen .k3.placed').count()) === 1);
+  check('the kitchen is above the globe', (await page.locator('#my-kitchen').boundingBox()).y < (await page.locator('.globe').boundingBox()).y);
+  check('no pencil next to your name, no "Lv" text', (await page.locator('.namebtn svg').count()) === 0 && (await page.locator('.page-title').first().getByText(/^Lv /).count()) === 0);
+  check('Kitchen shop opens on kitchen things with prices, no appliances', (await page.locator('.shop-grid .tile').count()) >= 20 && /\d/.test(await page.locator('.shop-grid .tile .tprice').first().innerText()) && (await page.locator('.shop [role=tab]', { hasText: 'Appliances' }).count()) === 0 && (await page.locator('.shop-grid .tile', { hasText: 'Gas range' }).count()) === 0);
+  check('country things stay hidden until that country is done (no teaser text)', (await page.locator('.shop-grid .tile', { hasText: 'Molcajete' }).count()) === 0 && (await page.getByText(/Finish a country/).count()) === 0);
   await page.locator('.shop [role=tab]', { hasText: 'Finishes' }).click();
   check('finishes: terrazzo, lacquer, copper, gold marble', (await page.locator('.shop-grid .tile').count()) === 4);
-  await page.locator('.shop [role=tab]', { hasText: 'All' }).click();
+  await page.locator('.shop [role=tab]', { hasText: 'Dogs' }).click();
+  const dogTiles = await page.locator('.shop-grid .tile').count();
+  const dogPrices = new Set(await page.locator('.shop-grid .tile .tprice').allInnerTexts());
+  check('fridge magnets: 100+ dog breeds, all one price', dogTiles >= 100 && dogPrices.size === 1, `${dogTiles} · ${[...dogPrices]}`);
+  await page.locator('.shop [role=tab]', { hasText: 'Cats' }).click();
+  check('…every cat breed too', (await page.locator('.shop-grid .tile').count()) >= 40);
+  await page.locator('.shop [role=tab]', { hasText: 'Cards & art' }).click();
+  const paper = await page.locator('.shop-grid').innerText();
+  check('cards & art: report cards, test scores, wedding invitations, Christmas cards, drawings', ['report card', 'test', 'wedding', 'christmas', 'drawing'].every((w) => paper.toLowerCase().includes(w)), paper.slice(0, 200));
+  await page.locator('.shop [role=tab]', { hasText: 'Dogs' }).click();
+  await page.locator('.shop-grid .tile', { hasText: 'Golden Retriever' }).click(); await page.locator('[data-tour="buy"]').click();
+  check('a bought magnet sticks to the fridge in your kitchen', await page.locator('#my-kitchen img.kmag').first().waitFor({ state: 'attached', timeout: 8000 }).then(() => true, () => false));
+  await page.locator('.shop [role=tab]', { hasText: 'Kitchen' }).click();
   await page.getByRole('button', { name: 'Get coins' }).waitFor();
   check('Get coins is on Me', true);
   await page.click('[aria-label^="Edit name"]'); await page.fill('#nm', 'Chef J ✨ #1'); await page.press('#nm', 'Enter');
@@ -316,7 +329,7 @@ await step('compete layout', async () => {
   check('bingo has no text under the title any more (no "Get four in a row", no own timer)', (await page.locator('section[aria-labelledby=bingo-h] p').count()) === 0 && (await page.getByText('Get four in a row').count()) === 0 && (await page.locator('section[aria-labelledby=bingo-h]').getByText(/resets|\d+d\b/i).count()) === 0);
   const wantD = (() => { const n = new Date(); const d = (8 - n.getDay()) % 7 || 7; const mon = new Date(n.getFullYear(), n.getMonth(), n.getDate() + d); return Math.max(1, Math.ceil((mon - n) / 864e5)); })();
   check('one reset timer at the top, counting to Monday like the challenges', (await page.getByText(/^Resets in \d+d$/).count()) === 1 && (await page.getByText(`Resets in ${wantD}d`).count()) === 1);
-  await nav('Me'); await page.getByRole('heading', { name: 'Your world' }).waitFor();
+  await nav('Me'); await page.locator('.globe').waitFor();
 });
 await step('buy coins with Apple Pay', async () => {
   const before = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
@@ -411,11 +424,11 @@ await step('free dish search', async () => {
   if (await page.getByText('Level up!', { exact: false }).count()) { await page.locator('[aria-label=Close]').first().click(); await page.waitForTimeout(400); }
   // finished countries: Gold on the tier list, painted on the globe, their kitchen things in the shop
   await fetch('http://localhost:54321/__e2e/seed-meals?country=MX&n=5');
-  await nav('Me'); await page.getByRole('heading', { name: 'Your world' }).waitFor();
-  await page.locator('.tier-row.gold .tier-chip', { hasText: 'Albania' }).waitFor({ timeout: 8000 });
-  check('Albania is in the Gold row', true);
+  await nav('Me'); await page.locator('.globe').waitFor();
+  await page.locator('.globe-svg .gl-gold').nth(1).waitFor({ state: 'attached', timeout: 8000 }).catch(() => {});
   check('a Gold country is painted on the globe (its colours and food, clipped to its shape)', (await page.locator('.globe-svg .gl-gold').count()) >= 2 && (await page.locator('.globe-svg .gl-gold clipPath').count()) >= 2);
   check('country challenges show up for started countries', (await page.locator('.cchal').count()) >= 1);
+  await page.locator('.shop [role=tab]', { hasText: 'From your countries' }).click({ timeout: 8000 });
   await page.locator('.shop-grid .tile', { hasText: 'Molcajete' }).waitFor({ timeout: 8000 });
   check('finishing Mexico unlocks its kitchen things', (await page.locator('.shop-grid .tile', { hasText: 'Tortilla press' }).count()) === 1 && (await page.locator('.shop-grid .tile', { hasText: 'Moka pot' }).count()) === 0);
   await page.locator('.shop-grid .tile', { hasText: 'Molcajete' }).click(); await page.locator('[data-tour="buy"]').click();
@@ -630,6 +643,8 @@ await step('friends and the plate feed', async () => {
   await page.locator('.fr-code').filter({ hasText: /^[A-Z2-9]{6}$/ }).waitFor();
   const myCode = await page.locator('.fr-code').innerText();
   check('Friends shows your 6-letter code', /^[A-HJ-NP-Z2-9]{6}$/.test(myCode), myCode);
+  check('no Share button: tap the code to copy it; no text in the add box', (await page.getByRole('button', { name: /^Share$/ }).count()) === 0 && (await page.locator('button.fr-copy').count()) === 1 && !(await page.locator('#fr-code').getAttribute('placeholder')));
+  check('"Add a friend to see what they cook." sits under Plates; Cook Off has the new line', (await page.getByText('Add a friend to see what they cook.').count()) === 1 && (await page.getByText('Yours stay private').count()) === 0 && (await page.getByText('The clock is ticking. The competition is heating up. And one winning dish.').count()) === 1);
   const ctx6 = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 }); const fp = await ctx6.newPage();
   await fp.goto(`${BASE}/login`); await fp.getByRole('radio', { name: 'Accept' }).click(); await fp.getByRole('button', { name: 'Start playing' }).click(); await fp.waitForURL('**/cook');
   await fp.waitForTimeout(1200); await fp.mouse.click(5, 400);
@@ -719,7 +734,7 @@ await step('kitchen layout', async () => {
   check('…and understands everyday words (“deep freeze” → chest freezer)', /Chest freezer/.test(await page.locator('.kd-res').first().innerText()));
   await page.locator('.kd-res').first().click();
   check('adding a piece drops it on the floor, picked up', (await page.locator('.kbox').count()) === 10 && (await page.locator('.kbox.sel').count()) === 1);
-  check('a picked piece shows 3 plain dots to stretch it (left, right, taller), no arrows', (await page.locator('.kbox.sel .kknob').count()) === 3 && (await page.locator('.kbox.sel .kknob svg').count()) === 0);
+  check('a picked piece shows plain dots to stretch it (left, right, taller, and deeper from the sides), no arrows', (await page.locator('.kbox.sel .kknob:not(.side)').count()) === 3 && (await page.locator('.kbox.sel .kknob.side').count()) === 2 && (await page.locator('.kbox.sel .kknob svg').count()) === 0);
   const topOf = () => page.locator('.kbox.sel').evaluate((el) => `${el.style.top}|${el.style.transform}`);
   const before = await topOf();
   await page.getByRole('button', { name: /Bring it toward you|Push it back/ }).click();
@@ -754,6 +769,8 @@ await step('kitchen layout', async () => {
   await page.locator('.kd-actions').getByRole('button', { name: 'Save' }).click(); await page.locator('.kd-actions').getByRole('button', { name: 'Saved' }).waitFor();
   check('the first kitchen you save goes on display', (await page.getByRole('button', { name: 'On display in your Pantry' }).count()) === 1);
   await page.locator('.kd-actions').getByRole('button', { name: 'New' }).click(); await page.locator('.kd-new', { hasText: 'Dream kitchen' }).click();
+  check('Dream kitchen doesn’t jump straight into the search', (await page.locator('.kd-add').count()) === 0);
+  await page.locator('.grid2 button', { hasText: 'Add' }).click();
   await page.locator('.kd-res', { hasText: 'Retro fridge' }).click();
   await page.locator('.kd-actions').getByRole('button', { name: 'Save' }).click(); await page.locator('.kd-actions').getByRole('button', { name: 'Saved' }).waitFor();
   check('a new kitchen saves without changing the one on display', (await page.getByRole('button', { name: 'Put on display in your Pantry' }).count()) === 1);
@@ -807,6 +824,21 @@ await step('kitchen layout', async () => {
   check('…but stops at a border (about 10 swipes out)', Math.abs(tx) <= 1000 * 2.6 && Math.abs(tx) >= 900, `${tx}`);
   await page.getByRole('button', { name: 'Back to kitchen' }).click();
   check('“Back to kitchen” brings it home', /translate\(0px, 0px\)/.test(await kcam()));
+  // a walk-in pantry closet you can put anywhere off the kitchen: shelves on 3 walls and the floor; tap it to fly to it
+  await page.locator('main a.btn', { hasText: 'Design' }).click(); await page.waitForURL('**/pantry/kitchen/design');
+  await page.getByRole('button', { name: 'Pantry closet' }).click();
+  check('Pantry closet sits off the kitchen with shelves on 3 walls + the floor', (await page.locator('.kd-stage .kcloset').count()) === 1 && (await page.locator('.kd-stage .kcloset .kc-wall').count()) === 3);
+  await page.getByRole('button', { name: 'Done with this piece' }).click();
+  await page.getByRole('button', { name: 'Spice cabinet' }).click();
+  await page.getByRole('button', { name: 'Done with this piece' }).click();
+  await page.locator('.kd-actions').getByRole('button', { name: 'Save' }).click(); await page.locator('.kd-actions').getByRole('button', { name: 'Saved' }).waitFor();
+  await page.locator('.title-link', { hasText: 'Pantry' }).click(); await page.waitForURL(/\/pantry$/);
+  await page.getByRole('tab', { name: 'Kitchen' }).click(); await page.locator('main .kcloset').waitFor();
+  check('the closet’s shelves and floor are spots you can put food on', (await page.locator('main .kcloset [data-spot]').count()) === 31);
+  const zc = () => page.locator('main .k3-cam').evaluate((el) => Number(el.style.transform.match(/scale\(([\d.]+)\)/)[1]));
+  const z0 = await zc(); await page.locator('main .kcloset').dispatchEvent('click'); await page.waitForTimeout(300);
+  check('tap the closet → the view flies in to it', (await zc()) > z0 * 1.5, `${z0} → ${await zc()}`);
+  await shot('31-pantry-closet');
   await page.getByRole('tab', { name: /^Pantry/ }).click();
   await shot('30-kitchen-pantry');
 });

@@ -721,6 +721,47 @@ check('dead phones are forgotten', (await db.query(`select count(*)::int n from 
 await as(N2, () => db.query(`select public.set_notify_hour(null)`));
 check('turning notifications off forgets the phone', (await db.query(`select count(*)::int n from push_subs where user_id = '${N2}'`)).rows[0].n === 0);
 
+// ================= 0022: kitchen layouts =================
+try { const f = fs.readFileSync('./supabase/migrations/0022_kitchen_layouts.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0022 runs (twice)', true); }
+catch (e) { check('0022 runs (twice)', false, e.message); }
+const [K1, K2] = ['55550000-0000-0000-0000-000000000005', '66660000-0000-0000-0000-000000000006'];
+for (const u of [K1, K2]) await db.exec(`insert into auth.users (id, email) values ('${u}', null)`);
+const pc22 = `'[{"id":"k1","mid":"ff","x":0,"y":0,"w":3,"d":2,"h":6}]'`;
+const kA = (await as(K1, () => db.query(`insert into kitchen_layouts (name, pieces, is_display) values ('Home', ${pc22}, true) returning id`))).rows[0].id;
+const kB = (await as(K1, () => db.query(`insert into kitchen_layouts (name, pieces) values ('Dream', '[]') returning id`))).rows[0].id;
+check('a player can save kitchens', !!kA && !!kB);
+check('other players can’t see them', (await as(K2, () => db.query(`select count(*)::int n from kitchen_layouts`))).rows[0].n === 0);
+check('nobody signed out can', await as(null, () => db.query(`select 1 from kitchen_layouts`)).then(() => false, () => true));
+await expectFail('only one kitchen can be on display', K1, `update kitchen_layouts set is_display = true where id = '${kB}'`);
+await as(K1, () => db.query(`select public.show_kitchen('${kB}')`));
+const disp = (await as(K1, () => db.query(`select name from kitchen_layouts where is_display`))).rows;
+check('show_kitchen swaps which one is on display', disp.length === 1 && disp[0].name === 'Dream');
+await expectFail('you can’t put someone else’s kitchen on display', K2, `select public.show_kitchen('${kA}')`);
+check('you can’t change someone else’s kitchen', (await as(K2, () => db.query(`update kitchen_layouts set name = 'Mine' where id = '${kA}' returning id`))).rows.length === 0);
+await expectFail('you can’t give a kitchen to someone else', K1, `insert into kitchen_layouts (user_id, name) values ('${K2}', 'Gift')`);
+await expectFail('a kitchen needs a list of pieces', K1, `insert into kitchen_layouts (name, pieces) values ('Bad', '{"a":1}')`);
+for (let i = 0; i < 10; i++) await as(K1, () => db.query(`insert into kitchen_layouts (name) values ('K${i}')`));
+await expectFail('12 kitchens max', K1, `insert into kitchen_layouts (name) values ('One too many')`);
+// putting items away
+const it22 = async (u, n) => (await as(u, () => db.query(`insert into pantry_items (name) values ('${n}') returning id`))).rows[0].id;
+const i1 = await it22(K1, 'Milk'), i2 = await it22(K1, 'Eggs'), j1 = await it22(K2, 'Rice');
+const xp0 = (await db.query(`select xp from profiles where id = '${K1}'`)).rows[0].xp;
+const p1 = (await as(K1, () => db.query(`select public.place_item('${i1}', 'k1|0|1') as r`))).rows[0].r;
+check('putting an item away: +3 XP, 1 left', p1.xp === 3 && p1.left === 1, JSON.stringify(p1));
+const p1b = (await as(K1, () => db.query(`select public.place_item('${i1}', 'k1|0|2') as r`))).rows[0].r;
+check('moving it again gives no more XP', p1b.xp === 0);
+const p2 = (await as(K1, () => db.query(`select public.place_item('${i2}', 'k1|2|0') as r`))).rows[0].r;
+check('putting the last one away: +3 and a +20 bonus', p2.xp === 23 && p2.left === 0, JSON.stringify(p2));
+check('XP really lands on the profile', (await db.query(`select xp from profiles where id = '${K1}'`)).rows[0].xp === xp0 + 26);
+await expectFail('you can’t move someone else’s item', K2, `select public.place_item('${i1}', 'k1|0|0')`);
+await expectFail('a spot has to look like a spot', K1, `select public.place_item('${i1}', 'drop table')`);
+check('your spot is saved on the item', (await as(K1, () => db.query(`select spot from pantry_items where id = '${i2}'`))).rows[0].spot === 'k1|2|0');
+const off22 = (await as(K1, () => db.query(`select public.place_item('${i2}', null) as r`))).rows[0].r;
+check('taking it out puts it back on the to-do pile', off22.xp === 0 && off22.left === 1);
+check('someone else’s item stays where it was', (await db.query(`select spot from pantry_items where id = '${j1}'`)).rows[0].spot === null);
+await as(K1, () => db.query(`select public.reset_game()`));
+check('reset game clears kitchens too', (await db.query(`select count(*)::int n from kitchen_layouts where user_id = '${K1}'`)).rows[0].n === 0);
+
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only thing that spends coins is buying an outfit', JSON.stringify(spenders) === JSON.stringify(['buy_item']), JSON.stringify(spenders));

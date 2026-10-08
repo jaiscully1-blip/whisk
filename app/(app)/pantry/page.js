@@ -8,6 +8,7 @@ import ScanSheet from '@/components/ScanSheet';
 import SavedRecipes from '@/components/SavedRecipes';
 import { usePantry, useList } from '@/components/usePantry';
 import ShareListSheet from '@/components/ShareListSheet';
+import { KitchenFloat, KitchenTab } from '@/components/kitchen/KitchenPanels';
 
 const NEXT_STATUS = { stocked: 'low', low: 'out', out: 'stocked' };
 const STATUS_LABEL = { stocked: 'Stocked', low: 'Low', out: 'Out' };
@@ -139,14 +140,15 @@ export default function Pantry() {
 
   return (
     <div className="stack">
-      <div className="page-title"><h1>{tab === 'pantry' ? 'Pantry' : tab === 'list' ? 'Shopping list' : 'Saved recipes'}</h1></div>
-      <div className="row" role="tablist">
+      <div className="page-title"><h1>{tab === 'pantry' ? 'Pantry' : tab === 'list' ? 'Shopping list' : tab === 'kitchen' ? 'Kitchen' : 'Saved recipes'}</h1></div>
+      <div className="row tabrow" role="tablist">
         <button className={`btn sm ${tab === 'pantry' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'pantry'} onClick={() => setTab('pantry')}>Pantry {items ? `(${items.length})` : ''}</button>
         <button className={`btn sm ${tab === 'list' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'list'} onClick={() => setTab('list')}>Shopping list {list ? `(${list.length})` : ''}</button>
         <button className={`btn sm ${tab === 'saved' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'saved'} onClick={() => setTab('saved')}>Saved recipes</button>
+        <button className={`btn sm ${tab === 'kitchen' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'kitchen'} onClick={() => setTab('kitchen')}><Icon name="pantry" size={16} />Kitchen</button>
       </div>
 
-      {tab === 'saved' ? <SavedRecipes pantry={items} /> : tab === 'pantry' ? (
+      {tab === 'saved' ? <SavedRecipes pantry={items} /> : tab === 'kitchen' ? <KitchenTab items={items} /> : tab === 'pantry' ? (
         <>
           <div className="grid2">
             <button data-tour="scan" data-tip="receipt" className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('receipt')}><Icon name="receipt" size={22} />Scan receipt</button>
@@ -173,6 +175,7 @@ export default function Pantry() {
           <div className="row">
             {['All', ...CATEGORIES].map((c) => <button key={c} className={`chip`} style={{ border: 0, background: filter === c ? 'var(--fg)' : 'var(--track)', color: filter === c ? 'var(--bg)' : 'var(--fg)' }} onClick={() => setFilter(c)}>{c}</button>)}
           </div>
+          <KitchenFloat items={items} filter={filter} />
 
           {items === null ? <p className="muted">Loading your pantry…</p> : items.length === 0 ? (
             <div className="empty"><b>Your pantry is empty</b></div>

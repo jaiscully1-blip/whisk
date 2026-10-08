@@ -5,7 +5,7 @@ import { useWhisk } from '@/components/AppShell';
 import Icon from '@/components/Icon';
 import { usePantry, useKitchens } from '@/components/usePantry';
 import Kitchen3D from '@/components/kitchen/Kitchen3D';
-import { Sticker, useShownKitchen } from '@/components/kitchen/KitchenPanels';
+import { Sticker, useShownKitchen, usePlace } from '@/components/kitchen/KitchenPanels';
 import * as K from '@/lib/kitchen/models';
 
 // Side mission: put your food away. Hold a food box and drop it on a lit spot in your 3D kitchen
@@ -25,6 +25,7 @@ export default function PutAway() {
   const [party, setParty] = useState(false);
   const [earned, setEarned] = useState(0);
   const drag = useRef(null);
+  const home = usePlace();
   const combo = useRef({ n: 0, at: 0 });
 
   const live = (items || []).filter((i) => i.status !== 'out');
@@ -130,7 +131,7 @@ export default function PutAway() {
             {earned > 0 && <span className="chip xp">+{earned} XP</span>}
           </div>
 
-          <Kitchen3D mode="view" pieces={pieces} cam={cam} onCam={setCam} open={open} openAll={!!carrying} spot={spot} height="min(46vh, 420px)"
+          <Kitchen3D mode="view" place={home.key} pieces={pieces} cam={cam} onCam={setCam} open={open} openAll={!!carrying} spot={spot} height="min(46vh, 420px)"
             onToggle={(k) => setOpen((o) => ({ ...o, [k]: !o[k] }))} onSpot={onSpot} className={carrying ? 'carrying' : ''} />
 
           {picked && !carrying && (

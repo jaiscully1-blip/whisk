@@ -7,6 +7,16 @@ import { useKitchens } from '@/components/usePantry';
 import * as K from '@/lib/kitchen/models';
 import Kitchen3D from './Kitchen3D';
 import { stickerUrl } from '@/lib/art/food';
+import { useWhisk } from '@/components/AppShell';
+import { levelFor } from '@/lib/game';
+import { placeFor } from '@/lib/art/tampa';
+
+// Where your kitchen is, by player level (you can't change it; level up to move).
+export function usePlace() {
+  const { profile } = useWhisk();
+  const level = levelFor(profile?.xp || 0).level;
+  return { level, ...placeFor(level) };
+}
 
 // A food as an illustrated sticker (lib/art/food.js) — the same drawings go on the kitchen shelves.
 export function Sticker({ name, category, size = 22, className = '' }) {
@@ -27,6 +37,7 @@ export function useShownKitchen(items) {
 export function KitchenFloat({ items, filter }) {
   const router = useRouter();
   const { loading, shown, pieces, at, todo } = useShownKitchen(items);
+  const place = usePlace();
   const cat = filter && filter !== 'All' ? filter : null;
   const { spot, open, count } = useMemo(() => {
     const spot = {}, open = {}; let count = 0;
@@ -51,7 +62,7 @@ export function KitchenFloat({ items, filter }) {
   const away = cat ? todo.filter((i) => i.category === cat).length : todo.length;
   return (
     <section className="kfloat" aria-label={cat ? `${cat} in your kitchen` : 'Your kitchen'}>
-      <Kitchen3D mode="mini" float pieces={pieces} open={open} spot={spot} height={230} scale={0.74} onTap={() => router.push('/pantry/kitchen')} />
+      <Kitchen3D mode="mini" float place={place.key} pieces={pieces} open={open} spot={spot} height={230} scale={0.74} onTap={() => router.push('/pantry/kitchen')} />
       <div className="kf-bar">
         {cat ? <span className="chip kf-chip"><Sticker name={cat} category={cat} size={20} />{count ? `${count} in the kitchen` : 'none put away'}</span> : <span className="chip kf-chip">{shown.name}</span>}
         {away > 0
@@ -68,6 +79,7 @@ export function KitchenTab({ items }) {
   const [open, setOpen] = useState({});
   const [picked, setPicked] = useState(null);
   const [cam, setCam] = useState({ rz: -24, rx: 56 });
+  const place = usePlace();
   if (loading) return <p className="muted">Loading your kitchen…</p>;
   if (!shown) return (
     <div className="empty" style={{ display: 'grid', gap: 12, justifyItems: 'center' }}>
@@ -82,7 +94,7 @@ export function KitchenTab({ items }) {
   const here = picked ? at[picked] || [] : [];
   return (
     <div className="stack">
-      <Kitchen3D mode="view" pieces={pieces} cam={cam} onCam={setCam} open={open} spot={spot} height={400}
+      <Kitchen3D mode="view" place={place.key} pieces={pieces} cam={cam} onCam={setCam} open={open} spot={spot} height={400}
         onToggle={(k) => setOpen((o) => ({ ...o, [k]: !o[k] }))} onSpot={(k) => setPicked(k)} />
       {picked && (
         <div className="card row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>

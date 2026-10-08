@@ -16,13 +16,14 @@ import { timerApi } from '@/lib/timers';
 import Icon, { Coin, Flame } from './Icon';
 import WhiskStage, { outfitFrom } from './WhiskStage';
 import { fmt, levelFor } from '@/lib/game';
-import { COUNTRY_BY_ISO, flagCode } from '@/lib/passport/countries';
+import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
+import { countryArt } from '@/lib/world/flair';
 import LevelUp from './LevelUp';
 
 const Ctx = createContext(null);
 export const useWhisk = () => useContext(Ctx);
 
-const TITLES = { cooked: 'Cooked it!', stamp: 'New stamp!' };
+const TITLES = { cooked: 'Cooked it!', country: 'Country complete!' };
 const NAV = [['/home', 'Home', 'home'], ['/pantry', 'Pantry', 'pantry'], ['/cook', 'Cook', 'cook'], ['/compete', 'Compete', 'compete'], ['/me', 'Me', 'me']];
 const consentRef0 = (p) => { if (p?.consent) return p.consent; try { return JSON.parse(localStorage.getItem('whisk-consent') || 'null'); } catch { return null; } };
 const UI_LOCAL = 'whisk-ui';
@@ -293,7 +294,9 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
           <div className="popup-scrim" role="presentation" onClick={(e) => { if (kind !== 'cooked' && e.target === e.currentTarget) closePopup(); }}>
             <div className="popup" role="dialog" aria-modal="true" aria-label={title}>
               {kind !== 'cooked' && <button className="x" type="button" aria-label="Close" onClick={closePopup}><Icon name="x" /></button>}
-              <WhiskStage pose={kind === 'cooked' ? 'cooked' : 'default'} outfit={outfit} interactive={false} height={kind === 'cooked' ? 250 : 300} zoom={1.15} label={`Whisk: ${title}`} />
+              {kind === 'country'
+                ? <svg className="country-badge" viewBox="0 0 200 200" width="190" height="190" aria-hidden="true"><defs><clipPath id="cb-clip"><circle cx="100" cy="100" r="94" /></clipPath></defs><g clipPath="url(#cb-clip)" dangerouslySetInnerHTML={{ __html: countryArt(popup.country) }} /><circle cx="100" cy="100" r="94" fill="none" stroke="#E0A93B" strokeWidth="8" /><circle cx="100" cy="100" r="98" fill="none" stroke="#3B2C24" strokeWidth="2.4" /></svg>
+                : <WhiskStage pose={kind === 'cooked' ? 'cooked' : 'default'} outfit={outfit} interactive={false} height={kind === 'cooked' ? 250 : 300} zoom={1.15} label={`Whisk: ${title}`} />}
               <h2>{title}</h2>
               {kind === 'cooked' && (
                 <>
@@ -308,12 +311,11 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
                   <button className="btn wide" style={{ marginTop: 8 }} onClick={closePopup} autoFocus>Leave</button>
                 </>
               )}
-              {kind === 'stamp' && (
+              {kind === 'country' && (
                 <>
-                  <p className="row" style={{ justifyContent: 'center', gap: 8, margin: '4px 0 0', fontWeight: 800, fontSize: 18 }}>
-                    <img src={`/stamps/${flagCode(popup.country)}.svg`} alt="" width="26" height="26" />{COUNTRY_BY_ISO[popup.country]?.[1]} is stamped in your passport
-                  </p>
-                  <p className="row" style={{ justifyContent: 'center', gap: 6, margin: 0, fontFamily: 'var(--f-display)', fontSize: 28, fontWeight: 700 }}><Coin />+5,000 coins</p>
+                  <p style={{ margin: '4px 0 0', fontWeight: 800, fontSize: 18, textAlign: 'center' }}>{COUNTRY_BY_ISO[popup.country]?.[1] || 'That country'} is Gold. It’s painted on your globe.</p>
+                  <p className="row" style={{ justifyContent: 'center', gap: 6, margin: 0, fontFamily: 'var(--f-display)', fontSize: 28, fontWeight: 700 }}><Coin />+3,000 coins · +300 XP</p>
+                  <span className="desc" style={{ textAlign: 'center' }}>New kitchen things from there are in the shop, plus 2 harder challenges.</span>
                   <button className="btn wide" style={{ marginTop: 8 }} onClick={closePopup} autoFocus>Nice!</button>
                 </>
               )}

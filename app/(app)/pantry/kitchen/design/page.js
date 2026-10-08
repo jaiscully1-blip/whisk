@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useWhisk } from '@/components/AppShell';
 import Icon from '@/components/Icon';
-import { useKitchens } from '@/components/usePantry';
+import { useKitchens, useWorld } from '@/components/usePantry';
 import Kitchen3D, { ZOOM } from '@/components/kitchen/Kitchen3D';
 import Flat from '@/components/kitchen/Flat';
 import * as K from '@/lib/kitchen/models';
@@ -16,6 +16,8 @@ const sig = (name, pieces) => JSON.stringify([name, pieces]);
 export default function Design() {
   const { supabase, say, ui, setUi } = useWhisk();
   const [list, reload, setList] = useKitchens();
+  const [world] = useWorld();
+  const owned = useMemo(() => new Set(world?.owned || []), [world]);
   const [edit, setEdit] = useState(null);         // { id, name, pieces, saved }
   const [sel, setSel] = useState(null);
   const [sheet, setSheet] = useState(null);       // 'add' | 'paint' | 'new' | 'mine'
@@ -56,6 +58,7 @@ export default function Design() {
     setBusy(true);
     const name = edit.name.trim().slice(0, 40) || 'My kitchen';
     const pieces = K.cleanPieces(edit.pieces);
+    if (pieces.some((p) => K.needs(p).some((id) => !owned.has(id)))) { setBusy(false); say('This kitchen uses something you don’t own yet'); return null; }
     const first = !list?.some((k) => k.is_display);
     const q = edit.id
       ? supabase.from('kitchen_layouts').update({ name, pieces }).eq('id', edit.id).select(COLS).single()
@@ -85,13 +88,14 @@ export default function Design() {
   }
   function addModel(mid) {
     const m = K.MODEL[mid];
+    if (K.needs({ mid }).some((id) => !owned.has(id))) { say(`Get the ${m.nick.toLowerCase()} in the Kitchen shop on Me`); return; }
     if (edit.pieces.length >= 60) { say('That’s a lot of kitchen! 60 pieces max.'); return; }
-    const nb = K.placeFree(edit.pieces, K.piece(mid));
+    const nb = m.thing ? K.placeThing(edit.pieces, K.piece(mid)) : K.placeFree(edit.pieces, K.piece(mid));
     if (!nb) { say('No room left on the floor. Shrink or remove something.'); return; }
     setPieces((p) => [...p, nb]); setSel(nb.id); setSheet(null); setLook(false);
     say(`+ ${m.nick}`);
   }
-  const copySel = () => { if (!selB) return; const nb = K.placeFree(edit.pieces, { ...selB, id: K.newId() }); if (!nb) { say('No room left on the floor.'); return; } setPieces((p) => [...p, nb]); setSel(nb.id); };
+  const copySel = () => { if (!selB) return; if (K.isThing(selB)) { say('You have one of those'); return; } const nb = K.placeFree(edit.pieces, { ...selB, id: K.newId() }); if (!nb) { say('No room left on the floor.'); return; } setPieces((p) => [...p, nb]); setSel(nb.id); };
   const removeSel = () => { setPieces((p) => p.filter((x) => x.id !== sel)); setSel(null); };
 
   if (!edit) return <p className="muted" style={{ marginTop: 24 }}>Loading your kitchen…</p>;
@@ -99,7 +103,7 @@ export default function Design() {
   // one small button moves it toward you; at the front it flips and goes back the other way
   function nudge() {
     if (!selB) return;
-    const at = (d) => { const n = { ...selB, y: selB.y + d }; return K.clash(edit.pieces, n) ? null : n; };
+    const at = (d) => { const n = { ...selB, y: selB.y + d }; if (K.isThing(n)) n.z = K.restZ(edit.pieces, n); return K.clash(edit.pieces, n) ? null : n; };
     let n = at(dir), d = dir;
     if (!n) { d = -dir; n = at(d); }
     if (!n) { say('Something’s in the way'); return; }
@@ -145,15 +149,15 @@ export default function Design() {
 
       {selB && !look ? (
         <div className="card kd-sel">
-          <button type="button" className="kd-thumb" onClick={() => setSheet('paint')} aria-label="Colour and texture"><Flat {...selB} box={[44, 48]} /></button>
+          <button type="button" className="kd-thumb" onClick={() => !K.isThing(selB) && setSheet('paint')} aria-label={K.isThing(selB) ? K.MODEL[selB.mid].desc : 'Colour and texture'}><Flat {...selB} box={[44, 48]} /></button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <b>{K.MODEL[selB.mid].desc}</b>
-            <div className="desc">{selB.w} × {selB.d} ft · {selB.h} ft tall</div>
+            <div className="desc">{K.isThing(selB) ? (selB.z > 0 ? 'On the counter' : 'On the floor') : `${selB.w} × ${selB.d} ft · ${selB.h} ft tall`}</div>
           </div>
           <div className="kd-tools">
             <button type="button" className="kd-depth" onClick={nudge} aria-label={dir > 0 ? 'Bring it toward you' : 'Push it back'}><Icon name="chevron" size={20} style={{ transform: `rotate(${dir > 0 ? 90 : -90}deg)` }} /></button>
-            <button type="button" className="btn ghost sm" onClick={() => setSheet('paint')}>Paint</button>
-            <button type="button" className="btn ghost sm" onClick={copySel} aria-label="Copy it"><Icon name="plus" size={16} /></button>
+            {!K.isThing(selB) && <button type="button" className="btn ghost sm" onClick={() => setSheet('paint')}>Paint</button>}
+            {!K.isThing(selB) && <button type="button" className="btn ghost sm" onClick={copySel} aria-label="Copy it"><Icon name="plus" size={16} /></button>}
             <button type="button" className="btn ghost sm" onClick={removeSel} aria-label="Remove it" style={{ color: 'var(--bad)' }}><Icon name="trash" size={16} /></button>
             <button type="button" className="btn sm" onClick={() => setSel(null)} aria-label="Done with this piece"><Icon name="check" size={16} /></button>
           </div>
@@ -166,8 +170,8 @@ export default function Design() {
       )}
       <p className="desc" style={{ margin: 0, textAlign: 'center' }}>{edit.pieces.length} pieces · {K.index(edit.pieces).total} spots{isShown ? ' · on display in your Pantry' : ''}</p>
 
-      {sheet === 'add' && <AddSheet onAdd={addModel} onClose={() => setSheet(null)} />}
-      {sheet === 'paint' && selB && <PaintSheet b={selB} onChange={(patch) => setPieces((p) => p.map((x) => (x.id === selB.id ? { ...x, ...patch } : x)))} onClose={() => setSheet(null)} />}
+      {sheet === 'add' && <AddSheet onAdd={addModel} owned={owned} placed={edit.pieces} onClose={() => setSheet(null)} />}
+      {sheet === 'paint' && selB && <PaintSheet b={selB} owned={owned} onLocked={(t) => say(`${K.TEX[t].label} is in the Kitchen shop on Me`)} onChange={(patch) => setPieces((p) => p.map((x) => (x.id === selB.id ? { ...x, ...patch } : x)))} onClose={() => setSheet(null)} />}
       {sheet === 'new' && (
         <Sheet onClose={() => setSheet(null)} label="New kitchen">
           <h2 style={{ margin: 0 }}>New kitchen</h2>
@@ -228,10 +232,13 @@ function Sheet({ children, onClose, label }) {
   );
 }
 
-function AddSheet({ onAdd, onClose }) {
+function AddSheet({ onAdd, owned, placed, onClose }) {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('all');
-  const ranked = useMemo(() => K.MODELS.map((m) => ({ m, sc: K.score(m, q) })).filter((r) => r.sc >= 0 && (cat === 'all' || r.m.cat === cat)).sort((a, b) => b.sc - a.sc), [q, cat]);
+  // "Your things": what you bought in the Kitchen shop (one of each; the ones already in this kitchen are marked)
+  const mine = useMemo(() => Object.values(K.MODEL).filter((m) => (m.thing ? owned.has(m.item) : m.shop && owned.has(m.id))), [owned]);
+  const ranked = useMemo(() => (cat === 'mine' ? mine.map((m) => ({ m, sc: K.score(m, q) })).filter((r) => r.sc >= 0)
+    : K.MODELS.map((m) => ({ m, sc: K.score(m, q) - (m.shop && !owned.has(m.id) ? 2000 : 0) })).filter((r) => r.sc > -1500 || (!q.trim() && r.sc > -3000)).filter((r) => cat === 'all' || r.m.cat === cat)).sort((a, b) => b.sc - a.sc), [q, cat, mine, owned]);
   const guess = q.trim() ? ranked.find((r) => r.m.desc.toLowerCase().startsWith(q.toLowerCase()))?.m : null;
   const ghost = guess ? guess.desc.slice(q.length) : '';
   return (
@@ -241,39 +248,43 @@ function AddSheet({ onAdd, onClose }) {
         <div className="row" style={{ flexWrap: 'nowrap' }}>
           <div className="kd-search">
             <div className="kd-ghost" aria-hidden="true"><span style={{ color: 'transparent' }}>{q}</span>{ghost}</div>
-            <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Describe it… “fridge with 2 doors”" aria-label="Describe it" autoComplete="off" spellCheck={false} autoFocus
+            <input className="input" value={q} onChange={(e) => { setQ(e.target.value); if (cat === 'mine') setCat('all'); }} placeholder="Describe it… “fridge with 2 doors”" aria-label="Describe it" autoComplete="off" spellCheck={false} autoFocus
               onKeyDown={(e) => { if ((e.key === 'Tab' || e.key === 'ArrowRight') && ghost) { e.preventDefault(); setQ(guess.desc); } if (e.key === 'Enter' && ranked[0]) { e.preventDefault(); onAdd(ranked[0].m.id); } }} />
           </div>
           {ghost && <button type="button" className="btn sm kd-accept" onClick={() => setQ(guess.desc)} aria-label={`Use ${guess.desc}`}><Icon name="chevron" size={18} /></button>}
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" size={16} /></button>
         </div>
         <div className="kd-cats">
-          {[{ id: 'all', label: 'All', color: 'var(--fg)' }, ...K.CATS].map((c) => (
+          {[{ id: 'mine', label: `Your things${mine.length ? ` · ${mine.length}` : ''}`, color: 'var(--gold)' }, { id: 'all', label: 'All', color: 'var(--fg)' }, ...K.CATS].map((c) => (
             <button key={c.id} type="button" className={`chip kd-cat ${cat === c.id ? 'on' : ''}`} onClick={() => setCat(c.id)} aria-pressed={cat === c.id}><i style={{ background: c.color }} />{c.label}</button>
           ))}
         </div>
         <div className="kd-results">
-          {ranked.map((r, i) => (
-            <button key={r.m.id} type="button" className={`card kd-res ${q.trim() && i === 0 ? 'best' : ''}`} onClick={() => onAdd(r.m.id)}>
-              <span className="kd-res-pic"><Flat mid={r.m.id} box={[104, 80]} /></span>
-              <span>{r.m.desc}</span>
-            </button>
-          ))}
-          {!ranked.length && <p className="muted" style={{ gridColumn: '1 / -1', textAlign: 'center' }}>No match. Try “door”, “drawer” or “shelf”.</p>}
+          {ranked.map((r, i) => {
+            const locked = r.m.shop && !owned.has(r.m.id), here = r.m.thing && placed.some((p) => p.mid === r.m.id);
+            return (
+              <button key={r.m.id} type="button" className={`card kd-res ${q.trim() && i === 0 ? 'best' : ''} ${locked ? 'locked' : ''}`} onClick={() => onAdd(r.m.id)} disabled={here} aria-label={locked ? `${r.m.desc}, in the Kitchen shop` : here ? `${r.m.desc}, already in this kitchen` : r.m.desc}>
+                <span className="kd-res-pic"><Flat mid={r.m.id} box={[104, 80]} /></span>
+                <span>{r.m.desc}{locked && <span className="kd-lock"><Icon name="lock" size={13} />Shop</span>}{here && <span className="kd-lock in"><Icon name="check" size={13} />In</span>}</span>
+              </button>
+            );
+          })}
+          {!ranked.length && <p className="muted" style={{ gridColumn: '1 / -1', textAlign: 'center' }}>{cat === 'mine' ? 'Nothing yet. Buy kitchen things with coins on Me.' : 'No match. Try “door”, “drawer” or “shelf”.'}</p>}
         </div>
       </div>
     </div>
   );
 }
 
-function PaintSheet({ b, onChange, onClose }) {
+function PaintSheet({ b, owned, onLocked, onChange, onClose }) {
   const m = K.MODEL[b.mid];
   const texRow = (cur, grp, key) => K.GROUPS[grp].map((t) => {
     const cols = K.colorsFor(grp, t), keep = cols.some((c) => c[0].toLowerCase() === cur.color.toLowerCase());
     const sample = { tex: t, color: t === cur.tex || keep ? cur.color : cols[0][0] };
+    const locked = K.PREMIUM[t] && !owned.has(K.PREMIUM[t]);
     return (
-      <button key={t} type="button" className={`kd-tex ${cur.tex === t ? 'on' : ''}`} aria-pressed={cur.tex === t} onClick={() => onChange({ [key]: { tex: t, color: keep ? cur.color : cols[0][0] } })}>
-        <span style={{ width: 52, height: 36, borderRadius: 9, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.15)', ...cssOf(K.skin(sample, 0)) }} />{K.TEX[t].label}
+      <button key={t} type="button" className={`kd-tex ${cur.tex === t ? 'on' : ''} ${locked ? 'locked' : ''}`} aria-pressed={cur.tex === t} aria-label={locked ? `${K.TEX[t].label}, in the Kitchen shop` : undefined} onClick={() => (locked ? onLocked(t) : onChange({ [key]: { tex: t, color: keep ? cur.color : cols[0][0] } }))}>
+        <span style={{ position: 'relative', width: 52, height: 36, borderRadius: 9, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.15)', ...cssOf(K.skin(sample, 0)) }}>{locked && <span className="kd-texlock"><Icon name="lock" size={14} /></span>}</span>{K.TEX[t].label}
       </button>
     );
   });

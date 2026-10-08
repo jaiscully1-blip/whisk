@@ -7,7 +7,7 @@ import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 import { compress } from '@/lib/photo';
 
 // Photo of your plate → log_meal. Title, cuisine and nutrition come from the recipe on the server.
-// Or a dish from the search (`dish` = { name, countries }): it counts toward that country's passport stamp.
+// Or a dish from the search (`dish` = { name, countries }): it counts toward that country on your globe.
 export default function LogMealSheet({ recipe = null, dish = null, country: country0 = null, challenge = null, onClose, onDone }) {
   const { supabase, profile, refreshProfile, showPopup, say } = useWhisk();
   const [notes, setNotes, clearNotes] = useDraft(`notes:${recipe ? recipe.id : 'dish:' + dish.name}`);
@@ -42,7 +42,7 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
       onDone?.(data);
       onClose?.();
       showPopup({ kind: 'cooked', mealId: data.meal_id, recipe });
-      if (data.stamp) showPopup({ kind: 'stamp', country: data.stamp });
+      if (data.country_done) showPopup({ kind: 'country', country: data.country_done });
       say(data.repaired ? `Streak saved! ${data.streak} days · +${data.xp} XP`
         : data.repair_ready ? `Missed a day? Cook one more meal today to save your ${data.repair_ready}-day streak`
         : `+${data.xp} XP${data.coins ? ` · +${fmt(data.coins)} coins` : ''}${data.used_freeze ? ' · streak freeze used' : ''}`);
@@ -61,10 +61,10 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
         {challenge && <p className="ok" style={{ margin: 0 }}>Worth {fmt(challenge.coins)} coins + 100 XP</p>}
         <b style={{ fontSize: 18 }}>{recipe ? recipe.title : dish.name}</b>
         {dish && (dish.countries || []).length > 1 && (
-          <div><label className="lbl" htmlFor="meal-country">Counts toward the stamp for</label>
+          <div><label className="lbl" htmlFor="meal-country">Counts toward</label>
             <select id="meal-country" className="input" value={country || ''} onChange={(e) => setCountry(e.target.value)}>{dish.countries.map((c) => <option key={c} value={c}>{COUNTRY_BY_ISO[c]?.[1] || c}</option>)}</select></div>
         )}
-        {dish && (dish.countries || []).length === 1 && <span className="desc">Counts toward your {COUNTRY_BY_ISO[country]?.[1]} stamp</span>}
+        {dish && (dish.countries || []).length === 1 && <span className="desc">Counts toward {COUNTRY_BY_ISO[country]?.[1]} on your globe</span>}
         <label className="card" style={{ display: 'grid', placeItems: 'center', minHeight: 180, cursor: 'pointer', borderStyle: 'dashed', padding: 8 }}>
           {preview ? <img src={preview} alt="Your plate" style={{ maxHeight: 260, maxWidth: '100%', borderRadius: 14 }} /> : <span className="row muted" style={{ fontWeight: 800 }}><Icon name="camera" size={24} />Add a photo of your plate</span>}
           <input type="file" accept="image/*" capture="environment" onChange={pick} hidden />

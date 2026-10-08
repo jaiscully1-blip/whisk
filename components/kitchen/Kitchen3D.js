@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from 'react';
 import * as K from '@/lib/kitchen/models';
 import { stickerUrl } from '@/lib/art/food';
+import { itemUrl } from '@/lib/art/items';
+import { placeUrl } from '@/lib/art/tampa';
 
 // The kitchen in 3D, drawn with CSS 3D boxes (no WebGL, so it's light and works everywhere).
 // mode: 'view'  — doors and drawers open with a tap; lit spots can be tapped
@@ -15,7 +17,7 @@ export const ZOOM = [0.45, 2.6];
 export const PAN = 1000;   // how far (px at normal zoom) the kitchen can be slid before it stops: ~10 swipes
 export default function Kitchen3D({
   pieces, mode = 'view', height = 420, scale = 1, cam, onCam, open = {}, openAll = false, onToggle,
-  spot = {}, onSpot, sel = null, onSelect, onChange, onTap, taught = true, onTaught, float = false, className = ''
+  spot = {}, onSpot, sel = null, onSelect, onChange, onTap, taught = true, onTaught, float = false, className = '', place = null
 }) {
   const [own, setOwn] = useState({ rz: -24, rx: 56, zoom: 1, px: 0, py: 0 });
   const [edge, setEdge] = useState('');
@@ -88,6 +90,11 @@ export default function Kitchen3D({
     }
     // swipe right → the model turns right with your finger
     if (d.mode === 'spin') { setCam({ ...camera, rz: d.rz - dx * 0.45, rx: K.clamp(d.rx - dy * 0.3, 8, 82) }); return; }
+    if (d.mode === 'move' && d.thing) {   // things slide over the floor plan and settle on whatever is under them
+      const { u, v } = axisCells(dx, dy);
+      update(d.id, (n) => { n.x = K.clamp(Math.round(d.b0.x + u), 0, K.GW - n.w); n.y = K.clamp(Math.round(d.b0.y + v), 0, K.GD - n.d); n.z = K.restZ(pieces, n); });
+      return;
+    }
     if (d.mode === 'move') {
       // left/right on screen slides it along whichever floor direction looks most left/right; up/down lifts it
       const h = axisCells(dx, 0);
@@ -122,18 +129,37 @@ export default function Kitchen3D({
     : { background: 'repeating-linear-gradient(90deg,rgba(90,60,30,.18) 0 1px,rgba(0,0,0,0) 1px 26px),repeating-linear-gradient(0deg,rgba(255,255,255,.08) 0 2px,rgba(0,0,0,0) 2px 9px),linear-gradient(135deg,#E4CBA4,#D2B183)', borderRadius: 6, boxShadow: '0 0 0 8px rgba(120,90,50,.14)' };
 
   return (
-    <div ref={root} className={`k3 ${mode} ${float ? 'floaty' : ''} ${edge ? `edge-${edge}` : ''} ${className}`} style={{ height }} onPointerDownCapture={capDown} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={tapFloor}>
+    <div ref={root} className={`k3 ${mode} ${float ? 'floaty' : ''} ${edge ? `edge-${edge}` : ''} ${place ? `placed at-${place}` : ''} ${className}`} style={{ height }} onPointerDownCapture={capDown} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={tapFloor}>
+      {place && !build && <div className="k3-bg" style={{ backgroundImage: `url("${placeUrl(place)}")` }} aria-hidden="true" />}
       <div className="k3-cam" style={{ transform: `translate(${camera.px || 0}px, ${camera.py || 0}px) scale(${S}) rotateX(${camera.rx}deg) rotateZ(${camera.rz}deg)` }}>
         <div className="k3-sway">
           <div className="k3-floor" style={{ width: K.GW * C, height: K.GD * C, marginLeft: -K.GW * C / 2, marginTop: -K.GD * C / 2, ...floor }}>
-            {pieces.map((b) => <Piece key={b.id} b={b} {...{ build, view, mini, open, openAll, onToggle, spot, onSpot, sel, idx, guard, grow, taught }}
-              onDown={build ? (e) => { e.stopPropagation(); if (drag.current?.mode === 'pinch') return; drag.current = { mode: 'move', id: b.id, x: e.clientX, y: e.clientY, b0: { ...b } }; moved.current = false; if (sel !== b.id) onSelect?.(b.id); } : undefined} />)}
+            {pieces.map((b) => {
+              const onDown = build ? (e) => { e.stopPropagation(); if (drag.current?.mode === 'pinch') return; drag.current = { mode: 'move', thing: K.isThing(b), id: b.id, x: e.clientX, y: e.clientY, b0: { ...b } }; moved.current = false; if (sel !== b.id) onSelect?.(b.id); } : undefined;
+              return K.isThing(b)
+                ? <Thing key={b.id} b={b} rz={camera.rz} selected={build && sel === b.id} onDown={onDown} />
+                : <Piece key={b.id} b={b} {...{ build, view, mini, open, openAll, onToggle, spot, onSpot, sel, idx, guard, grow, taught }} onDown={onDown} />;
+            })}
           </div>
         </div>
       </div>
       {!mini && Math.hypot(camera.px || 0, camera.py || 0) > 260 * Math.max(1, zoom) && (
         <button type="button" className="k3-home" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setCam({ ...camera, px: 0, py: 0 }); }}>Back to kitchen</button>
       )}
+    </div>
+  );
+}
+
+// A shop thing: a drawn cut-out standing on the counter (or floor), always turned to face you.
+function Thing({ b, rz, selected, onDown }) {
+  const m = K.MODEL[b.mid]; const C = K.C, HU = K.HU;
+  const W = b.w * C, VW = Math.round(W * 1.6), H = VW, Z = Math.round(b.z * HU);   // drawn a bit bigger than its cell so you can see it
+  return (
+    <div className={`kthing ${selected ? 'sel' : ''}`} style={{ left: b.x * C, top: b.y * C, width: W, height: b.d * C, transform: `translateZ(${Z + 0.5}px)` }} onPointerDown={onDown} data-piece={b.id}>
+      <div className="kthing-shadow" />
+      <div className="kthing-up" style={{ left: (W - VW) / 2, top: b.d * C / 2 - H, width: VW, height: H, transform: `rotateZ(${-rz}deg) rotateX(-90deg)` }}>
+        <img src={itemUrl(m.item)} alt={m.nick} title={m.nick} draggable={false} />
+      </div>
     </div>
   );
 }
@@ -187,12 +213,12 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
         </>;
       }
     }
-    const org = c.hinge === 'l' ? '0 50%' : c.hinge === 't' ? '50% 0' : '100% 50%';
-    const rot = !isOpen ? '' : c.k === 'lid' ? ' rotateX(105deg)' : c.hinge === 'l' ? ' rotateY(-105deg)' : c.hinge === 't' ? ' rotateX(100deg)' : ' rotateY(105deg)';
+    const org = c.hinge === 'l' ? '0 50%' : c.hinge === 't' ? '50% 0' : c.hinge === 'b' ? '50% 100%' : '100% 50%';
+    const rot = !isOpen ? '' : c.k === 'lid' ? ' rotateX(105deg)' : c.hinge === 'l' ? ' rotateY(-105deg)' : c.hinge === 't' ? ' rotateX(100deg)' : c.hinge === 'b' ? ' rotateX(-88deg)' : ' rotateY(105deg)';
     let inCss = c.k === 'panel' ? 'display:none' : K.interior(c, m, fin) + (build ? 'outline:1px solid rgba(0,0,0,.16);outline-offset:-1px;' : '');
     if (c.k === 'lid') inCss = 'background:repeating-linear-gradient(90deg,rgba(0,0,0,0) 0 calc(50% - 2px),rgba(150,170,185,.9) calc(50% - 2px) 50%),radial-gradient(ellipse 70% 50% at 50% 0,#fff,rgba(255,255,255,0)),#E7EEF2;box-shadow:inset 0 6px 10px rgba(0,0,0,.25);';
     const outCss = c.k === 'lid' ? K.skin(fin, 0.12) + 'border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);' : K.panel(c, m, fin);
-    let deco = K.decoFor(c, m, fin, b.h);
+    let deco = K.decoFor(c, m, fin, b.h, b.w);
     if (c.k === 'lid') deco = [{ st: 'left:38%;top:88%;width:24%;height:6%;background:linear-gradient(90deg,#f5f6f7,#9ea4ab);border-radius:4px' }];
     const toggle = c.k === 'panel' || !view || !onToggle ? undefined : guard(() => onToggle(okey));
     const aria = `${isOpen ? 'Close' : 'Open'} ${nick} ${c.name}`;
@@ -241,6 +267,10 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
           <span className="kdeco" style={css('left:24%;top:24%;width:52%;height:56%;background:linear-gradient(160deg,#c8ccd1,#8f959c);border-radius:8px;box-shadow:inset 0 3px 6px rgba(0,0,0,.45),0 0 0 2px #dfe2e6')} />
           <span className="kdeco" style={css('left:46%;top:5%;width:8%;height:14%;background:linear-gradient(90deg,#eef0f2,#9aa0a7);border-radius:3px;box-shadow:0 2px 2px rgba(0,0,0,.35)')} />
         </>}
+        {(m.gen === 'range' || m.gen === 'pro') && Array.from({ length: m.gen === 'pro' ? 6 : 4 }, (_, i) => {
+          const cols = m.gen === 'pro' ? 3 : 2, cx = ((i % cols) + 0.5) / cols, cy = i < cols ? 0.3 : 0.7, r = Math.min(W / cols, D / 2) * 0.34;
+          return <span key={i} className="kdeco" style={{ left: cx * W - r, top: cy * D - r, width: r * 2, height: r * 2, borderRadius: '50%', background: 'radial-gradient(circle,#1a1b1d 0 22%,#5b5f66 24% 30%,#1a1b1d 32% 58%,#45484d 60% 66%,rgba(0,0,0,0) 68%)' }} />;
+        })}
         {g.top.map((c, i) => comp(c, g.front.length + i, true))}
       </div>
     </div>

@@ -777,9 +777,54 @@ check('cooking a meal: +100 XP for the cook', (await db.query(`select amount fro
 check('…and 500 coins (the result says so too)', cooked[0].coins === 500, JSON.stringify(cooked[0]));
 check('3 meals a day pay out; the 4th gives no more coins', cooked[3].coins === 0 && (await db.query(`select coins from profiles where id = '${CK}'`)).rows[0].coins === coins23 + 1500);
 
+// ================= 0024: dream kitchen + world =================
+try { const f = fs.readFileSync('./supabase/migrations/0024_dream_kitchen_world.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0024 runs (twice)', true); }
+catch (e) { check('0024 runs (twice)', false, e.message); }
+const W1 = '99990000-0000-0000-0000-000000000009', W2 = '99990000-0000-0000-0000-00000000000a';
+for (const u of [W1, W2]) await db.exec(`insert into auth.users (id, email) values ('${u}', null)`);
+await db.exec(`update profiles set coins = 20000 where id = '${W1}'`);
+check('the outfit shop is closed', (await db.query(`select count(*)::int n from items where active`)).rows[0].n === 0);
+check('the kitchen shop has gear, appliances, decorations, finishes and country things', (await as(W1, () => db.query(`select count(distinct kind)::int k, count(*) filter (where country is not null)::int c from kitchen_items`))).rows[0].k === 4);
+const bk = (await as(W1, () => db.query(`select public.buy_kitchen_item('espresso') as r`))).rows[0].r;
+check('buying an espresso machine costs 4,000 coins', bk.coins === 16000, JSON.stringify(bk));
+await expectFail('you can’t buy it twice', W1, `select public.buy_kitchen_item('espresso')`);
+await expectFail('country things stay locked until the country is complete', W1, `select public.buy_kitchen_item('cn_wok')`);
+await db.exec(`update profiles set coins = 100 where id = '${W2}'`);
+await expectFail('not enough coins → no sale', W2, `select public.buy_kitchen_item('robot_arm')`);
+check('…and the coins are untouched', (await db.query(`select coins from profiles where id = '${W2}'`)).rows[0].coins === 100);
+await expectFail('nobody can hand themselves items', W1, `insert into kitchen_owned (user_id, item_id) values ('${W1}', 'robot_arm')`);
+check('you only see what you own', (await as(W2, () => db.query(`select count(*)::int n from kitchen_owned`))).rows[0].n === 0);
+const pcs = (mid, tex = 'wood') => `'[{"id":"a1","mid":"${mid}","x":0,"y":0,"w":1,"d":1,"h":1,"z":0,"fin":{"tex":"${tex}","color":"#C89B63"}}]'`;
+check('things you own can go in your kitchen', !!(await as(W1, () => db.query(`insert into kitchen_layouts (name, pieces) values ('Mine', ${pcs('x:espresso')}) returning id`))).rows[0]);
+await expectFail('things you don’t own can’t', W2, `insert into kitchen_layouts (name, pieces) values ('Mine', ${pcs('x:espresso')})`);
+await expectFail('…nor shop appliances', W2, `insert into kitchen_layouts (name, pieces) values ('Mine', ${pcs('prorange')})`);
+await expectFail('…nor shop finishes', W2, `insert into kitchen_layouts (name, pieces) values ('Mine', ${pcs('b1', 'goldmarble')})`);
+// countries: 1 Bronze, 3 Silver, 5 Gold
+const mx = (await db.query(`select id from web_recipes where data ->> 'country' = 'MX' and active order by id`)).rows.map((r) => r.id);
+const cook24 = async (u, rid, i) => { await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${u}/w${i}.jpg')`); return (await as(u, () => db.query(`select public.log_meal('${rid}', '${u}/w${i}.jpg') as r`))).rows[0].r; };
+await cook24(W2, mx[0], 1);
+const wd1 = (await as(W2, () => db.query(`select public.get_world() as r`))).rows[0].r;
+check('a meal from Mexico shows up in your world (Bronze)', wd1.countries.length === 1 && wd1.countries[0].country === 'MX' && wd1.countries[0].n === 1 && !wd1.countries[0].done, JSON.stringify(wd1.countries));
+check('…and starts a Mexico challenge (a recipe you haven’t cooked, 250 XP)', wd1.challenges.length === 1 && wd1.challenges[0].country === 'MX' && wd1.challenges[0].xp === 250 && wd1.challenges[0].recipe_id !== mx[0], JSON.stringify(wd1.challenges));
+const chRid = wd1.challenges[0].recipe_id;
+const xpBefore = (await db.query(`select xp from profiles where id = '${W2}'`)).rows[0].xp;
+const rc2 = await cook24(W2, chRid, 2);
+check('cooking the challenge recipe pays its bonus XP', (await db.query(`select xp from profiles where id = '${W2}'`)).rows[0].xp - xpBefore === rc2.xp && rc2.xp >= 250, JSON.stringify(rc2));
+const coinsW2 = (await db.query(`select coins from profiles where id = '${W2}'`)).rows[0].coins;
+let rc5; for (let i = 3; i <= 5; i++) { await db.exec(`delete from xp_events where user_id = '${W2}' and kind = 'cook'`); rc5 = await cook24(W2, mx[i % mx.length], i); }
+check('the 5th Mexican dish completes Mexico: +3,000 coins', rc5.country_done === 'MX' && rc5.coins === 3500, JSON.stringify(rc5));
+check('…paid once, on the profile', (await db.query(`select coins from profiles where id = '${W2}'`)).rows[0].coins === coinsW2 + 1500 + 3000, `${coinsW2}`);
+const wd5 = (await as(W2, () => db.query(`select public.get_world() as r`))).rows[0].r;
+check('Mexico is Gold (complete) with 400 XP challenges', wd5.countries[0].done && wd5.challenges.filter((c) => c.country === 'MX').every((c) => c.xp === 400), JSON.stringify(wd5));
+const rc6 = await cook24(W2, mx[0], 6);
+check('a 6th dish doesn’t pay the completion again', !rc6.country_done, JSON.stringify(rc6));
+await db.exec(`update profiles set coins = 5000 where id = '${W2}'`);
+check('a completed country unlocks its shop things', (await as(W2, () => db.query(`select public.buy_kitchen_item('mx_press') as r`))).rows[0].r.coins === 3000);
+check('other people can’t see your countries or challenges', (await as(W1, () => db.query(`select (select count(*) from country_done)::int a, (select count(*) from country_challenges)::int b`))).rows[0].a === 0);
+
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
-check('the only thing that spends coins is buying an outfit', JSON.stringify(spenders) === JSON.stringify(['buy_item']), JSON.stringify(spenders));
+check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));
 const slots = (await db.query(`select array_agg(distinct slot order by slot) s from items`)).rows[0].s;
 check('everything in the shop is something to wear', slots.every((x) => ['top', 'hat', 'glasses', 'shoes', 'acc'].includes(x)), JSON.stringify(slots));
 

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import Icon from './Icon';
+import { PLACES, placeUrl } from '@/lib/art/tampa';
 
 // Confetti + a short three-note chime. Sound only plays because a level-up always follows a tap (browsers allow audio then).
 function chime() {
@@ -44,6 +45,12 @@ export default function LevelUp({ level, onClose }) {
         <span className="eyebrow">Level up!</span>
         <div style={{ width: 96, height: 96, borderRadius: 28, background: 'var(--accent)', color: 'var(--btn-ink)', display: 'grid', placeItems: 'center', fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 48, margin: '6px 0' }}>{level.level}</div>
         <h2>{level.title}</h2>
+        {(() => { const moved = PLACES.find((p) => p.from === level.level); return moved ? (
+          <div className="lvl-move">
+            <img src={placeUrl(moved.key)} alt="" width="240" height="144" />
+            <b>New kitchen: {moved.name}</b><span className="desc">{moved.where} · {moved.blurb}</span>
+          </div>
+        ) : null; })()}
       </div>
     </div>
   );

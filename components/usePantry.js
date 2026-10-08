@@ -39,3 +39,9 @@ export function useKitchens() {
   const [list, setList, reload] = useCached('kitchens', () => fetchKitchens(supabase), [dataVersion]);
   return [list ?? null, reload, setList];
 }
+// Your world (countries, tiers, challenges) and the Kitchen shop — see fetchWorld in tabData.js.
+export function useWorld() {
+  const { supabase, dataVersion } = useWhisk();
+  const [world, setWorld, reload] = useCached('world', () => import('./tabData').then((m) => m.fetchWorld(supabase)), [dataVersion]);
+  return [world ?? null, reload, setWorld];
+}

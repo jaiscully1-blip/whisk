@@ -4,10 +4,10 @@ import { useCached } from '@/lib/cache';
 import { fetchMe } from '@/components/tabData';
 import Link from 'next/link';
 import { useWhisk, useDraft } from '@/components/AppShell';
-import WhiskStage, { outfitFrom } from '@/components/WhiskStage';
-import Icon, { Coin } from '@/components/Icon';
+import Icon from '@/components/Icon';
 import GetCoinsSheet from '@/components/GetCoinsSheet';
-import Passport from '@/components/Passport';
+import Globe from '@/components/Globe';
+import { TierList, ProfileCard, MyKitchen, KitchenShop, CountryChallenges } from '@/components/MeWorld';
 import ResetSheet from '@/components/ResetSheet';
 import NeverShowSheet from '@/components/NeverShowSheet';
 import BackupSheet from '@/components/BackupSheet';
@@ -15,26 +15,20 @@ import NotifySettings from '@/components/NotifySettings';
 import ShareSwitch from '@/components/ShareSwitch';
 import DeleteDataSheet from '@/components/DeleteDataSheet';
 import RecipeSheet from '@/components/RecipeSheet';
-import { usePantry } from '@/components/usePantry';
+import { usePantry, useWorld } from '@/components/usePantry';
+import { useRouter } from 'next/navigation';
 import { levelFor, fmt, dayNumber } from '@/lib/game';
 
 const EMPTY_LIST = [];
-const SLOTS = [['top', 'Top', 'shirt'], ['hat', 'Hat', 'hat'], ['glasses', 'Glasses', 'glasses'], ['shoes', 'Shoes', 'shoe'], ['acc', 'Accessory', 'bag']];
 const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
-const RARITY_ORDER = ['common', 'rare', 'epic', 'exotic', 'mythic'];
-const EMPTY = { top: 'White chef coat', hat: 'Classic toque', glasses: 'None', shoes: 'Bare feet', acc: 'Nothing' };   // top + hat: free, always yours
 
 export default function Me() {
-  const { account, supabase, profile, setProfile, refreshProfile, loadout, refreshLoadout, say, ui, setUi, openPrivacy, replayTour, dataVersion } = useWhisk();
-  const [dancing, setDancing] = useState(false);   // the Dance button; stops on its own when you leave or the screen turns off
-  const [medata, setMedata] = useCached('me', () => fetchMe(supabase), [dataVersion]);   // remembered between tabs (lib/cache.js)
-  const items = medata?.items || EMPTY_LIST, meals = medata?.meals || EMPTY_LIST, history = medata?.history || EMPTY_LIST;
-  const owned = useMemo(() => new Set(medata?.owned || []), [medata?.owned]);
-  const setOwned = (fn) => setMedata((x) => ({ ...x, owned: [...fn(new Set(x?.owned || []))] }));
-  const [buying, setBuying] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const { account, supabase, profile, setProfile, refreshProfile, say, ui, setUi, openPrivacy, replayTour, dataVersion, allRecipes } = useWhisk();
+  const router = useRouter();
+  const [medata] = useCached('me', () => fetchMe(supabase), [dataVersion]);   // remembered between tabs (lib/cache.js)
+  const meals = medata?.meals || EMPTY_LIST, history = medata?.history || EMPTY_LIST;
+  const [world, , setWorld] = useWorld();
   const [getCoins, setGetCoins] = useState(false);
-  const slot = ui.closetSlot || 'top';
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [never, setNever] = useState(false);
@@ -43,7 +37,6 @@ export default function Me() {
     const [recipe, setRecipe] = useState(null);
   const [pantry] = usePantry();
   const [nameDraft, setNameDraft, clearName] = useDraft('nm', profile?.display_name || '');
-  const outfit = outfitFrom(loadout);
   const scaleAt = Math.max(0, TEXT_SCALES.indexOf(ui.textScale || 1));
   const lvl = levelFor(profile?.xp);
   const name = profile?.display_name || 'Me';
@@ -52,27 +45,23 @@ export default function Me() {
   // Back from the checkout
   useEffect(() => { if (new URLSearchParams(window.location.search).get('paid') === '1') { say('Payment done · your coins are on the way'); window.history.replaceState(null, '', '/me'); const t = setInterval(refreshProfile, 15000); return () => clearInterval(t); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const inSlot = useMemo(() => items.filter((i) => i.slot === slot).sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || a.sort - b.sort), [items, slot]);
-  // Item pictures are pre-drawn files (public/thumbs, made by scripts/gen-thumbs.cjs): no 3D work on the phone.
-  const thumb = (id) => `/thumbs/${id}.webp`;
-
-  const byId = useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
   const goal = profile?.weekly_goal || 4;
-  const countryCounts = useMemo(() => { const m = new Map(); history.forEach((x) => { if (x.country) m.set(x.country, (m.get(x.country) || 0) + 1); }); return m; }, [history]);
+  // dishes per country: from the server (setup SQL 17), or counted from your meals until that's run
+  const countries = useMemo(() => {
+    if (world && !world.missing) return world.countries || [];
+    const m = new Map(); history.forEach((x) => { if (x.country) m.set(x.country, (m.get(x.country) || 0) + 1); });
+    return [...m].map(([country, n]) => ({ country, n, done: n >= 5 })).sort((a, b) => b.n - a.n);
+  }, [world, history]);
+  const counts = useMemo(() => new Map(countries.map((c) => [c.country, c.n])), [countries]);
+  const doneSet = useMemo(() => new Set(countries.filter((c) => c.done || c.n >= 5).map((c) => c.country)), [countries]);
+  const ingredients = (pantry || []).filter((p) => p.status !== 'out').length;
+  const recipesCooked = world && !world.missing ? world.recipes || 0 : meals.length;
 
-  async function equip(itemId) {
-    const { error } = await supabase.rpc('equip_item', { p_slot: slot, p_item_id: itemId });
-    if (error) { say('Couldn’t put that on.'); return; }
-    refreshLoadout();
-  }
-  async function confirmBuy() {
-    setBusy(true);
-    const { error } = await supabase.rpc('buy_item', { p_item_id: buying.id });
-    setBusy(false);
-    if (error) { say(error.message.includes('enough') ? 'Not enough coins yet' : 'Couldn’t buy that'); return; }
-    const it = buying; window.dispatchEvent(new CustomEvent('whisk:bought', { detail: it.id }));   // the first-time tour listens for this
-    setOwned((s) => new Set(s).add(it.id)); setBuying(null); refreshProfile();
-    await equip(it.id); say(`${it.name} is yours!`);
+  // the dart hit a country: find something to cook from there
+  function cookFrom(hit) { setUi({ cookMode: 'named', cookDish: hit.name }); router.push('/cook'); }
+  function openChallenge(c) {
+    const r = (allRecipes || []).find((x) => x.id === c.recipe_id);
+    if (r) setRecipe(r); else { setUi({ cookMode: 'named', cookDish: c.title }); router.push('/cook'); }
   }
   async function toggleVacation() {
     const on = !profile?.vacation_since;
@@ -113,47 +102,18 @@ export default function Me() {
         <div className="bar" style={{ height: 10, marginTop: 4 }}><i style={{ width: `${lvl.pct}%` }} /></div>
       </div>
 
-      <div style={{ position: 'relative', borderRadius: 26, overflow: 'hidden', background: 'radial-gradient(120% 90% at 50% 30%, var(--card) 0%, var(--stage) 70%)', border: '1px solid var(--line)' }}>
-        <div data-tour="stage" data-tip="stage" style={{ position: 'relative' }}>
-          <WhiskStage pose="default" outfit={outfit} height={360} dancing={dancing} onDanceEnd={() => setDancing(false)} />
-          <button type="button" className={`dance-btn ${dancing ? 'on' : ''}`} aria-pressed={dancing} onClick={() => setDancing((d) => !d)}>{dancing ? 'Stop' : 'Dance'}</button>
-        </div>
-        <span style={{ position: 'absolute', top: 10, left: 12, fontSize: 12, fontWeight: 800, color: 'var(--muted)' }}>Drag to spin</span>
-      </div>
+      <TierList countries={countries} />
+      <ProfileCard level={lvl} recipes={recipesCooked} ingredients={ingredients} countries={countries.length} streak={profile?.streak_days || 0} />
 
-      <div data-tour="slots" data-tip="closet" className="slotbar" role="tablist" aria-label="Outfit slots">
-        {SLOTS.map(([k, l, icon]) => (
-          <button key={k} role="tab" aria-selected={slot === k} onClick={() => setUi({ closetSlot: k })} className="card" title={l}
-            aria-label={`${l}: ${outfit[k] ? (byId[outfit[k]]?.name || '') : EMPTY[k]}`}
-            style={{ borderColor: slot === k ? 'var(--accent)' : 'var(--line)', boxShadow: slot === k ? 'inset 0 0 0 1px var(--accent)' : 'none', color: slot === k ? 'var(--accent)' : 'var(--fg)', background: slot === k ? 'var(--card)' : 'transparent' }}>
-            <Icon name={icon} size={34} stroke={1.5} />
-          </button>
-        ))}
-      </div>
-      <div id="shop" data-tour="coins" className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
-        <span className="row" style={{ gap: 6, fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 20 }}><Coin size={22} />{fmt(profile?.coins)}</span>
-        <button className="btn sm" onClick={() => setGetCoins(true)} style={{ background: 'var(--gold)', color: '#23301F', boxShadow: '0 3px 0 #B8862A' }}><Coin size={18} />Get coins</button>
-      </div>
-      <div className="closet-grid">
-        <button onClick={() => equip(null)} aria-pressed={!outfit[slot]} className="card tile" style={{ borderColor: !outfit[slot] ? 'var(--accent)' : 'var(--line)' }}>
-          {slot === 'top' ? <img src={thumb('top-white-chef-coat')} alt="" width="64" height="64" decoding="async" /> : <span style={{ width: 64, height: 64, display: 'grid', placeItems: 'center', color: 'var(--muted)' }}><Icon name="x" size={28} /></span>}
-          <span className="tname">{EMPTY[slot]}</span>{(slot === 'top' || slot === 'hat') && <span className="tprice free">Free</span>}
-        </button>
-        {inSlot.map((it) => {
-          const have = owned.has(it.id); const on = outfit[slot] === it.id;
-          return (
-            <button key={it.id} onClick={() => (have ? equip(it.id) : setBuying(it))} aria-pressed={have ? on : undefined} className={`card tile ${have ? '' : 'locked'}`}
-              aria-label={have ? `${it.name}${on ? ', wearing' : ''}` : `${it.name}, locked, ${fmt(it.price)} coins`}
-              style={{ borderColor: on ? 'var(--accent)' : have ? `var(--${it.rarity})` : 'var(--line)', boxShadow: on ? 'inset 0 0 0 1px var(--accent)' : 'none' }}>
-              <img src={thumb(it.id)} alt="" width="64" height="64" loading="lazy" decoding="async" />
-              <span className="tname">{it.name}</span>
-              {!have && <span className="row tprice"><Coin size={12} />{fmt(it.price)}</span>}
-            </button>
-          );
-        })}
-      </div>
+      <h2 style={{ fontSize: 22, margin: '4px 0 -4px' }}>Your kitchen</h2>
+      <MyKitchen />
 
-      <Passport counts={countryCounts} onOpenRecipe={setRecipe} />
+      <h2 style={{ fontSize: 22, margin: '4px 0 -4px' }} data-tip="album">Your world</h2>
+      <div data-tour="stage" data-tip="stage"><Globe counts={counts} done={doneSet} onCook={cookFrom} /></div>
+
+      <CountryChallenges challenges={world?.challenges} onOpen={openChallenge} />
+
+      <div data-tip="closet"><KitchenShop world={world} setWorld={setWorld} onGetCoins={() => setGetCoins(true)} /></div>
 
       {meals.length > 0 && (
         <>
@@ -227,20 +187,6 @@ export default function Me() {
       {backingUp && <BackupSheet supabase={supabase} onClose={() => setBackingUp(false)} />}
       {deleting && <DeleteDataSheet onClose={() => setDeleting(false)} />}
       {recipe && <RecipeSheet recipe={recipe} pantry={pantry || []} onClose={() => setRecipe(null)} />}
-      {buying && (
-        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setBuying(null); }}>
-          <div className="sheet stack" role="dialog" aria-modal="true" aria-label={`Buy ${buying.name}`} style={{ alignItems: 'center', textAlign: 'center' }}>
-            <img src={thumb(buying.id)} alt="" width="150" height="150" decoding="async" />
-            <span className="chip" style={{ background: `var(--${buying.rarity})`, color: '#fff', textTransform: 'uppercase', fontWeight: 800 }}>{buying.rarity}</span>
-            <h2 style={{ fontSize: 26 }}>{buying.name}</h2>
-            <p className="muted" style={{ margin: 0 }}>You have {fmt(profile?.coins)} coins.</p>
-            {profile?.coins >= buying.price
-              ? <button data-tour="buy" className="btn wide" onClick={confirmBuy} disabled={busy}><Coin />{busy ? 'Buying…' : `Buy for ${fmt(buying.price)}`}</button>
-              : <><p className="err" style={{ margin: 0 }}>You need {fmt(buying.price - (profile?.coins || 0))} more coins. Finish a challenge or get coins.</p><button className="btn wide" onClick={() => { setBuying(null); setGetCoins(true); }} style={{ background: 'var(--gold)', color: '#23301F', boxShadow: '0 3px 0 #B8862A' }}><Coin />Get coins</button></>}
-            <button className="btn ghost wide" onClick={() => setBuying(null)}>Not now</button>
-          </div>
-        </div>
-      )}
       {getCoins && <GetCoinsSheet onClose={() => setGetCoins(false)} />}
     </div>
   );

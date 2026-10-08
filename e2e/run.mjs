@@ -464,10 +464,11 @@ await step('free dish search', async () => {
   await page.evaluate(() => window.scrollTo(0, 0));
   check('just an "Add Channel" button: no heading, no explainer text, no built-in channels', (await page.locator('.channel').count()) === 0 && (await page.getByRole('button', { name: 'Add Channel' }).count()) === 1 && (await page.getByText(/Your YouTubers|They’ll be right here/).count()) === 0 && (await page.getByText(/You Suck at Cooking|Not Another Cooking Show/).count()) === 0);
   await page.getByRole('button', { name: 'Add Channel' }).click();
-  const yIn = page.getByPlaceholder(/@andy_cooks/);
+  const yIn = page.getByLabel('@handle');
+  check('one box titled @handle, with the @ already typed', (await yIn.inputValue()) === '@' && (await page.locator('.yt-add input').count()) === 1);
   await yIn.fill('javascript:alert(1)'); await page.getByRole('button', { name: 'Add', exact: true }).click();
   check('a non-YouTube link is refused', (await page.getByRole('alert').filter({ hasText: 'doesn’t look like a YouTube channel' }).count()) === 1 && (await page.locator('.channel').count()) === 0);
-  await yIn.fill('https://m.youtube.com/@MockKitchen/videos'); await page.getByPlaceholder('Andy Cooks').fill('Mock Kitchen');
+  await yIn.fill('https://m.youtube.com/@MockKitchen/videos');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   check('added channel opens inside Whisk', (await page.locator('.channel a[href^="/cook/channel?u="]', { hasText: 'Mock Kitchen' }).count()) === 1);
   await page.getByRole('button', { name: 'Add Channel' }).click(); await yIn.fill('@mockkitchen'); await page.getByRole('button', { name: 'Add', exact: true }).click();

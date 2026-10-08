@@ -838,6 +838,13 @@ await db.exec(`insert into public.profiles (id) values ('00000000-0000-4000-8000
 await db.exec(fs.readFileSync('./supabase/migrations/0025_magnets_night.sql', 'utf8'));
 check('running setup 18 again doesn’t undo a player’s choice of day mode', (await db.query(`select theme_pref from profiles where id = '00000000-0000-4000-8000-00000000d0d0'`)).rows[0].theme_pref === 'day');
 
+// ================= 0026: more recipes =================
+try { const f = fs.readFileSync('./supabase/migrations/0026_more_recipes.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0026 runs (twice)', true); }
+catch (e) { check('0026 runs (twice)', false, e.message); }
+const wr26 = (await db.query(`select count(*)::int n, count(distinct data ->> 'country')::int c from web_recipes where active`)).rows[0];
+check('149 recipes from 30+ countries', wr26.n === 149 && wr26.c >= 30, JSON.stringify(wr26));
+check('few-ingredient meals for near-empty pantries', (await db.query(`select count(*)::int n from web_recipes where cardinality(key_canon) <= 3`)).rows[0].n >= 10);
+
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

@@ -73,6 +73,14 @@ export default function Pantry() {
     await supabase.from('pantry_items').update(patch).eq('id', item.id);
     if (status === 'out') { await supabase.from('shopping_items').insert({ name: item.name, category: item.category }); say(`${item.name} is out · added to your list`); load(); }
   }
+  // change or reset (clear) an item's expiry date
+  async function setExpiry(item, v) {
+    const expires_on = v || null;
+    setItems((x) => x.map((i) => (i.id === item.id ? { ...i, expires_on } : i)));
+    const { error } = await supabase.from('pantry_items').update({ expires_on }).eq('id', item.id);
+    if (error) { say('Couldn’t change the date.'); reloadItems(); return; }
+    say(expires_on ? `${item.name}: expires ${new Date(expires_on + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : `${item.name}: expiry reset`);
+  }
   async function startThaw(item) {
     const at = new Date().toISOString();
     setItems((x) => x.map((i) => (i.id === item.id ? { ...i, thaw_started_at: at } : i)));
@@ -164,7 +172,7 @@ export default function Pantry() {
             <div className="grid2">
               <div style={{ gridColumn: '1 / -1' }}><label className="lbl" htmlFor="p-name">Item</label><input id="p-name" className="input" maxLength={60} placeholder="e.g. Frozen chicken breast" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
               <div><label className="lbl" htmlFor="p-qty">Amount</label><input id="p-qty" className="input" maxLength={30} placeholder="2 lb" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
-              <div style={{ minWidth: 0 }}><label className="lbl" htmlFor="p-exp">Expires</label><div className="date-wrap"><input id="p-exp" className={`input ${form.expires_on ? '' : 'empty'}`} type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} />{!form.expires_on && <span className="date-hint" aria-hidden="true">Pick a date</span>}</div></div>
+              <div style={{ minWidth: 0 }}><label className="lbl" htmlFor="p-exp">Expires</label><div className="date-wrap"><input id="p-exp" className={`input ${form.expires_on ? '' : 'empty'}`} type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} />{!form.expires_on && <span className="date-hint" aria-hidden="true">Pick a date</span>}</div>{form.expires_on && <button type="button" className="date-reset" onClick={() => setForm({ ...form, expires_on: '' })} aria-label="Reset the expiry date">Reset</button>}</div>
             </div>
             <button data-tour="add" data-tip="add" className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
             <span className="desc">Frozen food gets a defrost reminder.</span>
@@ -188,6 +196,11 @@ export default function Pantry() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <b style={{ textDecoration: i.status === 'out' ? 'line-through' : 'none' }}>{i.name}</b>{i.quantity && <span className="muted"> · {i.quantity}</span>}
                         {(() => { const t = thawState(i); if (!t) return null; return <div style={{ marginTop: 4 }}>{t.state === 'frozen' ? <button className="chip ice" onClick={() => startThaw(i)}><Icon name="snow" size={14} />Frozen meat · tap to start thawing</button> : t.state === 'thawing' ? <span className="chip ice"><Icon name="snow" size={14} />Thawing · ~{t.hoursLeft} h left</span> : <span className="chip have">Thawed · cook within 1–2 days</span>}</div>; })()}
+                        <div className="row exp-row">
+                          <label className="chip exp-chip">{i.expires_on ? `Expires ${new Date(i.expires_on + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Add expiry'}
+                            <input type="date" value={i.expires_on || ''} onChange={(e) => setExpiry(i, e.target.value)} aria-label={`${i.name} expiry date`} /></label>
+                          {i.expires_on && <button type="button" className="chip exp-reset" onClick={() => setExpiry(i, null)} aria-label={`Reset ${i.name} expiry`}>Reset</button>}
+                        </div>
                         {f && <div className="row" style={{ gap: 8, flexWrap: 'nowrap', marginTop: 4 }}><div className="bar" style={{ flex: 1 }}><i style={{ width: `${f.pct}%`, background: `var(--${f.tone === 'fresh' ? 'accent' : f.tone + '-bar'})` }} /></div><span style={{ fontSize: 12, fontWeight: 800, color: `var(--${f.tone})` }}>{f.label}</span></div>}
                       </div>
                       <button className="chip" style={{ border: 0, background: i.status === 'stocked' ? 'var(--fresh-soft)' : i.status === 'low' ? 'var(--warn-soft)' : 'var(--bad-soft)', color: i.status === 'stocked' ? 'var(--fresh)' : i.status === 'low' ? 'var(--warn)' : 'var(--bad)' }} onClick={() => cycle(i)} aria-label={`${i.name}: ${STATUS_LABEL[i.status]}. Tap to change.`}>{STATUS_LABEL[i.status]}</button>

@@ -20,7 +20,7 @@ export default function MyYouTubers() {
     const p = parseYouTuber(link);
     if (!p) { setErr('That doesn’t look like a YouTube channel. Paste the channel link, or type its @handle.'); return; }
     if (list.some((x) => parseYouTuber(x.url)?.key === p.key)) { setErr('Already on your list.'); return; }
-    const nm = name.trim().slice(0, 40) || p.handle;
+    const nm = (name.trim() || String(p.handle || '').replace(/^@/, '').replace(/[_.-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2')).slice(0, 40) || p.handle;   // @MockKitchen → Mock Kitchen
     setUi({ youtubers: [...list, { name: nm, url: p.url }] });
     setLink(''); setName(''); setErr(''); setOpen(false); say(`Added ${nm}`);
   }
@@ -41,10 +41,8 @@ export default function MyYouTubers() {
         ))}
         {open ? (
           <form className="card stack yt-add" onSubmit={add} noValidate>
-            <div><label className="lbl" htmlFor="yt-link">Channel link or @handle</label>
-              <input id="yt-link" className="input" value={link} onChange={(e) => { setLink(e.target.value); setErr(''); }} placeholder="@andy_cooks or youtube.com/@…" autoFocus autoCapitalize="off" autoCorrect="off" spellCheck={false} inputMode="url" maxLength={200} aria-invalid={!!err} aria-describedby={err ? 'yt-err' : undefined} /></div>
-            <div><label className="lbl" htmlFor="yt-name">Name (optional)</label>
-              <input id="yt-name" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Andy Cooks" maxLength={40} /></div>
+            <div><label className="lbl" htmlFor="yt-link">@handle</label>
+              <input id="yt-link" className="input" value={link || '@'} onChange={(e) => { const v = e.target.value; setLink(v.startsWith('@') || v.includes('/') || !v ? v : `@${v}`); setErr(''); }} autoFocus autoCapitalize="off" autoCorrect="off" spellCheck={false} inputMode="url" maxLength={200} aria-invalid={!!err} aria-describedby={err ? 'yt-err' : undefined} /></div>
             {err && <p id="yt-err" className="err" role="alert" style={{ margin: 0 }}>{err}</p>}
             <div className="row" style={{ gap: 8 }}>
               <button className="btn" type="submit" style={{ flex: 1 }}>Add</button>

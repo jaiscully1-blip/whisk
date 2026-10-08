@@ -4,6 +4,7 @@ import { useWhisk } from './AppShell';
 import RecipeSheet from './RecipeSheet';
 import Icon from './Icon';
 import { useSaved } from './usePantry';
+import Postcard from './Postcard';
 
 // Recipes you saved (or cooked and rated), newest first.
 export default function SavedRecipes({ pantry, onChanged, limit = 0 }) {
@@ -21,11 +22,16 @@ export default function SavedRecipes({ pantry, onChanged, limit = 0 }) {
   return (
     <div className="stack">
       {saved === null ? <p className="muted">Loading…</p> : list.length ? (limit && !all ? list.slice(0, limit) : list).map(({ r }) => (
-        <div key={r.id} className="card row saved-row" style={{ flexWrap: 'nowrap', padding: 0 }}>
-          <button type="button" className="saved-open" onClick={() => setOpen(r)}>
-            <span style={{ flex: 1 }}><b>{r.title}</b><span className="desc" style={{ display: 'block' }}>{r.cuisine} · {r.source}</span></span>
-          </button>
-          <button type="button" className="btn ghost sm saved-x" onClick={() => unsave(r)} aria-label={`Unsave ${r.title}`}><Icon name="x" size={16} /></button>
+        <div key={r.id} className="card rcard saved-card">
+          <Postcard iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} />
+          <div className="rcard-body saved-body">
+            <button type="button" className="saved-open" onClick={() => setOpen(r)}>
+              <span className="eyebrow">{r.cuisine}</span>
+              <b className="saved-title">{r.title}</b>
+              <span className="desc">{r.source} · {r.minutes} min</span>
+            </button>
+            <button type="button" className="btn ghost sm saved-x" onClick={() => unsave(r)} aria-label={`Unsave ${r.title}`}><Icon name="x" size={16} /></button>
+          </div>
         </div>
       )) : <div className="empty"><b>No saved recipes here</b>Save a recipe, or rate a meal after you cook it.</div>}
       {limit > 0 && !all && list.length > limit && <button type="button" className="btn ghost wide" onClick={() => setAll(true)}>Show all {list.length}</button>}

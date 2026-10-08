@@ -33,16 +33,18 @@ export default function Cook() {
 
   const mode = savedMode === 'raid' && !hand ? 'pantry' : savedMode;
   const inStock = useMemo(() => (pantry || []).filter((p) => p.status !== 'out'), [pantry]);
-  const makeable = useMemo(() => (recipes && pantry ? recipes.map((r) => ({ r, c: checkRecipe(r, pantry) })).filter((x) => x.c.ok) : []), [recipes, pantry]);
+  // No minimum: everything you can make (with swaps if needed) first, then recipes you're only 1–2 things away from.
+  const checked = useMemo(() => (recipes && pantry ? recipes.map((r) => ({ r, c: checkRecipe(r, pantry) })) : []), [recipes, pantry]);
+  const makeable = useMemo(() => [...checked.filter((x) => x.c.ok).sort((a, b) => a.c.subs.length - b.c.subs.length), ...checked.filter((x) => !x.c.ok && x.c.missing.length <= 2).sort((a, b) => a.c.missing.length - b.c.missing.length || a.r.key.length - b.r.key.length)], [checked]);
   const cuisines = useMemo(() => [...new Set((recipes || []).map((r) => r.cuisine))].sort(), [recipes]);
 
   const results = useMemo(() => {
     if (!mode) return null;
     let list = makeable.filter(({ r }) => (!+time || r.minutes <= +time) && (!cu || r.cuisine === cu) && fitsDiet(r, diet));
-    if (mode === 'raid' && hand) { const hc = new Set(hand.map(canon)); list = list.map((x) => ({ ...x, hits: x.r.key.filter((k) => hc.has(canon(k))).length })).filter((x) => x.hits > 0).sort((a, b) => b.hits - a.hits); }
+    if (mode === 'raid' && hand) { const hc = new Set(hand.map(canon)); list = list.map((x) => ({ ...x, hits: x.r.key.filter((k) => hc.has(canon(k))).length })).filter((x) => x.hits > 0).sort((a, b) => (a.c.ok === b.c.ok ? 0 : a.c.ok ? -1 : 1) || b.hits - a.hits); }
     if (mode === 'named') { const words = (ui.cookDish || '').toLowerCase().split(/\s+/).filter((w) => w.length > 2); list = list.filter(({ r }) => words.some((w) => `${r.title} ${r.cuisine}`.toLowerCase().includes(w.replace(/s$/, '')))); }
     // food about to go bad first (Fridge Raid keeps its own order: most of your dealt cards first)
-    if (mode !== 'raid') { list = list.map((x) => ({ ...x, soon: usesSoon(x.r, pantry || []) })); list = [...list.filter((x) => x.soon.length), ...list.filter((x) => !x.soon.length)]; }
+    if (mode !== 'raid') { list = list.map((x) => ({ ...x, soon: usesSoon(x.r, pantry || []) })); list = [...list.filter((x) => x.c.ok && x.soon.length), ...list.filter((x) => x.c.ok && !x.soon.length), ...list.filter((x) => !x.c.ok)]; }
     return list;
   }, [mode, makeable, pantry, time, cu, diet, hand, ui.cookDish]);
 
@@ -82,7 +84,7 @@ export default function Cook() {
         <button className="btn ghost wide" data-tip="fridge" onClick={raid}><Icon name="gift" size={18} />Fridge Raid</button>
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); if (!dish.trim()) return; setHand(null); setAsked(true); setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>Dish</label>
-          <input id="o-dish" data-tip="search" className="input" type="search" enterKeyHint="search" autoComplete="off" placeholder="Search a dish, sauce, food or country" maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
+          <input id="o-dish" data-tip="search" className="input" type="search" enterKeyHint="search" autoComplete="off" aria-label="Search a dish, food or country" maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
           <button className="btn" type="submit" aria-label="Search dishes"><Icon name="search" size={18} />Search</button>
         </form>
       </div>
@@ -99,18 +101,19 @@ export default function Cook() {
       )}
       {mode === 'named' && ui.cookDish && results?.length === 0 ? null : results && (results.length ? (
         <>
-          <span className="eyebrow">{mode === 'named' ? `From your Whisk recipes · ${results.length}` : `${results.length} recipe${results.length === 1 ? '' : 's'} you can make right now`}</span>
+          <span className="eyebrow">{mode === 'named' ? `From your Whisk recipes · ${results.length}` : (() => { const n = results.filter((x) => x.c.ok).length; return n ? `${n} recipe${n === 1 ? '' : 's'} you can make right now` : 'Closest to what you have'; })()}</span>
           {results.slice(0, shown).map(({ r, c, soon }) => (
             <button key={r.id} className="card stack" style={{ gap: 8, textAlign: 'left' }} onClick={() => setOpen(r)}>
               <span className="eyebrow">{r.cuisine} · {r.source}</span>
               <h2 style={{ fontSize: 20 }}>{r.title}</h2>
-              <div className="row"><span className="chip">{hrs(r.minutes)}</span><span className="chip">Serves {r.servings}</span><span className="chip have">You have everything</span>{c.frozen.length > 0 && <span className="chip ice"><Icon name="snow" size={14} />Defrost first</span>}</div>
+              <div className="row"><span className="chip">{hrs(r.minutes)}</span><span className="chip">Serves {r.servings}</span>{c.ok ? <span className="chip have">{c.subs.length ? 'You can make it' : 'You have everything'}</span> : <span className="chip need">Need {c.missing.slice(0, 2).join(' + ').toLowerCase()}</span>}{c.frozen.length > 0 && <span className="chip ice"><Icon name="snow" size={14} />Defrost first</span>}</div>
+              {c.subs.length > 0 && <span className="desc swap-line">Swap: {c.subs.map((x) => `${x.use.toLowerCase()} for ${x.need.toLowerCase()}`).join(', ')}</span>}
               {soon?.length > 0 && <span className="chip soon"><Icon name="timer" size={14} />Uses your {soon.map((p) => p.name.toLowerCase()).slice(0, 2).join(' and ')} before it goes bad</span>}
               <DietTags recipe={r} max={3} />
             </button>
           ))}
           {shown < results.length ? <div ref={moreRef}><button className="btn ghost wide" onClick={() => setShown((n) => n + PAGE)}>Show more</button></div>
-            : <span className="desc" style={{ textAlign: 'center' }}>That’s every recipe your pantry can make right now.</span>}
+            : <span className="desc" style={{ textAlign: 'center' }}>That’s everything that fits your pantry right now.</span>}
         </>
       ) : asked && <div className="empty"><b>Nothing fits yet</b>{mode === 'named' ? 'None of Whisk’s recipes match that dish and your pantry.' : 'Add a few more staples to your pantry and check back.'}</div>)}
 

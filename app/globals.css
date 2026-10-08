@@ -1074,3 +1074,17 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .howto-row summary::after { content: '+'; color: var(--muted); font-weight: 800; }
 .howto-row[open] summary::after { content: '–'; }
 .howto-row p { margin: 6px 0 0; color: var(--muted); line-height: 1.5; }
+.swaps { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.swaps b { width: 100%; font-size: 14px; }
+.swap-line { color: var(--fresh); font-weight: 700; }
+.exp-row { gap: 6px; margin-top: 4px; }
+.exp-chip { position: relative; overflow: hidden; cursor: pointer; font-size: 12px; }
+.exp-chip input[type="date"] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.exp-reset { font-size: 12px; border: 0; background: var(--bad-soft); color: var(--bad); }
+.date-reset { display: inline-block; margin-top: 6px; border: 0; background: var(--bad-soft); color: var(--bad); font-weight: 800; font-size: 12px; border-radius: 99px; padding: 4px 10px; }
+.saved-card { padding: 0 0 4px; }
+.saved-card .saved-body { display: flex; align-items: flex-end; gap: 8px; }
+.saved-card .saved-open { flex-direction: column; align-items: flex-start; gap: 4px; padding: 4px 4px 10px 14px; }
+.saved-card .saved-open .eyebrow { background: var(--card); padding: 3px 9px; border-radius: 99px; box-shadow: 0 2px 0 var(--tile-edge); color: var(--fg); }
+.saved-title { font-family: var(--f-display); font-size: 19px; line-height: 1.15; text-shadow: 0 0 6px var(--card), 0 0 12px var(--card); }
+.saved-card .saved-x { margin: 0 10px 12px 0; background: var(--card); }

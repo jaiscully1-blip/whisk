@@ -4,7 +4,7 @@ import { useWhisk } from './AppShell';
 import Icon from './Icon';
 import LogMealSheet from './LogMealSheet';
 import ThawBanner from './ThawBanner';
-import { checkRecipe, shoppingNeeds } from '@/lib/recipes/match';
+import { checkRecipe, shoppingNeeds, canon } from '@/lib/recipes/match';
 import { guessCategory } from '@/lib/game';
 import { ServingsX, IngredientList, StepList } from './RecipeSteps';
 import { cultureStyle, motifFor } from '@/lib/culture';
@@ -24,7 +24,8 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
   const c = { ...c0, missing: c0.missing.filter((m) => !added.includes(m)) };
   c.ok = c0.ok || (c0.missing.length > 0 && c.missing.length === 0);
   // everything to buy, in the recipe's order: seasonings, butter, herbs and all
-  const needs = shoppingNeeds(r, pantry).filter((n) => !added.includes(n));
+  const subbed = new Set((c0.subs || []).map((x) => canon(x.need)));
+  const needs = shoppingNeeds(r, pantry).filter((n) => !added.includes(n) && !subbed.has(canon(n)));
 
   async function save() {
     const { data, error } = await supabase.rpc('save_recipe', { p_recipe_id: r.id });
@@ -80,6 +81,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         <DietTags recipe={r} />
         {c.frozen.length > 0 && <ThawBanner items={c.frozen} onChanged={onChanged} />}
         <ServingsX base={r.servings} factor={factor} onChange={setFactor} id={`sx-${r.id}`} />
+        {c.subs?.length > 0 && <div className="swaps"><b>Swaps that work</b>{c.subs.map((x) => <span key={x.need} className="chip have">{x.use} for {x.need.toLowerCase()}</span>)}</div>}
         {needs.length > 0 ? <>
           <h3>You need</h3>
           <div className="row" style={{ gap: 6 }}>

@@ -7,11 +7,13 @@ import RecipeSheet from '@/components/RecipeSheet';
 import ThawBanner from '@/components/ThawBanner';
 import Icon from '@/components/Icon';
 import { usePantry, useSaved } from '@/components/usePantry';
-import { checkRecipe, thawState, usesSoon } from '@/lib/recipes/match';
+import { checkRecipe, thawState, usesSoon, shoppingNeeds, canon } from '@/lib/recipes/match';
+import Postcard from '@/components/Postcard';
 import { guessCategory } from '@/lib/game';
 
 const PAGE = 10;
 const SORT_FROM = 10;   // with fewer pantry items than this, "closest first" would show the same few recipes; mix it up instead
+const SHOW = 3;   // missing ingredients shown on a card; the recipe lists them all
 const away = (n) => `${n} item${n === 1 ? '' : 's'} away`;
 const mix = (id, seed) => { let h = seed >>> 0; for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 2654435761) >>> 0; return h; };
 
@@ -30,7 +32,8 @@ export default function Home() {
   const sorted = stocked >= SORT_FROM;
   const almost = useMemo(() => {
     if (!pantry || !recipes) return null;
-    const list = recipes.map((r) => ({ r, c: checkRecipe(r, pantry), soon: usesSoon(r, pantry) })).filter((x) => x.c.missing.length >= 1);
+    const list = recipes.map((r) => ({ r, c: checkRecipe(r, pantry), soon: usesSoon(r, pantry) })).filter((x) => x.c.missing.length >= 1)
+      .map((x) => { const main = new Set(x.c.missing.map(canon)); const needs = shoppingNeeds(x.r, pantry); return { ...x, needs: [...needs.filter((n) => main.has(canon(n))), ...needs.filter((n) => !main.has(canon(n)))] }; });
     const ordered = sorted ? list.sort((a, b) => a.c.missing.length - b.c.missing.length || a.r.minutes - b.r.minutes)
       : list.sort((a, b) => mix(a.r.id, seed) - mix(b.r.id, seed));
     // Recipes that use food about to go bad come first (fewest missing first among them).
@@ -58,20 +61,23 @@ export default function Home() {
       <div className="page-title" style={{ margin: '6px 0 0' }}><h1>Almost ready</h1>{almost && !sorted && almost.length > 1 && <button type="button" className="title-link" onClick={shuffle}><Icon name="shuffle" size={18} />Shuffle</button>}</div>
       {almost === null ? <p className="muted">Checking your pantry…</p> : almost.length === 0 ? (
         <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">Add pantry items</Link><Link className="btn ghost" href="/cook">What can I make?</Link></div></div>
-      ) : almost.slice(0, shown).map(({ r, c, soon }, i, arr) => (
+      ) : almost.slice(0, shown).map(({ r, c, soon, needs }, i, arr) => (
         <div key={r.id} className="stack" style={{ gap: 8 }}>
         {soon.length > 0 && i === 0 && <h2 className="away-h soon-h">Use it before it goes bad</h2>}
         {sorted && !soon.length && (i === 0 || arr[i - 1].soon.length > 0 || arr[i - 1].c.missing.length !== c.missing.length) && <h2 className="away-h">{away(c.missing.length)}</h2>}
-        <div className="card stack" style={{ gap: 8 }}>
+        <div className="card stack rcard" style={{ gap: 8 }}>
+          <Postcard iso={r.country} cuisine={r.cuisine} title={r.title} />
+          <div className="rcard-body stack" style={{ gap: 8 }}>
           <span className="eyebrow">{r.cuisine}</span>
           <h2 style={{ fontSize: 22 }}>{r.title}</h2>
           <span className="src"><a href={r.url} target="_blank" rel="noopener noreferrer">Full recipe</a> · {r.minutes} min</span>
           {soon.length > 0 && <span className="chip soon"><Icon name="timer" size={14} />Uses your {soon.map((p) => p.name.toLowerCase()).slice(0, 2).join(' and ')} before it goes bad</span>}
           <DietTags recipe={r} max={3} />
-          <div className="row">{c.missing.map((m) => <span key={m} className="chip need">+ {m}</span>)}</div>
+          <div className="row">{needs.slice(0, SHOW).map((m) => <span key={m} className="chip need">+ {m}</span>)}{needs.length > SHOW && <button type="button" className="chip more-need" onClick={() => setOpen(r)} aria-label={`See all ${needs.length} you need`}>+{needs.length - SHOW} more</button>}</div>
           <div className="row" style={{ flexWrap: 'nowrap' }}>
-            <button className="btn ghost" style={{ flex: 1 }} onClick={() => addToList(r, c.missing)}>Add to list</button>
+            <button className="btn ghost" style={{ flex: 1 }} onClick={() => addToList(r, needs)}>Add to list</button>
             <button className="btn" style={{ flex: 1 }} onClick={() => setOpen(r)}>Open recipe</button>
+          </div>
           </div>
         </div>
         </div>

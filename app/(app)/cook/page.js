@@ -13,6 +13,7 @@ import WeekGoal from '@/components/WeekGoal';
 import BackupNudge from '@/components/BackupNudge';
 import MyYouTubers from '@/components/MyYouTubers';
 import DishSearch from '@/components/DishSearch';
+import SavedRecipes from '@/components/SavedRecipes';
 
 const SKIP = ['Spices & Seasonings', 'Sauces & Oils', 'Baking'];
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
@@ -85,6 +86,11 @@ export default function Cook() {
           <button className="btn" type="submit" aria-label="Search dishes"><Icon name="search" size={18} />Search</button>
         </form>
       </div>
+
+      <section className="card stack saved-box" aria-labelledby="saved-h">
+        <h2 id="saved-h" style={{ fontSize: 20, margin: 0 }}><Icon name="star" size={18} /> Saved recipes</h2>
+        <SavedRecipes pantry={pantry} onChanged={reload} limit={4} />
+      </section>
 
       {hand && mode === 'raid' && (
         <div className="stack" style={{ gap: 8 }}><span className="eyebrow">Ingredients</span>

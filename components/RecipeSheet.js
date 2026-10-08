@@ -4,7 +4,7 @@ import { useWhisk } from './AppShell';
 import Icon from './Icon';
 import LogMealSheet from './LogMealSheet';
 import ThawBanner from './ThawBanner';
-import { checkRecipe, searchLinks } from '@/lib/recipes/match';
+import { checkRecipe, searchLinks, shoppingNeeds } from '@/lib/recipes/match';
 import { guessCategory } from '@/lib/game';
 import { ServingsX, IngredientList, StepList } from './RecipeSteps';
 import { cultureStyle, motifFor } from '@/lib/culture';
@@ -23,6 +23,8 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
   const c0 = checkRecipe(r, pantry);
   const c = { ...c0, missing: c0.missing.filter((m) => !added.includes(m)) };
   c.ok = c0.ok || (c0.missing.length > 0 && c.missing.length === 0);
+  // everything to buy, in the recipe's order: seasonings, butter, herbs and all
+  const needs = shoppingNeeds(r, pantry).filter((n) => !added.includes(n));
 
   async function save() {
     const { data, error } = await supabase.rpc('save_recipe', { p_recipe_id: r.id });
@@ -32,7 +34,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
   async function addMissing() {
     const { data: list } = await supabase.from('shopping_items').select('name');
     const have = new Set((list || []).map((l) => l.name.toLowerCase()));
-    const add = c.missing.filter((m) => !have.has(m.toLowerCase()));
+    const add = needs.filter((m) => !have.has(m.toLowerCase()));
     if (add.length) { const { error } = await supabase.from('shopping_items').insert(add.map((m) => ({ name: m.slice(0, 60), category: guessCategory(m) }))); if (error) { say('Couldn’t add to your list.'); return; } }
     say(add.length ? `Added ${add.length} to your shopping list` : 'Already on your list');
   }
@@ -60,7 +62,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         <span className="src">Recipe from <a href={r.url} target="_blank" rel="noopener noreferrer">{r.source}</a>{r.video && <> · <a href={r.video} target="_blank" rel="noopener noreferrer">Watch the video</a></>}</span>
         <div className="row">
           <span className="chip">{r.minutes} min</span><span className="chip xp">+20 XP when you cook it</span>
-          {c.missing.length ? <span className="chip need">{c.missing.length} missing</span> : <span className="chip have">You have everything</span>}
+          {needs.length ? <span className="chip need">{needs.length} to buy</span> : <span className="chip have">You have everything</span>}
         </div>
         {r.nutrition && (
           <div className="macros" aria-label="Nutrition per serving, from the recipe page">
@@ -73,16 +75,16 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         <DietTags recipe={r} />
         {c.frozen.length > 0 && <ThawBanner items={c.frozen} onChanged={onChanged} />}
         <ServingsX base={r.servings} factor={factor} onChange={setFactor} id={`sx-${r.id}`} />
-        <h3>What you have</h3>
-        <div className="row" style={{ gap: 6 }}>
-          {r.key.map((k) => { const ok = !c.missing.includes(k); return ok
-            ? <span key={k} className="chip have">✓ {k}</span>
-            : <button key={k} type="button" className="chip need add-ing" onClick={() => addOne(k)} aria-label={`I have ${k}: add it to my pantry`}>+ {k}</button>; })}
-        </div>
-        {c.missing.length > 0 && <p className="desc" style={{ margin: 0 }}>Already have one? Tap it to add it to your pantry.</p>}
-        {c.missing.length > 0 && <button className="btn ghost" onClick={addMissing}>Add {c.missing.length} missing to shopping list</button>}
+        {needs.length > 0 ? <>
+          <h3>You need</h3>
+          <div className="row" style={{ gap: 6 }}>
+            {needs.map((k) => <button key={k} type="button" className="chip need add-ing" onClick={() => addOne(k)} aria-label={`I have ${k}: add it to my pantry`}>+ {k}</button>)}
+          </div>
+          <p className="desc" style={{ margin: 0 }}>Already have one? Tap it to add it to your pantry.</p>
+          <button className="btn ghost" onClick={addMissing}>Add {needs.length} to shopping list</button>
+        </> : <span className="chip have" style={{ alignSelf: 'flex-start' }}>✓ You have every ingredient</span>}
         <h3>Ingredients</h3>
-        <IngredientList r={r} factor={factor} missing={c.missing} />
+        <IngredientList r={r} factor={factor} missing={needs} />
         <div className="row" style={{ justifyContent: 'space-between' }}><h3>Steps</h3><button type="button" className="btn sm cm-open" onClick={() => setCooking(true)}><Icon name="play" size={16} />Cook mode</button></div>
         <StepList r={r} factor={factor} />
         <div className="links">

@@ -5,7 +5,6 @@ import { isFrozenMeat, thawState, THAW_HOURS } from '@/lib/recipes/match';
 import Icon from '@/components/Icon';
 import { CATEGORIES, freshness, guessCategory } from '@/lib/game';
 import ScanSheet from '@/components/ScanSheet';
-import SavedRecipes from '@/components/SavedRecipes';
 import { usePantry, useList } from '@/components/usePantry';
 import ShareListSheet from '@/components/ShareListSheet';
 import { KitchenFloat, KitchenTab } from '@/components/kitchen/KitchenPanels';
@@ -21,7 +20,7 @@ const cancel = (key) => { clearTimeout(pending.get(key)); pending.delete(key); }
 
 export default function Pantry() {
   const { supabase, say, refreshProfile, ui, setUi } = useWhisk();
-  const tab = ui.pantryTab || 'pantry'; const setTab = (t) => setUi({ pantryTab: t });
+  const tab = ui.pantryTab && ui.pantryTab !== 'saved' ? ui.pantryTab : 'pantry'; const setTab = (t) => setUi({ pantryTab: t });   // saved recipes moved to Cook
   const filter = ui.pantryFilter || 'All'; const setFilter = (f) => setUi({ pantryFilter: f });
   const [items, reloadItems, setItems] = usePantry();   // remembered between tabs (lib/cache.js)
   const [list, reloadList, setList] = useList();
@@ -140,15 +139,14 @@ export default function Pantry() {
 
   return (
     <div className="stack">
-      <div className="page-title"><h1>{tab === 'pantry' ? 'Pantry' : tab === 'list' ? 'Shopping list' : tab === 'kitchen' ? 'Kitchen' : 'Saved recipes'}</h1></div>
+      <div className="page-title"><h1>{tab === 'pantry' ? 'Pantry' : tab === 'list' ? 'Shopping list' : 'Kitchen'}</h1></div>
       <div className="row tabrow" role="tablist">
         <button className={`btn sm ${tab === 'pantry' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'pantry'} onClick={() => setTab('pantry')}>Pantry {items ? `(${items.length})` : ''}</button>
         <button className={`btn sm ${tab === 'list' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'list'} onClick={() => setTab('list')}>Shopping list {list ? `(${list.length})` : ''}</button>
-        <button className={`btn sm ${tab === 'saved' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'saved'} onClick={() => setTab('saved')}>Saved recipes</button>
         <button className={`btn sm ${tab === 'kitchen' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'kitchen'} onClick={() => setTab('kitchen')}><Icon name="pantry" size={16} />Kitchen</button>
       </div>
 
-      {tab === 'saved' ? <SavedRecipes pantry={items} /> : tab === 'kitchen' ? <KitchenTab items={items} /> : tab === 'pantry' ? (
+      {tab === 'kitchen' ? <KitchenTab items={items} /> : tab === 'pantry' ? (
         <>
           <div className="grid2">
             <button data-tour="scan" data-tip="receipt" className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('receipt')}><Icon name="receipt" size={22} />Scan receipt</button>

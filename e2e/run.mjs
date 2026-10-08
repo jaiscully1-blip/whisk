@@ -111,14 +111,26 @@ await step('home', async () => {
   await page.evaluate(() => window.scrollTo(0, 0));
   check('pantry hint is the short version', (await page.getByText('Whisk reads').count()) === 0);
   // open one: tap a single missing ingredient under "What you have" to put it in the pantry
-  const card0 = page.locator('main .card', { has: page.getByRole('button', { name: 'Open recipe' }) }).first();
+  check('every recipe card has a postcard of where the dish comes from (landmark + dish)', (await page.locator('main .rcard .rcard-art svg').count()) === (await page.locator('main .rcard').count()) && (await page.locator('main .rcard').count()) > 0);
+  const chipCounts = await page.locator('main .rcard').evaluateAll((cs) => cs.map((c) => c.querySelectorAll('.chip.need').length));
+  check('home shows at most 3 missing ingredients per card', chipCounts.every((n) => n <= 3), JSON.stringify(chipCounts.slice(0, 12)));
+  const card0 = page.locator('main .rcard', { has: page.locator('.more-need') }).first();
+  const shownN = await card0.locator('.chip.need').count();
+  const moreN = Number(((await card0.locator('.more-need').innerText()).match(/\d+/) || [0])[0]);
   const cuisine0 = (await card0.locator('.eyebrow').innerText()).trim();
   await card0.getByRole('button', { name: 'Open recipe' }).click();
   const sheet = page.locator('[role=dialog].sheet');
-  const miss = sheet.locator('button.add-ing').first(); const missName = (await miss.innerText()).replace(/^\+\s*/, '').trim();
+  await sheet.locator('button.add-ing').first().waitFor();
+  const needNames = (await sheet.locator('button.add-ing').allInnerTexts()).map((t) => t.replace(/^\+\s*/, '').trim());
+  check('open it: every ingredient you still need is listed (the card’s 3 + the rest)', needNames.length === shownN + moreN, `${shownN}+${moreN} vs ${needNames.length}`);
+  const ingOrder = (await sheet.locator('.ing-list li.need').allInnerTexts()).map((t) => t.toLowerCase());
+  { let j = 0; for (const n of needNames) if (j < ingOrder.length && ingOrder[j].includes(n.toLowerCase())) j++;
+    check('…in the recipe’s own order, marked in the ingredient list', ingOrder.length > 0 && j === ingOrder.length, `${needNames.join(', ')} | ${ingOrder.join(' / ')}`); }
+  check('…seasonings, oil, butter and herbs included', needNames.some((n) => /salt|pepper|oil|butter|powder|seasoning|thyme|oregano|cumin|paprika|sauce|vinegar|sugar/i.test(n)), needNames.join(', '));
+  const miss = sheet.locator('button.add-ing').first(); const missName = needNames[0];
   await miss.click();
-  await sheet.locator('.chip.have', { hasText: missName }).waitFor({ timeout: 6000 });
-  check('tap one missing ingredient: it turns ✓ and goes in the pantry', (await page.locator('.toast').innerText()).includes('is in your pantry'), missName);
+  await page.locator('.toast', { hasText: 'is in your pantry' }).waitFor({ timeout: 6000 });
+  check('tap one you already have: it goes in the pantry and off the list', (await sheet.locator('button.add-ing', { hasText: missName }).count()) === 0, missName);
   check('the recipe gets a soft cultural backdrop for its cuisine', (await sheet.getAttribute('class')).includes('cx') && !!(await sheet.getAttribute('data-motif')) && (await sheet.getAttribute('data-motif')) !== 'dots', `${cuisine0} → ${await sheet.getAttribute('data-motif')}`);
   await shot('01b-recipe-culture');
   await sheet.getByRole('button', { name: 'Close' }).click();
@@ -235,11 +247,15 @@ await step('cook', async () => {
   await shot('03-cooked');
   await page.click('[role=dialog] >> text=Leave');
   await page.waitForTimeout(600); await closePopups();
-  await nav('Pantry'); await page.getByRole('tab', { name: 'Saved recipes' }).click();
-  await page.click('button.chip:has-text("Liked")');
-  await page.locator('main [aria-label=Liked]').first().waitFor();
-  check('liked meal shows in Pantry → Saved recipes', (await page.locator('main [aria-label=Liked]').count()) >= 1);
-  await page.getByRole('tab', { name: /^Pantry/ }).click();
+  await nav('Cook');
+  check('Cook: Saved recipes has its own box under search', (await page.locator('main .saved-box h2', { hasText: 'Saved recipes' }).count()) === 1 && (await page.locator('main .card', { has: page.locator('#o-dish') }).count()) === 1);
+  await page.locator('.saved-box').getByRole('button', { name: 'Liked', exact: true }).click();
+  await page.locator('.saved-box [aria-label=Liked]').first().waitFor();
+  check('liked meal shows in Cook → Saved recipes', (await page.locator('.saved-box [aria-label=Liked]').count()) >= 1);
+  await page.locator('.saved-box').getByRole('button', { name: 'All', exact: true }).click();
+  await nav('Pantry'); await page.getByRole('tab', { name: 'Kitchen' }).waitFor();
+  const tabsNow = (await page.getByRole('tab').allInnerTexts()).map((t) => t.replace(/\s*\(\d+\)/, '').trim()).join('|');
+  check('Pantry tabs: Pantry, Shopping list, Kitchen (saved recipes moved to Cook)', tabsNow === 'Pantry|Shopping list|Kitchen', tabsNow);
 });
 await step('compete', async () => {
   await nav('Compete');

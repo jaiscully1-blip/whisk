@@ -60,7 +60,7 @@ export function IngredientList({ r, factor = 1, missing = [] }) {
       {groups.map((grp) => (
         <div key={grp.k || '_'}>
           {grp.k && <span className="eyebrow">{grp.k}</span>}
-          <ul>{grp.items.map((g, i) => { const need = miss.some((m) => g.item.toLowerCase().includes(m) || m.includes(g.item.toLowerCase())); return (
+          <ul>{grp.items.map((g, i) => { const it = g.item.toLowerCase().trim(); const need = miss.some((m) => m === it || (m.length > 3 && it === `${m}s`)); return (
             <li key={i} className={need ? 'need' : ''}><span className="ing-q">{g.qty == null ? '' : ingredientLine({ ...g, item: '', note: null }, factor).trim()}</span><span>{g.item}{g.note ? <span className="muted">, {g.note}</span> : null}</span></li>
           ); })}</ul>
         </div>

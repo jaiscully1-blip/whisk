@@ -15,7 +15,7 @@ export default function PullToRefresh({ onRefresh, children }) {
     const move = (e) => {
       if (start.current == null) return;
       const dy = e.touches[0].clientY - start.current;
-      if (dy <= 0 || window.scrollY > 0) { setPull(0); return; }
+      if (dy <= 0 || window.scrollY > 0) { if (pullRef.current) setPull(0); return; }
       setPull(Math.min(110, dy * .5));
     };
     const up = async () => {

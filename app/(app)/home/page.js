@@ -17,7 +17,7 @@ const SHOW = 3;   // missing ingredients shown on a card; the recipe lists them 
 const away = (n) => `${n} item${n === 1 ? '' : 's'} away`;
 const mix = (id, seed) => { let h = seed >>> 0; for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 2654435761) >>> 0; return h; };
 
-// Home is "Almost ready": recipes you can't fully make yet (plus a defrost reminder when frozen meat is waiting).
+// Home is "Discover a Dish": recipes you can't fully make yet (plus a defrost reminder when frozen meat is waiting).
 // Under 10 pantry items the list is mixed (Shuffle for a new mix); from 10 on it's grouped 1, 2, 3… items away.
 export default function Home() {
   const { supabase, recipes, say } = useWhisk();
@@ -58,7 +58,7 @@ export default function Home() {
   return (
     <div className="stack" style={{ paddingTop: 16 }}>
       {frozen.length > 0 && <ThawBanner items={frozen} onChanged={reload} />}
-      <div className="page-title" style={{ margin: '6px 0 0' }}><h1>Almost ready</h1>{almost && !sorted && almost.length > 1 && <button type="button" className="title-link" onClick={shuffle}><Icon name="shuffle" size={18} />Shuffle</button>}</div>
+      <div className="page-title" style={{ margin: '6px 0 0' }}><h1>Discover a Dish</h1>{almost && !sorted && almost.length > 1 && <button type="button" className="title-link" onClick={shuffle}><Icon name="shuffle" size={18} />Shuffle</button>}</div>
       {almost === null ? <p className="muted">Checking your pantry…</p> : almost.length === 0 ? (
         <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">Add pantry items</Link><Link className="btn ghost" href="/cook">What can I make?</Link></div></div>
       ) : almost.slice(0, shown).map(({ r, c, soon, needs }, i, arr) => (

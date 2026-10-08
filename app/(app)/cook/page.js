@@ -79,7 +79,7 @@ export default function Cook() {
           </div>
         </div>
         <button data-tour="make" data-tip="make" className="btn wide" onClick={() => { setHand(null); setAsked(true); setUi({ cookMode: 'pantry' }); }}>What can I make?</button>
-        <button className="btn ghost wide" data-tip="fridge" onClick={raid}><Icon name="gift" size={18} />Fridge Raid (surprise me)</button>
+        <button className="btn ghost wide" data-tip="fridge" onClick={raid}><Icon name="gift" size={18} />Fridge Raid</button>
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); if (!dish.trim()) return; setHand(null); setAsked(true); setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>Dish</label>
           <input id="o-dish" data-tip="search" className="input" type="search" enterKeyHint="search" autoComplete="off" placeholder="Search a dish, sauce, food or country" maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />

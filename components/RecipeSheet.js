@@ -31,6 +31,11 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
     if (error) { say('Couldn’t save that recipe.'); return; }
     setSaved(true); refreshProfile(); onChanged?.(); say(data?.xp ? 'Saved to your cookbook · +5 XP' : 'Saved to your cookbook');
   }
+  async function unsave() {
+    const { error } = await supabase.from('saved_recipes').delete().eq('recipe_id', r.id);
+    if (error) { say('Couldn’t unsave that.'); return; }
+    setSaved(false); onChanged?.(); say('Removed from saved recipes');
+  }
   async function addMissing() {
     const { data: list } = await supabase.from('shopping_items').select('name');
     const have = new Set((list || []).map((l) => l.name.toLowerCase()));
@@ -88,7 +93,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         <div className="row" style={{ justifyContent: 'space-between' }}><h3>Steps</h3><button type="button" className="btn sm cm-open" onClick={() => setCooking(true)}><Icon name="play" size={16} />Cook mode</button></div>
         <StepList r={r} factor={factor} />
         <div className="row">
-          {isSaved ? <span className="chip have" style={{ flex: '1 1 140px', justifyContent: 'center', minHeight: 44 }}>Saved</span>
+          {isSaved ? <button type="button" className="btn ghost" style={{ flex: '1 1 140px' }} onClick={unsave} aria-label="Saved. Tap to unsave"><Icon name="check" size={18} />Saved · Unsave</button>
             : <button className="btn ghost" style={{ flex: '1 1 140px' }} onClick={save}>Save · +5 XP</button>}
           {c.ok && <button className="btn" style={{ flex: '1 1 160px' }} onClick={() => { if (c.frozen.length) { say(`Defrost ${c.frozen.map((p) => p.name).join(', ')} first`); return; } setLogging(true); }}>I cooked it</button>}
         </div>

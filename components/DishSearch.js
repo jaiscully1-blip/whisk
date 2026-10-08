@@ -6,7 +6,7 @@ import { useWhisk } from './AppShell';
 import { track } from '@/lib/activity';
 import { canon, STAPLES } from '@/lib/recipes/match';
 import { guessCategory } from '@/lib/game';
-import { COUNTRY_BY_ISO, flagCode } from '@/lib/passport/countries';
+import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 import LogMealSheet from './LogMealSheet';
 import { cultureStyle, motifFor } from '@/lib/culture';
 import Scene from './Scene';
@@ -49,7 +49,7 @@ export default function DishSearch({ q, pantry }) {
   return (
     <section className="stack" style={{ gap: 8 }} aria-live="polite">
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
-        <span className="eyebrow row" style={{ gap: 6 }}>{c && <img src={`/stamps/${flagCode(c[0])}.svg`} alt="" width="16" height="16" />}{c ? `Dishes from ${c[1]}` : `Results for “${q}”`}</span>
+        <span className="eyebrow row" style={{ gap: 6 }}>{c && <img className="flagimg" src={`/flags/${c[0].toLowerCase()}.svg`} alt="" width="21" height="16" />}{c ? `Dishes from ${c[1]}` : `Results for “${q}”`}</span>
         {res && <span className="desc">{list.length} found</span>}
       </div>
       {list.slice(0, shown).map((d, i) => <DishCard key={d.name + i} d={d} have={have} country={res?.country} />)}
@@ -90,7 +90,7 @@ function DishCard({ d, have, country }) {
     <div className={`flip dflip ${on ? 'on' : ''}`}>
       <div className="flip-in">
         <button className="card face dish-row" onClick={flip} aria-label={`${d.name}: show ingredients and video`} aria-hidden={on} tabIndex={on ? -1 : 0}>
-          <span className="dish-ico" aria-hidden="true">{flags[0] ? <img src={`/stamps/${flagCode(flags[0][0])}.svg`} alt="" width="22" height="22" /> : <Icon name="cook" size={18} />}</span>
+          <span className="dish-ico" aria-hidden="true">{flags[0] ? <img className="flagimg" src={`/flags/${flags[0][0].toLowerCase()}.svg`} alt="" width="29" height="22" /> : <Icon name="cook" size={18} />}</span>
           <span style={{ flex: 1, minWidth: 0 }}><b>{d.name}</b><span className="desc" style={{ display: 'block' }}>{[TYPE_LABEL[d.type], flags.map((f) => f[1]).join(', '), d.about].filter(Boolean).join(' · ')}</span></span>
           <Icon name="flip" size={18} />
         </button>

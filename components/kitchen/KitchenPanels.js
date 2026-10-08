@@ -6,6 +6,7 @@ import Icon from '@/components/Icon';
 import { useKitchens } from '@/components/usePantry';
 import * as K from '@/lib/kitchen/models';
 import Kitchen3D from './Kitchen3D';
+import KitchenStage from './KitchenStage';
 import { stickerUrl } from '@/lib/art/food';
 import { useWhisk } from '@/components/AppShell';
 import { levelFor } from '@/lib/game';
@@ -78,7 +79,6 @@ export function KitchenTab({ items }) {
   const { loading, shown, pieces, idx, at, todo } = useShownKitchen(items);
   const [open, setOpen] = useState({});
   const [picked, setPicked] = useState(null);
-  const [cam, setCam] = useState({ rz: -24, rx: 56 });
   const place = usePlace();
   if (loading) return <p className="muted">Loading your kitchen…</p>;
   if (!shown) return (
@@ -94,8 +94,8 @@ export function KitchenTab({ items }) {
   const here = picked ? at[picked] || [] : [];
   return (
     <div className="stack">
-      <Kitchen3D mode="view" place={place.key} pieces={pieces} cam={cam} onCam={setCam} open={open} spot={spot} height={440} scale={0.78}
-        onToggle={(k) => setOpen((o) => ({ ...o, [k]: !o[k] }))} onSpot={(k) => setPicked(k)} />
+      <div data-tip="kitchen"><KitchenStage mode="view" place={place.key} pieces={pieces} title={shown.name && shown.name !== 'My kitchen' ? shown.name : place.name} open={open} spot={spot} height={460} scale={0.92}
+        onToggle={(k) => setOpen((o) => ({ ...o, [k]: !o[k] }))} onSpot={(k) => setPicked(k)} /></div>
       {picked && (
         <div className="card row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
           <span className="kf-cube"><Icon name="flag" size={20} /></span>

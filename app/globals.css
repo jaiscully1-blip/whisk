@@ -176,7 +176,7 @@ button.face { text-align: left; color: var(--fg); width: 100%; }
 .social { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 12px; color: #fff; text-decoration: none; }
 .social.yt { background: #E62117; }
 .social.ig { background: radial-gradient(circle at 30% 110%, #FDCB52 0%, #FD5949 40%, #D6249F 65%, #285AEB 100%); }
-html { overscroll-behavior-y: contain; }
+html { overscroll-behavior-y: none; }
 .ptr { overflow: hidden; display: flex; align-items: flex-end; justify-content: center; gap: 8px; padding-bottom: 8px; transition: height .2s, opacity .2s; font-size: 12px; font-weight: 800; color: var(--muted); }
 .ptr-dot { width: 18px; height: 18px; border-radius: 99px; border: 2.5px solid var(--accent); border-top-color: transparent; }
 .ptr-dot.spin { animation: ptrspin .7s linear infinite; }
@@ -778,8 +778,7 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .k3-cam { position: absolute; left: 50%; top: 56%; width: 0; height: 0; transform-style: preserve-3d; }
 .k3-sway, .k3-floor { transform-style: preserve-3d; }
 .k3-floor { position: absolute; }
-.k3.floaty .k3-sway { animation: k3sway 9s ease-in-out infinite; }
-.k3.floaty { animation: k3bob 4.5s ease-in-out infinite; }
+
 @keyframes k3sway { 0%, 100% { transform: rotateZ(-7deg); } 50% { transform: rotateZ(7deg); } }
 @keyframes k3bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }
 @media (prefers-reduced-motion: reduce) { .k3.floaty, .k3.floaty .k3-sway { animation: none; } }
@@ -1035,3 +1034,40 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .post-av.sm { width: 22px; height: 22px; font-size: 12px; }
 
 .k3.placed:not(.mini) .k3-cam { top: 64%; }
+
+/* the tab bar stays glued to the bottom; it steps aside while the keyboard is up */
+.nav { transform: translateZ(0); will-change: transform; }
+html.kb-open .nav { display: none; }
+/* iPhone date fields: fill the column instead of spilling out of the card, and show a hint while empty */
+input[type="date"].input { -webkit-appearance: none; appearance: none; min-width: 0; width: 100%; display: block; box-sizing: border-box; min-height: 48px; text-align: left; }
+input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
+.date-wrap { position: relative; min-width: 0; }
+.date-wrap .date-hint { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; font-size: 15px; }
+.flagimg { border-radius: 4px; box-shadow: 0 0 0 1px rgba(0,0,0,.18); object-fit: cover; flex: none; vertical-align: middle; }
+.me-title { flex-direction: column; align-items: flex-start !important; gap: 4px; }
+.me-tag { display: inline-block; padding: 3px 10px; border-radius: 99px; background: rgba(255,255,255,.22); color: #fff; font-weight: 800; font-size: 13px; letter-spacing: .02em; }
+.saved-open { flex: 1; display: flex; text-align: left; background: none; border: 0; padding: 14px 4px 14px 16px; color: var(--fg); cursor: pointer; min-width: 0; }
+.saved-x { margin-right: 10px; border: 0; }
+
+/* dollhouse room (components/kitchen/Room.js) */
+.k3.placed { perspective: none; }
+.kw { position: absolute; transform-origin: 50% 100%; transform: rotateX(-90deg); background-size: 100% 100%; pointer-events: none; }
+.kwin { position: absolute; overflow: hidden; border: 4px solid #F4F2EE; box-shadow: inset 0 0 0 2px rgba(0,0,0,.25), 0 2px 0 rgba(0,0,0,.2); background: #9ED6F2; }
+.kwin .wv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.kwin-grid { position: absolute; inset: 0; background-image: linear-gradient(90deg, #F4F2EE 3px, transparent 3px), linear-gradient(0deg, #F4F2EE 3px, transparent 3px); background-position: -1.5px -1.5px; box-shadow: inset 0 0 18px rgba(255,255,255,.35); }
+.kwin-glow { position: absolute; pointer-events: none; }
+.kwin-sill { position: absolute; height: 5px; background: #F4F2EE; box-shadow: 0 2px 2px rgba(0,0,0,.25); }
+.kbeam, .kfloor-ao { position: absolute; left: 0; top: 0; pointer-events: none; transform: translateZ(.2px); }
+.kcap { position: absolute; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.kstage { position: relative; display: grid; gap: 8px; }
+.k3.glide .k3-cam { transition: transform .55s cubic-bezier(.3, .8, .3, 1); }
+.kstage-arrow { position: absolute; top: 42%; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--tile-edge); background: var(--card); color: var(--fg); display: grid; place-items: center; z-index: 3; box-shadow: 0 3px 0 var(--tile-edge); }
+.kstage-arrow.l { left: 4px; } .kstage-arrow.r { right: 4px; }
+.kstage-tabs { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.kstage-tabs .chip.on { background: var(--accent); color: var(--btn-ink, #fff); }
+.howto { max-height: 86dvh; overflow-y: auto; }
+.howto-row { border-bottom: 1px solid var(--line); padding: 10px 2px; }
+.howto-row summary { font-weight: 800; cursor: pointer; list-style: none; display: flex; justify-content: space-between; }
+.howto-row summary::after { content: '+'; color: var(--muted); font-weight: 800; }
+.howto-row[open] summary::after { content: '–'; }
+.howto-row p { margin: 6px 0 0; color: var(--muted); line-height: 1.5; }

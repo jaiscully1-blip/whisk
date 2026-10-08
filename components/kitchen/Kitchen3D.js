@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import * as K from '@/lib/kitchen/models';
 import { stickerUrl } from '@/lib/art/food';
 import { itemUrl } from '@/lib/art/items';
-import { roomFor, wallUrl } from '@/lib/art/tampa';
+import { roomFor } from '@/lib/art/tampa';
+import Room from './Room';
 import { MAGNETS, magnetUrl } from '@/lib/art/magnets';
 import { useWorld } from '@/components/usePantry';
 
@@ -38,12 +39,22 @@ function magnetSpots(pieces, owned) {
 // (trackpad: two-finger scroll slides, pinch zooms). Sliding stops at a border about 10 swipes out.
 // Spots are tagged with data-spot="<piece>|<compartment>|<spot>" so drag-and-drop can find them with elementFromPoint.
 export const ZOOM = [0.45, 2.6];
+// the camera that puts piece b in the middle of the view at this zoom (null b = the whole kitchen)
+export function frameOn(b, camera, scale = 1, z = 2.1) {
+  if (!b) return { ...camera, zoom: 1, px: 0, py: 0 };
+  const C = K.C, HU = K.HU;
+  const cx = (b.x + b.w / 2) * C - K.GW * C / 2, cy = (b.y + b.d / 2) * C - K.GD * C / 2, cz = b.h * HU * 0.45;
+  const Sx = scale * z, a = camera.rz * Math.PI / 180, t = camera.rx * Math.PI / 180;
+  const x1 = cx * Math.cos(a) - cy * Math.sin(a), y1 = cx * Math.sin(a) + cy * Math.cos(a), y2 = y1 * Math.cos(t) - cz * Math.sin(t);
+  return { ...camera, zoom: z, px: -Sx * x1, py: -Sx * y2 };
+}
+export const VIEW_CAM = { rz: -38, rx: 58, zoom: 1, px: 0, py: 0 };   // the isometric dollhouse angle
 export const PAN = 1000;   // how far (px at normal zoom) the kitchen can be slid before it stops: ~10 swipes
 export default function Kitchen3D({
   pieces, mode = 'view', height = 420, scale = 1, cam, onCam, open = {}, openAll = false, onToggle,
   spot = {}, onSpot, sel = null, onSelect, onChange, onTap, taught = true, onTaught, float = false, className = '', place = null
 }) {
-  const [own, setOwn] = useState({ rz: -24, rx: 56, zoom: 1, px: 0, py: 0 });
+  const [own, setOwn] = useState(VIEW_CAM);
   const [edge, setEdge] = useState('');
   const edgeT = useRef(null);
   const camera = cam || own; const setCam = onCam || setOwn;
@@ -60,12 +71,7 @@ export default function Kitchen3D({
   for (const k of [...order.current.keys()]) if (!open[k]) order.current.delete(k);
   const angles = doorAngles(pieces, openAll, order.current);
   // tap the pantry closet or spice cabinet: fly the camera to it (zoom in or out from there as you like)
-  const focusOn = (b) => {
-    const cx = (b.x + b.w / 2) * C - K.GW * C / 2, cy = (b.y + b.d / 2) * C - K.GD * C / 2, cz = b.h * HU * 0.45;
-    const z = 2.1, Sx = scale * z, a = camera.rz * Math.PI / 180, t = camera.rx * Math.PI / 180;
-    const x1 = cx * Math.cos(a) - cy * Math.sin(a), y1 = cx * Math.sin(a) + cy * Math.cos(a), y2 = y1 * Math.cos(t) - cz * Math.sin(t);
-    setCam({ ...camera, zoom: z, px: -Sx * x1, py: -Sx * y2 });
-  };
+  const focusOn = (b) => setCam(frameOn(b, camera, scale, 2.1));
   const [world] = useWorld();
   const mags = magnetSpots(pieces, world?.owned);
   const C = K.C, HU = K.HU;
@@ -99,6 +105,8 @@ export default function Kitchen3D({
     const along = (a) => (dx * a[0] + dy * a[1]) / (a[0] * a[0] + a[1] * a[1] || 1);
     return { u: along(ex), v: along(ey), ex, ey };
   }
+  // snap to a new cell only once you're clearly past the halfway mark (no flicker between two cells)
+  const settle = (cur, raw) => (Math.abs(raw - cur) > 0.7 ? Math.round(raw) : cur);
   const lift = (dy) => -dy / (HU * S * Math.max(0.35, Math.sin(camera.rx * Math.PI / 180)));
   function update(id, fn) {
     const next = pieces.map((b) => { if (b.id !== id) return b; const n = { ...b }; fn(n); return K.clash(pieces, n) ? b : n; });
@@ -126,7 +134,10 @@ export default function Kitchen3D({
     fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (fingers.current.size === 2) { drag.current = { mode: 'pinch', d0: dist(), z0: zoom, m0: mid(), p0: { x: camera.px || 0, y: camera.py || 0 } }; moved.current = true; }
   };
-  const down = (e) => { if (mini || drag.current?.mode === 'pinch' || !onModel(e)) return; drag.current = { mode: 'spin', x: e.clientX, y: e.clientY, rz: camera.rz, rx: camera.rx }; moved.current = false; };
+  // Building is calm on purpose: touching a piece you haven't picked just turns the view (no accidental grabs);
+  // a clean tap picks it; only the picked piece can be dragged.
+  const tapCand = useRef(null);
+  const down = (e) => { if (mini || drag.current?.mode === 'pinch' || !onModel(e)) return; drag.current = { mode: 'spin', x: e.clientX, y: e.clientY, rz: camera.rz, rx: camera.rx, t: Date.now() }; moved.current = false; };
   const move = (e) => {
     if (fingers.current.has(e.pointerId)) fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const d = drag.current; if (!d) return;
@@ -136,15 +147,16 @@ export default function Kitchen3D({
     }
     const dx = e.clientX - d.x, dy = e.clientY - d.y;
     if (!moved.current) {
-      if (Math.abs(dx) + Math.abs(dy) < 6) return;
+      if (Math.abs(dx) + Math.abs(dy) < (build ? 10 : 6)) return;
+      tapCand.current = null;
       moved.current = true;
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ }
     }
     // swipe right → the model turns right with your finger
-    if (d.mode === 'spin') { setCam({ ...camera, rz: d.rz - dx * 0.45, rx: K.clamp(d.rx - dy * 0.3, 8, 82) }); return; }
+    if (d.mode === 'spin') { const k = build ? 0.3 : 0.4; setCam({ ...camera, rz: d.rz - dx * k, rx: K.clamp(d.rx - dy * k * 0.6, 20, 75) }); return; }
     if (d.mode === 'move' && d.thing) {   // things slide over the floor plan and settle on whatever is under them
       const { u, v } = axisCells(dx, dy);
-      update(d.id, (n) => { n.x = K.clamp(Math.round(d.b0.x + u), 0, K.GW - n.w); n.y = K.clamp(Math.round(d.b0.y + v), 0, K.GD - n.d); n.z = K.restZ(pieces, n); });
+      update(d.id, (n) => { n.x = K.clamp(settle(n.x, d.b0.x + u), 0, K.GW - n.w); n.y = K.clamp(settle(n.y, d.b0.y + v), 0, K.GD - n.d); n.z = K.restZ(pieces, n); });
       return;
     }
     if (d.mode === 'move') {
@@ -154,8 +166,9 @@ export default function Kitchen3D({
       const side = useX ? dx * h.ex[0] / (h.ex[0] * h.ex[0] + h.ex[1] * h.ex[1]) : dx * h.ey[0] / (h.ey[0] * h.ey[0] + h.ey[1] * h.ey[1]);
       update(d.id, (n) => {
         const B = K.bounds(n);
-        if (useX) n.x = K.clamp(Math.round(d.b0.x + side), B.x0, B.x1 - n.w); else n.y = K.clamp(Math.round(d.b0.y + side), B.y0, B.y1 - n.d);
-        n.z = K.clamp(Math.round((d.b0.z + lift(dy)) * 2) / 2, 0, 9 - n.h);
+        if (useX) n.x = K.clamp(settle(n.x, d.b0.x + side), B.x0, B.x1 - n.w); else n.y = K.clamp(settle(n.y, d.b0.y + side), B.y0, B.y1 - n.d);
+        // lifting needs a clear up/down drag (30 px) so sliding sideways never bumps it off the floor
+        if (Math.abs(dy) > 30) n.z = K.clamp(settle(n.z * 2, (d.b0.z + lift(dy - Math.sign(dy) * 30)) * 2) / 2, 0, 9 - n.h);
       });
       return;
     }
@@ -172,10 +185,12 @@ export default function Kitchen3D({
   const up = (e) => {
     fingers.current.delete(e?.pointerId);
     if (drag.current?.mode === 'pinch' && fingers.current.size > 0) return;
+    if (build && tapCand.current && !moved.current && Date.now() - (drag.current?.t || 0) < 450) onSelect?.(tapCand.current);
+    tapCand.current = null;
     drag.current = null; setTimeout(() => { moved.current = false; }, 0);
   };
   const grow = (b, side) => (e) => { if (drag.current?.mode === 'pinch') return; e.stopPropagation(); drag.current = { mode: 'grow', side, id: b.id, x: e.clientX, y: e.clientY, b0: { ...b } }; moved.current = false; if (!taught) onTaught?.(); };
-  const tapFloor = () => { if (mini) { onTap?.(); return; } if (!moved.current && build && sel) onSelect?.(null); };
+  const tapFloor = (e) => { if (mini) { onTap?.(); return; } if (e?.target?.closest?.('[data-piece]')) return; if (!moved.current && build && sel) onSelect?.(null); };
   const guard = (fn) => (e) => { e.stopPropagation(); if (moved.current) return; fn(); };
 
   const room = place && !build ? roomFor(place) : null;
@@ -190,9 +205,13 @@ export default function Kitchen3D({
       <div className="k3-cam" style={{ transform: `translate(${camera.px || 0}px, ${camera.py || 0}px) scale(${S}) rotateX(${camera.rx}deg) rotateZ(${camera.rz}deg)` }}>
         <div className="k3-sway">
           <div className="k3-floor" style={{ width: K.GW * C, height: K.GD * C, marginLeft: -K.GW * C / 2, marginTop: -K.GD * C / 2, ...floor }}>
-            {room && <RoomShell room={room} place={place} />}
+            {room && <Room room={room} place={place} pieces={pieces} rz={camera.rz} />}
             {pieces.map((b) => {
-              const onDown = build ? (e) => { e.stopPropagation(); if (drag.current?.mode === 'pinch') return; drag.current = { mode: 'move', thing: K.isThing(b), id: b.id, x: e.clientX, y: e.clientY, b0: { ...b } }; moved.current = false; if (sel !== b.id) onSelect?.(b.id); } : undefined;
+              const onDown = build ? (e) => {
+                if (drag.current?.mode === 'pinch' || fingers.current.size > 1) return;
+                if (sel !== b.id) { tapCand.current = b.id; return; }   // not picked yet: let the view turn; a clean tap picks it
+                e.stopPropagation(); drag.current = { mode: 'move', thing: K.isThing(b), id: b.id, x: e.clientX, y: e.clientY, b0: { ...b }, t: Date.now() }; moved.current = false;
+              } : undefined;
               return K.isThing(b)
                 ? <Thing key={b.id} b={b} rz={camera.rz} selected={build && sel === b.id} onDown={onDown} />
                 : K.MODEL[b.mid].gen === 'closet'
@@ -219,29 +238,6 @@ const FLOORS = {
   terracotta: 'linear-gradient(90deg,rgba(255,240,220,.5) 1.5px,rgba(0,0,0,0) 1.5px) 0 0/26px 26px,linear-gradient(0deg,rgba(255,240,220,.5) 1.5px,rgba(0,0,0,0) 1.5px) 0 0/26px 26px,linear-gradient(135deg,#C46B44,#A9552F)',
   concrete: 'radial-gradient(circle at 30% 40%,rgba(255,255,255,.06),rgba(0,0,0,0) 40%),linear-gradient(135deg,#4A484C,#38363A)'
 };
-function RoomShell({ room, place }) {
-  const C = K.C, HU = K.HU, W = K.GW * C, D = K.GD * C, WH = Math.round(8.5 * HU), T = 12;
-  // four walls facing in: only the two on the far side ever show, whichever way you spin it
-  const walls = [['back', 0, 0, 0, W], ['right', 90, W + 1, 0, D], ['front', 180, W, D + 1, W], ['left', -90, -1, D, D]];
-  // floor slab edges facing out: only the near ones show
-  const slabs = [
-    { left: 0, top: D, width: W, height: T, transformOrigin: '50% 0', transform: 'rotateX(-90deg)' },
-    { left: W, top: 0, width: T, height: D, transformOrigin: '0 50%', transform: 'rotateY(90deg)', filter: 'brightness(.8)' },
-    { left: -T, top: 0, width: T, height: D, transformOrigin: '100% 50%', transform: 'rotateY(-90deg)', filter: 'brightness(.8)' },
-    { left: 0, top: -T, width: W, height: T, transformOrigin: '50% 100%', transform: 'rotateX(90deg)' }
-  ];
-  return (
-    <>
-      {walls.map(([side, rot, x, y, len]) => (
-        <div key={side} className="kwall-turn" style={{ left: x, top: y, transform: `rotateZ(${rot}deg)` }}>
-          <div className="kwall" style={{ left: 0, top: -WH, width: len, height: WH, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', backgroundImage: `url("${wallUrl(place, side === 'back' ? 'back' : 'left', len, WH)}")` }} />
-        </div>
-      ))}
-      {slabs.map((st, i) => <div key={i} className="kslab" style={{ ...st, background: room.slab }} />)}
-    </>
-  );
-}
-
 // A shop thing: a drawn cut-out standing on the counter (or floor), always turned to face you.
 function Thing({ b, rz, selected, onDown }) {
   const m = K.MODEL[b.mid]; const C = K.C, HU = K.HU;

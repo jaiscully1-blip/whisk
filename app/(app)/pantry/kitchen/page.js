@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useWhisk } from '@/components/AppShell';
 import Icon from '@/components/Icon';
 import { usePantry, useKitchens } from '@/components/usePantry';
-import Kitchen3D from '@/components/kitchen/Kitchen3D';
+import KitchenStage from '@/components/kitchen/KitchenStage';
 import { Sticker, useShownKitchen, usePlace } from '@/components/kitchen/KitchenPanels';
 import * as K from '@/lib/kitchen/models';
 
@@ -16,7 +16,6 @@ export default function PutAway() {
   const [, reloadKitchens, setKitchens] = useKitchens();
   const { loading, shown, pieces, idx, at, todo } = useShownKitchen(items);
   const [open, setOpen] = useState({});
-  const [cam, setCam] = useState({ rz: -24, rx: 56 });
   const [armed, setArmed] = useState(null);       // tapped food box, waiting for a spot
   const [ghost, setGhost] = useState(null);       // { item, x, y, over } while dragging
   const [picked, setPicked] = useState(null);     // spot tapped to look inside
@@ -122,7 +121,7 @@ export default function PutAway() {
         </div>
       ) : (
         <>
-          <div className="pa-hud card">
+          <div className="pa-hud card" data-tip="putaway">
             <div className="pa-ring" style={{ '--p': pct }}><b>{done}</b><span>/{live.length}</span></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <b className="pa-title">{todo.length === 0 ? (live.length ? 'All put away!' : 'Pantry’s empty') : `${todo.length} to put away`}</b>
@@ -131,7 +130,7 @@ export default function PutAway() {
             {earned > 0 && <span className="chip xp">+{earned} XP</span>}
           </div>
 
-          <Kitchen3D mode="view" place={home.key} pieces={pieces} cam={cam} onCam={setCam} open={open} openAll={!!carrying} spot={spot} height="min(50vh, 440px)" scale={0.85}
+          <KitchenStage mode="view" place={home.key} pieces={pieces} title={home.name} open={open} openAll={!!carrying} spot={spot} height="min(50vh, 440px)" scale={0.85}
             onToggle={(k) => setOpen((o) => ({ ...o, [k]: !o[k] }))} onSpot={onSpot} className={carrying ? 'carrying' : ''} />
 
           {picked && !carrying && (

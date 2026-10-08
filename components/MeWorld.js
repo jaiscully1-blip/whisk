@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useWhisk } from './AppShell';
 import Icon, { Coin } from './Icon';
 import { useKitchens } from './usePantry';
-import Kitchen3D from './kitchen/Kitchen3D';
+import KitchenStage from './kitchen/KitchenStage';
 import { usePlace } from './kitchen/KitchenPanels';
 import * as K from '@/lib/kitchen/models';
 import { itemUrl } from '@/lib/art/items';
@@ -14,9 +14,10 @@ import { nextPlace } from '@/lib/art/tampa';
 import { fmt, LEVELS } from '@/lib/game';
 
 export const tierOf = (n, done) => (done || n >= 5 ? 'gold' : n >= 3 ? 'silver' : n >= 1 ? 'bronze' : '');
+// The country's real flag (flag-icons, MIT), drawn 4:3.
 export function FlagBar({ iso, size = 22 }) {
-  const c = teamColors(iso).slice(0, 4);
-  return <span className="flagbar" style={{ width: size, height: size, gridTemplateRows: `repeat(${c.length}, 1fr)` }} aria-hidden="true">{c.map((x, i) => <i key={i} style={{ background: x }} />)}</span>;
+  if (!/^[A-Z]{2}$/.test(iso || '')) return null;
+  return <img className="flagimg" src={`/flags/${iso.toLowerCase()}.svg`} alt="" width={Math.round(size * 4 / 3)} height={size} loading="lazy" decoding="async" />;
 }
 
 // Level, where your kitchen is, and what you've collected.
@@ -29,7 +30,7 @@ export function ProfileCard({ level, xp, recipes, ingredients, countries, streak
   const a = xpAt(place.from), b = next ? xpAt(next.from) : 0;
   const pct = next ? Math.max(0, Math.min(100, Math.floor(((xp - a) / Math.max(1, b - a)) * 100))) : 100;
   return (
-    <section className="card pcard" aria-label="Profile">
+    <section className="card pcard" aria-label="Profile" data-tip="profile">
       <dl className="pcard-grid">
         {stats.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
       </dl>
@@ -51,9 +52,9 @@ export function MyKitchen() {
   const place = usePlace();
   const shown = kitchens?.find((k) => k.is_display) || null;
   const pieces = useMemo(() => (shown ? K.cleanPieces(shown.pieces) : []), [shown]);
-  const [cam, setCam] = useState({ rz: -24, rx: 56, zoom: 1, px: 0, py: 0 });
   if (kitchens === null) return <div className="card" style={{ height: 300 }} aria-busy="true" />;
-  const title = shown && shown.name && shown.name !== 'My kitchen' ? shown.name : 'Your kitchen';
+  // the kitchen's own name, or where it is (e.g. "Riverwalk Apartment") until you name it
+  const title = shown && shown.name && shown.name !== 'My kitchen' ? shown.name : place.name;
   async function rename(e) {
     e.preventDefault();
     const name = (naming || '').trim().slice(0, 40) || 'My kitchen';
@@ -64,7 +65,7 @@ export function MyKitchen() {
     if (error) say('Couldn’t rename it.');
   }
   return (
-    <section className="mykitchen" id="my-kitchen" aria-label="Your kitchen">
+    <section className="mykitchen" id="my-kitchen" aria-label="Your kitchen" data-tip="mykitchen">
       {naming !== null ? (
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={rename}>
           <label htmlFor="mk-name" hidden>Kitchen name</label>
@@ -72,13 +73,12 @@ export function MyKitchen() {
           <button className="btn sm" type="submit">Save</button>
         </form>
       ) : (
-        <button type="button" className="mk-title" onClick={() => (shown ? setNaming(title === 'Your kitchen' ? '' : title) : say('Build your kitchen first'))} aria-label={`${title}. Tap to rename`}><h2>{title}</h2></button>
+        <div className="mk-bar">
+          <button type="button" className="mk-title" onClick={() => (shown ? setNaming(title) : say('Build your kitchen first'))} aria-label={`${title}. Tap to rename`}><h2>{title}</h2></button>
+          <Link href="/pantry/kitchen/design" className="btn ghost sm"><Icon name="pencil" size={16} />{shown ? 'Edit' : 'Build it'}</Link>
+        </div>
       )}
-      <Kitchen3D mode="view" place={place.key} pieces={pieces} cam={cam} onCam={setCam} height={400} scale={0.74} />
-      <div className="mk-bar">
-        <span className="mk-where">{place.name}</span>
-        <Link href="/pantry/kitchen/design" className="btn ghost sm"><Icon name="pencil" size={16} />{shown ? 'Edit' : 'Build it'}</Link>
-      </div>
+      <KitchenStage mode="view" place={place.key} pieces={pieces} title={title} height={420} scale={0.9} />
       {!shown && <span className="desc" style={{ textAlign: 'center' }}>{place.key === 'void' ? 'Nothing here yet. Cook a meal to move in, then build your kitchen.' : 'Build your kitchen, then everything you buy goes in it.'}</span>}
     </section>
   );
@@ -218,7 +218,7 @@ export function CountryChallenges({ challenges, onOpen }) {
   if (!challenges?.length) return null;
   return (
     <section className="stack" style={{ gap: 8 }} aria-label="Country challenges">
-      <h2 style={{ fontSize: 22, margin: 0 }}>Country challenges</h2>
+      <h2 style={{ fontSize: 22, margin: 0 }} data-tip="cchallenges">Country challenges</h2>
       {challenges.map((c) => (
         <button key={c.id} type="button" className={`card cchal ${c.xp >= 400 ? 'hard' : ''}`} onClick={() => onOpen(c)}>
           <FlagBar iso={c.country} size={34} />

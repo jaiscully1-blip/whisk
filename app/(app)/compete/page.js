@@ -15,6 +15,7 @@ import { ServingsX, IngredientList, StepList } from '@/components/RecipeSteps';
 import { cultureStyle } from '@/lib/culture';
 import Scene from '@/components/Scene';
 import FriendsCard from '@/components/FriendsCard';
+import WorldGlobe from '@/components/WorldGlobe';
 
 const TIER = { 1: ['Small', 'var(--fresh-soft)', 'var(--fresh)'], 2: ['Medium', 'var(--warn-soft)', 'var(--warn)'], 3: ['Big', 'var(--pop-soft)', 'var(--bad)'] };
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
@@ -30,9 +31,8 @@ export default function Compete() {
   const { supabase, refreshProfile, say, recipes, ui, setUi, dataVersion } = useWhisk();
   const [pantry] = usePantry();
   const [cdata, setCdata] = useCached('compete', () => fetchCompete(supabase), [dataVersion]);   // remembered between tabs
-  const challenges = cdata?.challenges ?? null, quest = cdata?.quest ?? null, bingo = cdata?.bingo ?? null;
+  const challenges = cdata?.challenges ?? null, bingo = cdata?.bingo ?? null;
   const setChallenges = (v) => setCdata((x) => ({ ...(x || {}), challenges: typeof v === 'function' ? v(x?.challenges) : v }));
-  const setQuest = (v) => setCdata((x) => ({ ...(x || {}), quest: typeof v === 'function' ? v(x?.quest) : v }));
   const setBingo = (v) => setCdata((x) => ({ ...(x || {}), bingo: typeof v === 'function' ? v(x?.bingo) : v }));
   const [logging, setLogging] = useState(null);
   const [factors, setFactors] = useState({});
@@ -59,11 +59,6 @@ export default function Compete() {
     const { data, error } = await supabase.rpc('claim_bingo');
     if (error) { say('Get 4 in a row first.'); return; }
     setBingo((x) => ({ ...x, claimed: true })); say(`BINGO! +${data?.xp ?? 200} XP`); refreshProfile();
-  }
-  async function claimQuest() {
-    const { data, error } = await supabase.rpc('claim_daily_quest');
-    if (error) { say('Finish the quest first.'); return; }
-    setQuest((x) => ({ ...x, claimed: true })); say(`Quest done · +${data?.xp ?? 30} XP`); refreshProfile();
   }
   const flip = (id) => setUi({ flipped: { ...flipped, [id]: !flipped[id] } });
 
@@ -95,14 +90,7 @@ export default function Compete() {
         </section>
       )}
 
-      {quest && (
-        <div className="card stack" data-tip="quest" style={{ gap: 8, background: quest.claimed ? 'var(--card)' : 'var(--gold-soft)' }}>
-          <div className="row" style={{ justifyContent: 'space-between' }}><span className="eyebrow">Daily quest</span><span className="chip xp">+30 XP</span></div>
-          <b style={{ fontSize: 16 }}>{quest.label}</b>
-          <div className="row" style={{ flexWrap: 'nowrap' }}><div className="bar" style={{ flex: 1 }}><i style={{ width: `${Math.round((quest.progress / quest.target) * 100)}%` }} /></div><span style={{ fontWeight: 800, fontSize: 13 }}>{quest.progress}/{quest.target}</span></div>
-          {quest.claimed ? <span className="muted" style={{ fontWeight: 800, fontSize: 13 }}>✓ Claimed · new quest tomorrow</span> : quest.progress >= quest.target ? <button className="btn" onClick={claimQuest}>Claim +30 XP</button> : null}
-        </div>
-      )}
+      <WorldGlobe />
 
       <h2 data-tour="challenges" data-tip="challenges" style={{ fontSize: 22 }}>This week’s challenges</h2>
       {challenges === null || !recipes ? <p className="muted">Loading…</p> : challenges.length === 0 ? (

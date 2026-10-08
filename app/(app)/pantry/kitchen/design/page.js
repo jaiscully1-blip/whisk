@@ -131,7 +131,7 @@ export default function Design() {
         </div>
       </div>
 
-      <div className="kd-stage">
+      <div className="kd-stage" data-tip="design">
         <Kitchen3D mode={look ? 'view' : 'build'} pieces={edit.pieces} cam={cam} onCam={(c) => { setCam(c); if (!spun) setSpun(true); }} height="min(56vh, 480px)"
           sel={sel} onSelect={setSel} onChange={(p) => setPieces(p)} taught={taught} onTaught={() => setUi({ kitchenTaught: true })}
           open={open} onToggle={(k) => setOpen((o) => ({ ...o, [k]: !o[k] }))} />
@@ -166,7 +166,7 @@ export default function Design() {
       ) : (
         <div className="stack" style={{ gap: 8 }}>
           <div className="grid2">
-            <button type="button" className="btn ghost" onClick={() => addModel('closet')}><Icon name="pantry" size={18} />Pantry closet</button>
+            <button type="button" className="btn ghost" data-tip="storage" onClick={() => addModel('closet')}><Icon name="pantry" size={18} />Pantry closet</button>
             <button type="button" className="btn ghost" onClick={() => addModel('spice')}><Icon name="plus" size={18} />Spice cabinet</button>
           </div>
           <div className="grid2">

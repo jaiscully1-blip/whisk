@@ -15,7 +15,6 @@ const W = 360, H = 430, CX = 180, CY = 182, R = 142, TILT = 23.5, PHI = -12;
 export const GLOBE_ZOOM = [0.85, 1.5];
 const SPIN = 0.045;              // deg/ms: faster than this counts as "spinning" (the dart button wakes up)
 const FLING = 1.0, FRICTION = 0.99945;   // a swipe throws it into a fast spin that lasts about 5 seconds (count 5-4-3-2-1)
-const DRIFT = 0.006;             // the slow idle turn
 const tierOf = (n, done) => (done || n >= 5 ? 'gold' : n >= 3 ? 'silver' : n >= 1 ? 'bronze' : '');
 const FILL = { '': '#A7ADB4', bronze: '#CD8A4A', silver: '#E3E8EE' };
 const rnd = () => { try { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] / 4294967296; } catch { return Math.random(); } };
@@ -55,7 +54,7 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook }) 
   }, []);
   const els = useRef({});                           // index → { path, clip, art, edge }
   const st = useRef({ lam: -20, vel: 0.12, drag: null, aim: null, dart: null, zoom: 1, pins: new Map(), run: true });
-  st.current.zoom = zoom;
+  st.current.zoom = zoom; st.current.dirty = true;   // re-rendered (new tiers, zoom…): draw again
 
   useEffect(() => { let on = true; loadWorld().then((w) => { if (on) setWorld(w); }); return () => { on = false; }; }, []);
 
@@ -66,7 +65,7 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook }) 
     const proj = geoOrthographic().translate([CX, CY]).scale(R).clipAngle(90).precision(0.6);
     const path = geoPath(proj), grat = geoGraticule10();
     const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let raf = 0, last = performance.now(), wasSpin = false;
+    let raf = 0, last = performance.now(), wasSpin = false; s.dirty = true; void reduce;
     const tiltPt = ([x, y]) => { const a = TILT * Math.PI / 180, dx = x - CX, dy = y - CY; return [CX + dx * Math.cos(a) - dy * Math.sin(a), CY + dx * Math.sin(a) + dy * Math.cos(a)]; };
     function frame(now) {
       const dt = Math.min(50, now - last); last = now;
@@ -77,11 +76,13 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook }) 
       } else if (!s.drag) {
         s.lam += s.vel * dt;
         s.vel *= Math.pow(FRICTION, dt);
-        if (!reduce && Math.abs(s.vel) < DRIFT) s.vel = (s.vel >= 0 ? 1 : -1) * DRIFT;
-        if (reduce && Math.abs(s.vel) < 0.002) s.vel = 0;
+        if (Math.abs(s.vel) < 0.002) s.vel = 0;   // it comes to rest (no idle turning: keeps scrolling smooth)
       }
       const spinNow = !s.aim && (s.drag ? Math.abs(s.dragVel || 0) > SPIN : Math.abs(s.vel) > SPIN);
       if (spinNow !== wasSpin) { wasSpin = spinNow; setSpinning(spinNow); }
+      // nothing moved since the last frame: skip the drawing work entirely
+      if (s.drawn === s.lam && !(s.dart && now - s.dart.t0 < 1500) && !s.dirty) { raf = requestAnimationFrame(frame); return; }
+      s.drawn = s.lam; s.dirty = false;
       proj.rotate([s.lam, PHI, 0]);
       const g = svg.current; if (!g) { raf = requestAnimationFrame(frame); return; }
       const gp = els.current.grat; if (gp) gp.setAttribute('d', path(grat) || '');
@@ -253,7 +254,7 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook }) 
             <><b>Missed the whole globe!</b><span className="desc">That happens once in 10,000 throws. Spin it and try again.</span></>
           ) : (
             <>
-              <span className="globe-flagbar" aria-hidden="true">{teamColors(result.iso).slice(0, 4).map((c, i) => <i key={i} style={{ background: c }} />)}</span>
+              <img className="flagimg" src={`/flags/${result.iso.toLowerCase()}.svg`} alt="" width="46" height="34" />
               <b style={{ flex: 1, minWidth: 0, fontSize: 18 }}>{result.name}!</b>
               <button type="button" className="btn sm" onClick={() => onCook?.(result)}>Cook it</button>
             </>

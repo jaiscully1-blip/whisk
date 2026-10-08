@@ -56,7 +56,7 @@ await step('log in', async () => {
   // No tour: you land straight in the app; Chef explains each thing the first time you tap it.
   check('no walkthrough: nothing covers the app on first open', (await page.locator('.coach, .tour-scrim').count()) === 0);
   await page.locator('.tip-card').waitFor({ timeout: 6000 });
-  check('Chef says hello once, in one line, with no step numbers', /Welcome to the kitchen/.test(await page.locator('.tip-card').innerText()) && !/\b\d+ of \d+\b/.test(await page.locator('.tip-card').innerText()));
+  check('Chef says hello once, in one line, with no step numbers', /Welcome to Whisk/.test(await page.locator('.tip-card').innerText()) && !/\b\d+ of \d+\b/.test(await page.locator('.tip-card').innerText()));
   await page.locator('.hud-hello.on').waitFor({ timeout: 6000 }).catch(() => {});
   check('the greeting shows in the top bar', /Welcome to Whisk/.test(await page.locator('.hud-hello').innerText()));
   await shot('00b-welcome-tip');
@@ -76,6 +76,7 @@ await step('log in', async () => {
   check('first Add explains XP; the item is still added', await page.locator('main').getByText('Bananas', { exact: true }).first().waitFor({ timeout: 6000 }).then(() => true, () => false));
   // name + the first kitchen thing (from the Me page)
   await page.locator('.nav a[href="/me"]').click(); await page.waitForURL('**/me');
+  await page.locator('.tip-ok').click({ timeout: 2000 }).catch(() => {});
   await page.locator('.namebtn').click(); await page.locator('#nm').fill('Jai'); await page.locator('#nm').press('Enter');
   await page.waitForFunction(() => document.querySelector('.namebtn h1')?.textContent === 'Jai', null, { timeout: 6000 });
   check('name set from the Me page', true);
@@ -88,7 +89,8 @@ await step('log in', async () => {
   check('a knife block (800) can be bought with the starting coins', coins0 - coins1 === 800, `${coins0} → ${coins1}`);
   check('what you buy goes straight into your kitchen (a starter one if you had none)', await page.locator('#my-kitchen .kthing img[alt="Knife block"]').waitFor({ timeout: 8000 }).then(() => true, () => false));
   await page.locator('.tip-ok').click().catch(() => {});
-  // the globe: swipe left/right to spin; the dart only flies while it's spinning
+  // the globe (on Compete): swipe left/right to spin; the dart only flies while it's spinning
+  await page.locator('.nav a[href="/compete"]').click(); await page.waitForURL('**/compete');
   await page.locator('.globe-svg path.gl-c').nth(150).waitFor({ state: 'attached', timeout: 10000 });
   check('globe shows every country, unnamed and grey', (await page.locator('.globe-svg path.gl-c').count()) >= 190 && (await page.locator('.globe-svg text').count()) === 0);
   await page.locator('.globe-svg').scrollIntoViewIfNeeded(); await page.waitForTimeout(2600);
@@ -105,8 +107,8 @@ await step('log in', async () => {
   await nav('Home');
 });
 await step('home', async () => {
-  await page.getByRole('heading', { name: 'Almost ready' }).waitFor();
-  check('home shows Almost ready', true);
+  await page.getByRole('heading', { name: 'Discover a Dish' }).waitFor();
+  check('home shows Discover a Dish', true);
   check('home has no challenges or Fridge Raid', (await page.getByText('This week’s challenges').count()) === 0 && (await page.getByText('Fridge Raid').count()) === 0);
   await page.getByText('Ground beef is frozen').waitFor();
   check('home reminds you to defrost frozen ground beef', true);
@@ -191,7 +193,7 @@ await step('cook', async () => {
   check('Diet filter: Vegetarian keeps only vegetarian/vegan recipes', veg > 0 && vegTotal < total && veg === vegTagged, `${vegTotal} of ${total}`);
   await page.getByRole('radio', { name: 'Any' }).click(); await page.waitForTimeout(300);
   check('Diet filter: Any shows them all again', (await page.locator('main button.card:has(.chip.have)').count()) === n);
-  await page.click('text=Fridge Raid (surprise me)');
+  await page.getByRole('button', { name: 'Fridge Raid', exact: true }).click();
   await page.getByText('Ingredients', { exact: true }).waitFor();
   check('Fridge Raid says "Ingredients" and "recipes you can make right now"', (await page.getByText('your hand').count()) === 0 && (await page.getByText(/you can make right now/).count()) >= 1);
   check('Fridge Raid deals 4 pantry items', (await page.locator('.grid2 .card').count()) === 4);
@@ -259,15 +261,15 @@ await step('cook', async () => {
   await page.waitForTimeout(600); await closePopups();
   await nav('Cook');
   check('Cook: Saved recipes has its own box under search', (await page.locator('main .saved-box h2', { hasText: 'Saved recipes' }).count()) === 1 && (await page.locator('main .card', { has: page.locator('#o-dish') }).count()) === 1);
-  await page.locator('.saved-box button.card').first().waitFor();
-  check('Saved recipes: just the recipes (no All / Liked / Disliked buttons)', (await page.locator('.saved-box button.chip').count()) === 0 && (await page.locator('.saved-box button.card', { hasText: /Burrito Bowls/ }).count()) >= 1);
+  await page.locator('.saved-box .saved-open').first().waitFor();
+  check('Saved recipes: just the recipes (no All / Liked / Disliked buttons), each with an unsave button', (await page.locator('.saved-box button.chip').count()) === 0 && (await page.locator('.saved-box .saved-open', { hasText: /Burrito Bowls/ }).count()) >= 1 && (await page.locator('.saved-box .saved-x').count()) >= 1);
   await nav('Pantry'); await page.getByRole('tab', { name: 'Kitchen' }).waitFor();
   const tabsNow = (await page.getByRole('tab').allInnerTexts()).map((t) => t.replace(/\s*\(\d+\)/, '').trim()).join('|');
   check('Pantry tabs: Pantry, Shopping list, Kitchen (saved recipes moved to Cook)', tabsNow === 'Pantry|Shopping list|Kitchen', tabsNow);
 });
 await step('compete', async () => {
   await nav('Compete');
-  await page.locator('.eyebrow', { hasText: 'Daily quest' }).waitFor();
+  await page.locator('.globe').waitFor();
   await page.locator('.flip .face').first().waitFor({ timeout: 15000 });
   const cards = await page.locator('.flip').count();
   check('3 challenges picked from your pantry', cards === 3, `${cards}`);
@@ -288,14 +290,15 @@ await step('compete', async () => {
 });
 await step('me', async () => {
   await nav('Me');
-  await page.locator('.globe').waitFor();
+  await page.locator('.pcard').waitFor();
   check('no pose buttons, no tier list, no "Your world" heading on Me', (await page.getByRole('button', { name: 'We’re so back!' }).count()) === 0 && (await page.locator('.tier-row').count()) === 0 && (await page.getByRole('heading', { name: 'Your world' }).count()) === 0);
-  check('cooking Mexican shows on the globe (Bronze)', await page.locator('.globe-svg path.gl-c.bronze').first().waitFor({ state: 'attached', timeout: 8000 }).then(() => true, () => false));
+  check('the daily quest moved to Me (the globe is on Compete now)', (await page.locator('[data-tip="quest"]').count()) === 1 && (await page.locator('.globe').count()) === 0);
+  check('your level title shows under your name', (await page.locator('.me-tag').innerText()).length > 3);
   const pc = await page.locator('.pcard').innerText();
   check('profile: Level, Recipes, Ingredients, Countries, Streak (no Restaurant)', ['Level', 'Recipes', 'Ingredients', 'Countries', 'Streak'].every((k) => new RegExp(k, 'i').test(pc)) && !/Restaurant|Riverwalk Apartment/i.test(pc), pc);
   check('a progress bar to the next home, named only', /Ybor City Loft|Hyde Park Bungalow|Bayshore Condo/.test(pc) && !/Level \d+: move/.test(pc) && (await page.locator('.pcard-next .bar').count()) === 1);
-  check('the kitchen stands in a cut-away room (floor slab + walls that hide on the near side), no box or wallpaper', (await page.locator('#my-kitchen .kwall').count()) === 4 && (await page.locator('#my-kitchen .k3-bg').count()) === 0 && (await page.locator('#my-kitchen .k3.placed').count()) === 1);
-  check('the kitchen is above the globe', (await page.locator('#my-kitchen').boundingBox()).y < (await page.locator('.globe').boundingBox()).y);
+  check('the kitchen stands in a cut-away room (floor slab + walls that hide on the near side), no box or wallpaper', (await page.locator('#my-kitchen .kw').count()) === 2 && (await page.locator('#my-kitchen .kwin').count()) === 1 && (await page.locator('#my-kitchen .k3-bg').count()) === 0 && (await page.locator('#my-kitchen .k3.placed').count()) === 1);
+  check('the kitchen’s heading is where it is (or its name), with Edit on the same line', /Riverwalk Apartment|Ybor City Loft/.test(await page.locator('#my-kitchen .mk-title').innerText()) && Math.abs((await page.locator('#my-kitchen .mk-title').boundingBox()).y - (await page.locator('#my-kitchen .mk-bar a').boundingBox()).y) < 30);
   check('no pencil next to your name, no "Lv" text', (await page.locator('.namebtn svg').count()) === 0 && (await page.locator('.page-title').first().getByText(/^Lv /).count()) === 0);
   check('Kitchen shop opens on kitchen things with prices, no appliances', (await page.locator('.shop-grid .tile').count()) >= 20 && /\d/.test(await page.locator('.shop-grid .tile .tprice').first().innerText()) && (await page.locator('.shop [role=tab]', { hasText: 'Appliances' }).count()) === 0 && (await page.locator('.shop-grid .tile', { hasText: 'Gas range' }).count()) === 0);
   check('country things stay hidden until that country is done (no teaser text)', (await page.locator('.shop-grid .tile', { hasText: 'Molcajete' }).count()) === 0 && (await page.getByText(/Finish a country/).count()) === 0);
@@ -324,12 +327,13 @@ await step('me', async () => {
 });
 await step('compete layout', async () => {
   await nav('Compete'); await page.getByText('Cuisine bingo').waitFor();
-  const yB = (await page.getByRole('heading', { name: 'Cuisine bingo' }).boundingBox()).y, yQ = (await page.getByText('Daily quest').boundingBox()).y;
-  check('cuisine bingo is at the top of Compete', yB < yQ, `${yB} < ${yQ}`);
+  const yB = (await page.getByRole('heading', { name: 'Cuisine bingo' }).boundingBox()).y, yQ = (await page.locator('.globe').boundingBox()).y;
+  check('cuisine bingo is at the top of Compete, the globe where the daily quest was', yB < yQ, `${yB} < ${yQ}`);
+  check('cooking Mexican shows on the globe (Bronze)', await page.locator('.globe-svg path.gl-c.bronze').first().waitFor({ state: 'attached', timeout: 8000 }).then(() => true, () => false));
   check('bingo has no text under the title any more (no "Get four in a row", no own timer)', (await page.locator('section[aria-labelledby=bingo-h] p').count()) === 0 && (await page.getByText('Get four in a row').count()) === 0 && (await page.locator('section[aria-labelledby=bingo-h]').getByText(/resets|\d+d\b/i).count()) === 0);
   const wantD = (() => { const n = new Date(); const d = (8 - n.getDay()) % 7 || 7; const mon = new Date(n.getFullYear(), n.getMonth(), n.getDate() + d); return Math.max(1, Math.ceil((mon - n) / 864e5)); })();
   check('one reset timer at the top, counting to Monday like the challenges', (await page.getByText(/^Resets in \d+d$/).count()) === 1 && (await page.getByText(`Resets in ${wantD}d`).count()) === 1);
-  await nav('Me'); await page.locator('.globe').waitFor();
+  await nav('Me'); await page.locator('.pcard').waitFor();
 });
 await step('buy coins with Apple Pay', async () => {
   const before = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
@@ -385,6 +389,11 @@ await step('reload keeps everything', async () => {
 });
 await step('free dish search', async () => {
   await nav('Cook');
+  if (await page.locator('.saved-x').count()) {
+    const before = await page.locator('.saved-x').count();
+    await page.locator('.saved-x').first().click(); await page.locator('.toast', { hasText: 'Removed' }).waitFor({ timeout: 5000 });
+    check('a saved recipe can be unsaved', (await page.locator('.saved-x').count()) === before - 1);
+  } else check('a saved recipe can be unsaved (none saved yet)', true);
   check('no country pop-up list on the search box', (await page.locator('#o-countries, datalist').count()) === 0 && (await page.locator('#o-dish').getAttribute('list')) === null);
   await page.fill('#o-dish', 'albanian food'); await page.getByRole('button', { name: 'Search dishes' }).click();
   await page.getByText('Byrek', { exact: true }).first().waitFor({ timeout: 15000 });
@@ -424,10 +433,12 @@ await step('free dish search', async () => {
   if (await page.getByText('Level up!', { exact: false }).count()) { await page.locator('[aria-label=Close]').first().click(); await page.waitForTimeout(400); }
   // finished countries: Gold on the tier list, painted on the globe, their kitchen things in the shop
   await fetch('http://localhost:54321/__e2e/seed-meals?country=MX&n=5');
-  await nav('Me'); await page.locator('.globe').waitFor();
+  await nav('Compete'); await page.locator('.globe').waitFor();
   await page.locator('.globe-svg .gl-gold').nth(1).waitFor({ state: 'attached', timeout: 8000 }).catch(() => {});
   check('a Gold country is painted on the globe (its colours and food, clipped to its shape)', (await page.locator('.globe-svg .gl-gold').count()) >= 2 && (await page.locator('.globe-svg .gl-gold clipPath').count()) >= 2);
-  check('country challenges show up for started countries', (await page.locator('.cchal').count()) >= 1);
+  await page.locator('.globe').scrollIntoViewIfNeeded(); await shot('07e-globe-gold');
+  await nav('Me'); await page.locator('.pcard').waitFor();
+  check('country challenges show up for started countries', await page.locator('.cchal').first().waitFor({ timeout: 8000 }).then(() => true, () => false));
   await page.locator('.shop [role=tab]', { hasText: 'From your countries' }).click({ timeout: 8000 });
   await page.locator('.shop-grid .tile', { hasText: 'Molcajete' }).waitFor({ timeout: 8000 });
   check('finishing Mexico unlocks its kitchen things', (await page.locator('.shop-grid .tile', { hasText: 'Tortilla press' }).count()) === 1 && (await page.locator('.shop-grid .tile', { hasText: 'Moka pot' }).count()) === 0);
@@ -435,7 +446,6 @@ await step('free dish search', async () => {
   check('a country thing goes into the kitchen too', await page.locator('#my-kitchen .kthing img[alt="Molcajete"]').waitFor({ timeout: 8000 }).then(() => true, () => false));
   await closePopups(); if (await page.getByText('Level up!', { exact: false }).count()) { await page.locator('.popup [aria-label=Close]').first().click(); await page.waitForTimeout(400); }
   await page.locator('#my-kitchen').scrollIntoViewIfNeeded(); await shot('07d-me-kitchen');
-  await page.locator('.globe').scrollIntoViewIfNeeded(); await shot('07e-me-globe-gold');
   await nav('Cook');
   for (const [q, want] of [['pesto', 'Pesto'], ['chickpeas', 'Falafel'], ['sauce', 'Chimichurri'], ['pho', 'Pho']]) {
     await page.fill('#o-dish', q); await page.getByRole('button', { name: 'Search dishes' }).click();
@@ -722,7 +732,7 @@ await step('notifications', async () => {
 await step('kitchen layout', async () => {
   await fetch('http://localhost:54321/__e2e/clear-kitchens');   // the shop made one earlier; this walk starts from none
   await page.reload(); await page.waitForTimeout(1500); await closePopups();
-  await nav('Pantry'); await page.getByRole('tab', { name: /^Pantry/ }).click();
+  await nav('Pantry'); await page.getByRole('tab', { name: /^Pantry \(/ }).click();
   await page.locator('button.chip', { hasText: /^All$/ }).click();
   await page.locator('a.kf-empty').click(); await page.waitForURL('**/pantry/kitchen/design');
   await page.locator('.kbox').first().waitFor();
@@ -835,11 +845,14 @@ await step('kitchen layout', async () => {
   await page.locator('.title-link', { hasText: 'Pantry' }).click(); await page.waitForURL(/\/pantry$/);
   await page.getByRole('tab', { name: 'Kitchen' }).click(); await page.locator('main .kcloset').waitFor();
   check('the closet’s shelves and floor are spots you can put food on', (await page.locator('main .kcloset [data-spot]').count()) === 31);
+  check('Kitchen tab: arrows and tabs slide between the kitchen and your storage', (await page.locator('main .kstage-tabs [role=tab]').count()) === 3 && (await page.locator('main .kstage-arrow').count()) === 2);
   const zc = () => page.locator('main .k3-cam').evaluate((el) => Number(el.style.transform.match(/scale\(([\d.]+)\)/)[1]));
   const z0 = await zc(); await page.locator('main .kcloset').dispatchEvent('click'); await page.waitForTimeout(300);
   check('tap the closet → the view flies in to it', (await zc()) > z0 * 1.5, `${z0} → ${await zc()}`);
   await shot('31-pantry-closet');
-  await page.getByRole('tab', { name: /^Pantry/ }).click();
+  await page.locator('main .kstage-tabs [role=tab]', { hasText: 'Spice cabinet' }).click(); await page.waitForTimeout(700);
+  check('…tap Spice cabinet: it comes front and centre', (await page.locator('main .kstage-tabs [role=tab][aria-selected=true]').innerText()) === 'Spice cabinet' && (await zc()) > z0 * 1.3);
+  await page.getByRole('tab', { name: /^Pantry \(/ }).click();
   await shot('30-kitchen-pantry');
 });
 await step('delete my data', async () => {

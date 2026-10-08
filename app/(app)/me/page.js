@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { useWhisk, useDraft } from '@/components/AppShell';
 import Icon from '@/components/Icon';
 import GetCoinsSheet from '@/components/GetCoinsSheet';
-import Globe from '@/components/Globe';
+import DailyQuest from '@/components/DailyQuest';
+import { TIPS } from '@/lib/tips';
 import { ProfileCard, MyKitchen, KitchenShop, CountryChallenges } from '@/components/MeWorld';
 import ResetSheet from '@/components/ResetSheet';
 import NeverShowSheet from '@/components/NeverShowSheet';
@@ -29,6 +30,7 @@ export default function Me() {
   const meals = medata?.meals || EMPTY_LIST, history = medata?.history || EMPTY_LIST;
   const [world, , setWorld] = useWorld();
   const [getCoins, setGetCoins] = useState(false);
+  const [howTo, setHowTo] = useState(false);
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [never, setNever] = useState(false);
@@ -52,13 +54,10 @@ export default function Me() {
     const m = new Map(); history.forEach((x) => { if (x.country) m.set(x.country, (m.get(x.country) || 0) + 1); });
     return [...m].map(([country, n]) => ({ country, n, done: n >= 5 })).sort((a, b) => b.n - a.n);
   }, [world, history]);
-  const counts = useMemo(() => new Map(countries.map((c) => [c.country, c.n])), [countries]);
-  const doneSet = useMemo(() => new Set(countries.filter((c) => c.done || c.n >= 5).map((c) => c.country)), [countries]);
   const ingredients = (pantry || []).filter((p) => p.status !== 'out').length;
   const recipesCooked = world && !world.missing ? world.recipes || 0 : meals.length;
 
   // the dart hit a country: find something to cook from there
-  function cookFrom(hit) { setUi({ cookMode: 'named', cookDish: hit.name }); router.push('/cook'); }
   function openChallenge(c) {
     const r = (allRecipes || []).find((x) => x.id === c.recipe_id);
     if (r) setRecipe(r); else { setUi({ cookMode: 'named', cookDish: c.title }); router.push('/cook'); }
@@ -83,7 +82,7 @@ export default function Me() {
 
   return (
     <div className="stack">
-      <div data-tour="name" className="page-title" style={{ alignItems: 'center', flexWrap: 'nowrap' }}>
+      <div data-tour="name" className="page-title me-title" style={{ flexWrap: 'nowrap' }}>
         {editing ? (
           <form className="row" style={{ flexWrap: 'nowrap', flex: 1 }} onSubmit={saveName}>
             <label htmlFor="nm" hidden>Your name</label>
@@ -93,6 +92,7 @@ export default function Me() {
         ) : (
           <>
             <button className="namebtn" onClick={() => { setNameDraft(nameDraft || profile?.display_name || ''); setEditing(true); }} aria-label={`Edit name: ${name}`}><h1>{name}</h1></button>
+            <span className="me-tag">{lvl.title}</span>
           </>
         )}
       </div>
@@ -105,7 +105,7 @@ export default function Me() {
 
       <MyKitchen />
 
-      <div data-tour="stage" data-tip="stage"><Globe counts={counts} done={doneSet} onCook={cookFrom} /></div>
+      <DailyQuest />
 
       <CountryChallenges challenges={world?.challenges} onOpen={openChallenge} />
 
@@ -160,8 +160,11 @@ export default function Me() {
         <button className="row setbtn" onClick={openPrivacy} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
           <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Cookies &amp; privacy</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />
         </button>
-        <button className="row setbtn" onClick={() => { replayTour(); say('Chef will explain things again as you tap them'); }} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
-          <img src="/icon.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Show Chef’s tips again</span><Icon name="chevron" />
+        <button className="row setbtn" onClick={() => setHowTo(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
+          <Icon name="flag" /><span style={{ flex: 1, fontWeight: 700 }}>How Whisk works</span><Icon name="chevron" />
+        </button>
+        <button className="row setbtn" onClick={() => { replayTour(); say('The tips will show again as you tap things'); }} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
+          <img src="/icon.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Show tips again</span><Icon name="chevron" />
         </button>
         {profile?.is_admin && <Link href="/admin" className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', textDecoration: 'none', color: 'var(--fg)', flexWrap: 'nowrap' }}><Icon name="compete" /><span style={{ flex: 1, fontWeight: 700 }}>Backend dashboard</span><Icon name="chevron" /></Link>}
         <div className="stack" style={{ padding: '12px 16px', gap: 4 }}>
@@ -183,6 +186,17 @@ export default function Me() {
       {backingUp && <BackupSheet supabase={supabase} onClose={() => setBackingUp(false)} />}
       {deleting && <DeleteDataSheet onClose={() => setDeleting(false)} />}
       {recipe && <RecipeSheet recipe={recipe} pantry={pantry || []} onClose={() => setRecipe(null)} />}
+      {howTo && (
+        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setHowTo(false); }}>
+          <div className="sheet stack howto" role="dialog" aria-modal="true" aria-label="How Whisk works">
+            <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}><h2 style={{ margin: 0 }}>How Whisk works</h2><button type="button" className="btn ghost sm" onClick={() => setHowTo(false)} aria-label="Close"><Icon name="x" /></button></div>
+            <span className="desc">Read what you need, skip what you don’t.</span>
+            {Object.entries(TIPS).map(([id, [t, txt]]) => (
+              <details key={id} className="howto-row"><summary>{t}</summary><p>{txt}</p></details>
+            ))}
+          </div>
+        </div>
+      )}
       {getCoins && <GetCoinsSheet onClose={() => setGetCoins(false)} />}
     </div>
   );

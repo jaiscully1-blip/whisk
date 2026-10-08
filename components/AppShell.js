@@ -42,6 +42,16 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   const pathname = usePathname();
   const [pendingTab, setPendingTab] = useState(null);
   useEffect(() => { setPendingTab(null); }, [pathname]);
+  // iPhone: while the keyboard or a date picker is open, hide the tab bar (it would float mid-screen), and when it
+  // closes, nudge the page so the bar snaps back to the bottom instead of staying where the keyboard left it.
+  useEffect(() => {
+    const vv = window.visualViewport; if (!vv) return undefined;
+    const sync = () => document.documentElement.classList.toggle('kb-open', vv.height < window.innerHeight * 0.78);
+    const settle = () => setTimeout(() => { window.scrollTo(window.scrollX, window.scrollY); sync(); }, 60);
+    vv.addEventListener('resize', sync); vv.addEventListener('scroll', sync);
+    document.addEventListener('focusout', settle);
+    return () => { vv.removeEventListener('resize', sync); vv.removeEventListener('scroll', sync); document.removeEventListener('focusout', settle); };
+  }, []);
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
   const [loadout, setLoadout] = useState(initialLoadout);

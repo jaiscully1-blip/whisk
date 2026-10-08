@@ -26,7 +26,7 @@ export default function Tips({ seen, onSeen, welcome }) {
   // Out of the way fast: it leaves on its own after a few seconds, or as soon as you tap anything else.
   useEffect(() => {
     if (!tip) return undefined;
-    const t = setTimeout(() => setTip(null), 7000);
+    const t = setTimeout(() => setTip(null), 12000);
     const away = (e) => { if (!e.target.closest?.('.tip-card')) setTip(null); };   // the tap that opened it came before
     document.addEventListener('pointerdown', away, true);
     return () => { clearTimeout(t); document.removeEventListener('pointerdown', away, true); };

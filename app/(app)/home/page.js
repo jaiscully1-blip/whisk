@@ -66,7 +66,7 @@ export default function Home() {
         {soon.length > 0 && i === 0 && <h2 className="away-h soon-h">Use it before it goes bad</h2>}
         {sorted && !soon.length && (i === 0 || arr[i - 1].soon.length > 0 || arr[i - 1].c.missing.length !== c.missing.length) && <h2 className="away-h">{away(c.missing.length)}</h2>}
         <div className="card stack rcard" style={{ gap: 8 }}>
-          <Postcard iso={r.country} cuisine={r.cuisine} title={r.title} />
+          <Postcard iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} />
           <div className="rcard-body stack" style={{ gap: 8 }}>
           <span className="eyebrow">{r.cuisine}</span>
           <h2 style={{ fontSize: 22 }}>{r.title}</h2>

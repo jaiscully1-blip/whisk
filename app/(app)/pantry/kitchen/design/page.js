@@ -21,7 +21,7 @@ export default function Design() {
   const [sheet, setSheet] = useState(null);       // 'add' | 'paint' | 'new' | 'mine'
   const [look, setLook] = useState(false);        // preview with doors on
   const [open, setOpen] = useState({});
-  const [cam, setCam] = useState({ rz: -24, rx: 56, zoom: 1 });
+  const [cam, setCam] = useState({ rz: -24, rx: 56, zoom: 1, px: 0, py: 0 });
   const [dir, setDir] = useState(1);              // the one depth button: 1 = toward you, -1 = away
   const [busy, setBusy] = useState(false);
   const [spun, setSpun] = useState(false);
@@ -138,7 +138,7 @@ export default function Design() {
         <div className="kd-cam">
           <button type="button" className="kd-round" onClick={() => setCam((c) => ({ ...c, rz: c.rz + 45 }))} aria-label="Spin left"><Icon name="undo" size={18} /></button>
           <button type="button" className={`kd-round ${look ? 'on' : ''}`} onClick={() => { setLook((l) => !l); setSel(null); setOpen({}); }} aria-pressed={look} aria-label={look ? 'Back to building' : 'Look with doors on'}><Icon name={look ? 'pencil' : 'pantry'} size={18} /></button>
-          <button type="button" className="kd-round" onClick={() => setCam({ rz: -24, rx: 56, zoom: 1 })} aria-label="Reset view"><Icon name="shuffle" size={18} /></button>
+          <button type="button" className="kd-round" onClick={() => setCam({ rz: -24, rx: 56, zoom: 1, px: 0, py: 0 })} aria-label="Reset view"><Icon name="shuffle" size={18} /></button>
           <button type="button" className="kd-round" onClick={() => setCam((c) => ({ ...c, rz: c.rz - 45 }))} aria-label="Spin right"><Icon name="undo" size={18} style={{ transform: 'scaleX(-1)' }} /></button>
         </div>
       </div>
@@ -174,8 +174,8 @@ export default function Design() {
           {dirty && <Unsaved name={edit.name} onSave={save} />}
           <p className="desc" style={{ margin: 0 }}>The kitchen in your Pantry stays the same until you press Display.</p>
           <div className="grid2">
-            {[['starter', 'Starter kitchen', '🏠'], ['dream', 'Dream kitchen', '✨'], ['blank', 'Empty floor', '⬜'], ['copy', 'Copy this one', '📋']].map(([k, label, e]) => (
-              <button key={k} type="button" className="card kd-new" onClick={() => fresh(k)}><span style={{ fontSize: 30 }}>{e}</span><b>{label}</b></button>
+            {[['starter', 'Starter kitchen', 'ff'], ['dream', 'Dream kitchen', 'retro'], ['blank', 'Empty floor', null], ['copy', 'Copy this one', 'd3']].map(([k, label, mid]) => (
+              <button key={k} type="button" className="card kd-new" onClick={() => fresh(k)}><span className="kd-new-pic">{mid ? <Flat mid={mid} box={[40, 46]} /> : <span className="kd-grid" />}</span><b>{label}</b></button>
             ))}
           </div>
         </Sheet>

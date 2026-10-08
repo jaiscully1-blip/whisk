@@ -1,20 +1,25 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import * as K from '@/lib/kitchen/models';
+import { stickerUrl } from '@/lib/art/food';
 
 // The kitchen in 3D, drawn with CSS 3D boxes (no WebGL, so it's light and works everywhere).
 // mode: 'view'  — doors and drawers open with a tap; lit spots can be tapped
 //       'build' — doors off so every shelf shows; drag a piece anywhere (left/right along the floor, up/down to lift it),
 //                 pull a yellow dot to make it wider or taller
 //       'mini'  — a small floating picture (tap anywhere → onTap)
-// Camera: drag to spin (the model follows your finger), pinch or scroll to zoom.
+// Camera: drag to spin (the model follows your finger), two fingers to slide it anywhere and pinch to zoom
+// (trackpad: two-finger scroll slides, pinch zooms). Sliding stops at a border about 10 swipes out.
 // Spots are tagged with data-spot="<piece>|<compartment>|<spot>" so drag-and-drop can find them with elementFromPoint.
 export const ZOOM = [0.45, 2.6];
+export const PAN = 1000;   // how far (px at normal zoom) the kitchen can be slid before it stops: ~10 swipes
 export default function Kitchen3D({
   pieces, mode = 'view', height = 420, scale = 1, cam, onCam, open = {}, openAll = false, onToggle,
   spot = {}, onSpot, sel = null, onSelect, onChange, onTap, taught = true, onTaught, float = false, className = ''
 }) {
-  const [own, setOwn] = useState({ rz: -24, rx: 56, zoom: 1 });
+  const [own, setOwn] = useState({ rz: -24, rx: 56, zoom: 1, px: 0, py: 0 });
+  const [edge, setEdge] = useState('');
+  const edgeT = useRef(null);
   const camera = cam || own; const setCam = onCam || setOwn;
   const zoom = camera.zoom || 1, S = scale * zoom;
   const drag = useRef(null); const moved = useRef(false);
@@ -25,10 +30,24 @@ export default function Kitchen3D({
   const { idx } = K.spotsOf(pieces, []);
   const C = K.C, HU = K.HU;
 
-  // scroll wheel / trackpad pinch zooms (needs a non-passive listener so the page doesn't scroll instead)
+  // slide the view, stopping at the border (and flashing that side so you know you've hit it)
+  const panTo = (c, px, py) => {
+    const lim = PAN * Math.max(1, c.zoom || 1);
+    const nx = K.clamp(px, -lim, lim), ny = K.clamp(py, -lim, lim);
+    const hit = (nx !== px ? (px > 0 ? 'r' : 'l') : '') + (ny !== py ? (py > 0 ? 'b' : 't') : '');
+    if (hit) { setEdge(hit); clearTimeout(edgeT.current); edgeT.current = setTimeout(() => setEdge(''), 500); }
+    return { ...c, px: nx, py: ny };
+  };
+  const panRef = useRef(panTo); panRef.current = panTo;
+  // mouse wheel / trackpad pinch (ctrl) zooms; trackpad two-finger scroll slides (non-passive so the page doesn't scroll instead)
   useEffect(() => {
     const el = root.current; if (!el || mini) return undefined;
-    const onWheel = (e) => { e.preventDefault(); const c = camRef.current; setCam({ ...c, zoom: K.clamp((c.zoom || 1) * Math.exp(-e.deltaY * 0.0018), ZOOM[0], ZOOM[1]) }); };
+    const onWheel = (e) => {
+      e.preventDefault(); const c = camRef.current;
+      const mouseWheel = e.deltaMode === 1 || (e.deltaX === 0 && Math.abs(e.deltaY) >= 40 && Number.isInteger(e.deltaY));
+      if (e.ctrlKey || mouseWheel) setCam({ ...c, zoom: K.clamp((c.zoom || 1) * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)), ZOOM[0], ZOOM[1]) });
+      else setCam(panRef.current(c, (c.px || 0) - e.deltaX, (c.py || 0) - e.deltaY));
+    };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, [mini, setCam]);
@@ -46,17 +65,21 @@ export default function Kitchen3D({
     if (next.some((b, i) => b !== pieces[i])) onChange?.(next);
   }
   const dist = () => { const [a, b] = [...fingers.current.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+  const mid = () => { const [a, b] = [...fingers.current.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
   // every finger is counted here first (capture phase), so a second finger anywhere turns the gesture into a pinch
   const capDown = (e) => {
     if (mini) return;
     fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (fingers.current.size === 2) { drag.current = { mode: 'pinch', d0: dist(), z0: zoom }; moved.current = true; }
+    if (fingers.current.size === 2) { drag.current = { mode: 'pinch', d0: dist(), z0: zoom, m0: mid(), p0: { x: camera.px || 0, y: camera.py || 0 } }; moved.current = true; }
   };
   const down = (e) => { if (mini || drag.current?.mode === 'pinch') return; drag.current = { mode: 'spin', x: e.clientX, y: e.clientY, rz: camera.rz, rx: camera.rx }; moved.current = false; };
   const move = (e) => {
     if (fingers.current.has(e.pointerId)) fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const d = drag.current; if (!d) return;
-    if (d.mode === 'pinch') { if (fingers.current.size >= 2) setCam({ ...camera, zoom: K.clamp(d.z0 * dist() / d.d0, ZOOM[0], ZOOM[1]) }); return; }
+    if (d.mode === 'pinch') {   // two fingers: slide it anywhere (up to the border) and pinch to zoom, both at once
+      if (fingers.current.size >= 2) { const m = mid(); setCam(panTo({ ...camera, zoom: K.clamp(d.z0 * dist() / d.d0, ZOOM[0], ZOOM[1]) }, d.p0.x + m.x - d.m0.x, d.p0.y + m.y - d.m0.y)); }
+      return;
+    }
     const dx = e.clientX - d.x, dy = e.clientY - d.y;
     if (!moved.current) {
       if (Math.abs(dx) + Math.abs(dy) < 6) return;
@@ -99,8 +122,8 @@ export default function Kitchen3D({
     : { background: 'repeating-linear-gradient(90deg,rgba(90,60,30,.18) 0 1px,rgba(0,0,0,0) 1px 26px),repeating-linear-gradient(0deg,rgba(255,255,255,.08) 0 2px,rgba(0,0,0,0) 2px 9px),linear-gradient(135deg,#E4CBA4,#D2B183)', borderRadius: 6, boxShadow: '0 0 0 8px rgba(120,90,50,.14)' };
 
   return (
-    <div ref={root} className={`k3 ${mode} ${float ? 'floaty' : ''} ${className}`} style={{ height }} onPointerDownCapture={capDown} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={tapFloor}>
-      <div className="k3-cam" style={{ transform: `scale(${S}) rotateX(${camera.rx}deg) rotateZ(${camera.rz}deg)` }}>
+    <div ref={root} className={`k3 ${mode} ${float ? 'floaty' : ''} ${edge ? `edge-${edge}` : ''} ${className}`} style={{ height }} onPointerDownCapture={capDown} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={tapFloor}>
+      <div className="k3-cam" style={{ transform: `translate(${camera.px || 0}px, ${camera.py || 0}px) scale(${S}) rotateX(${camera.rx}deg) rotateZ(${camera.rz}deg)` }}>
         <div className="k3-sway">
           <div className="k3-floor" style={{ width: K.GW * C, height: K.GD * C, marginLeft: -K.GW * C / 2, marginTop: -K.GD * C / 2, ...floor }}>
             {pieces.map((b) => <Piece key={b.id} b={b} {...{ build, view, mini, open, openAll, onToggle, spot, onSpot, sel, idx, guard, grow, taught }}
@@ -108,6 +131,9 @@ export default function Kitchen3D({
           </div>
         </div>
       </div>
+      {!mini && Math.hypot(camera.px || 0, camera.py || 0) > 260 * Math.max(1, zoom) && (
+        <button type="button" className="k3-home" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setCam({ ...camera, px: 0, py: 0 }); }}>Back to kitchen</button>
+      )}
     </div>
   );
 }
@@ -135,7 +161,7 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
       return (
         <button key={key} type="button" data-spot={key} className={`ks ${extra} ${s.lit ? 'lit' : ''} ${s.on ? 'on' : ''} ${s.hov ? 'hov' : ''}`} style={style}
           aria-label={(idx.map[key] || {}).label || 'spot'} onClick={onSpot ? guard(() => onSpot(key)) : undefined}>
-          {s.tags?.length > 0 && <span className="ktags">{s.tags.slice(0, 3).map((t) => <i key={t}>{t}</i>)}{s.tags.length > 3 && <i>+{s.tags.length - 3}</i>}</span>}
+          {s.items?.length > 0 && <span className="kstks">{s.items.slice(0, 3).map((it, i) => <img key={i} src={stickerUrl(it.name, it.category)} alt="" title={it.name} draggable={false} />)}{s.items.length > 3 && <i>+{s.items.length - 3}</i>}</span>}
         </button>
       );
     };
@@ -178,7 +204,9 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
         {showFront && isDoor && (
           <div className="kdoor" style={{ ...pos, transformOrigin: org, transform: `translateZ(1px)${rot}`, cursor: toggle ? 'pointer' : 'default' }} onClick={toggle} role={toggle ? 'button' : undefined} aria-label={toggle ? aria : undefined}>
             <div className="kout" style={css(outCss)}>{decos}</div>
-            <div className="kback" style={{ background: ap ? 'repeating-linear-gradient(180deg,rgba(0,0,0,0) 0 16%,rgba(150,190,212,.85) 16% 21%),#E7EDF1' : K.mix(fin.color, 0.3), borderRadius: 3 }} />
+            <div className="kback" style={{ background: ap ? '#E7EDF1' : K.mix(fin.color, 0.3), borderRadius: 3 }}>
+              {isOpen && K.doorBins(c, m).map((bn, i, all) => spotEl(`${b.id}|${ci}|${50 + i}`, { left: '9%', width: '82%', top: `${(i + 0.25) * (100 / all.length)}%`, height: `${62 / all.length}%` }, 'bin'))}
+            </div>
           </div>
         )}
         {showFront && isDr && (
@@ -205,7 +233,7 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
           <button type="button" className="kknob" style={{ left: -kh - 8, top: H / 2 - kh }} onPointerDown={grow(b, 'w')} aria-label="Drag to make it wider on the left" />
           <button type="button" className="kknob" style={{ left: W - kh + 8, top: H / 2 - kh }} onPointerDown={grow(b, 'e')} aria-label="Drag to make it wider on the right" />
           <button type="button" className="kknob" style={{ left: W / 2 - kh, top: -kh - 8 }} onPointerDown={grow(b, 'up')} aria-label="Drag to make it taller" />
-          {!taught && <span className="khand" style={{ left: W + 4, top: H / 2 }} aria-hidden="true">👆</span>}
+          {!taught && <span className="khand" style={{ left: W + 4, top: H / 2 }} aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10l.5-1a1.5 1.5 0 0 1 2.8.6V11l.4-.5a1.5 1.5 0 0 1 2.6 1V15a6 6 0 0 1-6 6h-1a5 5 0 0 1-4.2-2.3L5 15.5a1.5 1.5 0 0 1 2.4-1.8L9 15z" fill="#fff" stroke="#2E2620" strokeWidth="1.6" strokeLinejoin="round" /></svg></span>}
         </>}
       </div>
       <div className="kface" style={{ left: 0, top: 0, width: W, height: D, transform: `translateZ(${H}px)`, borderRadius: 2, ...css(topCss) }}>

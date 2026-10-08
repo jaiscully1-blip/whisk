@@ -4,7 +4,7 @@ import { useWhisk } from './AppShell';
 import Icon from './Icon';
 import LogMealSheet from './LogMealSheet';
 import ThawBanner from './ThawBanner';
-import { checkRecipe, searchLinks, shoppingNeeds } from '@/lib/recipes/match';
+import { checkRecipe, shoppingNeeds } from '@/lib/recipes/match';
 import { guessCategory } from '@/lib/game';
 import { ServingsX, IngredientList, StepList } from './RecipeSteps';
 import { cultureStyle, motifFor } from '@/lib/culture';
@@ -54,14 +54,14 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
   return (
     <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
       <div className="sheet stack cx" style={cultureStyle(r.country, r.cuisine)} data-motif={motifFor(r.country, r.cuisine)} data-tip="recipe" role="dialog" aria-modal="true" aria-label={r.title}>
-        <Scene iso={r.country} cuisine={r.cuisine} title={r.title} className="scene-bleed" />
+        <Scene iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} className="scene-bleed" />
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'nowrap' }}>
           <div><span className="eyebrow">{r.cuisine}</span><h2 style={{ fontSize: 26 }}>{r.title}</h2></div>
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
         </div>
         <span className="src">Recipe from <a href={r.url} target="_blank" rel="noopener noreferrer">{r.source}</a>{r.video && <> · <a href={r.video} target="_blank" rel="noopener noreferrer">Watch the video</a></>}</span>
         <div className="row">
-          <span className="chip">{r.minutes} min</span><span className="chip xp">+20 XP when you cook it</span>
+          <span className="chip">{r.minutes} min</span><span className="chip xp">+100 XP · 500 coins when you cook it</span>
           {needs.length ? <span className="chip need">{needs.length} to buy</span> : <span className="chip have">You have everything</span>}
         </div>
         {r.nutrition && (
@@ -87,11 +87,6 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         <IngredientList r={r} factor={factor} missing={needs} />
         <div className="row" style={{ justifyContent: 'space-between' }}><h3>Steps</h3><button type="button" className="btn sm cm-open" onClick={() => setCooking(true)}><Icon name="play" size={16} />Cook mode</button></div>
         <StepList r={r} factor={factor} />
-        <div className="links">
-          <a href={r.url} target="_blank" rel="noopener noreferrer"><Icon name="link" size={15} />Open on {r.source}</a>
-          {r.video && <a href={r.video} target="_blank" rel="noopener noreferrer"><Icon name="play" size={15} />Video</a>}
-          {searchLinks(r.title).slice(1).map(([l, h]) => <a key={l} href={h} target="_blank" rel="noopener noreferrer"><Icon name={l === 'Reddit' ? 'search' : 'play'} size={15} />{l}</a>)}
-        </div>
         <div className="row">
           {isSaved ? <span className="chip have" style={{ flex: '1 1 140px', justifyContent: 'center', minHeight: 44 }}>Saved</span>
             : <button className="btn ghost" style={{ flex: '1 1 140px' }} onClick={save}>Save · +5 XP</button>}

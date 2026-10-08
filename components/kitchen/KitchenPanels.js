@@ -6,8 +6,12 @@ import Icon from '@/components/Icon';
 import { useKitchens } from '@/components/usePantry';
 import * as K from '@/lib/kitchen/models';
 import Kitchen3D from './Kitchen3D';
+import { stickerUrl } from '@/lib/art/food';
 
-export const FOOD = { Proteins: '🍗', Produce: '🥦', 'Dairy & Eggs': '🥛', 'Carbs & Grains': '🍞', 'Canned & Jarred': '🥫', 'Sauces & Oils': '🫒', 'Spices & Seasonings': '🧂', Frozen: '🧊', Baking: '🧁', Other: '🛒' };
+// A food as an illustrated sticker (lib/art/food.js) — the same drawings go on the kitchen shelves.
+export function Sticker({ name, category, size = 22, className = '' }) {
+  return <img className={`stk ${className}`} src={stickerUrl(name, category)} alt="" width={size} height={size} draggable={false} />;
+}
 
 // The kitchen that's on display, with each spot's items worked out.
 export function useShownKitchen(items) {
@@ -32,7 +36,7 @@ export function KitchenFloat({ items, filter }) {
       count += hit.length;
       const [bid, ci] = key.split('|');
       open[`${bid}:${ci}`] = true;
-      spot[key] = { lit: true, tags: hit.map((i) => i.name) };
+      spot[key] = { lit: true, items: hit };
     }
     return { spot, open, count };
   }, [at, cat]);
@@ -49,7 +53,7 @@ export function KitchenFloat({ items, filter }) {
     <section className="kfloat" aria-label={cat ? `${cat} in your kitchen` : 'Your kitchen'}>
       <Kitchen3D mode="mini" float pieces={pieces} open={open} spot={spot} height={230} scale={0.74} onTap={() => router.push('/pantry/kitchen')} />
       <div className="kf-bar">
-        {cat ? <span className="chip kf-chip">{FOOD[cat]} {count ? `${count} in the kitchen` : 'none put away'}</span> : <span className="chip kf-chip">{shown.name}</span>}
+        {cat ? <span className="chip kf-chip"><Sticker name={cat} category={cat} size={20} />{count ? `${count} in the kitchen` : 'none put away'}</span> : <span className="chip kf-chip">{shown.name}</span>}
         {away > 0
           ? <Link href="/pantry/kitchen" className="btn sm kf-go">{away} to put away<Icon name="chevron" size={16} /></Link>
           : <Link href="/pantry/kitchen" className="btn ghost sm">Open<Icon name="chevron" size={16} /></Link>}
@@ -73,7 +77,7 @@ export function KitchenTab({ items }) {
     </div>
   );
   const spot = {};
-  for (const [key, list] of Object.entries(at)) spot[key] = { tags: list.map((i) => i.name) };
+  for (const [key, list] of Object.entries(at)) spot[key] = { items: list };
   if (picked) spot[picked] = { ...(spot[picked] || {}), on: true };
   const here = picked ? at[picked] || [] : [];
   return (
@@ -85,7 +89,7 @@ export function KitchenTab({ items }) {
           <span className="kf-cube"><Icon name="flag" size={20} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <b>{idx.map[picked]?.label}</b>
-            <div className="row" style={{ marginTop: 6 }}>{here.length ? here.map((i) => <span key={i.id} className="chip">{FOOD[i.category]} {i.name}</span>) : <span className="muted">Empty here</span>}</div>
+            <div className="row" style={{ marginTop: 6 }}>{here.length ? here.map((i) => <span key={i.id} className="chip"><Sticker name={i.name} category={i.category} size={20} />{i.name}</span>) : <span className="muted">Empty here</span>}</div>
           </div>
         </div>
       )}

@@ -4,7 +4,7 @@ import { useCached } from '@/lib/cache';
 import { fetchCompete } from '@/components/tabData';
 import DietTags from '@/components/DietTags';
 import CookMode from '@/components/CookMode';
-import { sceneSvg } from '@/lib/scenes';
+import { postcardSvg } from '@/lib/scenes';
 import { useWhisk } from '@/components/AppShell';
 import LogMealSheet from '@/components/LogMealSheet';
 import Icon, { Coin } from '@/components/Icon';
@@ -84,7 +84,7 @@ export default function Compete() {
               <div key={i} role="gridcell" className={`${hit ? 'on' : ''} ${hit && !bingoSeen.has(cell) ? 'fresh' : ''}`} style={{ '--d': `${(i % 4) * 90}ms` }} aria-label={`${cell}${hit ? ', cooked' : ''}`}>
                 <div className="b-in">
                   <span className="b-face">{cell}</span>
-                  {hit && <span className="b-face b-back"><span className="b-art" aria-hidden="true" dangerouslySetInnerHTML={{ __html: sceneSvg({ cuisine: cell }, (k) => `/tw/${k}.svg`) }} /><b><Icon name="check" size={13} />{cell}</b></span>}
+                  {hit && <span className="b-face b-back"><span className="b-art" aria-hidden="true" dangerouslySetInnerHTML={{ __html: postcardSvg({ cuisine: cell, title: cell }) }} /><b><Icon name="check" size={13} />{cell}</b></span>}
                 </div>
               </div>
             ); })}
@@ -131,7 +131,7 @@ export default function Compete() {
             <div className="flip-in">
               <button className="card face" onClick={() => flip(c.id)} aria-label={`${r.title}: show instructions`} tabIndex={on ? -1 : 0} aria-hidden={on}>{front}</button>
               <div className="card face back stack cx" style={{ gap: 8, ...cultureStyle(r.country, r.cuisine) }} aria-hidden={!on} onClick={(e) => { if (e.target.closest('.flip-cta')) complete(); }}>
-                {on && <Scene iso={r.country} cuisine={r.cuisine} title={r.title} height={140} className="scene-bleed" />}
+                {on && <Scene iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} height={140} className="scene-bleed" />}
                 <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
                   <b style={{ fontFamily: 'var(--f-display)', fontSize: 18 }}>{r.title}</b>
                   <button className="btn ghost sm" style={{ width: 40, padding: 0 }} onClick={() => flip(c.id)} aria-label="Flip back" tabIndex={on ? 0 : -1}><Icon name="flip" size={18} /></button>

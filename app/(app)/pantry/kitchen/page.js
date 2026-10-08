@@ -5,7 +5,7 @@ import { useWhisk } from '@/components/AppShell';
 import Icon from '@/components/Icon';
 import { usePantry, useKitchens } from '@/components/usePantry';
 import Kitchen3D from '@/components/kitchen/Kitchen3D';
-import { FOOD, useShownKitchen } from '@/components/kitchen/KitchenPanels';
+import { Sticker, useShownKitchen } from '@/components/kitchen/KitchenPanels';
 import * as K from '@/lib/kitchen/models';
 
 // Side mission: put your food away. Hold a food box and drop it on a lit spot in your 3D kitchen
@@ -82,7 +82,7 @@ export default function PutAway() {
     const d = drag.current; drag.current = null; if (!d) return;
     if (!d.live) {   // a tap picks it up; bring the kitchen into view so the lit spots are right there
       setArmed((a) => (a?.id === d.item.id ? null : d.item)); setPicked(null);
-      document.querySelector('.putaway .k3')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      document.querySelector('.putaway .k3')?.scrollIntoView({ block: 'start' });   // instant, so the spots don't slide under your finger
       return;
     }
     const over = spotAt(e.clientX, e.clientY);
@@ -96,7 +96,7 @@ export default function PutAway() {
   };
 
   const spot = {};
-  for (const [key, list] of Object.entries(at)) spot[key] = { tags: list.map((i) => i.name) };
+  for (const [key, list] of Object.entries(at)) spot[key] = { items: list };
   if (ghost?.over) spot[ghost.over] = { ...(spot[ghost.over] || {}), hov: true };
   if (flash) spot[flash] = { ...(spot[flash] || {}), lit: true };
   if (picked) spot[picked] = { ...(spot[picked] || {}), on: true };
@@ -138,7 +138,7 @@ export default function PutAway() {
               <b>{idx.map[picked]?.label}</b>
               <div className="row" style={{ marginTop: 8 }}>
                 {here.length ? here.map((i) => (
-                  <button key={i.id} type="button" className="chip pa-in" onClick={() => takeOut(i)} aria-label={`Take ${i.name} out`}>{FOOD[i.category]} {i.name}<Icon name="x" size={13} /></button>
+                  <button key={i.id} type="button" className="chip pa-in" onClick={() => takeOut(i)} aria-label={`Take ${i.name} out`}><Sticker name={i.name} category={i.category} size={20} />{i.name}<Icon name="x" size={13} /></button>
                 )) : <span className="muted">Empty here</span>}
               </div>
             </div>
@@ -151,7 +151,7 @@ export default function PutAway() {
                 <button key={i.id} type="button" className={`pa-box ${armed?.id === i.id ? 'armed' : ''} ${ghost?.item.id === i.id ? 'lifted' : ''}`}
                   onPointerDown={boxDown(i)} onPointerMove={boxMove} onPointerUp={boxUp} onPointerCancel={boxCancel}
                   aria-pressed={armed?.id === i.id} aria-label={`${i.name}: tap, then tap a spot`}>
-                  <span className="pa-emoji">{FOOD[i.category] || '🛒'}</span>
+                  <Sticker name={i.name} category={i.category} size={46} className="pa-stk" />
                   <span className="pa-name">{i.name}</span>
                 </button>
               ))}
@@ -170,7 +170,7 @@ export default function PutAway() {
 
       {ghost && (
         <div className="pa-ghost" style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">
-          <span className="pa-emoji">{FOOD[ghost.item.category] || '🛒'}</span><span className="pa-name">{ghost.item.name}</span>
+          <Sticker name={ghost.item.name} category={ghost.item.category} size={50} className="pa-stk" /><span className="pa-name">{ghost.item.name}</span>
         </div>
       )}
       {pops.map((p) => <span key={p.id} className={`pa-pop ${p.big ? 'big' : ''}`} style={{ left: p.x, top: p.y }} aria-hidden="true">{p.text}</span>)}
@@ -180,7 +180,7 @@ export default function PutAway() {
         <div className="scrim pa-party" onClick={() => setParty(false)}>
           <div className="card pa-party-card" role="dialog" aria-modal="true" aria-label="Kitchen stocked">
             {Array.from({ length: 18 }, (_, i) => <i key={i} className="pa-confetti" style={{ '--i': i }} />)}
-            <span style={{ fontSize: 54 }}>🏆</span>
+            <svg width="72" height="72" viewBox="0 0 64 64" aria-hidden="true"><path d="M20 8h24v14a12 12 0 0 1-24 0z" fill="#F6C531" stroke="#3B2C24" strokeWidth="2.4" strokeLinejoin="round" /><path d="M20 12h-8c0 8 4 12 10 12M44 12h8c0 8-4 12-10 12" fill="none" stroke="#3B2C24" strokeWidth="2.4" /><path d="M28 34h8v8h-8zM22 42h20v8H22z" fill="#E0A93B" stroke="#3B2C24" strokeWidth="2.4" strokeLinejoin="round" /><path d="M26 14q2 8 6 10" stroke="#FFF2A6" strokeWidth="3" fill="none" /></svg>
             <h2 style={{ margin: 0 }}>Kitchen stocked!</h2>
             <p className="muted" style={{ margin: 0 }}>Everything has a home.{party.bonus ? ' +20 XP bonus' : ''}</p>
             <button type="button" className="btn wide" onClick={() => setParty(false)}>Nice</button>

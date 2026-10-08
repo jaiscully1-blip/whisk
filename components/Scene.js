@@ -1,16 +1,15 @@
 'use client';
 import { useMemo } from 'react';
-import { sceneSvg, sceneName } from '@/lib/scenes';
+import { postcardSvg, placeName } from '@/lib/scenes';
 
-// The restaurant a dish belongs to, drawn across the top of its card (see lib/scenes.js). Our own static art only:
-// no player text goes into the SVG.
-const src = (c) => `/tw/${c}.svg`;
-export default function Scene({ iso, cuisine, title, height = 170, className = '' }) {
-  const html = useMemo(() => sceneSvg({ iso, cuisine, title }, src), [iso, cuisine, title]);
+// The top of a recipe or dish card: a postcard of where it comes from with the dish drawn on the table
+// (lib/scenes.js postcardSvg, all Whisk's own drawings — no emoji). No player text goes into the SVG.
+export default function Scene({ iso, cuisine, title, ingredients, height = 170, className = '' }) {
+  const html = useMemo(() => postcardSvg({ iso, cuisine, title, ingredients }), [iso, cuisine, title, ingredients]);
   return (
     <div className={`scene ${className}`} style={{ height }}>
       <div className="scene-art" aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />
-      <span className="scene-name">{sceneName(iso, cuisine)}</span>
+      <span className="scene-name">{placeName(iso, cuisine)}</span>
     </div>
   );
 }

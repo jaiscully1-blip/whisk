@@ -762,6 +762,21 @@ check('someone else’s item stays where it was', (await db.query(`select spot f
 await as(K1, () => db.query(`select public.reset_game()`));
 check('reset game clears kitchens too', (await db.query(`select count(*)::int n from kitchen_layouts where user_id = '${K1}'`)).rows[0].n === 0);
 
+// ================= 0023: cooking pays +100 XP and 500 coins =================
+try { const f = fs.readFileSync('./supabase/migrations/0023_cook_rewards.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0023 runs (twice)', true); }
+catch (e) { check('0023 runs (twice)', false, e.message); }
+const CK = '88880000-0000-0000-0000-000000000008';
+await db.exec(`insert into auth.users (id, email) values ('${CK}', null)`);
+const coins23 = (await db.query(`select coins from profiles where id = '${CK}'`)).rows[0].coins;
+const cooked = [];
+for (let i = 0; i < 4; i++) {
+  await db.exec(`insert into storage.objects (bucket_id, name) values ('meal-photos', '${CK}/m${i}.jpg')`);
+  cooked.push((await as(CK, () => db.query(`select public.log_meal('www-budgetbytes-com-picadillo', '${CK}/m${i}.jpg') as r`))).rows[0].r);
+}
+check('cooking a meal: +100 XP for the cook', (await db.query(`select amount from xp_events where user_id = '${CK}' and kind = 'cook' limit 1`)).rows[0]?.amount === 100);
+check('…and 500 coins (the result says so too)', cooked[0].coins === 500, JSON.stringify(cooked[0]));
+check('3 meals a day pay out; the 4th gives no more coins', cooked[3].coins === 0 && (await db.query(`select coins from profiles where id = '${CK}'`)).rows[0].coins === coins23 + 1500);
+
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only thing that spends coins is buying an outfit', JSON.stringify(spenders) === JSON.stringify(['buy_item']), JSON.stringify(spenders));

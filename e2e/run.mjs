@@ -111,6 +111,7 @@ await step('home', async () => {
   await page.evaluate(() => window.scrollTo(0, 0));
   check('pantry hint is the short version', (await page.getByText('Whisk reads').count()) === 0);
   // open one: tap a single missing ingredient under "What you have" to put it in the pantry
+  check('postcards are all drawn by Whisk (no emoji pictures)', (await page.locator('main .rcard-art image').count()) === 0);
   check('every recipe card has a postcard of where the dish comes from (landmark + dish)', (await page.locator('main .rcard .rcard-art svg').count()) === (await page.locator('main .rcard').count()) && (await page.locator('main .rcard').count()) > 0);
   const chipCounts = await page.locator('main .rcard').evaluateAll((cs) => cs.map((c) => c.querySelectorAll('.chip.need').length));
   check('home shows at most 3 missing ingredients per card', chipCounts.every((n) => n <= 3), JSON.stringify(chipCounts.slice(0, 12)));
@@ -195,7 +196,8 @@ await step('cook', async () => {
   check('every ingredient is measured (full list from the recipe page)', (await dlg.locator('.ing-list li').count()) >= 6 && (await dlg.locator('.ing-q').filter({ hasText: /\d/ }).count()) >= 5);
   check('numbered beginner steps with measured amounts', (await dlg.locator('ol.steps li').count()) >= 6 && (await dlg.locator('ol.steps .amt').count()) >= 3);
   check('steps say which bowl or pan things go in', /bowl|skillet|pot|pan|baking dish/i.test(await dlg.locator('ol.steps').innerText()));
-  check('cooking it is +20 XP', (await dlg.getByText('+20 XP when you cook it').count()) === 1);
+  check('cooking it is +100 XP and 500 coins', (await dlg.getByText('+100 XP · 500 coins when you cook it').count()) === 1);
+  check('no row of outside links at the bottom of the recipe', (await dlg.locator('.links').count()) === 0 && (await dlg.locator('a', { hasText: /^(Google|YouTube|TikTok|Reddit)$/ }).count()) === 0);
   const amt0 = await dlg.locator('ol.steps .amt').first().innerText();
   const ing0 = await dlg.locator('.ing-q').filter({ hasText: /\d/ }).first().innerText();
   await dlg.locator('.servx-in input').fill('3');
@@ -233,6 +235,7 @@ await step('cook', async () => {
   await page.click('text=Submit');
   await page.getByRole('heading', { name: 'Cooked it!' }).waitFor({ timeout: 15000 });
   check('submit photo → "Cooked it!" popup', true);
+  check('cooking pays +100 XP and +500 coins', await page.locator('.toast', { hasText: /\+\d+ XP · \+500 coins/ }).count().then((n) => n >= 1).catch(() => false) || /500 coins/.test(await page.locator('.toast').allInnerTexts().then((t) => t.join(' '))), await page.locator('.toast').allInnerTexts().then((t) => t.join(' | ')));
   await page.click('[aria-label="Liked it"]'); await page.waitForTimeout(500);
   await page.locator('.usedup-row').first().waitFor({ timeout: 6000 });
   const usedName = (await page.locator('.usedup-row b').first().innerText()).trim();
@@ -249,10 +252,8 @@ await step('cook', async () => {
   await page.waitForTimeout(600); await closePopups();
   await nav('Cook');
   check('Cook: Saved recipes has its own box under search', (await page.locator('main .saved-box h2', { hasText: 'Saved recipes' }).count()) === 1 && (await page.locator('main .card', { has: page.locator('#o-dish') }).count()) === 1);
-  await page.locator('.saved-box').getByRole('button', { name: 'Liked', exact: true }).click();
-  await page.locator('.saved-box [aria-label=Liked]').first().waitFor();
-  check('liked meal shows in Cook → Saved recipes', (await page.locator('.saved-box [aria-label=Liked]').count()) >= 1);
-  await page.locator('.saved-box').getByRole('button', { name: 'All', exact: true }).click();
+  await page.locator('.saved-box button.card').first().waitFor();
+  check('Saved recipes: just the recipes (no All / Liked / Disliked buttons)', (await page.locator('.saved-box button.chip').count()) === 0 && (await page.locator('.saved-box button.card', { hasText: /Burrito Bowls/ }).count()) >= 1);
   await nav('Pantry'); await page.getByRole('tab', { name: 'Kitchen' }).waitFor();
   const tabsNow = (await page.getByRole('tab').allInnerTexts()).map((t) => t.replace(/\s*\(\d+\)/, '').trim()).join('|');
   check('Pantry tabs: Pantry, Shopping list, Kitchen (saved recipes moved to Cook)', tabsNow === 'Pantry|Shopping list|Kitchen', tabsNow);
@@ -406,7 +407,7 @@ await step('free dish search', async () => {
   await page.getByRole('heading', { name: 'New stamp!' }).waitFor({ timeout: 8000 });
   await shot('07c-stamp');
   const c1 = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
-  check('10th meal from a country: stamp popup and +5,000 coins', /Albania is stamped/.test(await page.locator('.popup').innerText()) && c1 - c0 === 5000, `${c0} → ${c1}`);
+  check('10th meal from a country: stamp popup, +5,000 coins (plus 500 for cooking)', /Albania is stamped/.test(await page.locator('.popup').innerText()) && c1 - c0 === 5500, `${c0} → ${c1}`);
   await page.getByRole('button', { name: 'Nice!' }).click(); await page.waitForTimeout(600);
   if (await page.getByText('Level up!', { exact: false }).count()) { await page.locator('[aria-label=Close]').first().click(); await page.waitForTimeout(400); }
   for (const [q, want] of [['pesto', 'Pesto'], ['chickpeas', 'Falafel'], ['sauce', 'Chimichurri'], ['pho', 'Pho']]) {
@@ -520,7 +521,7 @@ await step('cook off with a friend', async () => {
   const t1 = await page.locator('.co-timer').innerText(), t2 = await fr.locator('.co-timer').innerText();
   const secs = (t) => { const [m, s] = t.replace(/[^\d:]/g, '').split(':').map(Number); return m * 60 + s; };
   check('then your recipe with ingredients, steps and one shared clock', Math.abs(secs(t1) - secs(t2)) <= 2 && secs(t1) > 25 * 60 && secs(t1) <= 30 * 60 && (await page.locator('.co-cook .ing-list li').count()) > 2 && (await page.locator('.co-cook ol.steps li').count()) > 2, `${t1} / ${t2}`);
-  check('the restaurant scene of that dish is behind it', (await page.locator('.co-cook .scene svg image').count()) >= 3);
+  check('a drawn postcard of that dish and where it’s from is behind it', (await page.locator('.co-cook .scene svg').count()) === 1 && (await page.locator('.co-cook .scene svg image').count()) === 0);
   await shot('06d-cook');
   for (const pg of [page, fr]) await pg.locator('.co-snap input[type=file]').setInputFiles('e2e/plate.jpg');
   await page.locator('.co-plates').waitFor({ timeout: 15000 }); await fr.locator('.co-plates').waitFor({ timeout: 15000 });
@@ -756,7 +757,7 @@ await step('kitchen layout', async () => {
   const pickName = (await pick.locator('.pa-name').innerText()).trim();
   await pick.click(); await page.waitForTimeout(800);
   check('tap a food box → every door and drawer opens with lit spots', (await page.locator('[data-spot]').count()) > 20);
-  const visibleSpot = (skip = 0) => page.evaluate((skip) => { let n = 0; for (const el of document.querySelectorAll('[data-spot]')) { const r = el.getBoundingClientRect(); if (r.width < 8 || r.height < 6) continue; const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); if (hit === el && r.top > 80) { if (n++ === skip) return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; } } return null; }, skip);
+  const visibleSpot = (skip = 0) => page.evaluate((skip) => { let n = 0; for (const el of document.querySelectorAll('[data-spot]')) { const r = el.getBoundingClientRect(); if (r.width < 8 || r.height < 6) continue; const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); if (hit === el && r.top > 80) { if (n++ === skip) return { x: r.left + r.width / 2, y: r.top + r.height / 2, k: el.dataset.spot }; } } return null; }, skip);
   const v1 = await visibleSpot(0); await page.mouse.click(v1.x, v1.y);
   await page.locator('.pa-pop').first().waitFor();
   check('drop it on a spot → +3 XP and one fewer to put away', /\+3 XP/.test(await page.locator('.pa-pop').first().innerText()) && (await page.locator('.pa-box').count()) === todo - 1);
@@ -772,13 +773,24 @@ await step('kitchen layout', async () => {
   await page.locator('.title-link', { hasText: 'Pantry' }).click(); await page.waitForURL(/\/pantry$/);
   if (hadMeat) {
     await page.locator('button.chip', { hasText: /^Proteins$/ }).click(); await page.waitForTimeout(500);
-    check('pick Proteins → the spots holding them open and light up, named', (await page.locator('.kfloat .ks.lit').count()) >= 1 && (await page.locator('.kfloat .ktags', { hasText: pickName }).count()) >= 1, pickName);
+    check('pick Proteins → the spots holding them open and light up, with the food’s sticker', (await page.locator('.kfloat .ks.lit').count()) >= 1 && (await page.locator(`.kfloat .kstks img[title="${pickName}"]`).count()) >= 1, pickName);
     await page.locator('button.chip', { hasText: /^All$/ }).click();
   } else check('(no proteins in this pantry to light up)', true);
   await page.getByRole('tab', { name: 'Kitchen' }).click();
   await page.locator('main .kdoor[role=button]').first().click();
   await page.waitForTimeout(700); const v3 = await visibleSpot(0); check('Kitchen tab: an open door shows tappable spots', !!v3); if (v3) await page.mouse.click(v3.x, v3.y);
   check('Kitchen tab: open a door, tap a spot, see what’s there', /Fridge|Pantry|Cabinet/.test(await page.locator('main .card b').last().innerText()));
+  check('fridge doors have shelves on the inside you can put food on', (await page.locator('main .ks.bin').count()) >= 1);
+  const kcam = () => page.locator('main .k3-cam').evaluate((el) => el.style.transform);
+  const kb = await page.locator('main .k3').boundingBox();
+  await page.mouse.move(kb.x + kb.width / 2, kb.y + kb.height / 2);
+  const t0 = await kcam(); await page.mouse.wheel(150, 0); await page.waitForTimeout(150);
+  check('two-finger slide moves the kitchen anywhere', (await kcam()) !== t0, `${t0} → ${await kcam()}`);
+  for (let i = 0; i < 12; i++) { await page.mouse.wheel(300, 0); await page.waitForTimeout(30); }
+  const tx = Number((await kcam()).match(/translate\((-?[\d.]+)px/)[1]);
+  check('…but stops at a border (about 10 swipes out)', Math.abs(tx) <= 1000 * 2.6 && Math.abs(tx) >= 900, `${tx}`);
+  await page.getByRole('button', { name: 'Back to kitchen' }).click();
+  check('“Back to kitchen” brings it home', /translate\(0px, 0px\)/.test(await kcam()));
   await page.getByRole('tab', { name: /^Pantry/ }).click();
   await shot('30-kitchen-pantry');
 });

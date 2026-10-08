@@ -124,7 +124,7 @@ function CookOff() {
       const { data, error } = await supabase.rpc('submit_cookoff', { p_code: code, p_photo_path: path });
       if (error) throw error;
       setG(data); say('Plate in! Wait for the others…');
-      supabase.rpc('log_meal', { p_recipe_id: me.recipe_id, p_photo_path: path }).then(() => refreshProfile());   // it counts as a cooked meal too (+20 XP)
+      supabase.rpc('log_meal', { p_recipe_id: me.recipe_id, p_photo_path: path }).then(() => refreshProfile());   // it counts as a cooked meal too (+100 XP, 500 coins)
     } catch (x) { say(errText(x)); } finally { setBusy(false); }
   }
 
@@ -184,7 +184,7 @@ function CookOff() {
     const done = cooks.filter((p) => p.done).length;
     return (
       <div className="co-full co-cook">
-        <Scene iso={myRecipe.country} cuisine={myRecipe.cuisine} title={myRecipe.title} height={190} />
+        <Scene iso={myRecipe.country} cuisine={myRecipe.cuisine} title={myRecipe.title} ingredients={myRecipe.key} height={190} />
         <div className="co-cook-in stack">
           <div className="co-timer" role="timer" aria-live="off" data-low={left < 60000 ? 'true' : undefined}><Icon name="timer" size={22} />{mmss(left)}</div>
           <div><span className="eyebrow">{myRecipe.cuisine} · {myRecipe.minutes} min</span><h2 style={{ fontSize: 28 }}>{myRecipe.title}</h2></div>
@@ -231,7 +231,7 @@ function CookOff() {
         {plates.slice().sort((a, b) => (b.votes || 0) - (a.votes || 0)).map((p) => (
           <div key={p.seat} className={`card co-plate ${p.winner ? 'won' : ''}`}>
             {photos[p.photo] ? <img src={photos[p.photo]} alt="" /> : <span className="co-ph" />}
-            <b>{p.winner ? '🏆 ' : ''}{p.name}{p.me ? ' (you)' : ''}</b><span className="desc">{p.votes || 0} vote{p.votes === 1 ? '' : 's'} · {byId.get(p.recipe_id)?.title}</span>
+            <b>{p.winner ? <Icon name="compete" size={16} style={{ color: '#E0A93B', verticalAlign: '-2px', marginRight: 4 }} /> : ''}{p.name}{p.me ? ' (you)' : ''}</b><span className="desc">{p.votes || 0} vote{p.votes === 1 ? '' : 's'} · {byId.get(p.recipe_id)?.title}</span>
           </div>
         ))}
       </div>

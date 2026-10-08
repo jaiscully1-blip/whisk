@@ -2,9 +2,9 @@
 import { useMemo } from 'react';
 import { postcardSvg } from '@/lib/scenes';
 
-// The place a dish comes from, drawn behind its card: the country's landmark, its food culture, the dish on a table
-// (lib/scenes.js postcardSvg). Our own static art only: no player text goes into the SVG.
-export default function Postcard({ iso, cuisine, title }) {
-  const html = useMemo(() => postcardSvg({ iso, cuisine, title }, (c) => `/tw/${c}.svg`), [iso, cuisine, title]);
+// The place a dish comes from, drawn behind its card: the country's landmark, its food culture, and the dish itself
+// (lib/scenes.js postcardSvg, all Whisk's own drawings). No player text goes into the SVG.
+export default function Postcard({ iso, cuisine, title, ingredients }) {
+  const html = useMemo(() => postcardSvg({ iso, cuisine, title, ingredients }), [iso, cuisine, title, ingredients]);
   return <div className="rcard-art" aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />;
 }

@@ -163,6 +163,10 @@ function Room({ room, place, pieces }) {
       <div className="kcap on-b" style={{ left: -CAP, top: -CAP - 1, width: W + CAP, height: CAP, transform: `translateZ(${WH}px)`, background: cap }} />
       <div className="kcap on-r" style={{ left: W + 1, top: -CAP - 1, width: CAP, height: D + CAP + 1, transform: `translateZ(${WH}px)`, background: cap }} />
       <div className="kcap on-b on-r" style={{ left: W, top: -CAP - 1, width: 1, height: CAP, transform: `translateZ(${WH}px)`, background: cap }} />
+      {/* the front of the back wall's thick left end (without it you'd see a dark gap next to the tiles) */}
+      <div className="kwall-turn on-b" style={{ left: -CAP, top: -1, transform: 'rotateZ(0deg)' }}>
+        <div className="kw" style={{ left: 0, top: -WH, width: CAP + 1, height: WH, background: end }} />
+      </div>
       {/* the walls' cut ends, so they read as thick slabs: the back wall's left end and the right wall's front end */}
       <div className="kend on-b" style={{ left: -CAP - WH, top: -CAP - 1, width: WH, height: CAP, transformOrigin: '100% 50%', transform: 'rotateY(90deg)', background: end }} />
       <div className="kend on-b off-r" style={{ left: W, top: -CAP - 1, width: WH, height: CAP, transformOrigin: '0 50%', transform: 'rotateY(-90deg)', background: end }} />

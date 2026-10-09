@@ -49,7 +49,9 @@ export function frameOn(b, camera, scale = 1, z = 2.1) {
   const x1 = cx * Math.cos(a) - cy * Math.sin(a), y1 = cx * Math.sin(a) + cy * Math.cos(a), y2 = y1 * Math.cos(t) - cz * Math.sin(t);
   return { ...camera, zoom: z, px: -Sx * x1, py: -Sx * y2 };
 }
-export const VIEW_CAM = { rz: -38, rx: 58, zoom: 1, px: 0, py: 0 };   // the isometric dollhouse angle
+// The classic isometric room angle (tilted 55°, turned 40°): every wall, counter and floor at once, nothing
+// foreshortened. In the kitchen view the tilt and size are locked; you only turn it.
+export const VIEW_CAM = { rz: -40, rx: 55, zoom: 1, px: 0, py: 0 };
 export const camTransform = (c, scale = 1) => `translate(${c.px || 0}px, ${c.py || 0}px) scale(${scale * (c.zoom || 1)}) rotateX(${c.rx}deg) rotateZ(${c.rz}deg)`;
 // which of the room's two walls face you (a wall that would block the view isn't shown)
 export const facing = (rz) => { const a = rz * Math.PI / 180; return { back: Math.cos(a) > 0.05, right: -Math.sin(a) > 0.05 }; };
@@ -57,7 +59,7 @@ export const PAN = 1000;   // how far (px at normal zoom) the kitchen can be sli
 export default function Kitchen3D({
   pieces, mode = 'view', height = 420, scale = 1, cam, onCam, open = {}, openAll = false, onToggle,
   spot = {}, onSpot, sel = null, onSelect, onChange, onTap, taught = true, onTaught, float = false, className = '', place = null,
-  focus = null, onFocusPiece
+  focus = null, onFocusPiece, spinRange = null
 }) {
   const [own, setOwn] = useState(VIEW_CAM);
   const [edge, setEdge] = useState('');
@@ -80,6 +82,21 @@ export default function Kitchen3D({
   const liveCam = (c) => { live.current = c; if (!raf.current) raf.current = requestAnimationFrame(paint); };
   const commit = () => { const c = live.current; if (!c) return; live.current = null; cancelAnimationFrame(raf.current); raf.current = 0; setCam(c); };
   const cur = () => live.current || camera;
+  // Smooth turning (view mode): your finger sets where the kitchen should face and it glides there, then carries on
+  // a little after you let go and settles. Slow enough to follow, no jitter from a shaky thumb.
+  const sp = useRef({ target: 0, run: false, held: false, samples: [] });
+  const rangeRef = useRef(spinRange); rangeRef.current = spinRange;
+  const stepRef = useRef(null);
+  stepRef.current = () => {
+    const s = sp.current, base = live.current || camRef.current, diff = s.target - base.rz;
+    if (!s.held && Math.abs(diff) < 0.05) { s.run = false; live.current = { ...base, rz: s.target }; paint(); commit(); return; }
+    live.current = { ...base, rz: base.rz + diff * 0.18 }; paint(); requestAnimationFrame(() => stepRef.current());
+  };
+  const spinTo = (rz) => {
+    const s = sp.current, r = rangeRef.current; s.target = r ? K.clamp(rz, r[0], r[1]) : rz;
+    if (!s.run) { s.run = true; requestAnimationFrame(() => stepRef.current()); }
+  };
+  const spinBase = () => (sp.current.run ? sp.current.target : camera.rz);
   const build = mode === 'build', view = mode === 'view', mini = mode === 'mini';
   const { idx } = K.spotsOf(pieces, []);
   // remember which door opened first, so a later door hinged at the same spot rests against it instead of going through
@@ -108,11 +125,16 @@ export default function Kitchen3D({
   const panRef = useRef(panTo); panRef.current = panTo;
   const liveRef = useRef(liveCam); liveRef.current = liveCam;
   const commitRef = useRef(commit); commitRef.current = commit;
+  const viewRef = useRef(view); viewRef.current = view;
+  const spinToRef = useRef(spinTo); spinToRef.current = spinTo;
+  const spinBaseRef = useRef(spinBase); spinBaseRef.current = spinBase;
   // mouse wheel / trackpad pinch (ctrl) zooms; trackpad two-finger scroll slides (non-passive so the page doesn't scroll instead)
   useEffect(() => {
     const el = root.current; if (!el || mini) return undefined;
     const onWheel = (e) => {
-      e.preventDefault(); const c = live.current || camRef.current;
+      e.preventDefault();
+      if (viewRef.current) { spinToRef.current(spinBaseRef.current() - (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * 0.15); return; }
+      const c = live.current || camRef.current;
       const mouseWheel = e.deltaMode === 1 || (e.deltaX === 0 && Math.abs(e.deltaY) >= 40 && Number.isInteger(e.deltaY));
       if (e.ctrlKey || mouseWheel) { const z = K.clamp((c.zoom || 1) * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)), ZOOM[0], ZOOM[1]), k = z / (c.zoom || 1); liveRef.current({ ...c, zoom: z, px: (c.px || 0) * k, py: (c.py || 0) * k }); }
       else liveRef.current(panRef.current(c, (c.px || 0) - e.deltaX, (c.py || 0) - e.deltaY));
@@ -145,7 +167,7 @@ export default function Kitchen3D({
   const lock = useRef(false);
   useEffect(() => {
     const el = root.current; if (!el || mini) return undefined;
-    const start = (e) => { if (e.target.closest?.('.k3-floor')) lock.current = true; };
+    const start = (e) => { if (!viewRef.current && e.target.closest?.('.k3-floor')) lock.current = true; };
     const stop = (e) => { if (lock.current) e.preventDefault(); };
     const end = (e) => { if (!e.touches.length) lock.current = false; };
     el.addEventListener('touchstart', start, { passive: true });
@@ -155,7 +177,7 @@ export default function Kitchen3D({
   }, [mini]);
   // every finger is counted here first (capture phase), so a second finger anywhere turns the gesture into a pinch
   const capDown = (e) => {
-    if (mini || !onModel(e)) return;
+    if (mini || view || !onModel(e)) return;
     fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (fingers.current.size === 2) { const c = cur(); drag.current = { mode: 'pinch', d0: dist(), z0: c.zoom || 1, m0: mid(), p0: { x: c.px || 0, y: c.py || 0 } }; moved.current = true; }
   };
@@ -165,6 +187,8 @@ export default function Kitchen3D({
   // one finger on the kitchen turns it; one finger beside it slides it left or right (up and down still scrolls the page)
   const down = (e) => {
     if (mini || drag.current?.mode === 'pinch') return;
+    // looking (not building): one finger anywhere, left or right, turns the kitchen; up and down scrolls the page
+    if (view) { if (e.target.closest?.('button')) return; drag.current = { mode: 'turn', x: e.clientX, y: e.clientY, rz: spinBase(), t: Date.now() }; moved.current = false; sp.current.samples = []; return; }
     if (isTouchOff(e)) { drag.current = { mode: 'slide', x: e.clientX, y: e.clientY, px: camera.px || 0, t: Date.now() }; moved.current = false; return; }
     if (!onModel(e)) return;
     drag.current = { mode: 'spin', x: e.clientX, y: e.clientY, rz: camera.rz, rx: camera.rx, t: Date.now() }; moved.current = false;
@@ -177,6 +201,17 @@ export default function Kitchen3D({
       return;
     }
     const dx = e.clientX - d.x, dy = e.clientY - d.y;
+    if (d.mode === 'turn') {
+      if (!moved.current) {
+        if (Math.abs(dx) < 6) return;
+        if (Math.abs(dy) > Math.abs(dx)) { drag.current = null; return; }
+        moved.current = true; sp.current.held = true;
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ }
+      }
+      const target = d.rz - (dx - Math.sign(dx) * 6) * 0.26, now = performance.now();
+      const smp = sp.current.samples; smp.push({ t: now, v: target }); while (smp.length > 2 && now - smp[0].t > 90) smp.shift();
+      spinTo(target); return;
+    }
     if (d.mode === 'slide') {
       if (!moved.current) {
         if (Math.abs(dx) + Math.abs(dy) < 8) return;
@@ -227,7 +262,13 @@ export default function Kitchen3D({
     if (drag.current?.mode === 'pinch' && fingers.current.size > 0) return;
     if (build && tapCand.current && !moved.current && Date.now() - (drag.current?.t || 0) < 450) onSelect?.(tapCand.current);
     tapCand.current = null;
+    const was = drag.current;
     drag.current = null; setTimeout(() => { moved.current = false; }, 0);
+    if (was?.mode === 'turn') {   // let go: keep turning a little the way you flicked, then settle
+      const s = sp.current; s.held = false;
+      if (moved.current && s.samples.length > 1) { const a = s.samples[0], b = s.samples[s.samples.length - 1], v = (b.v - a.v) / Math.max(16, b.t - a.t); spinTo(s.target + K.clamp(v * 140, -25, 25)); }
+      return;
+    }
     commit();
   };
   const grow = (b, side) => (e) => { if (drag.current?.mode === 'pinch') return; e.stopPropagation(); drag.current = { mode: 'grow', side, id: b.id, x: e.clientX, y: e.clientY, b0: { ...b } }; moved.current = false; if (!taught) onTaught?.(); };
@@ -369,12 +410,15 @@ function Inside({ k0, x, y, w, h, depth, defs, cold, liner, shelf, spot, idx, on
   );
 }
 
+// how far the closet's side shelves angle open (degrees), so all three walls of shelves face you together
+export const CLOSET_SPLAY = 32;
 // The walk-in pantry closet: a little room off the kitchen with real shelves on the left, back and right walls
 // (boards sticking out of the wall, food standing on them at its true size) and floor space.
 function Closet({ b, build, spot, onSpot, sel, idx, guard, onDown, onFocus }) {
   const C = K.C, HU = K.HU, W = b.w * C, D = b.d * C, H = Math.round(b.h * HU);
   const g = K.gen(K.MODEL[b.mid], b.w, b.h).front;   // [left, back, right, floor]
-  const wallBg = css(K.skin(b.fin, 0));
+  const wallBg = css(K.skin(b.fin, 0)), sideBg = css(K.skin(b.fin, -0.1));
+  const SPLAY = CLOSET_SPLAY, Ds = D * Math.sin(SPLAY * Math.PI / 180), Dc = D * Math.cos(SPLAY * Math.PI / 180);
   const spots = !build;
   const stopFocus = onFocus ? guard(onFocus) : undefined;
   const cells = (ci, along, across) => {
@@ -385,20 +429,22 @@ function Closet({ b, build, spot, onSpot, sel, idx, guard, onDown, onFocus }) {
   const wall = (ci, w, flip) => <ShelfWall b={b} ci={ci} c={g[ci]} w={w} h={H} flip={flip} depth={Math.min(24, Math.round(D * 0.3))} spots={spots} {...{ spot, idx, onSpot, guard }} />;
   return (
     <div className={`kbox kcloset ${build && sel === b.id ? 'sel' : ''}`} style={{ left: b.x * C, top: b.y * C, width: W, height: D }} onPointerDown={onDown} onClick={stopFocus} data-piece={b.id}>
-      <div className="kface kc-floor" style={{ left: -6, top: -6, width: W + 12, height: D + 12, background: 'linear-gradient(90deg,rgba(150,145,138,.3) 1px,rgba(0,0,0,0) 1px) 6px 6px/26px 26px,linear-gradient(0deg,rgba(150,145,138,.3) 1px,rgba(0,0,0,0) 1px) 6px 6px/26px 26px,linear-gradient(135deg,#FBFAF8,#ECE9E4)', borderRadius: 4, boxShadow: '0 6px 0 #DAD5CD' }}>
-        {spots && cells(3, D, W).map((x) => <SpotBtn key={x.key} k={x.key} st={{ left: 6 + x.c0 + 8, top: 6 + D * 0.55, width: x.c1 - x.c0 - 16, height: D * 0.35 }} extra="flat" {...{ spot, idx, onSpot, guard }} />)}
+      {/* floor: wider at the front, because the side shelves splay open like a book */}
+      <div className="kface kc-floor" style={{ left: -Ds, top: 0, width: W + 2 * Ds, height: Dc }}>
+        <div className="kskin" style={{ clipPath: `polygon(${Ds}px 0, ${Ds + W}px 0, 100% 100%, 0 100%)`, background: 'linear-gradient(90deg,rgba(150,145,138,.3) 1px,rgba(0,0,0,0) 1px) 0 0/26px 26px,linear-gradient(0deg,rgba(150,145,138,.3) 1px,rgba(0,0,0,0) 1px) 0 0/26px 26px,linear-gradient(135deg,#FBFAF8,#ECE9E4)' }} />
+        {spots && cells(3, D, W).map((x) => <SpotBtn key={x.key} k={x.key} st={{ left: Ds + x.c0 + 6, top: Dc * 0.5, width: x.c1 - x.c0 - 12, height: Dc * 0.4 }} extra="flat" {...{ spot, idx, onSpot, guard }} />)}
       </div>
       {/* back wall, facing into the closet */}
       <div className="kface kc-wall" style={{ left: 0, top: -H, width: W, height: H, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', ...wallBg }}>{wall(1, W, false)}</div>
-      {/* left wall: runs from the front (its left edge) to the back */}
-      <div className="kwall-turn" style={{ left: 0, top: D, transform: 'rotateZ(-90deg)' }}>
-        <div className="kface kc-wall" style={{ left: 0, top: -H, width: D, height: H, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', ...wallBg, filter: 'brightness(.94)' }}>{wall(0, D, true)}</div>
+      {/* left wall: from its front end back to the corner, angled open so you see all three walls at once */}
+      <div className="kwall-turn" style={{ left: -Ds, top: Dc, transform: `rotateZ(${SPLAY - 90}deg)` }}>
+        <div className="kface kc-wall" style={{ left: 0, top: -H, width: D, height: H, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', ...sideBg }}>{wall(0, D, true)}</div>
       </div>
-      {/* right wall: runs from the back to the front */}
-      <div className="kwall-turn" style={{ left: W, top: 0, transform: 'rotateZ(90deg)' }}>
-        <div className="kface kc-wall" style={{ left: 0, top: -H, width: D, height: H, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', ...wallBg, filter: 'brightness(.9)' }}>{wall(2, D, false)}</div>
+      {/* right wall: from the corner out to its front end */}
+      <div className="kwall-turn" style={{ left: W, top: 0, transform: `rotateZ(${90 - SPLAY}deg)` }}>
+        <div className="kface kc-wall" style={{ left: 0, top: -H, width: D, height: H, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', ...sideBg }}>{wall(2, D, false)}</div>
       </div>
-      <span className="kc-sign" style={{ left: 4, top: D - 18 }}>{idx.nick[b.id] || 'Pantry closet'}</span>
+      <span className="kc-sign" style={{ left: 4, top: Dc - 18 }}>{idx.nick[b.id] || 'Pantry closet'}</span>
     </div>
   );
 }
@@ -407,13 +453,13 @@ function Closet({ b, build, spot, onSpot, sel, idx, guard, onDown, onFocus }) {
 // flip: count the columns from the far end (so spot numbers stay the same as before: column 0 is at the back).
 function ShelfWall({ b, ci, c, w, h, flip, depth, spots, spot, idx, onSpot, guard }) {
   const rows = c.rows, cols = c.cols, rh = h / rows, cw = w / cols;
-  const board = 'linear-gradient(180deg,#F6F3EE,#E4DED5)';
+  const board = 'linear-gradient(180deg,#EEDFC4,#DCC6A2)';
   return (
     <>
       {Array.from({ length: rows }, (_, r) => (
         <Fragment key={r}>
           <div className="kin3" style={{ left: 0, top: (r + 1) * rh - 1, width: w, height: depth, transformOrigin: '50% 0', transform: 'rotateX(90deg)', background: board }} />
-          <div className="kin3" style={{ left: 0, top: (r + 1) * rh - 1, width: w, height: 4, transform: `translateZ(${depth}px)`, background: '#D9D3CA' }} />
+          <div className="kin3" style={{ left: 0, top: (r + 1) * rh - 1, width: w, height: 4, transform: `translateZ(${depth}px)`, background: '#CDB38C' }} />
         </Fragment>
       ))}
       {spots && Array.from({ length: rows * cols }, (_, i) => {
@@ -494,8 +540,8 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
         {inside}
         {spots}
         {focused && isOpen && isDoor && toggle && (
-          <button type="button" className="kclose" style={{ left: cx + cw / 2 - 17, top: cy + 3, transform: 'translateZ(2px)' }} onClick={toggle} aria-label={`Close ${nick} ${c.name}`}>
-            <svg width="8" height="8" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>Close
+          <button type="button" className="kclose" style={{ left: c.hinge === 'r' ? cx + cw - 15 : cx + 3, top: cy + 3, transform: 'translateZ(2px)' }} onClick={toggle} aria-label={`Close ${nick} ${c.name}`}>
+            <svg width="6" height="6" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
           </button>
         )}
         {showFront && isDoor && (

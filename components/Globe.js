@@ -255,7 +255,7 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook }) 
           ) : (
             <>
               <img className="flagimg" src={`/flags/${result.iso.toLowerCase()}.svg`} alt="" width="46" height="34" />
-              <b style={{ flex: 1, minWidth: 0, fontSize: 18 }}>{result.name}!</b>
+              <b style={{ flex: 1, minWidth: 0, fontSize: 18 }}>{result.name}</b>
               <button type="button" className="btn sm" onClick={() => onCook?.(result)}>Cook it</button>
             </>
           )}

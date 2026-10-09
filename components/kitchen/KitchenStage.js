@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as K from '@/lib/kitchen/models';
-import Kitchen3D, { frameOn, VIEW_CAM, ZOOM } from './Kitchen3D';
+import Kitchen3D, { frameOn, VIEW_CAM, ZOOM, CLOSET_SPLAY } from './Kitchen3D';
 import Icon from '@/components/Icon';
 
 // The 3D kitchen plus any storage you built away from it (pantry closet, spice cabinet).
@@ -33,35 +33,44 @@ export default function KitchenStage({ pieces, title = 'Kitchen', cam: camIn, on
   // every door, drawer and lid on a piece
   const keysOf = (b) => { const m = K.MODEL[b.mid]; if (!m || m.thing || m.gen === 'closet') return []; return K.gen(m, b.w, b.h).front.map((c, ci) => (c.k === 'panel' || c.k === 'open' ? null : `${b.id}:${ci}`)).filter(Boolean); };
 
+  const size = () => { const el = box.current?.querySelector('.k3'); return [el?.clientWidth || 360, el?.clientHeight || 420]; };
+  // the scene's centre sits a bit below the middle of the box; shift so the thing you're looking at is centred
+  const centred = (c) => { const el = box.current?.querySelector('.k3'), cm = el?.querySelector('.k3-cam'); return el && cm ? { ...c, py: c.py + el.clientHeight / 2 - cm.offsetTop } : c; };
+  // The closet (or spice cabinet) straight on from the front and a little above, where the back shelves and both
+  // angled side shelves all face you, sized to fill the view. Turning is limited to keep all three in sight.
+  const roomCam = (b) => {
+    const [vw, vh] = size(), closet = K.MODEL[b.mid].gen === 'closet';
+    const wide = b.w * K.C + (closet ? 2 * b.d * K.C * Math.sin(CLOSET_SPLAY * Math.PI / 180) : 0);
+    const z = K.clamp(Math.min((vw * 0.9) / wide, (vh * 0.8) / (b.h * K.HU + b.d * K.C * 0.7)) / scale, 0.6, ZOOM[1]);
+    return centred(frameOn(b, { ...VIEW_CAM, rz: 0, rx: 52 }, scale, z));
+  };
+  const stopCam = (b) => (b ? roomCam(b) : { ...VIEW_CAM });
   // fill the view with this piece: looking at its front, a little from the left so you can see into it
   const focusOn = (b) => {
-    const el = box.current?.querySelector('.k3'); const vw = el?.clientWidth || 360, vh = el?.clientHeight || 420;
-    if (K.MODEL[b.mid].gen === 'closet') { setFocus(b.id); fly(frameOn(b, { ...VIEW_CAM, rz: -20, rx: 48 }, scale, K.clamp(Math.min(vw / (b.w * K.C * 1.5), vh / (b.d * K.C * 2.2)) / scale, 1, ZOOM[1]))); return; }
+    const [vw, vh] = size();
+    if (K.isRoom(b)) { setFocus(b.id); fly(roomCam(b)); return; }
     const W = b.w * K.C, H = b.h * K.HU, D = b.d * K.C;
     const z = K.clamp(Math.min((vw * 0.94) / (W * 1.75 + 20), (vh * 0.8) / (H + D * 0.6 + 20)) / scale, 1, ZOOM[1]);
     setMine((o) => ({ ...o, ...Object.fromEntries(keysOf(b).map((k) => [k, true])) }));
     setFocus(b.id);
-    fly(frameOn(b, { ...VIEW_CAM, rz: -6, rx: 64 }, scale, z));
+    fly(centred(frameOn(b, { ...VIEW_CAM, rz: -6, rx: 64 }, scale, z)));
   };
   const toggle = (k) => setMine((o) => ({ ...o, [k]: !open[k] }));
   const closeAll = () => setMine(Object.fromEntries(Object.keys(open).map((k) => [k, false])));
-  const back = () => { setFocus(null); closeAll(); fly(frameOn(stops[at].b || null, { ...VIEW_CAM }, scale, stops[at].b ? 1.7 : 1)); };
-  const zoomBy = (k) => { const z = K.clamp((cam.zoom || 1) * k, ZOOM[0], ZOOM[1]), f = z / (cam.zoom || 1); fly({ ...cam, zoom: z, px: (cam.px || 0) * f, py: (cam.py || 0) * f }); };
-  const go = (i) => {
-    const n = (i + stops.length) % stops.length; setAt(n); setFocus(null);
-    fly(frameOn(stops[n].b || null, { ...VIEW_CAM, rz: cam.rz, rx: cam.rx }, scale, stops[n].b ? 1.7 : 1));
-  };
+  const back = () => { setFocus(null); closeAll(); fly(stopCam(stops[at].b)); };
+  const go = (i) => { const n = (i + stops.length) % stops.length; setAt(n); setFocus(null); fly(stopCam(stops[n].b)); };
+  // how far you can turn: all the way round in the kitchen; a little either way when looking at one thing
+  const fb = focus ? pieces.find((p) => p.id === focus) : null, onRoom = fb ? K.isRoom(fb) : !!stops[at].b;
+  const spinRange = onRoom ? [-28, 28] : fb ? [-31, 19] : null;
 
   return (
     <div className="kstage" ref={box}>
       <Kitchen3D {...rest} pieces={pieces} cam={cam} onCam={setCam} scale={scale} open={open} onToggle={toggle}
-        focus={focus} onFocusPiece={view ? focusOn : undefined} className={`${className} ${glide ? 'glide' : ''}`} />
-      {view && (
+        focus={focus} onFocusPiece={view ? focusOn : undefined} spinRange={spinRange} className={`${className} ${glide ? 'glide' : ''}`} />
+      {view && (focus || anyOpen) && (
         <div className="kstage-bar" role="toolbar" aria-label="Kitchen view">
-          <button type="button" className="kbar-btn" onClick={() => zoomBy(1 / 1.3)} aria-label="Zoom out"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg></button>
-          <button type="button" className="kbar-btn" onClick={() => zoomBy(1.3)} aria-label="Zoom in"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg></button>
           {anyOpen && <button type="button" className="kbar-btn wide" onClick={closeAll}>Close doors</button>}
-          {(focus || anyOpen || cam.zoom > 1.05 || Math.abs(cam.px || 0) > 30) && <button type="button" className="kbar-btn wide main" onClick={back}><Icon name="chevron" size={16} style={{ transform: 'rotate(180deg)' }} />Back</button>}
+          {(focus || anyOpen) && <button type="button" className="kbar-btn wide main" onClick={back}><Icon name="chevron" size={16} style={{ transform: 'rotate(180deg)' }} />Back</button>}
         </div>
       )}
       {stops.length > 1 && <>

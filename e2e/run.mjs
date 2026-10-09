@@ -102,7 +102,7 @@ await step('log in', async () => {
   check('a swipe spins it and wakes up the dart', await page.locator('.globe-throw').isEnabled());
   await page.locator('.globe-throw').click();
   await page.locator('.globe-hit').waitFor({ timeout: 6000 });
-  check('the dart lands on a country and names it', /!/.test(await page.locator('.globe-hit').innerText()) && (await page.locator('.globe-hit').getByRole('button', { name: 'Cook it' }).count()) === 1);
+  check('the dart lands on a country and names it (no exclamation mark)', !/!/.test(await page.locator('.globe-hit b').first().innerText()) && (await page.locator('.globe-hit b').first().innerText()).length > 2 && (await page.locator('.globe-hit').getByRole('button', { name: 'Cook it' }).count()) === 1);
   await shot('00c-me-globe');
   await nav('Home');
 });
@@ -308,7 +308,7 @@ await step('me', async () => {
   const pc = await page.locator('.pcard').innerText();
   check('profile: Level, Recipes, Ingredients, Countries, Streak (no Restaurant)', ['Level', 'Recipes', 'Ingredients', 'Countries', 'Streak'].every((k) => new RegExp(k, 'i').test(pc)) && !/Restaurant|Riverwalk Apartment/i.test(pc), pc);
   check('a progress bar to the next home, named only', /Ybor City Loft|Hyde Park Bungalow|Bayshore Condo/.test(pc) && !/Level \d+: move/.test(pc) && (await page.locator('.pcard-next .bar').count()) === 1);
-  check('the kitchen stands in a cut-away room (floor slab + walls that hide on the near side), no box or wallpaper', (await page.locator('#my-kitchen .kw').count()) === 2 && (await page.locator('#my-kitchen .kwin').count()) === 1 && (await page.locator('#my-kitchen .k3-bg').count()) === 0 && (await page.locator('#my-kitchen .k3.placed').count()) === 1);
+  check('the kitchen stands in a cut-away room (floor slab + walls that hide on the near side), no box or wallpaper', (await page.locator('#my-kitchen .kw').count()) === 3 && (await page.locator('#my-kitchen .kwin').count()) === 1 && (await page.locator('#my-kitchen .k3-bg').count()) === 0 && (await page.locator('#my-kitchen .k3.placed').count()) === 1);
   check('the kitchen’s heading is where it is (or its name), with Edit on the same line', /Riverwalk Apartment|Ybor City Loft/.test(await page.locator('#my-kitchen .mk-title').innerText()) && Math.abs((await page.locator('#my-kitchen .mk-title').boundingBox()).y - (await page.locator('#my-kitchen .mk-bar a').boundingBox()).y) < 30);
   check('no pencil next to your name, no "Lv" text', (await page.locator('.namebtn svg').count()) === 0 && (await page.locator('.page-title').first().getByText(/^Lv /).count()) === 0);
   check('Kitchen shop opens on kitchen things with prices, no appliances', (await page.locator('.shop-grid .tile').count()) >= 20 && /\d/.test(await page.locator('.shop-grid .tile .tprice').first().innerText()) && (await page.locator('.shop [role=tab]', { hasText: 'Appliances' }).count()) === 0 && (await page.locator('.shop-grid .tile', { hasText: 'Gas range' }).count()) === 0);
@@ -840,13 +840,14 @@ await step('kitchen layout', async () => {
   const kcam = () => page.locator('main .k3-cam').evaluate((el) => el.style.transform);
   const kb = await page.locator('main .k3').boundingBox();
   await page.mouse.move(kb.x + kb.width / 2, kb.y + kb.height / 2);
-  const t0 = await kcam(); await page.mouse.wheel(150, 0); await page.waitForTimeout(150);
-  check('two-finger slide moves the kitchen anywhere', (await kcam()) !== t0, `${t0} → ${await kcam()}`);
-  for (let i = 0; i < 12; i++) { await page.mouse.wheel(300, 0); await page.waitForTimeout(30); }
-  const tx = Number((await kcam()).match(/translate\((-?[\d.]+)px/)[1]);
-  check('…but stops at a border (about 10 swipes out)', Math.abs(tx) <= 1000 * 2.6 && Math.abs(tx) >= 900, `${tx}`);
-  await page.getByRole('button', { name: 'Back to kitchen' }).click();
-  check('“Back to kitchen” brings it home', /translate\(0px, 0px\)/.test(await kcam()));
+  await page.getByRole('button', { name: 'Back' }).click(); await page.waitForTimeout(900);
+  await page.locator('main .k3').scrollIntoViewIfNeeded(); const kb2 = await page.locator('main .k3').boundingBox(); await page.mouse.move(kb2.x + kb2.width / 2, kb2.y + kb2.height / 2);
+  const t0 = await kcam(); await page.mouse.wheel(150, 0); await page.waitForTimeout(900);
+  const t1 = await kcam(), scl = (t) => t.match(/scale\(([\d.]+)\)/)[1], trl = (t) => t.match(/translate\([^)]*\)/)[0], rxl = (t) => t.match(/rotateX\(([-\d.]+)deg\)/)[1];
+  check('scrolling sideways turns the kitchen smoothly', t1 !== t0, `${t0} → ${t1}`);
+  check('…but never zooms, slides or tilts (locked to the best angle)', scl(t1) === scl(t0) && trl(t1) === trl(t0) && rxl(t1) === rxl(t0), `${t0} → ${t1}`);
+  const kbefore = await kcam(); await page.mouse.move(kb2.x + kb2.width / 2, kb2.y + kb2.height / 2); await page.mouse.down(); await page.mouse.move(kb2.x + kb2.width / 2 + 90, kb2.y + kb2.height / 2 + 60, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(1200);
+  check('dragging turns it left/right only', (await kcam()) !== kbefore && rxl(await kcam()) === rxl(kbefore) && scl(await kcam()) === scl(kbefore));
   // a walk-in pantry closet you can put anywhere off the kitchen: shelves on 3 walls and the floor; tap it to fly to it
   await page.locator('main a.btn', { hasText: 'Design' }).click(); await page.waitForURL('**/pantry/kitchen/design');
   await page.getByRole('button', { name: 'Pantry closet' }).click();
@@ -861,7 +862,7 @@ await step('kitchen layout', async () => {
   check('Kitchen tab: arrows and tabs slide between the kitchen and your storage', (await page.locator('main .kstage-tabs [role=tab]').count()) === 3 && (await page.locator('main .kstage-arrow').count()) === 2);
   const zc = () => page.locator('main .k3-cam').evaluate((el) => Number(el.style.transform.match(/scale\(([\d.]+)\)/)[1]));
   const z0 = await zc(); await page.locator('main .kcloset').dispatchEvent('click'); await page.waitForTimeout(300);
-  check('tap the closet → the view flies in to it', (await zc()) > z0 * 1.5, `${z0} → ${await zc()}`);
+  check('tap the closet → the view flies in to it', (await zc()) > z0 * 1.3, `${z0} → ${await zc()}`);
   await shot('31-pantry-closet');
   await page.locator('main .kstage-tabs [role=tab]', { hasText: 'Spice cabinet' }).click(); await page.waitForTimeout(700);
   check('…tap Spice cabinet: it comes front and centre', (await page.locator('main .kstage-tabs [role=tab][aria-selected=true]').innerText()) === 'Spice cabinet' && (await zc()) > z0 * 1.3);

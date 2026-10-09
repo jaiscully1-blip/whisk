@@ -1137,5 +1137,17 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .kbar-btn.main { background: var(--accent); border-color: var(--btn-shadow, var(--accent)); color: var(--btn-ink, #fff); box-shadow: 0 3px 0 var(--btn-shadow, rgba(0,0,0,.25)); }
 .kface.holed { pointer-events: none; }
 .kface.holed > .kskin, .kface.holed > .kknob { pointer-events: auto; }
-.kclose { position: absolute; width: 34px; height: 13px; padding: 0 3px; border: 1px solid rgba(0,0,0,.25); border-radius: 7px; background: #fff; color: #3B2C24; font: 800 6.5px/1 inherit; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 2px; box-shadow: 0 1px 0 rgba(0,0,0,.25); cursor: pointer; }
+.kclose { position: absolute; width: 12px; height: 12px; padding: 0; border: .6px solid var(--tile-edge); border-radius: 50%; background: var(--card); color: var(--fg); display: grid; place-items: center; box-shadow: 0 .8px 0 var(--tile-edge), 0 1px 3px rgba(0,0,0,.25); cursor: pointer; opacity: .94; }
 .kstage .k3.view .k3-home { display: none; }   /* the Back button under the kitchen does this */
+/* price + difficulty row: always fits the screen width */
+.df { gap: 8px; max-width: 100%; overflow: hidden; padding: 4px 4px 2px; }
+.df-string { flex: 1 1 auto; min-width: 0; gap: 5px; }
+.df-tag { flex: 1 1 0; min-width: 0; max-width: 46px; width: auto; }
+.df-tag b { font-size: 13px; }
+.df-knobwrap { flex: none; flex-direction: column; gap: 2px; }
+.df-knob { width: 34px; height: 34px; }
+.df-knob-face { width: 22px; height: 22px; }
+.df-knob-face i { height: 7px; }
+.df-lvl { min-width: 0; font-size: 10.5px; text-align: center; justify-items: center; white-space: nowrap; }
+.df-flames { display: none; }
+.kcloset .kc-wall { backface-visibility: visible; -webkit-backface-visibility: visible; }

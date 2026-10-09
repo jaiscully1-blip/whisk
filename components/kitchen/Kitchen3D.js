@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import * as K from '@/lib/kitchen/models';
 import { stickerUrl } from '@/lib/art/food';
 import { itemUrl } from '@/lib/art/items';
@@ -7,6 +7,7 @@ import { roomFor } from '@/lib/art/tampa';
 import Room from './Room';
 import { MAGNETS, magnetUrl } from '@/lib/art/magnets';
 import { useWorld } from '@/components/usePantry';
+import { itemPx } from '@/lib/kitchen/sizes';
 
 // Fridge magnets you bought, spread over the fridge doors (newest first, a few per door depending on its size).
 function magnetSpots(pieces, owned) {
@@ -38,21 +39,25 @@ function magnetSpots(pieces, owned) {
 // Camera: drag to spin (the model follows your finger), two fingers to slide it anywhere and pinch to zoom
 // (trackpad: two-finger scroll slides, pinch zooms). Sliding stops at a border about 10 swipes out.
 // Spots are tagged with data-spot="<piece>|<compartment>|<spot>" so drag-and-drop can find them with elementFromPoint.
-export const ZOOM = [0.45, 2.6];
+export const ZOOM = [0.45, 3.6];
 // the camera that puts piece b in the middle of the view at this zoom (null b = the whole kitchen)
 export function frameOn(b, camera, scale = 1, z = 2.1) {
   if (!b) return { ...camera, zoom: 1, px: 0, py: 0 };
   const C = K.C, HU = K.HU;
-  const cx = (b.x + b.w / 2) * C - K.GW * C / 2, cy = (b.y + b.d / 2) * C - K.GD * C / 2, cz = b.h * HU * 0.45;
+  const cx = (b.x + b.w / 2) * C - K.GW * C / 2, cy = (b.y + b.d / 2) * C - K.GD * C / 2, cz = ((b.z || 0) + b.h * 0.5) * HU;
   const Sx = scale * z, a = camera.rz * Math.PI / 180, t = camera.rx * Math.PI / 180;
   const x1 = cx * Math.cos(a) - cy * Math.sin(a), y1 = cx * Math.sin(a) + cy * Math.cos(a), y2 = y1 * Math.cos(t) - cz * Math.sin(t);
   return { ...camera, zoom: z, px: -Sx * x1, py: -Sx * y2 };
 }
 export const VIEW_CAM = { rz: -38, rx: 58, zoom: 1, px: 0, py: 0 };   // the isometric dollhouse angle
+export const camTransform = (c, scale = 1) => `translate(${c.px || 0}px, ${c.py || 0}px) scale(${scale * (c.zoom || 1)}) rotateX(${c.rx}deg) rotateZ(${c.rz}deg)`;
+// which of the room's two walls face you (a wall that would block the view isn't shown)
+export const facing = (rz) => { const a = rz * Math.PI / 180; return { back: Math.cos(a) > 0.05, right: -Math.sin(a) > 0.05 }; };
 export const PAN = 1000;   // how far (px at normal zoom) the kitchen can be slid before it stops: ~10 swipes
 export default function Kitchen3D({
   pieces, mode = 'view', height = 420, scale = 1, cam, onCam, open = {}, openAll = false, onToggle,
-  spot = {}, onSpot, sel = null, onSelect, onChange, onTap, taught = true, onTaught, float = false, className = '', place = null
+  spot = {}, onSpot, sel = null, onSelect, onChange, onTap, taught = true, onTaught, float = false, className = '', place = null,
+  focus = null, onFocusPiece
 }) {
   const [own, setOwn] = useState(VIEW_CAM);
   const [edge, setEdge] = useState('');
@@ -63,6 +68,18 @@ export default function Kitchen3D({
   const fingers = useRef(new Map());
   const root = useRef(null);
   const camRef = useRef(camera); camRef.current = camera;
+  const camEl = useRef(null);
+  // While a finger or the wheel is moving the view, the new camera is written straight to the page every frame and
+  // the kitchen is only re-drawn by React once, when you let go. (Re-drawing every piece on every move was the lag.)
+  const live = useRef(null), raf = useRef(0), wheelT = useRef(null);
+  const paint = () => {
+    raf.current = 0; const c = live.current, el = camEl.current, r = root.current; if (!c || !el) return;
+    el.style.transform = camTransform(c, scale);
+    if (r) { r.style.setProperty('--rz', c.rz); const f = facing(c.rz); r.classList.toggle('fb', f.back); r.classList.toggle('fr', f.right); }
+  };
+  const liveCam = (c) => { live.current = c; if (!raf.current) raf.current = requestAnimationFrame(paint); };
+  const commit = () => { const c = live.current; if (!c) return; live.current = null; cancelAnimationFrame(raf.current); raf.current = 0; setCam(c); };
+  const cur = () => live.current || camera;
   const build = mode === 'build', view = mode === 'view', mini = mode === 'mini';
   const { idx } = K.spotsOf(pieces, []);
   // remember which door opened first, so a later door hinged at the same spot rests against it instead of going through
@@ -72,6 +89,10 @@ export default function Kitchen3D({
   const angles = doorAngles(pieces, openAll, order.current);
   // tap the pantry closet or spice cabinet: fly the camera to it (zoom in or out from there as you like)
   const focusOn = (b) => setCam(frameOn(b, camera, scale, 2.1));
+  // while you look at one piece, anything standing in front of it (an island, a table) steps out of the way
+  const fp = focus ? pieces.find((p) => p.id === focus) : null;
+  const inFront = (b) => !!fp && b.id !== fp.id && !K.isRoom(fp) && b.y >= fp.y + fp.d - 0.01 && b.x < fp.x + fp.w + 1 && b.x + b.w > fp.x - 1;
+  const focusFor = (b) => (!view ? undefined : onFocusPiece ? () => onFocusPiece(b) : K.isRoom(b) ? () => focusOn(b) : undefined);
   const [world] = useWorld();
   const mags = magnetSpots(pieces, world?.owned);
   const C = K.C, HU = K.HU;
@@ -85,14 +106,17 @@ export default function Kitchen3D({
     return { ...c, px: nx, py: ny };
   };
   const panRef = useRef(panTo); panRef.current = panTo;
+  const liveRef = useRef(liveCam); liveRef.current = liveCam;
+  const commitRef = useRef(commit); commitRef.current = commit;
   // mouse wheel / trackpad pinch (ctrl) zooms; trackpad two-finger scroll slides (non-passive so the page doesn't scroll instead)
   useEffect(() => {
     const el = root.current; if (!el || mini) return undefined;
     const onWheel = (e) => {
-      e.preventDefault(); const c = camRef.current;
+      e.preventDefault(); const c = live.current || camRef.current;
       const mouseWheel = e.deltaMode === 1 || (e.deltaX === 0 && Math.abs(e.deltaY) >= 40 && Number.isInteger(e.deltaY));
-      if (e.ctrlKey || mouseWheel) setCam({ ...c, zoom: K.clamp((c.zoom || 1) * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)), ZOOM[0], ZOOM[1]) });
-      else setCam(panRef.current(c, (c.px || 0) - e.deltaX, (c.py || 0) - e.deltaY));
+      if (e.ctrlKey || mouseWheel) { const z = K.clamp((c.zoom || 1) * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)), ZOOM[0], ZOOM[1]), k = z / (c.zoom || 1); liveRef.current({ ...c, zoom: z, px: (c.px || 0) * k, py: (c.py || 0) * k }); }
+      else liveRef.current(panRef.current(c, (c.px || 0) - e.deltaX, (c.py || 0) - e.deltaY));
+      clearTimeout(wheelT.current); wheelT.current = setTimeout(() => commitRef.current(), 160);
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
@@ -117,6 +141,7 @@ export default function Kitchen3D({
   // Only a touch that starts on the kitchen itself (or the pantry closet) moves it; touching the empty space around it
   // scrolls the page as usual. While a finger is on the kitchen the page stays put.
   const onModel = (e) => e.pointerType !== 'touch' || !!e.target.closest?.('.k3-floor, .k3-home') || fingers.current.size > 0;
+  const isTouchOff = (e) => e.pointerType === 'touch' && !e.target.closest?.('.k3-floor, .k3-home, button');
   const lock = useRef(false);
   useEffect(() => {
     const el = root.current; if (!el || mini) return undefined;
@@ -132,20 +157,35 @@ export default function Kitchen3D({
   const capDown = (e) => {
     if (mini || !onModel(e)) return;
     fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (fingers.current.size === 2) { drag.current = { mode: 'pinch', d0: dist(), z0: zoom, m0: mid(), p0: { x: camera.px || 0, y: camera.py || 0 } }; moved.current = true; }
+    if (fingers.current.size === 2) { const c = cur(); drag.current = { mode: 'pinch', d0: dist(), z0: c.zoom || 1, m0: mid(), p0: { x: c.px || 0, y: c.py || 0 } }; moved.current = true; }
   };
   // Building is calm on purpose: touching a piece you haven't picked just turns the view (no accidental grabs);
   // a clean tap picks it; only the picked piece can be dragged.
   const tapCand = useRef(null);
-  const down = (e) => { if (mini || drag.current?.mode === 'pinch' || !onModel(e)) return; drag.current = { mode: 'spin', x: e.clientX, y: e.clientY, rz: camera.rz, rx: camera.rx, t: Date.now() }; moved.current = false; };
+  // one finger on the kitchen turns it; one finger beside it slides it left or right (up and down still scrolls the page)
+  const down = (e) => {
+    if (mini || drag.current?.mode === 'pinch') return;
+    if (isTouchOff(e)) { drag.current = { mode: 'slide', x: e.clientX, y: e.clientY, px: camera.px || 0, t: Date.now() }; moved.current = false; return; }
+    if (!onModel(e)) return;
+    drag.current = { mode: 'spin', x: e.clientX, y: e.clientY, rz: camera.rz, rx: camera.rx, t: Date.now() }; moved.current = false;
+  };
   const move = (e) => {
     if (fingers.current.has(e.pointerId)) fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const d = drag.current; if (!d) return;
     if (d.mode === 'pinch') {   // two fingers: slide it anywhere (up to the border) and pinch to zoom, both at once
-      if (fingers.current.size >= 2) { const m = mid(); setCam(panTo({ ...camera, zoom: K.clamp(d.z0 * dist() / d.d0, ZOOM[0], ZOOM[1]) }, d.p0.x + m.x - d.m0.x, d.p0.y + m.y - d.m0.y)); }
+      if (fingers.current.size >= 2) { const m = mid(); liveCam(panTo({ ...cur(), zoom: K.clamp(d.z0 * dist() / d.d0, ZOOM[0], ZOOM[1]) }, d.p0.x + m.x - d.m0.x, d.p0.y + m.y - d.m0.y)); }
       return;
     }
     const dx = e.clientX - d.x, dy = e.clientY - d.y;
+    if (d.mode === 'slide') {
+      if (!moved.current) {
+        if (Math.abs(dx) + Math.abs(dy) < 8) return;
+        if (Math.abs(dy) > Math.abs(dx)) { drag.current = null; return; }   // up/down: that's the page scrolling
+        moved.current = true;
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ }
+      }
+      liveCam(panTo(camera, d.px + dx, camera.py || 0)); return;
+    }
     if (!moved.current) {
       if (Math.abs(dx) + Math.abs(dy) < (build ? 10 : 6)) return;
       tapCand.current = null;
@@ -153,7 +193,7 @@ export default function Kitchen3D({
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ }
     }
     // swipe right → the model turns right with your finger
-    if (d.mode === 'spin') { const k = build ? 0.3 : 0.4; setCam({ ...camera, rz: d.rz - dx * k, rx: K.clamp(d.rx - dy * k * 0.6, 20, 75) }); return; }
+    if (d.mode === 'spin') { const k = build ? 0.3 : 0.4; liveCam({ ...camera, rz: d.rz - dx * k, rx: K.clamp(d.rx - dy * k * 0.6, 20, 78) }); return; }
     if (d.mode === 'move' && d.thing) {   // things slide over the floor plan and settle on whatever is under them
       const { u, v } = axisCells(dx, dy);
       update(d.id, (n) => { n.x = K.clamp(settle(n.x, d.b0.x + u), 0, K.GW - n.w); n.y = K.clamp(settle(n.y, d.b0.y + v), 0, K.GD - n.d); n.z = K.restZ(pieces, n); });
@@ -188,35 +228,38 @@ export default function Kitchen3D({
     if (build && tapCand.current && !moved.current && Date.now() - (drag.current?.t || 0) < 450) onSelect?.(tapCand.current);
     tapCand.current = null;
     drag.current = null; setTimeout(() => { moved.current = false; }, 0);
+    commit();
   };
   const grow = (b, side) => (e) => { if (drag.current?.mode === 'pinch') return; e.stopPropagation(); drag.current = { mode: 'grow', side, id: b.id, x: e.clientX, y: e.clientY, b0: { ...b } }; moved.current = false; if (!taught) onTaught?.(); };
   const tapFloor = (e) => { if (mini) { onTap?.(); return; } if (e?.target?.closest?.('[data-piece]')) return; if (!moved.current && build && sel) onSelect?.(null); };
   const guard = (fn) => (e) => { e.stopPropagation(); if (moved.current) return; fn(); };
 
   const room = place && !build ? roomFor(place) : null;
+  const face = facing(camera.rz);
   const floor = build
     ? { background: '#fff', backgroundImage: 'linear-gradient(#CFE3F7 1.5px,transparent 1.5px),linear-gradient(90deg,#CFE3F7 1.5px,transparent 1.5px)', backgroundSize: `${C}px ${C}px`, border: '3px solid #BFD8F2', borderRadius: 6, boxShadow: '0 0 0 10px rgba(207,227,247,.35)' }
     : place === 'void' ? { background: 'radial-gradient(ellipse at 50% 50%,rgba(140,170,255,.22),rgba(140,170,255,.05))', border: '1.5px dashed rgba(170,190,255,.35)', borderRadius: 6 }
-    : room ? { background: FLOORS[room.floor] || FLOORS.wood }
+    : room ? { background: `${face.back ? 'linear-gradient(180deg,rgba(0,0,0,.2),rgba(0,0,0,0) 14%),' : ''}${face.right ? 'linear-gradient(270deg,rgba(0,0,0,.18),rgba(0,0,0,0) 11%),' : ''}${FLOORS[room.floor] || FLOORS.wood}` }
     : { background: FLOORS.wood, borderRadius: 6, boxShadow: '0 0 0 8px rgba(120,90,50,.14)' };
 
   return (
-    <div ref={root} className={`k3 ${mode} ${float ? 'floaty' : ''} ${edge ? `edge-${edge}` : ''} ${place ? `placed at-${place}` : ''} ${className}`} style={{ height }} onPointerDownCapture={capDown} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={tapFloor}>
-      <div className="k3-cam" style={{ transform: `translate(${camera.px || 0}px, ${camera.py || 0}px) scale(${S}) rotateX(${camera.rx}deg) rotateZ(${camera.rz}deg)` }}>
+    <div ref={root} className={`k3 ${mode} ${float ? 'floaty' : ''} ${edge ? `edge-${edge}` : ''} ${place ? `placed at-${place}` : ''} ${face.back ? 'fb' : ''} ${face.right ? 'fr' : ''} ${focus ? 'focused' : ''} ${className}`} style={{ height, '--rz': camera.rz }} onPointerDownCapture={capDown} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={tapFloor}>
+      <div ref={camEl} className="k3-cam" style={{ transform: camTransform(camera, scale) }}>
         <div className="k3-sway">
           <div className="k3-floor" style={{ width: K.GW * C, height: K.GD * C, marginLeft: -K.GW * C / 2, marginTop: -K.GD * C / 2, ...floor }}>
-            {room && <Room room={room} place={place} pieces={pieces} rz={camera.rz} />}
+            {room && <Room room={room} place={place} pieces={pieces} />}
             {pieces.map((b) => {
+              if (inFront(b)) return null;
               const onDown = build ? (e) => {
                 if (drag.current?.mode === 'pinch' || fingers.current.size > 1) return;
                 if (sel !== b.id) { tapCand.current = b.id; return; }   // not picked yet: let the view turn; a clean tap picks it
                 e.stopPropagation(); drag.current = { mode: 'move', thing: K.isThing(b), id: b.id, x: e.clientX, y: e.clientY, b0: { ...b }, t: Date.now() }; moved.current = false;
               } : undefined;
               return K.isThing(b)
-                ? <Thing key={b.id} b={b} rz={camera.rz} selected={build && sel === b.id} onDown={onDown} />
+                ? <Thing key={b.id} b={b} selected={build && sel === b.id} onDown={onDown} />
                 : K.MODEL[b.mid].gen === 'closet'
-                  ? <Closet key={b.id} b={b} {...{ build, view, spot, onSpot, sel, idx, guard }} onDown={onDown} onFocus={view ? () => focusOn(b) : undefined} />
-                  : <Piece key={b.id} b={b} {...{ build, view, mini, open, openAll, onToggle, spot, onSpot, sel, idx, guard, grow, taught, mags, angles }} onDown={onDown} onFocus={view && K.isRoom(b) ? () => focusOn(b) : undefined} />;
+                  ? <Closet key={b.id} b={b} {...{ build, view, spot, onSpot, sel, idx, guard }} onDown={onDown} onFocus={focusFor(b)} />
+                  : <Piece key={b.id} b={b} {...{ build, view, mini, open, openAll, onToggle, spot, onSpot, sel, idx, guard, grow, taught, mags, angles }} onDown={onDown} onFocus={focusFor(b)} focused={focus === b.id} />;
             })}
           </div>
         </div>
@@ -231,6 +274,7 @@ export default function Kitchen3D({
 // Floors for each home, and the dollhouse cut-away around the kitchen: a floor slab with thickness and two walls
 // (back and left). Walls only show from the inside (backface hidden), so spinning around never hides the kitchen.
 const FLOORS = {
+  tile: 'linear-gradient(90deg,rgba(150,145,138,.35) 1px,rgba(0,0,0,0) 1px) 0 0/26px 26px,linear-gradient(0deg,rgba(150,145,138,.35) 1px,rgba(0,0,0,0) 1px) 0 0/26px 26px,radial-gradient(ellipse at 30% 20%,#FFFFFF,#EEEBE6)',
   wood: 'repeating-linear-gradient(90deg,rgba(90,60,30,.18) 0 1px,rgba(0,0,0,0) 1px 26px),repeating-linear-gradient(0deg,rgba(255,255,255,.08) 0 2px,rgba(0,0,0,0) 2px 9px),linear-gradient(135deg,#B58A5E,#9C7349)',
   oak: 'repeating-linear-gradient(90deg,rgba(70,40,15,.22) 0 1px,rgba(0,0,0,0) 1px 18px),repeating-linear-gradient(0deg,rgba(255,255,255,.06) 0 2px,rgba(0,0,0,0) 2px 7px),linear-gradient(135deg,#C99566,#A9774A)',
   hex: 'radial-gradient(circle at 50% 50%,#F2EBDD 0 46%,#2E2A2A 47% 50%,rgba(0,0,0,0) 51%) 0 0/13px 13px,radial-gradient(circle at 50% 50%,#F2EBDD 0 46%,#2E2A2A 47% 50%,rgba(0,0,0,0) 51%) 6.5px 6.5px/13px 13px,#2E2A2A',
@@ -239,13 +283,13 @@ const FLOORS = {
   concrete: 'radial-gradient(circle at 30% 40%,rgba(255,255,255,.06),rgba(0,0,0,0) 40%),linear-gradient(135deg,#4A484C,#38363A)'
 };
 // A shop thing: a drawn cut-out standing on the counter (or floor), always turned to face you.
-function Thing({ b, rz, selected, onDown }) {
+function Thing({ b, selected, onDown }) {
   const m = K.MODEL[b.mid]; const C = K.C, HU = K.HU;
   const W = b.w * C, VW = Math.round(W * 1.6), H = VW, Z = Math.round(b.z * HU);   // drawn a bit bigger than its cell so you can see it
   return (
     <div className={`kthing ${selected ? 'sel' : ''}`} style={{ left: b.x * C, top: b.y * C, width: W, height: b.d * C, transform: `translateZ(${Z + 0.5}px)` }} onPointerDown={onDown} data-piece={b.id}>
       <div className="kthing-shadow" />
-      <div className="kthing-up" style={{ left: (W - VW) / 2, top: b.d * C / 2 - H, width: VW, height: H, transform: `rotateZ(${-rz}deg) rotateX(-90deg)` }}>
+      <div className="kthing-up" style={{ left: (W - VW) / 2, top: b.d * C / 2 - H, width: VW, height: H, transform: 'rotateZ(calc(var(--rz) * -1deg)) rotateX(-90deg)' }}>
         <img src={itemUrl(m.item)} alt={m.nick} title={m.nick} draggable={false} />
       </div>
     </div>
@@ -279,63 +323,118 @@ function doorAngles(pieces, openAll, order) {
 }
 
 // A shelf spot (tap or drop food here). Shared by every piece and the pantry closet.
-function SpotBtn({ k, st, extra = '', spot, idx, onSpot, guard }) {
-  const s = spot[k] || {};
+// room: for a spot inside a cabinet, fridge or closet shelf ({ w, h } in px), food stands on the shelf at its real
+// size (as many as fit side by side); other spots show up to three small stickers.
+function SpotBtn({ k, st, extra = '', spot, idx, onSpot, guard, room }) {
+  const s = spot[k] || {}, items = s.items || [];
+  let shown = items.slice(0, 3), sizes = null;
+  if (room && items.length) {
+    sizes = []; let used = 0;
+    for (const it of items) { const px = itemPx(it, room.h); if (used + px * 0.8 > room.w - 10 && sizes.length) break; sizes.push(px); used += px * 0.8; }
+    shown = items.slice(0, sizes.length);
+  }
   return (
-    <button type="button" data-spot={k} className={`ks ${extra} ${s.lit ? 'lit' : ''} ${s.on ? 'on' : ''} ${s.hov ? 'hov' : ''}`} style={st}
+    <button type="button" data-spot={k} className={`ks ${extra} ${room ? 'deep' : ''} ${s.lit ? 'lit' : ''} ${s.on ? 'on' : ''} ${s.hov ? 'hov' : ''}`} style={st}
       aria-label={(idx.map[k] || {}).label || 'spot'} onClick={onSpot ? guard(() => onSpot(k)) : undefined}>
-      {s.items?.length > 0 && <span className="kstks">{s.items.slice(0, 3).map((it, i) => <img key={i} src={stickerUrl(it.name, it.category)} alt="" title={it.name} draggable={false} />)}{s.items.length > 3 && <i>+{s.items.length - 3}</i>}</span>}
+      {items.length > 0 && <span className="kstks">{shown.map((it, i) => <img key={i} src={stickerUrl(it.name, it.category)} alt="" title={it.name} draggable={false} style={sizes ? { width: sizes[i], height: sizes[i] } : undefined} />)}{items.length > shown.length && <i>+{items.length - shown.length}</i>}</span>}
     </button>
   );
 }
 
-// The walk-in pantry closet: a little room off the kitchen with shelves on the left, back and right walls, and a floor.
+// The inside of an open cabinet, fridge or freezer compartment as a real box: back, two sides, a shelf under each
+// row and a lip on its front edge. Drawn in the front face's frame (x right, y down, z out toward you), going
+// `depth` px back. Each spot stands just above its shelf, halfway in, with the food standing on it at real size.
+function Inside({ k0, x, y, w, h, depth, defs, cold, liner, shelf, spot, idx, onSpot, guard }) {
+  const rows = defs.length ? defs[0].rows : 1, rh = h / rows;
+  const wall = { position: 'absolute', background: liner };
+  return (
+    <>
+      <div className="kin3" style={{ ...wall, left: x, top: y, width: w, height: h, transform: `translateZ(${-depth}px)`, background: `${cold ? 'radial-gradient(ellipse 70% 30% at 50% 0,rgba(255,255,255,.95),rgba(255,255,255,0)),' : ''}linear-gradient(180deg,rgba(0,0,0,.14),rgba(0,0,0,0) 30%),${liner}` }} />
+      <div className="kin3" style={{ ...wall, left: x, top: y, width: depth, height: h, transformOrigin: '0 50%', transform: 'rotateY(90deg)', filter: 'brightness(.86)' }} />
+      <div className="kin3" style={{ ...wall, left: x + w - depth, top: y, width: depth, height: h, transformOrigin: '100% 50%', transform: 'rotateY(-90deg)', filter: 'brightness(.93)' }} />
+      {Array.from({ length: rows }, (_, r) => {
+        const sy = y + (r + 1) * rh;
+        return (
+          <Fragment key={r}>
+            <div className="kin3" style={{ left: x, top: sy - 0.5, width: w, height: depth, transformOrigin: '50% 0', transform: 'rotateX(-90deg)', background: shelf }} />
+            {r < rows - 1 && <div className="kin3" style={{ left: x, top: sy - 1, width: w, height: 3, transform: 'translateZ(-1px)', background: shelf, filter: 'brightness(.9)' }} />}
+          </Fragment>
+        );
+      })}
+      {defs.map((sd, si) => {
+        const rw = w / sd.cols, top = y + sd.r * rh;
+        return <SpotBtn key={si} k={`${k0}|${si}`} st={{ left: x + sd.col * rw + 2, top: top + 2, width: rw - 4, height: rh - 4, transform: `translateZ(${-Math.round(depth * 0.45)}px)` }} room={{ w: rw - 4, h: rh - 6 }} {...{ spot, idx, onSpot, guard }} />;
+      })}
+    </>
+  );
+}
+
+// The walk-in pantry closet: a little room off the kitchen with real shelves on the left, back and right walls
+// (boards sticking out of the wall, food standing on them at its true size) and floor space.
 function Closet({ b, build, spot, onSpot, sel, idx, guard, onDown, onFocus }) {
   const C = K.C, HU = K.HU, W = b.w * C, D = b.d * C, H = Math.round(b.h * HU);
   const g = K.gen(K.MODEL[b.mid], b.w, b.h).front;   // [left, back, right, floor]
-  const wallBg = { ...css(K.skin(b.fin, 0)) };
-  const board = 'rgba(0,0,0,.18)';
-  const cells = (ci, along, across, flipAlong) => {
-    const c = g[ci], rows = c.rows, cols = c.cols, out = [];
-    for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) {
-      const a0 = flipAlong ? along - (r + 1) * along / rows : r * along / rows, a1 = a0 + along / rows;
-      out.push({ key: `${b.id}|${ci}|${r * cols + k}`, a0, a1, c0: k * across / cols, c1: (k + 1) * across / cols, r });
-    }
-    return out;
-  };
+  const wallBg = css(K.skin(b.fin, 0));
   const spots = !build;
   const stopFocus = onFocus ? guard(onFocus) : undefined;
+  const cells = (ci, along, across) => {
+    const c = g[ci], rows = c.rows, cols = c.cols, out = [];
+    for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) out.push({ key: `${b.id}|${ci}|${r * cols + k}`, a0: r * along / rows, a1: (r + 1) * along / rows, c0: k * across / cols, c1: (k + 1) * across / cols });
+    return out;
+  };
+  const wall = (ci, w, flip) => <ShelfWall b={b} ci={ci} c={g[ci]} w={w} h={H} flip={flip} depth={Math.min(24, Math.round(D * 0.3))} spots={spots} {...{ spot, idx, onSpot, guard }} />;
   return (
     <div className={`kbox kcloset ${build && sel === b.id ? 'sel' : ''}`} style={{ left: b.x * C, top: b.y * C, width: W, height: D }} onPointerDown={onDown} onClick={stopFocus} data-piece={b.id}>
-      <div className="kface kc-floor" style={{ left: -6, top: -6, width: W + 12, height: D + 12, background: 'repeating-linear-gradient(90deg,rgba(90,60,30,.18) 0 1px,rgba(0,0,0,0) 1px 20px),linear-gradient(135deg,#C99566,#A9774A)', borderRadius: 4, boxShadow: '0 6px 0 #7A5A3E' }}>
+      <div className="kface kc-floor" style={{ left: -6, top: -6, width: W + 12, height: D + 12, background: 'linear-gradient(90deg,rgba(150,145,138,.3) 1px,rgba(0,0,0,0) 1px) 6px 6px/26px 26px,linear-gradient(0deg,rgba(150,145,138,.3) 1px,rgba(0,0,0,0) 1px) 6px 6px/26px 26px,linear-gradient(135deg,#FBFAF8,#ECE9E4)', borderRadius: 4, boxShadow: '0 6px 0 #DAD5CD' }}>
         {spots && cells(3, D, W).map((x) => <SpotBtn key={x.key} k={x.key} st={{ left: 6 + x.c0 + 8, top: 6 + D * 0.55, width: x.c1 - x.c0 - 16, height: D * 0.35 }} extra="flat" {...{ spot, idx, onSpot, guard }} />)}
       </div>
-      {/* back wall */}
-      <div className="kface kc-wall" style={{ left: 0, top: -H, width: W, height: H, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', ...wallBg }}>
-        {Array.from({ length: 4 }, (_, r) => <span key={r} className="kc-board" style={{ left: 0, right: 0, top: (r + 1) * H / 4 - 5, height: 5, background: board }} />)}
-        {spots && cells(1, H, W).map((x) => <SpotBtn key={x.key} k={x.key} st={{ left: x.c0 + 4, top: x.a0 + 4, width: x.c1 - x.c0 - 8, height: x.a1 - x.a0 - 12 }} {...{ spot, idx, onSpot, guard }} />)}
+      {/* back wall, facing into the closet */}
+      <div className="kface kc-wall" style={{ left: 0, top: -H, width: W, height: H, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', ...wallBg }}>{wall(1, W, false)}</div>
+      {/* left wall: runs from the front (its left edge) to the back */}
+      <div className="kwall-turn" style={{ left: 0, top: D, transform: 'rotateZ(-90deg)' }}>
+        <div className="kface kc-wall" style={{ left: 0, top: -H, width: D, height: H, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', ...wallBg, filter: 'brightness(.94)' }}>{wall(0, D, true)}</div>
       </div>
-      {/* left wall (seen from inside) */}
-      <div className="kface kc-wall" style={{ left: -H, top: 0, width: H, height: D, transformOrigin: '100% 50%', transform: 'rotateY(90deg)', ...wallBg }}>
-        {Array.from({ length: 4 }, (_, r) => <span key={r} className="kc-board" style={{ top: 0, bottom: 0, left: (r + 1) * H / 4 - 5, width: 5, background: board }} />)}
-        {spots && cells(0, H, D).map((x) => <SpotBtn key={x.key} k={x.key} st={{ top: x.c0 + 4, left: x.a0 + 4, height: x.c1 - x.c0 - 8, width: x.a1 - x.a0 - 12 }} {...{ spot, idx, onSpot, guard }} />)}
-      </div>
-      {/* right wall */}
-      <div className="kface kc-wall" style={{ left: W, top: 0, width: H, height: D, transformOrigin: '0 50%', transform: 'rotateY(-90deg)', ...wallBg }}>
-        {Array.from({ length: 4 }, (_, r) => <span key={r} className="kc-board" style={{ top: 0, bottom: 0, left: H - (r + 1) * H / 4, width: 5, background: board }} />)}
-        {spots && cells(2, H, D, true).map((x) => <SpotBtn key={x.key} k={x.key} st={{ top: x.c0 + 4, left: x.a0 + 12, height: x.c1 - x.c0 - 8, width: x.a1 - x.a0 - 12 }} {...{ spot, idx, onSpot, guard }} />)}
+      {/* right wall: runs from the back to the front */}
+      <div className="kwall-turn" style={{ left: W, top: 0, transform: 'rotateZ(90deg)' }}>
+        <div className="kface kc-wall" style={{ left: 0, top: -H, width: D, height: H, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', ...wallBg, filter: 'brightness(.9)' }}>{wall(2, D, false)}</div>
       </div>
       <span className="kc-sign" style={{ left: 4, top: D - 18 }}>{idx.nick[b.id] || 'Pantry closet'}</span>
     </div>
   );
 }
 
-function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx, guard, grow, onDown, taught, mags = {}, angles = {}, onFocus }) {
+// One wall of closet shelving, drawn in the wall's own frame (x along it, y down, z out into the closet).
+// flip: count the columns from the far end (so spot numbers stay the same as before: column 0 is at the back).
+function ShelfWall({ b, ci, c, w, h, flip, depth, spots, spot, idx, onSpot, guard }) {
+  const rows = c.rows, cols = c.cols, rh = h / rows, cw = w / cols;
+  const board = 'linear-gradient(180deg,#F6F3EE,#E4DED5)';
+  return (
+    <>
+      {Array.from({ length: rows }, (_, r) => (
+        <Fragment key={r}>
+          <div className="kin3" style={{ left: 0, top: (r + 1) * rh - 1, width: w, height: depth, transformOrigin: '50% 0', transform: 'rotateX(90deg)', background: board }} />
+          <div className="kin3" style={{ left: 0, top: (r + 1) * rh - 1, width: w, height: 4, transform: `translateZ(${depth}px)`, background: '#D9D3CA' }} />
+        </Fragment>
+      ))}
+      {spots && Array.from({ length: rows * cols }, (_, i) => {
+        const r = Math.floor(i / cols), k = i % cols, kk = flip ? cols - 1 - k : k;
+        return <SpotBtn key={i} k={`${b.id}|${ci}|${i}`} st={{ left: kk * cw + 3, top: r * rh + 3, width: cw - 6, height: rh - 5, transform: `translateZ(${Math.round(depth * 0.5)}px)` }} room={{ w: cw - 6, h: rh - 8 }} {...{ spot, idx, onSpot, guard }} />;
+      })}
+    </>
+  );
+}
+
+function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx, guard, grow, onDown, taught, mags = {}, angles = {}, onFocus, focused = false }) {
   const m = K.MODEL[b.mid]; const C = K.C, HU = K.HU;
   const { fin, tfin } = b; const g = K.gen(m, b.w, b.h);
   const W = b.w * C, D = b.d * C, H = Math.round(b.h * HU), Z = Math.round(b.z * HU);
+  // compartments drawn as a real 3D box inside (shelves, back, sides) instead of a flat picture
+  const deepOk = (c, onTop) => !build && !onTop && (c.k === 'door' || c.k === 'open') && !c.inner && !c.ns && m.gen !== 'wine';
+  const isOpenC = (c, ci) => c.k === 'open' || (!build && (openAll || !!open[`${b.id}:${ci}`]) && c.k !== 'panel');
+  // the front of the piece, with a hole wherever you can see into it (so the 3D inside isn't hidden behind it)
+  const holes = g.front.map((c, ci) => (deepOk(c, false) && isOpenC(c, ci) ? `M${c.x * W} ${c.y * H}h${c.w * W}v${c.h * H}h${-c.w * W}Z` : '')).join('');
   const selected = build && sel === b.id, ap = K.cold(m), nick = idx.nick[b.id];
-  const slide = Math.round(Math.min(D * 0.8, 46));
+  const slide = Math.round(focused ? D * 0.85 : Math.min(D * 0.8, 46));
   const kh = 11;
   const comp = (c, ci, onTop) => {
     const FW = W, FH = onTop ? D : H;
@@ -347,17 +446,12 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
     const showFront = !build && c.k !== 'open';
     const defs = K.spotDefs(c, b.w);
     const canSpot = !build && (c.k === 'open' || isOpen);
-    const sp = (key) => spot[key] || {};
-    const spotEl = (key, style, extra = '') => {
-      const s = sp(key);
-      return (
-        <button key={key} type="button" data-spot={key} className={`ks ${extra} ${s.lit ? 'lit' : ''} ${s.on ? 'on' : ''} ${s.hov ? 'hov' : ''}`} style={style}
-          aria-label={(idx.map[key] || {}).label || 'spot'} onClick={onSpot ? guard(() => onSpot(key)) : undefined}>
-          {s.items?.length > 0 && <span className="kstks">{s.items.slice(0, 3).map((it, i) => <img key={i} src={stickerUrl(it.name, it.category)} alt="" title={it.name} draggable={false} />)}{s.items.length > 3 && <i>+{s.items.length - 3}</i>}</span>}
-        </button>
-      );
-    };
-    const spots = canSpot && !isDr ? defs.map((sd, si) => {
+    const spotEl = (key, style, extra = '') => <SpotBtn key={key} k={key} st={style} extra={extra} {...{ spot, idx, onSpot, guard }} />;
+    const inside = canSpot && deepOk(c, onTop) ? (
+      <Inside k0={`${b.id}|${ci}`} x={cx} y={cy} w={cw} h={ch} depth={Math.max(10, D - 4)} defs={defs} cold={ap} liner={K.liner(m, fin)}
+        shelf={ap ? 'linear-gradient(180deg,rgba(225,240,248,.95),rgba(170,205,225,.9))' : fin.tex === 'wood' ? K.mix(fin.color, -0.1) : '#E6DED0'} {...{ spot, idx, onSpot, guard }} />
+    ) : null;
+    const spots = canSpot && !isDr && !inside ? defs.map((sd, si) => {
       const rw = cw / sd.cols, rh = ch / sd.rows;
       return spotEl(`${b.id}|${ci}|${si}`, { left: cx + sd.col * rw + 3, top: cy + sd.r * rh + 3, width: rw - 6, height: Math.max(6, rh - 8), transform: 'translateZ(.6px)' });
     }) : null;
@@ -380,21 +474,30 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
       }
     }
     const org = c.hinge === 'l' ? '0 50%' : c.hinge === 't' ? '50% 0' : c.hinge === 'b' ? '50% 100%' : '100% 50%';
-    const ang = angles[okey] ?? 105;
+    // looking right at it: doors swing wider (unless something's beside the hinge) so their insides, with the door
+    // shelves, face you and you can tap them shut from the inside
+    const ang = focused && (angles[okey] ?? 105) === 105 ? 122 : angles[okey] ?? 105;
     const rot = !isOpen ? '' : c.k === 'lid' ? ' rotateX(105deg)' : c.hinge === 'l' ? ` rotateY(-${ang}deg)` : c.hinge === 't' ? ' rotateX(100deg)' : c.hinge === 'b' ? ' rotateX(-88deg)' : ` rotateY(${ang}deg)`;
     let inCss = c.k === 'panel' ? 'display:none' : K.interior(c, m, fin) + (build ? 'outline:1px solid rgba(0,0,0,.16);outline-offset:-1px;' : '');
     if (c.k === 'lid') inCss = 'background:repeating-linear-gradient(90deg,rgba(0,0,0,0) 0 calc(50% - 2px),rgba(150,170,185,.9) calc(50% - 2px) 50%),radial-gradient(ellipse 70% 50% at 50% 0,#fff,rgba(255,255,255,0)),#E7EEF2;box-shadow:inset 0 6px 10px rgba(0,0,0,.25);';
     const outCss = c.k === 'lid' ? K.skin(fin, 0.12) + 'border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);' : K.panel(c, m, fin);
     let deco = K.decoFor(c, m, fin, b.h, b.w);
     if (c.k === 'lid') deco = [{ st: 'left:38%;top:88%;width:24%;height:6%;background:linear-gradient(90deg,#f5f6f7,#9ea4ab);border-radius:4px' }];
-    const toggle = c.k === 'panel' || !view || !onToggle ? undefined : guard(() => onToggle(okey));
+    // first tap on a piece you aren't looking at flies to it (and opens everything); after that a tap opens or closes
+    const toggle = c.k === 'panel' || !view || !onToggle ? undefined : guard(() => (onFocus && !focused ? onFocus() : onToggle(okey)));
     const aria = `${isOpen ? 'Close' : 'Open'} ${nick} ${c.name}`;
     const decos = deco.map((d, i) => <span key={i} className="kdeco" style={css(d.st)} />)
       .concat((mags[okey] || []).map((g) => <img key={g.id} className="kmag" src={magnetUrl(g.id)} alt="" draggable={false} style={{ left: `${g.x * 100}%`, top: `${g.y * 100}%`, transform: `translate(-50%, -50%) rotate(${g.rot}deg)` }} />));
     return (
       <div key={ci} className="kcw">
-        <div className="kin" style={{ ...pos, ...css(inCss) }} />
+        {!deepOk(c, onTop) && <div className="kin" style={{ ...pos, ...css(inCss) }} />}
+        {inside}
         {spots}
+        {focused && isOpen && isDoor && toggle && (
+          <button type="button" className="kclose" style={{ left: cx + cw / 2 - 17, top: cy + 3, transform: 'translateZ(2px)' }} onClick={toggle} aria-label={`Close ${nick} ${c.name}`}>
+            <svg width="8" height="8" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>Close
+          </button>
+        )}
         {showFront && isDoor && (
           <div className="kdoor" style={{ ...pos, transformOrigin: org, transform: `translateZ(1px)${rot}`, cursor: toggle ? 'pointer' : 'default' }} onClick={toggle} role={toggle ? 'button' : undefined} aria-label={toggle ? aria : undefined}>
             <div className="kout" style={css(outCss)}>{decos}</div>
@@ -425,7 +528,8 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
       <div className="kface" style={{ left: W, top: 0, width: H, height: D, transformOrigin: '0 50%', transform: 'rotateY(-90deg)', ...css(K.skin(fin, -0.16)) }}>
         {selected && <button type="button" className="kknob side" style={{ left: H / 2 - kh, top: D - kh }} onPointerDown={grow(b, 'front')} aria-label="Drag to make it deeper" />}
       </div>
-      <div className="kface" style={{ left: 0, top: D - H, width: W, height: H, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', ...css(K.skin(fin, 0)), borderRadius: m.round ? '22px 22px 3px 3px' : 0 }}>
+      <div className={`kface ${holes ? 'holed' : ''}`} style={{ left: 0, top: D - H, width: W, height: H, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', ...(holes ? {} : css(K.skin(fin, 0))), borderRadius: m.round ? '22px 22px 3px 3px' : 0 }}>
+        {holes && <div className="kskin" style={{ ...css(K.skin(fin, 0)), borderRadius: m.round ? '22px 22px 3px 3px' : 0, clipPath: `path(evenodd, "M0 0H${W}V${H}H0Z${holes}")` }} />}
         {K.faceDeco(m, fin, tfin, g.ts, g.tb).map((d, i) => <span key={i} className="kdeco" style={css(d.st)} />)}
         {g.front.map((c, i) => comp(c, i, false))}
         {selected && <>

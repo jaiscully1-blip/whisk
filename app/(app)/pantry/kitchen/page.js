@@ -24,6 +24,7 @@ export default function PutAway() {
   const [party, setParty] = useState(false);
   const [earned, setEarned] = useState(0);
   const drag = useRef(null);
+  const ghostEl = useRef(null);
   const home = usePlace();
   const combo = useRef({ n: 0, at: 0 });
 
@@ -76,7 +77,11 @@ export default function PutAway() {
       try { d.el.setPointerCapture(d.id); } catch { /* fine */ }
       navigator.vibrate?.(8);
     }
-    setGhost({ item: d.item, x: e.clientX, y: e.clientY, over: spotAt(e.clientX, e.clientY) });
+    // the box follows your finger directly; the page (and the 3D kitchen) only re-draws when the spot under it changes
+    d.px = e.clientX; d.py = e.clientY;
+    if (ghostEl.current) { ghostEl.current.style.left = `${e.clientX}px`; ghostEl.current.style.top = `${e.clientY}px`; }
+    const over = spotAt(e.clientX, e.clientY);
+    setGhost((g) => (g && g.item.id === d.item.id && g.over === over ? g : { item: d.item, x: e.clientX, y: e.clientY, over }));
   };
   const boxUp = (e) => {
     const d = drag.current; drag.current = null; if (!d) return;
@@ -169,7 +174,7 @@ export default function PutAway() {
       )}
 
       {ghost && (
-        <div className="pa-ghost" style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">
+        <div ref={ghostEl} className="pa-ghost" style={{ left: drag.current?.px ?? ghost.x, top: drag.current?.py ?? ghost.y }} aria-hidden="true">
           <Sticker name={ghost.item.name} category={ghost.item.category} size={50} className="pa-stk" /><span className="pa-name">{ghost.item.name}</span>
         </div>
       )}

@@ -42,6 +42,12 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   const pathname = usePathname();
   const [pendingTab, setPendingTab] = useState(null);
   useEffect(() => { setPendingTab(null); }, [pathname]);
+  // keep Whisk's static files on the phone (see public/sw.js) so it opens fast on weak wifi or cell data
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const go = () => navigator.serviceWorker.register('/sw.js').catch(() => {});
+    if (document.readyState === 'complete') go(); else window.addEventListener('load', go, { once: true });
+  }, []);
   // iPhone: while the keyboard or a date picker is open, hide the tab bar (it would float mid-screen), and when it
   // closes, nudge the page so the bar snaps back to the bottom instead of staying where the keyboard left it.
   useEffect(() => {

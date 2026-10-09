@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import * as K from '@/lib/kitchen/models';
 import { wallUrl, viewSvg } from '@/lib/art/tampa';
 
@@ -124,15 +124,15 @@ function Win({ spot, place, hour, WH }) {
   );
 }
 
-// which of the two walls face you (the room is a cut-away: a wall that would block the view isn't drawn)
-const facing = (rz) => { const a = rz * Math.PI / 180; return { back: Math.cos(a) > 0.05, right: -Math.sin(a) > 0.05 }; };
-
-export default function Room({ room, place, pieces, rz }) {
+// Which walls show depends on which way you're looking (a wall that would block the view isn't shown). Everything
+// is drawn once and the kitchen's .fb / .fr classes show or hide it, so turning the view never re-draws the room.
+// Like the reference render: thick white wall tops and ends, a white floor slab, tiled walls.
+function Room({ room, place, pieces }) {
   const hour = useHour();
-  const C = K.C, HU = K.HU, W = K.GW * C, D = K.GD * C, WH = Math.round(8.5 * HU), T = 12, CAP = 9;
-  const f = facing(rz), spot = windowSpot(pieces), L = daylight(hour);
+  const C = K.C, HU = K.HU, W = K.GW * C, D = K.GD * C, WH = Math.round(8.5 * HU), T = 14, CAP = 10;
+  const spot = windowSpot(pieces), L = daylight(hour);
   const back = `url("${wallUrl(place, 'back', W, WH)}")`, side = `url("${wallUrl(place, 'plain', D, WH)}")`, sideBack = `url("${wallUrl(place, 'plain', W, WH)}")`;
-  const cap = room.cap || '#2E3238';
+  const cap = room.cap || '#F7F5F1', end = room.end || '#ECE9E3';
   // sunlight falling across the floor from the window
   let beam = null;
   if (spot && L.light[0] > 0.1) {
@@ -143,30 +143,38 @@ export default function Room({ room, place, pieces, rz }) {
   return (
     <>
       {/* soft shadow where the walls meet the floor */}
-      <div className="kfloor-ao" style={{ width: W, height: D, background: `${f.back ? 'linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,0) 16%),' : ''}${f.right ? 'linear-gradient(270deg, rgba(0,0,0,.24), rgba(0,0,0,0) 12%),' : ''}linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0))` }} />
+      {/* the soft shadow where the walls meet the floor is part of the floor's own background (see Kitchen3D) */}
       {beam}
-      {f.back && (
-        <div className="kwall-turn" style={{ left: 0, top: -1, transform: 'rotateZ(0deg)' }}>
+      {(
+        <div className="kwall-turn on-b" style={{ left: 0, top: -1, transform: 'rotateZ(0deg)' }}>
           <div className="kw" style={{ left: 0, top: -WH, width: W, height: WH, backgroundImage: spot?.wall === 'back' ? sideBack : back }}>
             {spot?.wall === 'back' && <Win spot={spot} place={place} hour={hour} WH={WH} />}
           </div>
         </div>
       )}
-      {f.right && (
-        <div className="kwall-turn" style={{ left: W + 1, top: 0, transform: 'rotateZ(90deg)' }}>
+      {(
+        <div className="kwall-turn on-r" style={{ left: W + 1, top: 0, transform: 'rotateZ(90deg)' }}>
           <div className="kw" style={{ left: 0, top: -WH, width: D, height: WH, backgroundImage: side }}>
             {spot?.wall === 'right' && <Win spot={spot} place={place} hour={hour} WH={WH} />}
           </div>
         </div>
       )}
       {/* thick wall tops, like a cut-away model */}
-      {f.back && <div className="kcap" style={{ left: -CAP, top: -CAP - 1, width: W + CAP + (f.right ? CAP + 1 : 0), height: CAP, transform: `translateZ(${WH}px)`, background: cap }} />}
-      {f.right && <div className="kcap" style={{ left: W + 1, top: -CAP - 1, width: CAP, height: D + CAP + 1, transform: `translateZ(${WH}px)`, background: cap }} />}
+      <div className="kcap on-b" style={{ left: -CAP, top: -CAP - 1, width: W + CAP, height: CAP, transform: `translateZ(${WH}px)`, background: cap }} />
+      <div className="kcap on-r" style={{ left: W + 1, top: -CAP - 1, width: CAP, height: D + CAP + 1, transform: `translateZ(${WH}px)`, background: cap }} />
+      <div className="kcap on-b on-r" style={{ left: W, top: -CAP - 1, width: 1, height: CAP, transform: `translateZ(${WH}px)`, background: cap }} />
+      {/* the walls' cut ends, so they read as thick slabs: the back wall's left end and the right wall's front end */}
+      <div className="kend on-b" style={{ left: -CAP - WH, top: -CAP - 1, width: WH, height: CAP, transformOrigin: '100% 50%', transform: 'rotateY(90deg)', background: end }} />
+      <div className="kend on-b off-r" style={{ left: W, top: -CAP - 1, width: WH, height: CAP, transformOrigin: '0 50%', transform: 'rotateY(-90deg)', background: end }} />
+      <div className="kend on-r" style={{ left: W + 1, top: D - WH, width: CAP, height: WH, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', background: end }} />
+      <div className="kend on-r off-b" style={{ left: W + 1, top: -CAP - 1 - WH, width: CAP, height: WH, transformOrigin: '50% 100%', transform: 'rotateX(-90deg)', background: end }} />
       {/* the floor slab's edges */}
       <div className="kslab" style={{ left: 0, top: D, width: W, height: T, transformOrigin: '50% 0', transform: 'rotateX(-90deg)', background: room.slab }} />
       <div className="kslab" style={{ left: -T, top: 0, width: T, height: D, transformOrigin: '100% 50%', transform: 'rotateY(-90deg)', background: room.slab, filter: 'brightness(.8)' }} />
-      {!f.right && <div className="kslab" style={{ left: W, top: 0, width: T, height: D, transformOrigin: '0 50%', transform: 'rotateY(90deg)', background: room.slab, filter: 'brightness(.8)' }} />}
-      {!f.back && <div className="kslab" style={{ left: 0, top: -T, width: W, height: T, transformOrigin: '50% 100%', transform: 'rotateX(90deg)', background: room.slab }} />}
+      <div className="kslab off-r" style={{ left: W, top: 0, width: T, height: D, transformOrigin: '0 50%', transform: 'rotateY(90deg)', background: room.slab, filter: 'brightness(.8)' }} />
+      <div className="kslab off-b" style={{ left: 0, top: -T, width: W, height: T, transformOrigin: '50% 100%', transform: 'rotateX(90deg)', background: room.slab }} />
     </>
   );
 }
+
+export default memo(Room);

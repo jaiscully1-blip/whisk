@@ -110,16 +110,16 @@ await step('home', async () => {
   await page.getByRole('heading', { name: 'Discover a Dish' }).waitFor();
   check('home shows Discover a Dish', true);
   // budget price tags + the difficulty knob
-  check('price tags ($ to $$$$) and a difficulty knob under Discover a Dish', (await page.locator('.df-tag').count()) === 4 && (await page.locator('.df-knob').count()) === 1);
+  check('price tags ($ to $$$$) and a small difficulty knob in one slim row', (await page.locator('.df-tag').count()) === 4 && (await page.locator('.df-knob').count()) === 1 && (await page.locator('.df').boundingBox()).height < 70);
   await page.locator('.rcard').first().waitFor();
   await page.locator('.df-tag', { hasText: 'Pocket change' }).click(); await page.waitForTimeout(300);
   const tags = await page.locator('.rcard .chip.price').allInnerTexts();
   check('Pocket change shows only dishes under $2 a serving', tags.length > 0 && tags.every((t) => t.startsWith('$ ·')), tags.slice(0, 3).join(' | '));
-  await page.locator('.df-lvl', { hasText: 'Easy' }).click(); await page.waitForTimeout(300);
+  await page.locator('.df-knobwrap').click(); await page.waitForTimeout(300);
   const heat = await page.locator('.rcard .chip.heat').allInnerTexts();
   check('…and the knob narrows it to Easy', heat.every((t) => t === 'Easy') && (await page.locator('.df-lvl.on').innerText()).includes('Easy'), heat.join(','));
   await shot('01a-home-filters');
-  await page.locator('.df-tag', { hasText: 'Pocket change' }).click(); await page.locator('.df-lvl', { hasText: 'Any' }).click();
+  await page.locator('.df-tag', { hasText: 'Pocket change' }).click(); for (let k = 0; k < 3; k++) await page.locator('.df-knobwrap').click();
   check('home has no challenges or Fridge Raid', (await page.getByText('This week’s challenges').count()) === 0 && (await page.getByText('Fridge Raid').count()) === 0);
   await page.getByText('Ground beef is frozen').waitFor();
   check('home reminds you to defrost frozen ground beef', true);

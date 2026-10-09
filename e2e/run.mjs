@@ -29,8 +29,9 @@ const results = [];
 const check = (name, ok, detail = '') => { results.push([ok ? 'PASS' : 'FAIL', name, detail]); console.log(ok ? 'PASS' : 'FAIL', name, detail); };
 const problems = [];
 
-const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, timezoneId: 'America/New_York' });
+// the camera is a fake one that shows a grocery barcode (e2e/barcode.y4m), so the live scanner can be tested
+const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${new URL('./barcode.y4m', import.meta.url).pathname}`] });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, timezoneId: 'America/New_York', permissions: ['camera'] });
 const page = await ctx.newPage();
 page.setDefaultTimeout(12000);
 page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) problems.push(`console: ${m.text()}`); });
@@ -868,6 +869,38 @@ await step('kitchen layout', async () => {
   check('…tap Spice cabinet: it comes front and centre', (await page.locator('main .kstage-tabs [role=tab][aria-selected=true]').innerText()) === 'Spice cabinet' && (await zc()) > z0 * 1.3);
   await page.getByRole('tab', { name: /^Pantry \(/ }).click();
   await shot('30-kitchen-pantry');
+});
+await step('scanners', async () => {
+  await nav('Pantry'); await page.getByRole('tab', { name: /^Pantry \(/ }).click();
+  // barcode: a live scanner that beeps each grocery into a basket
+  await page.getByRole('button', { name: 'Scan barcode' }).click();
+  await page.locator('.scan-cam video').waitFor();
+  await page.locator('.scan-row').first().waitFor({ timeout: 20000 });
+  check('barcode scanner: the camera window reads a grocery barcode by itself', (await page.locator('.scan-row').count()) === 1 && /1 scanned/i.test(await page.locator('.scan-count').innerText()));
+  await page.waitForTimeout(1500);
+  check('…holding the same item there doesn’t count it twice', /1 scanned/i.test(await page.locator('.scan-count').innerText()));
+  await page.locator('.scan-qty').getByRole('button', { name: 'One more' }).click();
+  await page.locator('.scan-row .input').first().fill('Oat cereal');
+  await page.locator('.scan-type input').fill('0012345678905'); await page.locator('.scan-type').getByRole('button', { name: 'Add' }).click();
+  await page.locator('.scan-row').nth(1).waitFor();
+  await page.locator('.scan-row .input').first().fill('Peanut butter');
+  check('…type a barcode that won’t scan; name anything the food database doesn’t know', (await page.locator('.scan-row').count()) === 2);
+  await page.getByRole('button', { name: /^Add 2 to pantry/ }).click(); await page.locator('.scan-full').waitFor({ state: 'detached' });
+  await page.getByText('Oat cereal').first().waitFor({ timeout: 6000 }).catch(() => {});
+  check('…Add puts the basket in the pantry', (await page.getByText('Oat cereal').count()) >= 1 && (await page.getByText('Peanut butter').count()) >= 1);
+  // receipt: read on the phone, edit, add
+  await page.getByRole('button', { name: 'Scan receipt' }).click();
+  await page.locator('.scan-cam video').waitFor();
+  await page.locator('.scan-shoot input[type=file]').setInputFiles(new URL('./receipt.png', import.meta.url).pathname);
+  await page.locator('.scan-row').first().waitFor({ timeout: 90000 });
+  const names = await page.locator('.scan-row .input').evaluateAll((els) => els.map((e) => e.value));
+  check('receipt: read on the phone, store codes spelled out', names.includes('Whole Milk') && names.some((n) => /Chicken Breast/.test(n)) && names.includes('Shredded Mozzarella'), names.join(', '));
+  check('…totals, tax and the store name are left out; non-food is unticked', !names.some((n) => /total|tax|walmart/i.test(n)) && (await page.locator('.scan-row.off').count()) >= 1);
+  await page.locator('.scan-row .input').first().fill('Whole milk (gallon)');
+  await page.getByRole('button', { name: /^Add \d+ to pantry/ }).click(); await page.locator('.scan-full').waitFor({ state: 'detached' });
+  await page.getByText('Whole milk (gallon)').first().waitFor({ timeout: 6000 }).catch(() => {});
+  check('…fix a name, Add, and it’s in the pantry', (await page.getByText('Whole milk (gallon)').count()) >= 1);
+  await shot('32-after-scans');
 });
 await step('delete my data', async () => {
   const ctx5 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const dp = await ctx5.newPage();

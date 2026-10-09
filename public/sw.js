@@ -2,8 +2,8 @@
 // (food about to go off, defrost tonight, a friend's Cook Off), and keeps Whisk's own static files (the app's code
 // bundles, fonts, flags, drawings and icons) on the phone so the app opens fast and smooth on weak wifi or cell data.
 // It never stores pages, account data or anything from /api or Supabase: those always come fresh from the network.
-const CACHE = 'whisk-static-v1';
-const STATIC = /^\/(_next\/static\/|flags\/|tw\/|stamps\/|thumbs\/|icon-|apple-touch-icon|doodles\.svg|cookie\.svg|icon\.svg)/;
+const CACHE = 'whisk-static-v2';
+const STATIC = /^\/(_next\/static\/|flags\/|tw\/|stamps\/|thumbs\/|ocr\/|zxing\/|icon-|apple-touch-icon|doodles\.svg|cookie\.svg|icon\.svg)/;
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil((async () => {
   for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);

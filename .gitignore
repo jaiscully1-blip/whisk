@@ -18,3 +18,6 @@ supabase/.branches/
 *.log
 npm-debug.log*
 coverage/
+# scanner assets, copied from node_modules at build time (scripts/copy-scan-assets.mjs)
+public/ocr/
+public/zxing/

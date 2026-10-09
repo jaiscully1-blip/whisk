@@ -845,6 +845,37 @@ const wr26 = (await db.query(`select count(*)::int n, count(distinct data ->> 'c
 check('149 recipes from 30+ countries', wr26.n === 149 && wr26.c >= 30, JSON.stringify(wr26));
 check('few-ingredient meals for near-empty pantries', (await db.query(`select count(*)::int n from web_recipes where cardinality(key_canon) <= 3`)).rows[0].n >= 10);
 
+// ================= 0027: coin packs through RevenueCat =================
+try { const f = fs.readFileSync('./supabase/migrations/0027_revenuecat_coins.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0027 runs (twice)', true); }
+catch (e) { check('0027 runs (twice)', false, e.message); }
+const RCS = 'rc-test-secret-0123456789abcdef';
+await db.exec(`insert into private.app_secrets (name, sha256_hex) values ('revenuecat_webhook', encode(sha256(convert_to('${RCS}', 'UTF8')), 'hex')) on conflict (name) do update set sha256_hex = excluded.sha256_hex`);
+const rcCoins = async () => (await db.query(`select coins from profiles where id = '${D}'`)).rows[0].coins;
+await expectFail('players cannot read the product map', D, `select * from coin_pack_products`);
+await expectFail('players cannot add purchases', D, `insert into coin_purchases (transaction_id, user_id, product_id, pack_id, coins, store) values ('x', '${D}', 'coins-1000', 'coins-1000', 1000, 'STRIPE')`);
+await expectFail('crediting needs the RevenueCat secret', D, `select public.rc_credit('wrong-secret-0123456789abcdef', '${D}', 'txn_1', 'coins-1000', 'RC_BILLING', false, 2)`);
+await expectFail('anon without the secret cannot credit', null, `select public.rc_credit(null, '${D}', 'txn_1', 'coins-1000', 'RC_BILLING', false, 2)`);
+await expectFail('the old payments secret does not unlock RevenueCat crediting', null, `select public.rc_credit('test-secret-123', '${D}', 'txn_1', 'coins-1000', 'RC_BILLING', false, 2)`);
+await expectFail('unknown products credit nothing', null, `select public.rc_credit('${RCS}', '${D}', 'txn_1', 'coins-999999', 'RC_BILLING', false, 2)`);
+await expectFail('weird transaction ids are refused', null, `select public.rc_credit('${RCS}', '${D}', 'txn 1; drop', 'coins-1000', 'RC_BILLING', false, 2)`);
+await expectFail('unknown players are refused', null, `select public.rc_credit('${RCS}', '00000000-0000-4000-8000-0000000000ff', 'txn_1', 'coins-1000', 'RC_BILLING', false, 2)`);
+const rc0 = await rcCoins();
+const rc1r = (await as(null, () => db.query(`select public.rc_credit('${RCS}', '${D}', 'txn_1', 'coins-1000', 'RC_BILLING', false, 2) as r`))).rows[0].r;
+check('a web purchase credits the pack', rc1r.credited === true && (await rcCoins()) === rc0 + 1000, `${rc0} → ${await rcCoins()}`);
+const rc2r = (await as(null, () => db.query(`select public.rc_credit('${RCS}', '${D}', 'txn_1', 'coins-1000', 'RC_BILLING', false, 2) as r`))).rows[0].r;
+check('the same transaction is never credited twice', rc2r.credited === false && (await rcCoins()) === rc0 + 1000);
+await as(null, () => db.query(`select public.rc_credit('${RCS}', '${D}', 'apple_77', 'whisk.coins3000', 'APP_STORE', false, 4.99, 2)`));
+check('App Store product ids map to the same packs (×quantity)', (await rcCoins()) === rc0 + 1000 + 6000);
+check('players see their own purchases only', (await as(D, () => db.query(`select * from coin_purchases`))).rows.length === 2 && (await as(E, () => db.query(`select * from coin_purchases`))).rows.length === 0);
+await expectFail('refunds need the secret', D, `select public.rc_refund('wrong-secret-0123456789abcdef', 'txn_1')`);
+const rf = (await as(null, () => db.query(`select public.rc_refund('${RCS}', 'txn_1') as r`))).rows[0].r;
+const rf2 = (await as(null, () => db.query(`select public.rc_refund('${RCS}', 'txn_1') as r`))).rows[0].r;
+check('a refund takes the coins back once', rf.refunded === true && rf2.refunded === false && (await rcCoins()) === rc0 + 6000);
+await db.exec(`update profiles set coins = 100 where id = '${D}'`);
+await as(null, () => db.query(`select public.rc_refund('${RCS}', 'apple_77')`));
+check('a refund never makes coins negative', (await rcCoins()) === 0);
+await expectFail('players cannot call the secret check', D, `select public._rc_secret_ok('${RCS}')`);
+
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

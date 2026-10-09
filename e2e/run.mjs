@@ -347,28 +347,48 @@ await step('compete layout', async () => {
   check('one reset timer at the top, counting to Monday like the challenges', (await page.getByText(/^Resets in \d+d$/).count()) === 1 && (await page.getByText(`Resets in ${wantD}d`).count()) === 1);
   await nav('Me'); await page.locator('.pcard').waitFor();
 });
-await step('buy coins with Apple Pay', async () => {
+await step('buy coins with Apple Pay (RevenueCat)', async () => {
   const before = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
   await page.getByRole('button', { name: 'Get coins' }).first().click();
   await page.getByText('$2.00', { exact: true }).waitFor();
-  check('Get coins shows the 4 packs, Apple Pay / Google Pay / card, no Bitcoin', (await page.locator('[aria-label="Get coins"] button.card').count()) === 4 && /Apple Pay/.test(await page.locator('[aria-label="Get coins"]').innerText()) && !/bitcoin/i.test(await page.locator('[aria-label="Get coins"]').innerText()));
+  const sheet = page.locator('[aria-label="Get coins"]');
+  check('Get coins shows the 4 packs, Apple Pay / Google Pay / card, RevenueCat checkout', (await sheet.locator('button.card').count()) === 4 && /Apple Pay/.test(await sheet.innerText()) && /RevenueCat/.test(await sheet.innerText()));
+  check('an un-backed-up game must back up before paying', (await sheet.getByText('Back up your game first').count()) === 1);
   await page.getByText('$2.00', { exact: true }).click();
-  await page.waitForURL('**/stripe-checkout/**', { timeout: 15000 });
-  check('pack opens the Stripe checkout page (Apple Pay)', /Apple Pay/.test(await page.locator('h1').innerText()));
-  const ss = (await (await fetch('http://localhost:54321/__e2e/stripe-sessions')).json()).at(-1);
-  check('checkout is $2.00 USD for a Whisk order', ss.amount_total === 200 && ss.currency === 'usd' && /^[0-9a-f-]{36}$/.test(ss.metadata.order_id) && ss.success_url.endsWith('/me?paid=1'), JSON.stringify(ss));
-  const hook = async (body, sig) => (await fetch(`${BASE}/api/coins/webhook`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Stripe-Signature': sig }, body })).status;
-  const body = JSON.stringify({ id: 'evt_test', type: 'checkout.session.completed', data: { object: { id: ss.id, object: 'checkout.session' } } });
-  const sign = (b, t = Math.floor(Date.now() / 1000)) => `t=${t},v1=` + crypto.createHmac('sha256', 'whsec_e2e').update(`${t}.${b}`).digest('hex');
-  check('webhook with a bad signature is rejected', (await hook(body, 't=1,v1=00')) === 401);
-  check('an old (replayed) signature is rejected', (await hook(body, sign(body, Math.floor(Date.now() / 1000) - 3600))) === 401);
-  check('unpaid checkout credits nothing', (await hook(body, sign(body))) === 200);
-  await fetch(`http://localhost:54321/__e2e/stripe-pay/${ss.id}`);
-  check('paid checkout webhook accepted', (await hook(body, sign(body))) === 200);
-  await hook(body, sign(body)); // Stripe retries
+  check('tapping a pack opens Back up your game instead of checkout', await page.getByRole('dialog', { name: 'Back up your game' }).waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.keyboard.press('Escape').catch(() => {});
+  await fetch('http://localhost:54321/__e2e/backed-up?on=1');
+  await page.reload(); await page.waitForTimeout(1200); await closePopups();
+  await nav('Me'); await page.locator('.pcard').waitFor();
+  await page.getByRole('button', { name: 'Get coins' }).first().click();
+  await page.getByText('$2.00', { exact: true }).waitFor();
+  check('a backed-up game is not asked to back up again', (await sheet.getByText('Back up your game first').count()) === 0);
+  await page.getByText('$2.00', { exact: true }).click();
+  await page.waitForURL('**/rcpay/**', { timeout: 15000 });
+  check('pack opens the RevenueCat checkout page (Apple Pay)', /Apple Pay/.test(await page.locator('h1').innerText()));
+  const op = (await (await fetch('http://localhost:54321/__e2e/rc-opened')).json()).at(-1);
+  check('checkout link carries this player and the $2 pack', /^[0-9a-f-]{36}$/.test(op.user) && op.pkg === 'coins-1000' && op.token === 'e2etoken', JSON.stringify(op));
+  const AUTH = 'Bearer e2e-rc-webhook-secret-0123456789';
+  const hook = async (event, auth = AUTH) => (await fetch(`${BASE}/api/coins/revenuecat`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(auth ? { Authorization: auth } : {}) }, body: JSON.stringify({ api_version: '1.0', event }) })).status;
+  const ev = { id: 'evt1', type: 'NON_RENEWING_PURCHASE', app_user_id: op.user, original_app_user_id: op.user, aliases: [op.user], product_id: 'coins-1000', transaction_id: 'txn_e2e_1', store: 'RC_BILLING', environment: 'PRODUCTION', price: 2, currency: 'USD' };
+  check('webhook without the secret is rejected', (await hook(ev, null)) === 401 && (await hook(ev, 'Bearer wrong-wrong-wrong-wrong-wrong')) === 401);
+  check('a forged purchase RevenueCat doesn’t know about credits nothing (and is retried)', (await hook(ev)) === 409);
+  check('sandbox purchases are ignored on the live site', (await hook({ ...ev, environment: 'SANDBOX' })) === 200);
+  await fetch('http://localhost:54321/__e2e/rc-pay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: op.user, product: 'coins-1000', txn: 'txn_e2e_1' }) });
+  check('paid purchase webhook accepted', (await hook(ev)) === 200);
+  await hook(ev); // RevenueCat retries
+  check('test events from the dashboard are fine', (await hook({ id: 't', type: 'TEST' })) === 200);
   await page.goto(`${BASE}/me?paid=1`); await page.waitForTimeout(1500); await closePopups();
   const after = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
   check('1,000 coins credited exactly once', after === before + 1000, `${before} → ${after}`);
+  await hook({ ...ev, id: 'evt2', type: 'CANCELLATION', cancel_reason: 'CUSTOMER_SUPPORT', price: -2 });
+  await page.reload(); await page.waitForTimeout(1200); await closePopups();
+  const refunded = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
+  check('a refund takes the 1,000 coins back', refunded === before, `${after} → ${refunded}`);
+  await fetch('http://localhost:54321/__e2e/backed-up?on=0');
+  await page.reload(); await page.waitForTimeout(1000); await closePopups();
+  await nav('Me'); await page.locator('.pcard').waitFor();
+  check('signed-out checkout is refused', (await fetch(`${BASE}/api/coins/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"pack":"coins-1000"}' })).status === 401);
 });
 await step('me settings', async () => {
   await nav('Me'); await page.getByText('Settings').waitFor();

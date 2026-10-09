@@ -1088,3 +1088,36 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .saved-card .saved-open .eyebrow { background: var(--card); padding: 3px 9px; border-radius: 99px; box-shadow: 0 2px 0 var(--tile-edge); color: var(--fg); }
 .saved-title { font-family: var(--f-display); font-size: 19px; line-height: 1.15; text-shadow: 0 0 6px var(--card), 0 0 12px var(--card); }
 .saved-card .saved-x { margin: 0 10px 12px 0; background: var(--card); }
+/* Discover a Dish filters: hanging price tags + a stove knob */
+.df { display: grid; gap: 14px; padding: 14px 14px 16px; border-radius: 24px; background: var(--card); border: 2px solid var(--tile-edge); box-shadow: 0 4px 0 var(--tile-edge); }
+.df-label { display: block; font-family: var(--f-display); font-weight: 700; font-size: 17px; margin-bottom: 4px; }
+.df-label small { font-family: var(--f-body); font-size: 12px; color: var(--muted); font-weight: 700; margin-left: 4px; }
+.df-string { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding-top: 14px; }
+.df-string::before { content: ''; position: absolute; left: -6px; right: -6px; top: 4px; height: 2px; background: repeating-linear-gradient(90deg, var(--muted) 0 6px, transparent 6px 9px); opacity: .55; border-radius: 2px; }
+.df-tag { position: relative; display: grid; justify-items: center; gap: 1px; padding: 16px 4px 9px; border: 0; color: #3B2C24; background: #F6E7C8; cursor: pointer;
+  clip-path: polygon(50% 0, 100% 16%, 100% 100%, 0 100%, 0 16%); border-radius: 0 0 10px 10px; transform-origin: 50% -8px; transform: rotate(var(--tilt)); transition: transform .25s cubic-bezier(.3, 1.6, .5, 1), background .15s; filter: drop-shadow(0 3px 0 rgba(0,0,0,.25)); }
+.df-tag::before { content: ''; position: absolute; left: 50%; top: -14px; width: 2px; height: 18px; background: var(--muted); opacity: .55; }
+.df-hole { position: absolute; top: 8px; left: 50%; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: var(--card); box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.25); }
+.df-tag b { font-family: var(--f-display); font-size: 19px; letter-spacing: -.02em; color: #2E7D32; }
+.df-tag span { font-size: 10.5px; font-weight: 800; line-height: 1.1; text-align: center; }
+.df-tag small { font-size: 10px; font-weight: 700; opacity: .7; }
+.df-tag.on { background: var(--accent); transform: rotate(0deg) translateY(3px); animation: df-swing .6s ease-out; }
+.df-tag.on b, .df-tag.on span, .df-tag.on small { color: var(--btn-ink, #1d2a12); }
+@keyframes df-swing { 0% { transform: rotate(var(--tilt)); } 35% { transform: rotate(calc(var(--tilt) * -1.6)); } 70% { transform: rotate(4deg) translateY(3px); } 100% { transform: rotate(0) translateY(3px); } }
+.df-heat { display: flex; align-items: center; gap: 14px; }
+.df-knob { flex: none; width: 74px; height: 74px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; background: radial-gradient(circle at 50% 50%, #2E2F33 0 58%, #5A5D63 59% 62%, transparent 63%), conic-gradient(from -150deg, #FFB547 0 40deg, #FF8A3D 40deg 80deg, #E5392B 80deg 120deg, transparent 120deg 240deg, #8BC34A 240deg 300deg, transparent 300deg); box-shadow: 0 4px 0 var(--tile-edge); display: grid; place-items: center; }
+.df-knob-face { width: 46px; height: 46px; border-radius: 50%; background: linear-gradient(145deg, #F2F3F5, #A9AEB5); box-shadow: inset 0 -3px 4px rgba(0,0,0,.25), 0 2px 3px rgba(0,0,0,.4); position: relative; transition: transform .35s cubic-bezier(.3, 1.4, .5, 1); }
+.df-knob-face i { position: absolute; left: 50%; top: 4px; width: 5px; height: 15px; margin-left: -2.5px; border-radius: 3px; background: #2E2F33; }
+.df-levels { flex: 1; display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.df-lvl { display: flex; align-items: center; gap: 6px; border: 2px solid var(--line); background: transparent; color: var(--fg); border-radius: 14px; padding: 6px 8px; font-weight: 800; font-size: 13px; cursor: pointer; text-align: left; }
+.df-lvl.on { border-color: #FF8A3D; background: color-mix(in srgb, #FF8A3D 16%, transparent); }
+.df-flames { display: inline-flex; min-width: 40px; }
+.df-flame { fill: var(--line); }
+.df-flame.on { fill: #FF8A3D; }
+.df-lvl.on .df-flame.on { fill: #E5392B; animation: df-flicker 1.2s ease-in-out infinite; }
+.df-any { font-size: 10px; letter-spacing: .08em; color: var(--muted); }
+@keyframes df-flicker { 50% { transform: scaleY(1.12) translateY(-1px); } }
+@media (prefers-reduced-motion: reduce) { .df-tag.on, .df-lvl.on .df-flame.on { animation: none; } }
+.rcard-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip.price { background: #F6E7C8; color: #2E7D32; font-weight: 800; }
+.chip.heat { background: color-mix(in srgb, #FF8A3D 18%, transparent); color: var(--fg); font-weight: 800; }

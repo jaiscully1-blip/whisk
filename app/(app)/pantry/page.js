@@ -8,6 +8,7 @@ import ScanSheet from '@/components/ScanSheet';
 import { usePantry, useList } from '@/components/usePantry';
 import ShareListSheet from '@/components/ShareListSheet';
 import StockMeter from '@/components/StockMeter';
+import StaplesCheck from '@/components/StaplesCheck';
 import { nextLevel, needsReup } from '@/lib/stock';
 import { KitchenFloat, KitchenTab } from '@/components/kitchen/KitchenPanels';
 
@@ -71,7 +72,10 @@ export default function Pantry() {
     const patch = status === 'stocked' ? { status, thaw_started_at: null } : { status };
     setItems((x) => x.map((i) => (i.id === item.id ? { ...i, ...patch } : i)));
     await supabase.from('pantry_items').update(patch).eq('id', item.id);
-    if (status === 'out') { await supabase.from('shopping_items').insert({ name: item.name, category: item.category }); say(`${item.name} is out · added to your list`); load(); }
+    if (status === 'out') {
+      if (onList.has(item.name.toLowerCase())) { say(`${item.name} is out · already on your list`); return; }
+      await supabase.from('shopping_items').insert({ name: item.name, category: item.category }); say(`${item.name} is out · added to your list`); load();
+    }
   }
   // Reup: a Low or Out item goes on the shopping list once; buying it (the tick on the list) makes it Full again
   const onList = new Set((list || []).map((l) => l.name.toLowerCase()));
@@ -80,6 +84,14 @@ export default function Pantry() {
     const { error } = await supabase.from('shopping_items').insert({ name: item.name, category: item.category });
     if (error) { say('Could not add it. Try again.'); return; }
     say(`${item.name} is on your list`); load();
+  }
+  // Staples check: add one staple (or all that are low/out) to the shopping list
+  async function addStaples(r) {
+    const rows = (Array.isArray(r) ? r : [r]).filter((x) => !onList.has(x.name.toLowerCase()));
+    if (!rows.length) return;
+    const { error } = await supabase.from('shopping_items').insert(rows.map((x) => ({ name: x.name, category: x.category || guessCategory(x.name) })));
+    if (error) { say('Could not add those. Try again.'); return; }
+    say(rows.length === 1 ? `${rows[0].name} is on your list` : `${rows.length} staples are on your list`); load();
   }
   // change or reset (clear) an item's expiry date
   async function setExpiry(item, v) {
@@ -232,6 +244,7 @@ export default function Pantry() {
             <input id="s-new" className="input" maxLength={60} placeholder="Add an item" value={newItem} onChange={(e) => setNewItem(e.target.value)} />
             <button className="btn" type="submit" aria-label="Add"><Icon name="plus" size={18} /></button>
           </form>
+          <StaplesCheck quick={quick} items={items} list={list} onAdd={addStaples} />
           {list === null ? <p className="muted">Loading…</p> : list.length === 0 ? <div className="empty"><b>Nothing to buy</b></div> : aisles.map(([aisle, rows]) => (
             <section key={aisle} className="stack" style={{ gap: 6 }}>
               <span className="eyebrow">{aisle} · {rows.length}</span>

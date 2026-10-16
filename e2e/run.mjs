@@ -28,17 +28,18 @@ const photo = { name: 'plate.png', mimeType: 'image/png', buffer: png() };
 const results = [];
 const check = (name, ok, detail = '') => { results.push([ok ? 'PASS' : 'FAIL', name, detail]); console.log(ok ? 'PASS' : 'FAIL', name, detail); };
 const problems = [];
+let curStep = '';
 
 // the camera is a fake one that shows a grocery barcode (e2e/barcode.y4m), so the live scanner can be tested
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${new URL('./barcode.y4m', import.meta.url).pathname}`] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, timezoneId: 'America/New_York', permissions: ['camera'] });
 const page = await ctx.newPage();
 page.setDefaultTimeout(12000);
-page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) problems.push(`console: ${m.text()}`); });
+page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) problems.push(`console: ${m.text()} [in ${curStep}]`); });
 page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
 page.on('response', (r) => { if (r.status() >= 400 && !/api\/barcode/.test(r.url())) problems.push(`HTTP ${r.status()} ${r.request().method()} ${r.url()}`); });
 const shot = async (n) => { if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `${n}.png`), fullPage: true }); };
-const step = async (name, fn) => { try { await fn(); } catch (e) { check(name, false, e.message.split('\n').filter((l) => /locator|Timeout|waiting/.test(l)).slice(0, 3).join(' | ')); await shot(`fail-${name.replace(/\W+/g, '-')}`); } };
+const step = async (name, fn) => { curStep = name; try { await fn(); } catch (e) { check(name, false, e.message.split('\n').filter((l) => /locator|Timeout|waiting/.test(l)).slice(0, 3).join(' | ')); await shot(`fail-${name.replace(/\W+/g, '-')}`); } };
 const nav = (n) => page.getByRole('navigation').getByRole('link', { name: n, exact: true }).click();
 const closePopups = async () => { await page.locator('.popup-scrim').first().waitFor({ timeout: 3000 }).catch(() => {}); for (let i = 0; i < 4; i++) { const x = page.locator('.popup-scrim [aria-label=Close]').first(); const leave = page.locator('.popup-scrim').getByRole('button', { name: 'Leave' }).first(); if (await x.count()) await x.click(); else if (await leave.count()) await leave.click(); else break; await page.waitForTimeout(400); } };
 
@@ -305,7 +306,26 @@ await step('cook', async () => {
   check('…and it is on the shopping list exactly once', (await page.locator('main').getByText('Reup test oats', { exact: false }).count()) === 1);
   await page.getByRole('tab', { name: /^Pantry \(/ }).click();
   await meter.click(); check('tap: Low → Out', (await meter.innerText()).trim() === 'Out' && (await oats.locator('.stock-bars i.on').count()) === 0);
+  await page.getByRole('tab', { name: /Shopping list/ }).click();
+  check('going Out after Reup does not add it to the list a second time', (await page.locator('main').getByText('Reup test oats', { exact: false }).count()) === 1);
+  await page.getByRole('tab', { name: /^Pantry \(/ }).click();
   await meter.click(); check('tap: Out → Full again', (await meter.innerText()).trim() === 'Full');
+  // staples check before you shop
+  const eggs = page.locator('main .card', { hasText: /^Eggs/ }).first(), eggMeter = eggs.locator('.stock');
+  await page.getByRole('tab', { name: /Shopping list/ }).click();
+  check('Staples check: all starred staples stocked → one calm line, no card', (await page.locator('.staples').count()) === 0 && (await page.locator('.staples-ok').count()) === 1);
+  await page.getByRole('tab', { name: /^Pantry \(/ }).click();
+  await eggMeter.click(); await eggMeter.click();
+  check('Eggs (a starred staple) is Low', (await eggMeter.innerText()).trim() === 'Low');
+  await page.getByRole('tab', { name: /Shopping list/ }).click();
+  const sc = page.locator('.staples');
+  check('Staples check: "Before you shop" lists the Low staple with its level', (await sc.count()) === 1 && /Eggs/.test(await sc.innerText()) && /Low/.test(await sc.innerText()));
+  await shot('05-staples-check');
+  await sc.getByRole('button', { name: /Add Eggs to the shopping list/ }).click(); await page.waitForTimeout(900);
+  check('Add puts it on the list once and the card goes away', (await page.locator('.staples').count()) === 0 && (await page.locator('main').getByText('Eggs', { exact: true }).count()) === 1);
+  await page.getByRole('tab', { name: /^Pantry \(/ }).click();
+  check('…and the pantry card now says "On list" instead of Reup', (await eggs.locator('.reup-on').count()) === 1 && (await eggs.locator('.reup').count()) === 0);
+  await eggMeter.click(); await page.waitForTimeout(1500);   // let the tab links finish prefetching before leaving
 });
 await step('compete', async () => {
   await nav('Compete');

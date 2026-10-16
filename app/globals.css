@@ -1243,3 +1243,12 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .chip.reup { border: 2px solid var(--accent); background: transparent; color: var(--accent); font-weight: 800; min-height: 34px; cursor: pointer; }
 .chip.reup-on { background: var(--track); color: var(--muted); font-weight: 800; min-height: 34px; }
 .exp-chip { white-space: nowrap; }
+
+/* staples check */
+.staples { display: grid; gap: 8px; padding: 12px; border-color: var(--accent); }
+.staples-h { display: block; font-size: 16px; }
+.staples-row { display: flex; align-items: center; gap: 10px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.staples-name { flex: 1; min-width: 0; font-weight: 700; }
+.staples-lvl { font-size: 12px; font-weight: 800; }
+.staples-lvl.low { color: var(--warn); } .staples-lvl.out { color: var(--bad); }
+.staples-ok { display: flex; align-items: center; gap: 6px; }

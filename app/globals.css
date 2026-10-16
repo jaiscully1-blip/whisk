@@ -608,7 +608,7 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .co-full { position: fixed; inset: 0; z-index: 300; overflow-y: auto; background: linear-gradient(170deg, var(--world-a), var(--world-b)); padding: calc(14px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
 .co-big { font-family: var(--f-display); font-size: 30px; text-align: center; margin: 8px 0 0; }
 .co-spin { justify-content: center; align-items: center; background: radial-gradient(circle at 50% 45%, #FFE9B8, #F7B267 70%, #E9874A); }
-/* the Big Feta Spin: an arcade drum of wooden planks filling the whole screen, bursting out of the phone */
+/* the Big Yoke Spin: an arcade drum of wooden planks filling the whole screen, bursting out of the phone */
 .co-spin { padding: 0; }
 .bw { position: fixed; inset: 0; z-index: 1; }
 .bw-cab { position: absolute; inset: 0; background: #10131A; animation: bwIn .9s cubic-bezier(.2, 1.25, .35, 1) both; transform-origin: 50% 50%; }

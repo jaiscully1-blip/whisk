@@ -65,7 +65,7 @@ export async function middleware(req) {
   const isPublic = PUBLIC_PATHS.includes(pathname) || /^\/list\/[a-f0-9]{32}$/.test(pathname);
   const isApi = pathname.startsWith('/api/');
 
-  // Judge invite link /vote/ABC123: new people start Feta first, then land in the game as a judge.
+  // Judge invite link /vote/ABC123: new people start Yoke first, then land in the game as a judge.
   const vote = pathname.match(/^\/vote\/([A-Za-z0-9]{6})$/);
   if (vote) {
     const url = req.nextUrl.clone(); url.search = '';

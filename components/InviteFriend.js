@@ -15,7 +15,7 @@ export default function InviteFriend() {
   if (!inv) return null;
   const link = typeof window !== 'undefined' ? `${window.location.origin}/login?ref=${inv.code}` : '';
   async function share() {
-    const text = `Play Feta with me! Use my code ${inv.code} and we both get 1,000 coins when we finish a Cook Off together.`;
+    const text = `Play Yoke with me! Use my code ${inv.code} and we both get 1,000 coins when we finish a Cook Off together.`;
     try { if (navigator.share) await navigator.share({ text, url: link }); else { await navigator.clipboard.writeText(`${text} ${link}`); say('Invite copied'); } } catch {}
   }
   async function claim(e) {
@@ -28,10 +28,10 @@ export default function InviteFriend() {
   return (
     <section className="card stack invite" aria-labelledby="inv-h">
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}><h3 id="inv-h" style={{ fontSize: 20 }}>Invite a friend</h3><span className="chip xp"><Coin size={14} /> 1,000 each</span></div>
-      <p style={{ margin: 0 }}>Your friend starts Feta with your code. When you both finish the same Cook Off, you each get 1,000 coins.</p>
+      <p style={{ margin: 0 }}>Your friend starts Yoke with your code. When you both finish the same Cook Off, you each get 1,000 coins.</p>
       <div className="invite-code"><span className="desc">Your code</span><b>{inv.code}</b></div>
       <button className="btn wide" onClick={share} disabled={full}><Icon name="link" size={18} />{full ? 'All 10 invite rewards earned' : 'Share my invite'}</button>
-      <span className="desc">{inv.earned} of {inv.max} friends rewarded{inv.waiting ? ` · ${inv.waiting} waiting to play a Cook Off with you` : ''}. Friends must be new to Feta.</span>
+      <span className="desc">{inv.earned} of {inv.max} friends rewarded{inv.waiting ? ` · ${inv.waiting} waiting to play a Cook Off with you` : ''}. Friends must be new to Yoke.</span>
       {inv.invited_by && <span className="desc">You joined with {inv.invited_by}’s code{inv.mine_paid ? ' · reward paid' : ' · finish a Cook Off together to get your 1,000'}.</span>}
       {inv.can_enter && (
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={claim}>

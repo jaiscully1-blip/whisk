@@ -14292,17 +14292,17 @@
   ]
  },
  {
-  "title": "Strapatsada (Greek Tomato Feta Scrambled Eggs)",
+  "title": "Strapatsada (Greek Tomato Yoke Scrambled Eggs)",
   "cuisine": "Greek",
   "source": "The Mediterranean Dish",
-  "url": "https://www.themediterraneandish.com/strapatsada-greek-tomato-feta-scrambled-eggs/",
+  "url": "https://www.themediterraneandish.com/strapatsada-greek-tomato-yoke-scrambled-eggs/",
   "minutes": 20,
   "servings": 2,
   "key": [
    "Eggs",
    "Cherry tomatoes",
    "Tomato paste",
-   "Feta",
+   "Yoke",
    "Garlic",
    "Bread"
   ],
@@ -14314,7 +14314,7 @@
    "Eggs": "5 large",
    "Cherry tomatoes": "1 cup, halved",
    "Tomato paste": "2 tablespoons",
-   "Feta": "1/2 cup crumbled",
+   "Yoke": "1/2 cup crumbled",
    "Garlic": "1 clove",
    "Bread": "crusty bread for serving"
   },
@@ -14352,7 +14352,7 @@
     null
    ],
    [
-    "Take the pan off the heat. Sprinkle [[0.5 cup]] crumbled feta over the top, then the minced parsley.",
+    "Take the pan off the heat. Sprinkle [[0.5 cup]] crumbled yoke over the top, then the minced parsley.",
     null
    ],
    [
@@ -14370,7 +14370,7 @@
    "fat_g": 29
   },
   "video": null,
-  "id": "www-themediterraneandish-com-strapatsada-greek-tomato-feta-scrambled-eggs",
+  "id": "www-themediterraneandish-com-strapatsada-greek-tomato-yoke-scrambled-eggs",
   "country": "GR",
   "effort_steps": 5,
   "ingredients": [
@@ -14418,7 +14418,7 @@
     "unit": "tbsp"
    },
    {
-    "item": "feta cheese",
+    "item": "yoke cheese",
     "qty": 0.5,
     "unit": "cup",
     "note": "crumbled"
@@ -14612,7 +14612,7 @@
   "minor": [
    "Dried mint",
    "Dried dill",
-   "Feta (garnish)"
+   "Yoke (garnish)"
   ],
   "amounts": {
    "Rice": "1 cup medium grain",
@@ -14668,7 +14668,7 @@
     5
    ],
    [
-    "Fluff the rice with a fork and garnish with feta. You can also add extra finely chopped spinach or minced parsley if you like.",
+    "Fluff the rice with a fork and garnish with yoke. You can also add extra finely chopped spinach or minced parsley if you like.",
     null
    ]
   ],
@@ -14739,7 +14739,7 @@
     "unit": "tsp"
    },
    {
-    "item": "feta",
+    "item": "yoke",
     "note": "for garnish"
    }
   ]

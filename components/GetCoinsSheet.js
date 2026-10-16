@@ -58,7 +58,7 @@ export default function GetCoinsSheet({ onClose }) {
         )}
         {error && <p className="err" role="alert">{error}</p>}
         {backingUp && <BackupSheet supabase={supabase} onClose={() => setBackingUp(false)} />}
-        <p className="muted" style={{ margin: 0, fontSize: 12 }}>Checkout is handled securely by RevenueCat and Stripe; Feta never sees your card. Prices are in US dollars. Coins are for the Feta shop only and have no cash value. Ask a parent before buying.</p>
+        <p className="muted" style={{ margin: 0, fontSize: 12 }}>Checkout is handled securely by RevenueCat and Stripe; Yoke never sees your card. Prices are in US dollars. Coins are for the Yoke shop only and have no cash value. Ask a parent before buying.</p>
       </div>
     </div>
   );

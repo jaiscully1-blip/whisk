@@ -1,4 +1,4 @@
--- Feta 0009 — days follow the player's real calendar, where they live.
+-- Yoke 0009 — days follow the player's real calendar, where they live.
 -- The app sends the device's time zone (IANA name, e.g. America/New_York) once the player agrees to it in the
 -- cookie & privacy popup. Every "today" (streaks, daily quest, weekly challenges, bingo rounds) is then the
 -- player's local date. Opening and closing the app any number of times never changes the day.

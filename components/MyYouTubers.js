@@ -6,7 +6,7 @@ import { useWhisk } from './AppShell';
 import { cleanList, parseYouTuber, MAX_YOUTUBERS } from '@/lib/youtubers';
 
 // The player's own cooking channels, saved with their game. "Add Channel" takes a link or an @handle;
-// tapping a channel opens its cooking videos inside Feta (/cook/channel).
+// tapping a channel opens its cooking videos inside Yoke (/cook/channel).
 export default function MyYouTubers() {
   const { ui, setUi, say } = useWhisk();
   const list = cleanList(ui.youtubers);

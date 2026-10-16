@@ -1,9 +1,9 @@
--- Feta setup step 1 of 4: 0003_whisk_features.sql, 0004_whisk_web_recipes.sql
+-- Yoke setup step 1 of 4: 0003_whisk_features.sql, 0004_whisk_web_recipes.sql
 -- Paste ALL of this into Supabase → SQL Editor → New query → Run. Safe to run more than once.
 
 -- ======================= 0003_whisk_features.sql =======================
 -- =====================================================================
--- Feta 0003 — daily quest, streak freeze, cuisine bingo, weekly goal,
+-- Yoke 0003 — daily quest, streak freeze, cuisine bingo, weekly goal,
 -- takeout-savings setting, nutrition on meals. Safe to re-run.
 -- =====================================================================
 
@@ -234,7 +234,7 @@ grant execute on function public._cuisine_match(text, text) to authenticated;
 grant execute on function public._bingo_lines(boolean[]) to authenticated;
 
 -- ======================= 0004_whisk_web_recipes.sql =======================
--- Feta 0004: real web recipes, defrosting, ratings, pantry-based challenges,
+-- Yoke 0004: real web recipes, defrosting, ratings, pantry-based challenges,
 -- new popup timing (76 h back, July 18 Wrapped), last device + remembered inputs.
 -- Safe to run more than once. Run AFTER 0001–0003, then run 0005 (the recipe data).
 
@@ -327,7 +327,7 @@ begin
     end if;
   end if;
 
-  -- Feta Wrapped: July 18, once a year, for everyone
+  -- Yoke Wrapped: July 18, once a year, for everyone
   if extract(month from p_local_date) = 7 and extract(day from p_local_date) = 18
      and p.last_wrapped_year is distinct from extract(year from p_local_date)::int then
     pops := array_append(pops, 'wrapped');

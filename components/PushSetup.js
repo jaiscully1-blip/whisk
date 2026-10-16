@@ -15,7 +15,7 @@ export default function PushSetup() {
     const secret = b64u(crypto.getRandomValues(new Uint8Array(32)));
     const fp = hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret)));
     const url = `${window.location.origin}/api/push/due`;
-    const sql = `-- Feta notifications (run once in Supabase → SQL Editor, after setup/14-notifications.sql)
+    const sql = `-- Yoke notifications (run once in Supabase → SQL Editor, after setup/14-notifications.sql)
 insert into private.app_secrets (name, sha256_hex) values ('push_sender', '${fp}')
 on conflict (name) do update set sha256_hex = excluded.sha256_hex;
 select cron.unschedule('whisk-push') where exists (select 1 from cron.job where jobname = 'whisk-push');
@@ -41,7 +41,7 @@ $job$);`;
           <Field label="NEXT_PUBLIC_VAPID_PUBLIC_KEY" value={k.pub} />
           <Field label="VAPID_PRIVATE_KEY" value={k.priv} />
           <Field label="PUSH_SECRET" value={k.secret} />
-          <b>2. Supabase → SQL Editor: run this (it stores only a fingerprint of the secret, and calls Feta every hour)</b>
+          <b>2. Supabase → SQL Editor: run this (it stores only a fingerprint of the secret, and calls Yoke every hour)</b>
           <textarea className="input mono" readOnly rows={8} value={k.sql} onFocus={(e) => e.target.select()} aria-label="SQL" />
           <button type="button" className="btn ghost sm" onClick={() => copy(k.sql)}>Copy SQL</button>
           <b>3. Redeploy on Vercel.</b>

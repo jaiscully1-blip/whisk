@@ -10,7 +10,7 @@ import { openCamera, grabRegion, decodeBarcode, warmBarcodes, readText, warmRece
 //   barcode: a short barcode-sized window that keeps scanning. Every grocery you pass under it beeps and lands in
 //            the basket (the same item again counts once you've taken it away and brought it back). Add puts the
 //            whole basket in your pantry.
-//   receipt: a tall receipt-shaped window. Snap it, Feta reads the words on the phone, you fix anything it got
+//   receipt: a tall receipt-shaped window. Snap it, Yoke reads the words on the phone, you fix anything it got
 //            wrong, then Add. Long receipt? Snap the rest and it's added to the same list.
 // Everything runs on the phone (lib/scan/engine.js). onAdd([{ name, category, quantity }]) puts items in the pantry.
 export default function ScanSheet({ mode, onAdd, onClose }) {
@@ -280,7 +280,7 @@ function ReceiptScan({ onAdd, onClose }) {
           <button type="button" className="btn ghost sm" onClick={() => setList((l) => [...l, { id: `m${Date.now()}`, name: '', category: 'Other', quantity: '', on: true }])}><Icon name="plus" size={16} />Add an item</button>
           <button type="button" className="btn ghost sm" onClick={() => setStage('camera')}><Icon name="receipt" size={16} />Scan more of it</button>
         </div>
-        {raw && <details className="scan-rawtext"><summary>What Feta read</summary><pre>{raw}</pre></details>}
+        {raw && <details className="scan-rawtext"><summary>What Yoke read</summary><pre>{raw}</pre></details>}
       </div>
       <div className="scan-foot">
         <button type="button" className="btn wide" disabled={busy || !picked.length} onClick={async () => { setBusy(true); try { await onAdd(picked); onClose(); } finally { setBusy(false); } }}>

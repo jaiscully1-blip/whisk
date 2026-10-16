@@ -36,7 +36,7 @@ export default function DeleteDataSheet({ onClose }) {
           <h2 style={{ fontSize: 26 }}>Delete my data</h2>
           <button type="button" className="btn ghost sm" onClick={onClose} disabled={busy} aria-label="Close"><Icon name="x" /></button>
         </div>
-        <p style={{ margin: 0 }}>This deletes your whole game from Feta’s servers: your pantry, meals and plate photos, coins, outfits, streak and passport. <b>It can’t be undone.</b></p>
+        <p style={{ margin: 0 }}>This deletes your whole game from Yoke’s servers: your pantry, meals and plate photos, coins, outfits, streak and passport. <b>It can’t be undone.</b></p>
         <label className="lbl" htmlFor="del-type">Type DELETE to confirm</label>
         <input id="del-type" className="input" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="DELETE" />
         {err && <p className="err" role="alert" style={{ margin: 0 }}>{err}</p>}

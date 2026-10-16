@@ -902,6 +902,14 @@ check('the expiry notification says Feta, not Baste or Whisk', pdDef2.includes('
 check('App Store ids named for Feta map to the same packs', (await db.query(`select pack_id from coin_pack_products where product_id = 'feta.coins10000'`)).rows[0]?.pack_id === 'coins-10000');
 check('the older Baste ids keep working', (await db.query(`select pack_id from coin_pack_products where product_id = 'baste.coins3000'`)).rows[0]?.pack_id === 'coins-3000');
 
+// ================= 0031: the app is called Yoke now =================
+try { const f = fs.readFileSync('./supabase/migrations/0031_yoke_name.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0031 runs (twice)', true); }
+catch (e) { check('0031 runs (twice)', false, e.message); }
+const pdDef3 = (await db.query(`select pg_get_functiondef('public.push_due(text)'::regprocedure) d`)).rows[0].d;
+check('the expiry notification says Yoke, not Feta, Baste or Whisk', pdDef3.includes('Yoke has recipes that use it') && !/Feta|Baste|Whisk/.test(pdDef3));
+check('App Store ids named for Yoke map to the same packs', (await db.query(`select pack_id from coin_pack_products where product_id = 'yoke.coins1000'`)).rows[0]?.pack_id === 'coins-1000');
+check('the older Feta and Baste ids keep working', (await db.query(`select count(*)::int n from coin_pack_products where product_id in ('feta.coins3000', 'baste.coins3000')`)).rows[0].n === 2);
+
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

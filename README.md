@@ -1,6 +1,6 @@
-# Feta
+# Yoke
 
-Track what's in your kitchen, cook what you have, and level up while you do it. Pantry and an aisle-sorted shopping list, receipt and barcode scanning, real recipes from the web matched to your pantry (each links to its source) plus unlimited pantry-based searches, defrost reminders for frozen meat, Fridge Raid, weekly cooking challenges that pay coins, daily quests, cuisine bingo, a cuisine passport, a weekly goal, streak freezes, Feta Wrapped, a shop with 105 cosmetics, and a 3D Feta mascot that wears them.
+Track what's in your kitchen, cook what you have, and level up while you do it. Pantry and an aisle-sorted shopping list, receipt and barcode scanning, real recipes from the web matched to your pantry (each links to its source) plus unlimited pantry-based searches, defrost reminders for frozen meat, Fridge Raid, weekly cooking challenges that pay coins, daily quests, cuisine bingo, a cuisine passport, a weekly goal, streak freezes, Yoke Wrapped, a shop with 105 cosmetics, and a 3D Yoke mascot that wears them.
 
 **Stack:** Next.js 15 (App Router) · Supabase (Postgres, Auth, Storage, RLS) · Anthropic Claude API · three.js · Vercel · Upstash Redis (rate limits)
 
@@ -31,6 +31,6 @@ Passport stamp art is [Twemoji](https://github.com/jdecked/twemoji) (graphics li
 
 ## Backend & live search
 
-- **Activity log:** `app_events` (one row per tap / pick / search / page view), written through `log_events` only for players who said yes to "Help improve Feta" in the privacy popup. Saying no deletes their rows. Typed text is never recorded, except dish searches.
+- **Activity log:** `app_events` (one row per tap / pick / search / page view), written through `log_events` only for players who said yes to "Help improve Yoke" in the privacy popup. Saying no deletes their rows. Typed text is never recorded, except dish searches.
 - **Backend dashboard:** `/admin`, for accounts with `profiles.is_admin = true` (set by hand in SQL). Totals, actions per day, pages, most-pressed buttons, top searches and a live activity feed.
 - **Free dish search:** `lib/dishes/data.json` (1,787 dishes, all 193 countries; also in the `dishes` table) searched by `lib/dishes/search.js` — countries in any form ("albanian food"), dishes, sauces, ingredients. Not in the list → Wikipedia (free, food articles only). `/api/dish-info` gives ingredients and the most-watched YouTube video that matches the dish (YouTube Data API free tier, cached a week, greyed out when none). No AI, nothing billed. Any listed dish can be logged; the 10th meal from a country stamps it and pays 5,000 coins (`passport_stamps`, once per country).

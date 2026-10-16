@@ -2,10 +2,10 @@ import './globals.css';
 import { headers } from 'next/headers';
 
 export const metadata = {
-  title: 'Feta',
+  title: 'Yoke',
   description: 'Track your groceries, cook what you have, level up.',
   icons: { icon: '/icon.svg', apple: '/apple-touch-icon.png' },
-  appleWebApp: { capable: true, title: 'Feta', statusBarStyle: 'default' }
+  appleWebApp: { capable: true, title: 'Yoke', statusBarStyle: 'default' }
 };
 export const viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#F7F8F1' };
 

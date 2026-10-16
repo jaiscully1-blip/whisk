@@ -161,7 +161,7 @@ export default function Me() {
           <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Cookies &amp; privacy</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />
         </button>
         <button className="row setbtn" onClick={() => setHowTo(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
-          <Icon name="flag" /><span style={{ flex: 1, fontWeight: 700 }}>How Whisk works</span><Icon name="chevron" />
+          <Icon name="flag" /><span style={{ flex: 1, fontWeight: 700 }}>How Baste works</span><Icon name="chevron" />
         </button>
         <button className="row setbtn" onClick={() => { replayTour(); say('The tips will show again as you tap things'); }} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
           <img src="/icon.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Show tips again</span><Icon name="chevron" />
@@ -188,8 +188,8 @@ export default function Me() {
       {recipe && <RecipeSheet recipe={recipe} pantry={pantry || []} onClose={() => setRecipe(null)} />}
       {howTo && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setHowTo(false); }}>
-          <div className="sheet stack howto" role="dialog" aria-modal="true" aria-label="How Whisk works">
-            <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}><h2 style={{ margin: 0 }}>How Whisk works</h2><button type="button" className="btn ghost sm" onClick={() => setHowTo(false)} aria-label="Close"><Icon name="x" /></button></div>
+          <div className="sheet stack howto" role="dialog" aria-modal="true" aria-label="How Baste works">
+            <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}><h2 style={{ margin: 0 }}>How Baste works</h2><button type="button" className="btn ghost sm" onClick={() => setHowTo(false)} aria-label="Close"><Icon name="x" /></button></div>
             <span className="desc">Read what you need, skip what you don’t.</span>
             {Object.entries(TIPS).map(([id, [t, txt]]) => (
               <details key={id} className="howto-row"><summary>{t}</summary><p>{txt}</p></details>

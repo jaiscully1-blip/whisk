@@ -1,5 +1,5 @@
 -- 0018: Cook Off judges. Safe to run more than once. Run after 0017.
--- Players can invite people just to vote (judges): they open the invite link, start Whisk if they're new, join the
+-- Players can invite people just to vote (judges): they open the invite link, start Baste if they're new, join the
 -- game as a judge at any point before voting ends, vote for one plate, and that's it. Judges don't cook, don't need
 -- a pantry and don't win coins; their vote counts like anyone's. Up to 50 judges a game.
 

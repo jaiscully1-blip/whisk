@@ -1,4 +1,4 @@
--- Whisk 0004: real web recipes, defrosting, ratings, pantry-based challenges,
+-- Baste 0004: real web recipes, defrosting, ratings, pantry-based challenges,
 -- new popup timing (76 h back, July 18 Wrapped), last device + remembered inputs.
 -- Safe to run more than once. Run AFTER 0001–0003, then run 0005 (the recipe data).
 
@@ -91,7 +91,7 @@ begin
     end if;
   end if;
 
-  -- Whisk Wrapped: July 18, once a year, for everyone
+  -- Baste Wrapped: July 18, once a year, for everyone
   if extract(month from p_local_date) = 7 and extract(day from p_local_date) = 18
      and p.last_wrapped_year is distinct from extract(year from p_local_date)::int then
     pops := array_append(pops, 'wrapped');

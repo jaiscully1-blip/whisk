@@ -101,7 +101,7 @@ export default function Cook() {
       )}
       {mode === 'named' && ui.cookDish && results?.length === 0 ? null : results && (results.length ? (
         <>
-          <span className="eyebrow">{mode === 'named' ? `From your Whisk recipes · ${results.length}` : (() => { const n = results.filter((x) => x.c.ok).length; return n ? `${n} recipe${n === 1 ? '' : 's'} you can make right now` : 'Closest to what you have'; })()}</span>
+          <span className="eyebrow">{mode === 'named' ? `From your Baste recipes · ${results.length}` : (() => { const n = results.filter((x) => x.c.ok).length; return n ? `${n} recipe${n === 1 ? '' : 's'} you can make right now` : 'Closest to what you have'; })()}</span>
           {results.slice(0, shown).map(({ r, c, soon }) => (
             <button key={r.id} className="card stack" style={{ gap: 8, textAlign: 'left' }} onClick={() => setOpen(r)}>
               <span className="eyebrow">{r.cuisine} · {r.source}</span>
@@ -115,7 +115,7 @@ export default function Cook() {
           {shown < results.length ? <div ref={moreRef}><button className="btn ghost wide" onClick={() => setShown((n) => n + PAGE)}>Show more</button></div>
             : <span className="desc" style={{ textAlign: 'center' }}>That’s everything that fits your pantry right now.</span>}
         </>
-      ) : asked && <div className="empty"><b>Nothing fits yet</b>{mode === 'named' ? 'None of Whisk’s recipes match that dish and your pantry.' : 'Add a few more staples to your pantry and check back.'}</div>)}
+      ) : asked && <div className="empty"><b>Nothing fits yet</b>{mode === 'named' ? 'None of Baste’s recipes match that dish and your pantry.' : 'Add a few more staples to your pantry and check back.'}</div>)}
 
       {mode === 'named' && ui.cookDish && <DishSearch q={ui.cookDish} pantry={pantry} />}
 

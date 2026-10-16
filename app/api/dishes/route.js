@@ -9,7 +9,7 @@ import { wikiDishes } from '@/lib/dishes/web';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Search anything: a country, a dish, a sauce, an ingredient. Free: Whisk's own dish list first,
+// Search anything: a country, a dish, a sauce, an ingredient. Free: Baste's own dish list first,
 // then Wikipedia (free, no key) when the list has little for those words. No AI, nothing billed.
 const Body = z.object({ q: z.string().trim().min(1).max(80) }).strict();
 

@@ -1,4 +1,4 @@
--- Whisk setup step 2 of 4: 0005_web_recipes_seed.sql
+-- Baste setup step 2 of 4: 0005_web_recipes_seed.sql
 -- Paste ALL of this into Supabase → SQL Editor → New query → Run. Safe to run more than once.
 
 -- ======================= 0005_web_recipes_seed.sql =======================

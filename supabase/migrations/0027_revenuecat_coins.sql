@@ -1,9 +1,9 @@
--- Whisk setup 20: coin packs through RevenueCat (web now: Apple Pay / Google Pay / card on RevenueCat's checkout,
+-- Baste setup 20: coin packs through RevenueCat (web now: Apple Pay / Google Pay / card on RevenueCat's checkout,
 -- which uses your Stripe account; later in the phone app: Apple and Google in-app purchase, same crediting).
 --  • coin_pack_products: which RevenueCat product ids give which coin pack (web and App Store ids both map here).
 --  • coin_purchases: one row per store transaction, so a purchase is credited exactly once and can be taken back
 --    on a refund. Players can read only their own.
---  • rc_credit / rc_refund: called only by Whisk's RevenueCat webhook route; locked by a secret whose SHA-256 is
+--  • rc_credit / rc_refund: called only by Baste's RevenueCat webhook route; locked by a secret whose SHA-256 is
 --    stored in private.app_secrets (see setup 20b). No service-role key anywhere.
 -- Safe to run more than once.
 
@@ -14,7 +14,7 @@ create table if not exists public.coin_pack_products (
 -- Web products use the pack id itself. App Store / Google Play ids are reserved for the phone app.
 insert into public.coin_pack_products (product_id, pack_id) values
   ('coins-1000', 'coins-1000'), ('coins-3000', 'coins-3000'), ('coins-10000', 'coins-10000'), ('coins-15000', 'coins-15000'),
-  ('whisk.coins1000', 'coins-1000'), ('whisk.coins3000', 'coins-3000'), ('whisk.coins10000', 'coins-10000'), ('whisk.coins15000', 'coins-15000')
+  ('baste.coins1000', 'coins-1000'), ('baste.coins3000', 'coins-3000'), ('baste.coins10000', 'coins-10000'), ('baste.coins15000', 'coins-15000')
 on conflict (product_id) do update set pack_id = excluded.pack_id;
 alter table public.coin_pack_products enable row level security;
 revoke all on public.coin_pack_products from anon, authenticated;   -- server-side mapping only

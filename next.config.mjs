@@ -11,7 +11,7 @@ const nextConfig = {
     return [
       { source: '/stamps/:file*', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] },
       // the on-device receipt and barcode readers (copied in by scripts/copy-scan-assets.mjs); the receipt reader's
-      // worker gets its own tight policy: only Whisk's own scripts, WebAssembly, and fetching its own text model
+      // worker gets its own tight policy: only Baste's own scripts, WebAssembly, and fetching its own text model
       { source: '/ocr/:file*', headers: [{ key: 'Cache-Control', value: 'public, max-age=2592000' }, { key: 'Content-Security-Policy', value: "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'" }] },
       { source: '/zxing/:file*', headers: [{ key: 'Cache-Control', value: 'public, max-age=2592000' }, { key: 'Content-Type', value: 'application/wasm' }] },
       { source: '/thumbs/:file*', headers: [{ key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=2592000' }] },

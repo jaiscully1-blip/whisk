@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useRef } from 'react';
 
-// Renders the 3D Whisk wearing an outfit, in a pose. The engine (three.js) loads only in the browser.
-export default function WhiskStage({ pose = 'default', outfit, interactive = true, height = 360, zoom = 1, label = 'Whisk, your chef', dancing = false, onDanceEnd }) {
+// Renders the 3D Baste wearing an outfit, in a pose. The engine (three.js) loads only in the browser.
+export default function WhiskStage({ pose = 'default', outfit, interactive = true, height = 360, zoom = 1, label = 'Baste, your chef', dancing = false, onDanceEnd }) {
   const ref = useRef(null);
   const stage = useRef(null);
   const endRef = useRef(onDanceEnd); endRef.current = onDanceEnd;

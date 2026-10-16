@@ -1,7 +1,7 @@
 -- 0012: free dish list in the database, log any dish from it, and 5,000 coins for every passport stamp.
 -- Safe to run more than once.
 
--- ---------- Whisk's dish list (1,787 dishes, all 193 countries). Read only by the server functions below. ----------
+-- ---------- Baste's dish list (1,787 dishes, all 193 countries). Read only by the server functions below. ----------
 create table if not exists public.dishes (
   country text not null check (country ~ '^[A-Z]{2}$'),
   name text not null check (char_length(name) between 1 and 80),
@@ -1877,7 +1877,7 @@ begin
     select * into r from web_recipes w where w.id = p_recipe_id and w.active;
     if not found then raise exception 'unknown recipe'; end if;
   else
-    -- a dish from Whisk's list of 193 countries (the server can't be told a made-up dish or country)
+    -- a dish from Baste's list of 193 countries (the server can't be told a made-up dish or country)
     select * into dsh from dishes d where d.country = p_country and lower(d.name) = lower(trim(p_dish));
     if not found then raise exception 'unknown dish'; end if;
   end if;

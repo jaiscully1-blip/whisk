@@ -1,5 +1,5 @@
 -- =====================================================================
--- Whisk 0003 — daily quest, streak freeze, cuisine bingo, weekly goal,
+-- Baste 0003 — daily quest, streak freeze, cuisine bingo, weekly goal,
 -- takeout-savings setting, nutrition on meals. Safe to re-run.
 -- =====================================================================
 

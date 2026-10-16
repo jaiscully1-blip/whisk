@@ -87,7 +87,7 @@ function CookOff() {
   }
   async function inviteJudges() {
     const url = `${window.location.origin}/vote/${code}`;
-    const text = `Come judge my Whisk Cook Off! Vote for the best plate:`;
+    const text = `Come judge my Baste Cook Off! Vote for the best plate:`;
     try { if (navigator.share) await navigator.share({ text, url }); else { await navigator.clipboard.writeText(`${text} ${url}`); say('Judge link copied'); } } catch {}
   }
   // Keep the screen on during the game.
@@ -141,7 +141,7 @@ function CookOff() {
           <div className="card co-code" aria-label={`Game code ${code.split('').join(' ')}`}>
             <span className="desc">Friends join with this code</span>
             <b>{code}</b>
-            <button className="btn ghost sm" onClick={async () => { const text = `Join my Whisk Cook Off! Code: ${code}`; try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(code); say('Code copied'); } } catch {} }}>Share code</button>
+            <button className="btn ghost sm" onClick={async () => { const text = `Join my Baste Cook Off! Code: ${code}`; try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(code); say('Code copied'); } } catch {} }}>Share code</button>
           </div>
           {judging && <p className="judge-note" style={{ textAlign: 'center' }}>You’re a judge. When the cooking’s done, you’ll vote for the best plate.</p>}
           {!canPlay && !judging && <p className="err" role="alert" style={{ margin: 0 }}>Your pantry can’t make any recipe in {g.minutes} minutes yet. Add more to your pantry before the host starts.</p>}

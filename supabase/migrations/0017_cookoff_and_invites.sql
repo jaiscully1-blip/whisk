@@ -1,6 +1,6 @@
 -- 0017: Cook Off (a live party game) + Invite a friend. Safe to run more than once.
 --
--- COOK OFF. Someone makes a game and gets a 6-letter code; friends type the code to join (their Whisk name shows).
+-- COOK OFF. Someone makes a game and gets a 6-letter code; friends type the code to join (their Baste name shows).
 -- Only cooks with a stocked pantry (5+ items) can make or join a game. The host picks the time (15/30/45/60 min) and
 -- presses Start. Everyone's screen spins the recipe wheel; each player lands on a random recipe their own pantry can
 -- make in that time. Same clock for all. Cook it, snap the photo before time's up. Then everyone votes for the best

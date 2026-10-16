@@ -1,11 +1,11 @@
--- Whisk 0006: July 18 coin gift, renamed shop items, coin packs (Bitcoin via BTCPay), two-step game reset.
+-- Baste 0006: July 18 coin gift, renamed shop items, coin packs (Bitcoin via BTCPay), two-step game reset.
 -- Safe to run more than once. Run after 0001–0005.
 
 -- ---------- renamed items (ids stay the same, so owners keep them) ----------
 update public.items set name = '50 lb Dumbbell' where id = 'acc-watch';
 update public.items set name = 'Basketball Backpack' where id = 'acc-crystal-backpack';
 
--- ---------- July 18: Whisk Wrapped + 5,000 free coins, once a year ----------
+-- ---------- July 18: Baste Wrapped + 5,000 free coins, once a year ----------
 create or replace function public.record_login(p_local_date date, p_local_hour int, p_user_agent text default null, p_device text default null)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare

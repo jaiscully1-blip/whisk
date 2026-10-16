@@ -3,16 +3,16 @@ import { useEffect, useRef, useState } from 'react';
 
 // Cookies & privacy, the way mobile games do it: one friendly card first (Accept all / Essential only / Manage),
 // and a second panel with a switch per purpose. Essential storage is always on; everything else is opt-in.
-// Whisk has no ads or third-party trackers. Usage data stays in Whisk's own database and is used only to improve the game.
+// Baste has no ads or third-party trackers. Usage data stays in Baste's own database and is used only to improve the game.
 export const CONSENT_KEY = 'whisk-consent';
 export const LOGIN_CHOICE_KEY = 'whisk-login-choice';   // Accept / Decline picked on the sign-in screen, before there's an account
 export const deviceTimeZone = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch { return null; } };
 
 const PURPOSES = [
-  { k: 'essential', title: 'Essential', body: 'Keeps you signed in and your account secure. The game can’t run without it. Whisk does not use third party cookies, only a single in-house cookie is used. Your data is never sold or shared for ads or tracking.', locked: true },
+  { k: 'essential', title: 'Essential', body: 'Keeps you signed in and your account secure. The game can’t run without it. Baste does not use third party cookies, only a single in-house cookie is used. Your data is never sold or shared for ads or tracking.', locked: true },
   { k: 'preferences', title: 'Remember my place', body: 'Saves your tab, scroll spot and half-typed text on this device, so you pick up right where you left off.' },
   { k: 'local_time', title: 'My local time', body: 'Uses your time zone so days, streaks and daily rewards reset at midnight where you live, not on a server clock.' },
-  { k: 'usage', title: 'Help improve Whisk', body: 'Records what you tap, pick and search in the app (not what you type elsewhere), so we can see what works and make the game better. Turning it off deletes what was recorded.' }
+  { k: 'usage', title: 'Help improve Baste', body: 'Records what you tap, pick and search in the app (not what you type elsewhere), so we can see what works and make the game better. Turning it off deletes what was recorded.' }
 ];
 
 export default function CookieConsent({ initial, onSave, onClose }) {
@@ -37,7 +37,7 @@ export default function CookieConsent({ initial, onSave, onClose }) {
         {view === 'intro' ? (
           <div className="cc-pane" key="intro">
             <h2 id="cc-title">Cookies, chef?</h2>
-            <p id="cc-body">Whisk uses cookies and a little storage on your device to keep you signed in, remember where you left off, run your daily rewards on your local calendar and, if you allow it, learn which parts of the game people use. <b>No ads. We never sell your data.</b></p>
+            <p id="cc-body">Baste uses cookies and a little storage on your device to keep you signed in, remember where you left off, run your daily rewards on your local calendar and, if you allow it, learn which parts of the game people use. <b>No ads. We never sell your data.</b></p>
             <button ref={first} className="btn wide cc-accept" disabled={busy} onClick={() => save({ preferences: true, local_time: true, usage: true })}>Accept all</button>
             <div className="cc-row">
               <button className="btn ghost" disabled={busy} onClick={() => save({ preferences: false, local_time: false, usage: false })}>Essential only</button>
@@ -48,7 +48,7 @@ export default function CookieConsent({ initial, onSave, onClose }) {
         ) : (
           <div className="cc-pane" key="manage">
             <h2 id="cc-title">Your choices</h2>
-            <p id="cc-body" className="cc-sub">Pick what Whisk may store. Essential is always on.</p>
+            <p id="cc-body" className="cc-sub">Pick what Baste may store. Essential is always on.</p>
             <ul className="cc-list">
               {PURPOSES.map((p, i) => {
                 const on = p.locked ? true : prefs[p.k];

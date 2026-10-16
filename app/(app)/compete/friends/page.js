@@ -170,7 +170,7 @@ export default function Friends() {
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) { setReporting(null); setMenu(null); } }}>
           <div className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label="Report this plate">
             <h2 style={{ fontSize: 24 }}>What’s wrong with it?</h2>
-            <span className="desc">It disappears for you right away. Whisk checks reported plates.</span>
+            <span className="desc">It disappears for you right away. Baste checks reported plates.</span>
             {REASONS.map(([k, l]) => <button key={k} className="btn ghost wide" onClick={() => report(reporting, k)}>{l}</button>)}
             <button className="btn wide" onClick={() => { setReporting(null); setMenu(null); }}>Cancel</button>
           </div>

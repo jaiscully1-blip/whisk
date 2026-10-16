@@ -1,5 +1,5 @@
 -- =====================================================================
--- Whisk — schema, Row Level Security, server functions, storage
+-- Baste — schema, Row Level Security, server functions, storage
 -- Run once in Supabase → SQL Editor (or `supabase db push`).
 -- Rule of thumb: every table has RLS ON. Users can only touch rows where
 -- user_id = auth.uid(). XP, coins, purchases and challenge rewards change

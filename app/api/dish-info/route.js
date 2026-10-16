@@ -9,7 +9,7 @@ import { bestVideo, wikiIngredients, youtubeSearchUrl } from '@/lib/dishes/web';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// The back of a dish card: its main ingredients (from Whisk's list, or the Wikipedia infobox) and the best YouTube video.
+// The back of a dish card: its main ingredients (from Baste's list, or the Wikipedia infobox) and the best YouTube video.
 // Free: YouTube's free daily quota, answers cached for a week and shared by everyone. No AI.
 const Body = z.object({ dish: z.string().trim().min(1).max(80), wiki: z.number().int().positive().max(1e10).optional() }).strict();
 

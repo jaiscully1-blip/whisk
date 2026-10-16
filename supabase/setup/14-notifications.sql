@@ -64,7 +64,7 @@ begin
     if names is not null then
       msg := jsonb_build_object('title', case when cardinality(names) = 1 then names[1] || ' expires ' || case when (select min(expires_on) from pantry_items where user_id = p.id and name = names[1] and status <> 'out') = today then 'today' else 'tomorrow' end
                                          else names[1] || ' and ' || case when cardinality(names) = 2 then names[2] else (cardinality(names) - 1) || ' more go off soon' end end,
-                                'body', 'Cook it before it goes bad: Whisk has recipes that use it.', 'url', '/home?n=1');
+                                'body', 'Cook it before it goes bad: Baste has recipes that use it.', 'url', '/home?n=1');
     else
       select array_agg(name order by name) into names from pantry_items
         where user_id = p.id and status <> 'out' and thaw_started_at is null

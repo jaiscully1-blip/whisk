@@ -1,10 +1,10 @@
-# Whisk security review
+# Baste security review
 
 Last reviewed: Oct 3, 2026. Checked against the **OWASP Top 10 (2021)**. OWASP published a 2025 edition; its two new themes (software supply chain, mishandling exceptional conditions) are covered under A06/A08 and A09 below.
 
 ## What's in place
 
-| # | OWASP risk | How Whisk handles it | Verified by |
+| # | OWASP risk | How Baste handles it | Verified by |
 |---|---|---|---|
 | A01 | Broken access control | Row Level Security on **every** table; each policy is `user_id = auth.uid()` for SELECT/INSERT/UPDATE/DELETE. Coins, XP, purchases, challenge rewards and meal logs change only through `SECURITY DEFINER` functions with pinned `search_path`. Players can't write `xp`/`coins` (column-level grants). Storage photos are private and folder-scoped per user. Middleware blocks signed-out users from app routes. | `supabase/tests/rls.test.mjs`: 51 checks incl. cross-user reads/writes, minting coins, buying unowned items, stealing challenges, uploading into other folders |
 | A02 | Cryptographic failures | HTTPS only (HSTS 2 years + preload). Passwords handled by Supabase Auth (bcrypt). No secrets in the browser bundle. Photos stripped of EXIF/GPS by re-encoding before upload. | Response headers checked locally |

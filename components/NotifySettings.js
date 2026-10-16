@@ -26,7 +26,7 @@ export default function NotifySettings() {
     setBusy(true);
     try {
       const perm = await Notification.requestPermission();
-      if (perm !== 'granted') { say('Notifications are blocked. Allow them for Whisk in your phone’s settings.'); return; }
+      if (perm !== 'granted') { say('Notifications are blocked. Allow them for Baste in your phone’s settings.'); return; }
       const reg = (await navigator.serviceWorker.getRegistration()) || (await navigator.serviceWorker.register('/sw.js'));
       await navigator.serviceWorker.ready;
       const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(KEY) }));
@@ -54,7 +54,7 @@ export default function NotifySettings() {
         </div>
       )}
       <span className="desc" style={{ width: '100%' }}>
-        {env === 'install' ? 'On iPhone, add Whisk to your Home Screen first (Share → Add to Home Screen), then turn this on there.'
+        {env === 'install' ? 'On iPhone, add Baste to your Home Screen first (Share → Add to Home Screen), then turn this on there.'
           : env === 'no' ? 'This browser can’t show notifications.'
           : 'Only useful ones: food about to go off, “defrost the beef tonight”, and when a friend starts a Cook Off.'}
       </span>

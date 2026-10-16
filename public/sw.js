@@ -1,5 +1,5 @@
-// Whisk service worker: shows cooking-timer notifications and the few push notifications a player turned on
-// (food about to go off, defrost tonight, a friend's Cook Off), and keeps Whisk's own static files (the app's code
+// Baste service worker: shows cooking-timer notifications and the few push notifications a player turned on
+// (food about to go off, defrost tonight, a friend's Cook Off), and keeps Baste's own static files (the app's code
 // bundles, fonts, flags, drawings and icons) on the phone so the app opens fast and smooth on weak wifi or cell data.
 // It never stores pages, account data or anything from /api or Supabase: those always come fresh from the network.
 const CACHE = 'whisk-static-v2';
@@ -25,9 +25,9 @@ self.addEventListener('fetch', (e) => {
 });
 self.addEventListener('push', (e) => {
   let d = {};
-  try { d = e.data ? e.data.json() : {}; } catch { d = { title: 'Whisk', body: e.data ? e.data.text() : '' }; }
+  try { d = e.data ? e.data.json() : {}; } catch { d = { title: 'Baste', body: e.data ? e.data.text() : '' }; }
   const url = typeof d.url === 'string' && d.url.startsWith('/') ? d.url : '/cook';
-  e.waitUntil(self.registration.showNotification(d.title || 'Whisk', { body: d.body || '', icon: '/icon-192.png', badge: '/icon-192.png', tag: d.tag || url, data: { url } }));
+  e.waitUntil(self.registration.showNotification(d.title || 'Baste', { body: d.body || '', icon: '/icon-192.png', badge: '/icon-192.png', tag: d.tag || url, data: { url } }));
 });
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();

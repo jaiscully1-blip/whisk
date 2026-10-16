@@ -1,4 +1,4 @@
--- Whisk 0011 — activity log (what players tap and choose), first-run tutorial flag, admin dashboard access.
+-- Baste 0011 — activity log (what players tap and choose), first-run tutorial flag, admin dashboard access.
 -- Activity is only recorded for players who allowed "Usage data" in the cookie & privacy popup (the app checks
 -- consent before sending, and log_events checks it again here). Safe to re-run.
 

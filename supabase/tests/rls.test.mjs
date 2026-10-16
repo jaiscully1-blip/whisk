@@ -864,7 +864,7 @@ const rc1r = (await as(null, () => db.query(`select public.rc_credit('${RCS}', '
 check('a web purchase credits the pack', rc1r.credited === true && (await rcCoins()) === rc0 + 1000, `${rc0} → ${await rcCoins()}`);
 const rc2r = (await as(null, () => db.query(`select public.rc_credit('${RCS}', '${D}', 'txn_1', 'coins-1000', 'RC_BILLING', false, 2) as r`))).rows[0].r;
 check('the same transaction is never credited twice', rc2r.credited === false && (await rcCoins()) === rc0 + 1000);
-await as(null, () => db.query(`select public.rc_credit('${RCS}', '${D}', 'apple_77', 'whisk.coins3000', 'APP_STORE', false, 4.99, 2)`));
+await as(null, () => db.query(`select public.rc_credit('${RCS}', '${D}', 'apple_77', 'baste.coins3000', 'APP_STORE', false, 4.99, 2)`));
 check('App Store product ids map to the same packs (×quantity)', (await rcCoins()) === rc0 + 1000 + 6000);
 check('players see their own purchases only', (await as(D, () => db.query(`select * from coin_purchases`))).rows.length === 2 && (await as(E, () => db.query(`select * from coin_purchases`))).rows.length === 0);
 await expectFail('refunds need the secret', D, `select public.rc_refund('wrong-secret-0123456789abcdef', 'txn_1')`);
@@ -875,6 +875,14 @@ await db.exec(`update profiles set coins = 100 where id = '${D}'`);
 await as(null, () => db.query(`select public.rc_refund('${RCS}', 'apple_77')`));
 check('a refund never makes coins negative', (await rcCoins()) === 0);
 await expectFail('players cannot call the secret check', D, `select public._rc_secret_ok('${RCS}')`);
+
+// ================= 0028: the app is called Baste now =================
+try { const f = fs.readFileSync('./supabase/migrations/0028_baste_name.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0028 runs (twice)', true); }
+catch (e) { check('0028 runs (twice)', false, e.message); }
+const pdDef = (await db.query(`select pg_get_functiondef('public.push_due(text)'::regprocedure) d`)).rows[0].d;
+check('the expiry notification says Baste, not Whisk', pdDef.includes('Baste has recipes that use it') && !/Whisk/.test(pdDef));
+check('App Store ids named for Baste map to the same packs', (await db.query(`select pack_id from coin_pack_products where product_id = 'baste.coins3000'`)).rows[0]?.pack_id === 'coins-3000');
+await expectFail('players still cannot run the notification sender', D, `select public.push_due('anything')`);
 
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);

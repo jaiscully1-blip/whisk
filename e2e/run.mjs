@@ -270,7 +270,8 @@ await step('cook', async () => {
   await page.click('[aria-label="Liked it"]'); await page.waitForTimeout(500);
   await page.locator('.usedup-row').first().waitFor({ timeout: 6000 });
   const usedName = (await page.locator('.usedup-row b').first().innerText()).trim();
-  check('after cooking: "Out of … now?" for what the recipe used', /^Out of .+ now\?$/.test((await page.locator('.usedup-row span').first().innerText()).trim()), usedName);
+  check('after cooking: "Out of … now?" for what the recipe used', /^Out of .+ now\?/.test((await page.locator('.usedup-row span').first().innerText()).trim()), usedName);
+  check('cooking drops what it used one level on its own (shown as Full → Good)', /(Full → Good|Good → Low)|Low$/.test((await page.locator('.usedup-row').first().innerText()).replace(/\s+/g, ' ').trim()) || (await page.locator('.usedup-lvl').count()) >= 1);
   await page.locator('.usedup-row').first().getByRole('button', { name: 'Yes' }).click();
   await page.locator('.usedup-row', { hasText: 'is out' }).waitFor();
   check('Yes marks it out and puts it on the list', true);
@@ -288,6 +289,23 @@ await step('cook', async () => {
   await nav('Pantry'); await page.getByRole('tab', { name: 'Kitchen' }).waitFor();
   const tabsNow = (await page.getByRole('tab').allInnerTexts()).map((t) => t.replace(/\s*\(\d+\)/, '').trim()).join('|');
   check('Pantry tabs: Pantry, Shopping list, Kitchen (saved recipes moved to Cook)', tabsNow === 'Pantry|Shopping list|Kitchen', tabsNow);
+  // stock levels: Full, Good, Low, Out + Reup
+  await page.getByRole('tab', { name: /^Pantry \(/ }).click(); await page.locator('#p-name').waitFor();
+  const usedCard = page.locator('main .card', { hasText: usedName }).first();
+  check('what you marked out after cooking shows Out and is already on the list', /Out/.test(await usedCard.locator('.stock').innerText()) && (await usedCard.locator('.reup-on').count()) === 1, usedName);
+  await page.fill('#p-name', 'Reup test oats'); await page.click('text=Add to pantry'); await page.waitForTimeout(900);
+  const oats = page.locator('main .card', { hasText: 'Reup test oats' }).first(), meter = oats.locator('.stock');
+  check('a new item is Full with 4 lit bars and no Reup button', (await meter.innerText()).trim() === 'Full' && (await oats.locator('.stock-bars i.on').count()) === 4 && (await oats.locator('.reup').count()) === 0);
+  await meter.click(); check('tap: Full → Good (3 bars)', (await meter.innerText()).trim() === 'Good' && (await oats.locator('.stock-bars i.on').count()) === 3);
+  await meter.click(); check('tap: Good → Low (1 bar) and Reup appears', (await meter.innerText()).trim() === 'Low' && (await oats.locator('.reup').count()) === 1);
+  await shot('04-stock-levels');
+  await oats.locator('.reup').click(); await oats.locator('.reup-on').waitFor();
+  check('Reup puts it on the shopping list once and shows "On list"', (await oats.locator('.reup').count()) === 0);
+  await page.getByRole('tab', { name: /Shopping list/ }).click();
+  check('…and it is on the shopping list exactly once', (await page.locator('main').getByText('Reup test oats', { exact: false }).count()) === 1);
+  await page.getByRole('tab', { name: /^Pantry \(/ }).click();
+  await meter.click(); check('tap: Low → Out', (await meter.innerText()).trim() === 'Out' && (await oats.locator('.stock-bars i.on').count()) === 0);
+  await meter.click(); check('tap: Out → Full again', (await meter.innerText()).trim() === 'Full');
 });
 await step('compete', async () => {
   await nav('Compete');

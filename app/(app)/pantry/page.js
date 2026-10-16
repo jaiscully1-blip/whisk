@@ -7,10 +7,10 @@ import { CATEGORIES, freshness, guessCategory } from '@/lib/game';
 import ScanSheet from '@/components/ScanSheet';
 import { usePantry, useList } from '@/components/usePantry';
 import ShareListSheet from '@/components/ShareListSheet';
+import StockMeter from '@/components/StockMeter';
+import { nextLevel, needsReup } from '@/lib/stock';
 import { KitchenFloat, KitchenTab } from '@/components/kitchen/KitchenPanels';
 
-const NEXT_STATUS = { stocked: 'low', low: 'out', out: 'stocked' };
-const STATUS_LABEL = { stocked: 'Stocked', low: 'Low', out: 'Out' };
 // The shopping list follows a walk through the store: fresh stuff first, frozen last so it stays cold.
 const AISLES = ['Produce', 'Proteins', 'Dairy & Eggs', 'Carbs & Grains', 'Canned & Jarred', 'Sauces & Oils', 'Spices & Seasonings', 'Baking', 'Frozen', 'Other'];
 // Deletes wait a few seconds so Undo can take them back. Kept outside the page so leaving the page still deletes.
@@ -67,11 +67,19 @@ export default function Pantry() {
     refreshProfile(); load();
   }
   async function cycle(item) {
-    const status = NEXT_STATUS[item.status];
+    const status = nextLevel(item.status);
     const patch = status === 'stocked' ? { status, thaw_started_at: null } : { status };
     setItems((x) => x.map((i) => (i.id === item.id ? { ...i, ...patch } : i)));
     await supabase.from('pantry_items').update(patch).eq('id', item.id);
     if (status === 'out') { await supabase.from('shopping_items').insert({ name: item.name, category: item.category }); say(`${item.name} is out · added to your list`); load(); }
+  }
+  // Reup: a Low or Out item goes on the shopping list once; buying it (the tick on the list) makes it Full again
+  const onList = new Set((list || []).map((l) => l.name.toLowerCase()));
+  async function reup(item) {
+    if (onList.has(item.name.toLowerCase())) return;
+    const { error } = await supabase.from('shopping_items').insert({ name: item.name, category: item.category });
+    if (error) { say('Could not add it. Try again.'); return; }
+    say(`${item.name} is on your list`); load();
   }
   // change or reset (clear) an item's expiry date
   async function setExpiry(item, v) {
@@ -203,7 +211,10 @@ export default function Pantry() {
                         </div>
                         {f && <div className="row" style={{ gap: 8, flexWrap: 'nowrap', marginTop: 4 }}><div className="bar" style={{ flex: 1 }}><i style={{ width: `${f.pct}%`, background: `var(--${f.tone === 'fresh' ? 'accent' : f.tone + '-bar'})` }} /></div><span style={{ fontSize: 12, fontWeight: 800, color: `var(--${f.tone})` }}>{f.label}</span></div>}
                       </div>
-                      <button className="chip" style={{ border: 0, background: i.status === 'stocked' ? 'var(--fresh-soft)' : i.status === 'low' ? 'var(--warn-soft)' : 'var(--bad-soft)', color: i.status === 'stocked' ? 'var(--fresh)' : i.status === 'low' ? 'var(--warn)' : 'var(--bad)' }} onClick={() => cycle(i)} aria-label={`${i.name}: ${STATUS_LABEL[i.status]}. Tap to change.`}>{STATUS_LABEL[i.status]}</button>
+                      {needsReup(i.status) && (onList.has(i.name.toLowerCase())
+                        ? <span className="chip reup-on" aria-label={`${i.name} is on your list`}><Icon name="check" size={14} />On list</span>
+                        : <button type="button" className="chip reup" onClick={() => reup(i)} aria-label={`Reup ${i.name}: add to shopping list`}>Reup</button>)}
+                      <StockMeter status={i.status} name={i.name} onClick={() => cycle(i)} />
                       <button className={`btn ghost sm star ${isQuick(i.name) ? 'on' : ''}`} style={{ border: 0, width: 36, padding: 0 }} onClick={() => toggleQuick(i)} aria-pressed={isQuick(i.name)} aria-label={isQuick(i.name) ? `Take ${i.name} out of Quick add` : `Put ${i.name} in Quick add`}><Icon name="star" size={18} /></button>
                       <button className="btn ghost sm" style={{ border: 0, width: 36, padding: 0 }} onClick={() => remove(i)} aria-label={`Remove ${i.name}`}><Icon name="trash" size={18} /></button>
                     </div>

@@ -699,6 +699,7 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .usedup { display: grid; gap: 6px; margin-top: 10px; text-align: left; }
 .usedup-row { display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px; border-radius: 14px; background: var(--track); font-size: 14px; }
 .usedup-row > span { flex: 1; min-width: 0; }
+.usedup-lvl { font-style: normal; font-size: 12px; font-weight: 800; color: var(--muted); white-space: nowrap; }
 .usedup-row .btn.sm { min-height: 34px; padding: 0 12px; }
 .linkbtn { background: none; border: 0; padding: 6px 8px; font: inherit; font-weight: 800; color: var(--accent); text-decoration: underline; }
 
@@ -1228,3 +1229,17 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .scan-rawtext summary { cursor: pointer; font-size: 13px; font-weight: 800; color: var(--muted); }
 .scan-rawtext pre { white-space: pre-wrap; font-size: 11px; color: var(--muted); max-height: 220px; overflow: auto; }
 @media (prefers-reduced-motion: reduce) { .scan-laser, .scan-row, .scan-reading img { animation: none; } }
+
+/* stock levels: four drawn bars + the word */
+.stock { display: inline-flex; align-items: center; gap: 7px; border: 0; background: transparent; padding: 0 4px; min-height: 40px; cursor: pointer; font: inherit; color: var(--muted); }
+.stock-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; }
+.stock-bars i { width: 5px; border-radius: 2px; background: var(--track); border: 1px solid var(--line); }
+.stock-bars i:nth-child(1) { height: 7px; } .stock-bars i:nth-child(2) { height: 10px; } .stock-bars i:nth-child(3) { height: 13px; } .stock-bars i:nth-child(4) { height: 16px; }
+.stock-fresh .stock-bars i.on { background: var(--accent); border-color: var(--accent); }
+.stock-warn .stock-bars i.on { background: var(--warn); border-color: var(--warn); }
+.stock-bad .stock-bars i.on { background: var(--bad); border-color: var(--bad); }
+.stock-word { font-size: 13px; font-weight: 800; min-width: 34px; text-align: left; }
+.stock-fresh .stock-word { color: var(--fresh); } .stock-warn .stock-word { color: var(--warn); } .stock-bad .stock-word { color: var(--bad); }
+.chip.reup { border: 2px solid var(--accent); background: transparent; color: var(--accent); font-weight: 800; min-height: 34px; cursor: pointer; }
+.chip.reup-on { background: var(--track); color: var(--muted); font-weight: 800; min-height: 34px; }
+.exp-chip { white-space: nowrap; }

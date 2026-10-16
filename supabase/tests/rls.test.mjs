@@ -884,6 +884,16 @@ check('the expiry notification says Baste, not Whisk', pdDef.includes('Baste has
 check('App Store ids named for Baste map to the same packs', (await db.query(`select pack_id from coin_pack_products where product_id = 'baste.coins3000'`)).rows[0]?.pack_id === 'coins-3000');
 await expectFail('players still cannot run the notification sender', D, `select public.push_due('anything')`);
 
+// ================= 0029: stock levels (Full, Good, Low, Out) =================
+try { const f = fs.readFileSync('./supabase/migrations/0029_stock_levels.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0029 runs (twice)', true); }
+catch (e) { check('0029 runs (twice)', false, e.message); }
+await as(D, () => db.query(`insert into pantry_items (name, status) values ('Rice', 'good')`));
+check('a pantry item can be Good', (await as(D, () => db.query(`select status from pantry_items where name = 'Rice'`))).rows[0]?.status === 'good');
+for (const st of ['stocked', 'low', 'out']) { const r = await as(D, () => db.query(`update pantry_items set status = '${st}' where name = 'Rice' returning status`)); check(`…and moves to ${st}`, r.rows[0]?.status === st); }
+await expectFail('only the four levels are allowed', D, `update pantry_items set status = 'plenty' where name = 'Rice'`);
+check('old pantry items stay Full ("stocked")', (await as(A, () => db.query(`select status from pantry_items where name = 'Eggs'`))).rows[0]?.status === 'stocked');
+check('another player cannot change my stock level', (await as(E, () => db.query(`update pantry_items set status = 'out' where name = 'Rice' returning id`))).rows.length === 0);
+
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

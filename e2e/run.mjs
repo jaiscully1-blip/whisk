@@ -58,9 +58,9 @@ await step('log in', async () => {
   // No tour: you land straight in the app; Chef explains each thing the first time you tap it.
   check('no walkthrough: nothing covers the app on first open', (await page.locator('.coach, .tour-scrim').count()) === 0);
   await page.locator('.tip-card').waitFor({ timeout: 6000 });
-  check('Chef says hello once, in one line, with no step numbers', /Welcome to Baste/.test(await page.locator('.tip-card').innerText()) && !/\b\d+ of \d+\b/.test(await page.locator('.tip-card').innerText()));
+  check('Chef says hello once, in one line, with no step numbers', /Welcome to Feta/.test(await page.locator('.tip-card').innerText()) && !/\b\d+ of \d+\b/.test(await page.locator('.tip-card').innerText()));
   await page.locator('.hud-hello.on').waitFor({ timeout: 6000 }).catch(() => {});
-  check('the greeting shows in the top bar', /Welcome to Baste/.test(await page.locator('.hud-hello').innerText()));
+  check('the greeting shows in the top bar', /Welcome to Feta/.test(await page.locator('.hud-hello').innerText()));
   await shot('00b-welcome-tip');
   await page.locator('.nav a[href="/pantry"]').click(); await page.waitForURL('**/pantry');
   await page.locator('.tip-card', { hasText: 'Pantry' }).waitFor({ timeout: 4000 });
@@ -82,7 +82,7 @@ await step('log in', async () => {
   await page.locator('.namebtn').click(); await page.locator('#nm').fill('Jai'); await page.locator('#nm').press('Enter');
   await page.waitForFunction(() => document.querySelector('.namebtn h1')?.textContent === 'Jai', null, { timeout: 6000 });
   check('name set from the Me page', true);
-  check('no Baste dance, no closet on Me', (await page.getByRole('button', { name: 'Dance' }).count()) === 0 && (await page.locator('.slotbar').count()) === 0);
+  check('no Feta dance, no closet on Me', (await page.getByRole('button', { name: 'Dance' }).count()) === 0 && (await page.locator('.slotbar').count()) === 0);
   const coins0 = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
   await page.locator('.shop-grid .tile').filter({ hasText: 'Knife block' }).click();
   await page.locator('[data-tour="buy"]').click();
@@ -131,9 +131,9 @@ await step('home', async () => {
   for (let i = 0; i < 8 && (await page.locator('.away-h').count()) < 2; i++) { const more = page.getByRole('button', { name: 'Show more' }); if (!(await more.count())) break; await more.click(); await page.waitForTimeout(150); }
   check('almost ready is grouped by items missing, closest first, no limit', (await page.locator('.away-h').count()) >= 2 && /1 item away/i.test(await page.locator('.away-h').first().innerText()) && /2 items away/i.test(await page.locator('.away-h').nth(1).innerText()));
   await page.evaluate(() => window.scrollTo(0, 0));
-  check('pantry hint is the short version', (await page.getByText('Baste reads').count()) === 0);
+  check('pantry hint is the short version', (await page.getByText('Feta reads').count()) === 0);
   // open one: tap a single missing ingredient under "What you have" to put it in the pantry
-  check('postcards are all drawn by Baste (no emoji pictures)', (await page.locator('main .rcard-art image').count()) === 0);
+  check('postcards are all drawn by Feta (no emoji pictures)', (await page.locator('main .rcard-art image').count()) === 0);
   check('every recipe card has a postcard of where the dish comes from (landmark + dish)', (await page.locator('main .rcard .rcard-art svg').count()) === (await page.locator('main .rcard').count()) && (await page.locator('main .rcard').count()) > 0);
   const chipCounts = await page.locator('main .rcard').evaluateAll((cs) => cs.map((c) => c.querySelectorAll('.chip.need').length));
   check('home shows at most 3 missing ingredients per card', chipCounts.every((n) => n <= 3), JSON.stringify(chipCounts.slice(0, 12)));
@@ -444,7 +444,7 @@ await step('me settings', async () => {
   check('day counter starts at Day 1', (await page.locator('.dayno').innerText()) === 'Day 1');
   await page.getByRole('button', { name: /Cookies & privacy/ }).click();
   check('cookie choices can be reopened from Settings', await page.getByRole('dialog', { name: 'Your choices' }).isVisible());
-  check('Settings shows 4 purposes incl. usage data (on, from Accept), essential locked on', (await page.locator('.cc-switch').count()) === 4 && (await page.getByText('Help improve Baste').count()) === 1 && (await page.locator('.cc-switch.locked[aria-checked=true]').count()) === 1 && (await page.locator('.cc-switch[aria-checked=true]').count()) === 4);
+  check('Settings shows 4 purposes incl. usage data (on, from Accept), essential locked on', (await page.locator('.cc-switch').count()) === 4 && (await page.getByText('Help improve Feta').count()) === 1 && (await page.locator('.cc-switch.locked[aria-checked=true]').count()) === 1 && (await page.locator('.cc-switch[aria-checked=true]').count()) === 4);
   check('your time zone is used for days', (await page.locator('.cc-text em').innerText()).includes('America/New York'));
   await page.getByRole('button', { name: 'Cancel' }).click();
   await page.getByRole('button', { name: 'Bigger text' }).click(); await page.waitForTimeout(200);
@@ -535,7 +535,7 @@ await step('free dish search', async () => {
   }
   await page.fill('#o-dish', 'salsa macha'); await page.getByRole('button', { name: 'Search dishes' }).click();
   await page.getByText('Salsa macha', { exact: true }).first().waitFor({ timeout: 15000 });
-  check('not in Baste\'s list → free Wikipedia search, food articles only', (await page.locator('.dish-row:not(.skel)').count()) === 1 && (await page.getByText('Macha (film)').count()) === 0);
+  check('not in Feta\'s list → free Wikipedia search, food articles only', (await page.locator('.dish-row:not(.skel)').count()) === 1 && (await page.getByText('Macha (film)').count()) === 0);
   await page.getByRole('button', { name: 'Salsa macha: show ingredients and video' }).click();
   await page.locator('.dflip.on .ytbtn').waitFor({ timeout: 15000 });
   const chips = await page.locator('.dflip.on .chip').allInnerTexts();
@@ -551,7 +551,7 @@ await step('free dish search', async () => {
   check('a non-YouTube link is refused', (await page.getByRole('alert').filter({ hasText: 'doesn’t look like a YouTube channel' }).count()) === 1 && (await page.locator('.channel').count()) === 0);
   await yIn.fill('https://m.youtube.com/@MockKitchen/videos');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
-  check('added channel opens inside Baste', (await page.locator('.channel a[href^="/cook/channel?u="]', { hasText: 'Mock Kitchen' }).count()) === 1);
+  check('added channel opens inside Feta', (await page.locator('.channel a[href^="/cook/channel?u="]', { hasText: 'Mock Kitchen' }).count()) === 1);
   await page.getByRole('button', { name: 'Add Channel' }).click(); await yIn.fill('@mockkitchen'); await page.getByRole('button', { name: 'Add', exact: true }).click();
   check('the same channel can’t be added twice', (await page.getByText('Already on your list.').count()) === 1);
   await page.getByRole('button', { name: 'Cancel' }).click();
@@ -566,7 +566,7 @@ await step('free dish search', async () => {
   check('the Cook tab stays lit on a channel page', (await page.locator('.nav a[href="/cook"][aria-current="page"]').count()) === 1);
   await page.locator('.vid-card', { hasText: 'Honey Garlic' }).click();
   const src = await page.locator('.vc-player iframe').getAttribute('src');
-  check('video plays in Baste from where the cooking starts (0:45) and stops before the taste test', /^https:\/\/www\.youtube-nocookie\.com\/embed\/RECIPEvid01\?/.test(src) && /start=45/.test(src) && /end=425/.test(src), src);
+  check('video plays in Feta from where the cooking starts (0:45) and stops before the taste test', /^https:\/\/www\.youtube-nocookie\.com\/embed\/RECIPEvid01\?/.test(src) && /start=45/.test(src) && /end=425/.test(src), src);
   check('steps one at a time from the description', /Step 1 of 3/.test(await page.locator('.vc-count').innerText()) && /Pat the chicken dry/.test(await page.locator('.vc-text').innerText()));
   await page.getByRole('button', { name: 'Next' }).click();
   check('big Next moves to the next step', /Step 2 of 3/.test(await page.locator('.vc-count').innerText()));
@@ -591,7 +591,7 @@ await step('cook off with a friend', async () => {
   check('Get coins has Invite a friend with your 6-letter code (1,000 each)', /^[A-Z2-9]{6}$/.test(myCode) && /1,000 each/.test(await page.locator('.invite').innerText()));
   await shot('06a-invite');
   await page.locator('[role=dialog][aria-label="Get coins"] button[aria-label="Close"]').click();
-  // a friend starts Baste from the invite link on their own phone
+  // a friend starts Feta from the invite link on their own phone
   const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: 'America/New_York' });
   const fr = await ctx2.newPage();
   await fr.goto(`${BASE}/login?ref=${myCode}`); await fr.getByRole('radio', { name: 'Accept' }).click(); await fr.getByRole('button', { name: 'Start playing' }).click();
@@ -619,7 +619,7 @@ await step('cook off with a friend', async () => {
   check('a friend joins with the code; both screens list both cooks', (await page.locator('.co-chip').count()) === 2 && (await fr.locator('.co-chip').count()) === 2);
   await shot('06b-lobby');
   check('only the host has Start', (await fr.getByRole('button', { name: 'Start the Cook Off' }).count()) === 0);
-  // a judge: someone new opens the "Invite judges" link, starts Baste, lands in the game just to vote
+  // a judge: someone new opens the "Invite judges" link, starts Feta, lands in the game just to vote
   check('the lobby has "Invite judges to vote"', (await page.getByRole('button', { name: 'Invite judges to vote' }).count()) === 1);
   const ctx3 = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: 'America/New_York' });
   const jd = await ctx3.newPage();
@@ -654,7 +654,7 @@ await step('cook off with a friend', async () => {
   const hostName = (await page.locator('.co-plate', { hasText: '(you)' }).locator('b').innerText()).replace(' (you)', '');
   await jd.locator('.co-plate', { hasText: hostName }).click(); await jd.getByRole('button', { name: 'Submit vote' }).click();
   await jd.waitForURL('**/cook', { timeout: 8000 });
-  check('after the judge submits, Baste takes them to the start of the app', jd.url().endsWith('/cook'));
+  check('after the judge submits, Feta takes them to the start of the app', jd.url().endsWith('/cook'));
   await page.getByText(/It’s a tie!|wins!/).waitFor({ timeout: 10000 });
   check('everyone voted → winner screen (the judge broke the tie)', /wins!/.test(await page.locator('.co-big').innerText()));
   check('your coins: +1,000 for the win', /\+1,000 coins/.test(await page.locator('.co-reward').innerText()));
@@ -671,7 +671,7 @@ await step('activity backend', async () => {
   check('taps, picks and searches are recorded', ev.some((e) => e.kind === 'tap') && ev.some((e) => e.kind === 'search' && e.value === 'albanian food') && ev.some((e) => e.kind === 'view'), `${ev.length} events`);
   check('typed text in other fields is not recorded', !ev.some((e) => /Frozen pork chops|Chef J/.test(e.value || '')));
   await page.goto(`${BASE}/admin`); await page.waitForTimeout(1500);
-  check('backend page is closed to non-admins', await page.getByText('This page is only for Baste admins.').isVisible());
+  check('backend page is closed to non-admins', await page.getByText('This page is only for Feta admins.').isVisible());
   await fetch('http://localhost:54321/__e2e/make-admin');
   await page.reload(); await page.getByRole('heading', { name: 'Backend' }).waitFor({ timeout: 8000 });
   check('admins see the backend dashboard', (await page.locator('.adm-tiles .adm-card').count()) === 5);

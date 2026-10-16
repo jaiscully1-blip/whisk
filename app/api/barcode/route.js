@@ -4,7 +4,7 @@ import { supabaseServer } from '@/lib/supabase/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Maps Open Food Facts category tags onto Baste pantry categories.
+// Maps Open Food Facts category tags onto Feta pantry categories.
 const MAP = [
   ['Proteins', ['meat', 'poultry', 'chicken', 'beef', 'pork', 'fish', 'seafood', 'tofu', 'legume', 'bean']],
   ['Dairy & Eggs', ['dairy', 'milk', 'cheese', 'yogurt', 'butter', 'egg', 'cream']],
@@ -33,7 +33,7 @@ export async function GET(req) {
   try {
     // Fixed host + validated digits only — no user-controlled URLs (SSRF-safe).
     const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,brands,categories_tags,quantity`, {
-      headers: { 'User-Agent': 'Baste/0.1 (home cooking app)' },
+      headers: { 'User-Agent': 'Feta/0.1 (home cooking app)' },
       signal: AbortSignal.timeout(6000),
       cache: 'no-store'
     });

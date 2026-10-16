@@ -1,4 +1,4 @@
--- Baste setup 18: fridge magnets, free appliances, night mode by default.
+-- Feta setup 18: fridge magnets, free appliances, night mode by default.
 --  • The Kitchen shop stops selling appliances (stoves, ovens, dishwasher, smart fridge): they're free in Layout kitchen.
 --  • New: fridge magnets. Every dog and cat breed we drew, other pets (all 500 coins), plus cities, postcards, art,
 --    kids' drawings, test scores, report cards, wedding invitations, Christmas cards and a few odd ones.

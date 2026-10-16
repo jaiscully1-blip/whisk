@@ -80,10 +80,10 @@ export default function Passport({ counts, onOpenRecipe }) {
             <div className="row" style={{ width: '100%', flexWrap: 'nowrap' }}><div className="bar" style={{ flex: 1 }}><i style={{ width: `${Math.min(100, ((counts.get(open[0]) || 0) / STAMP_GOAL) * 100)}%` }} /></div><b>{Math.min(counts.get(open[0]) || 0, STAMP_GOAL)}/{STAMP_GOAL}</b></div>
             {fromHere.length ? (
               <div className="stack" style={{ gap: 6, width: '100%', textAlign: 'left' }}>
-                <span className="eyebrow">Baste recipes from {open[1]}</span>
+                <span className="eyebrow">Feta recipes from {open[1]}</span>
                 {fromHere.map((r) => <button key={r.id} className="card row" style={{ flexWrap: 'nowrap', padding: '10px 12px', textAlign: 'left' }} onClick={() => { setOpen(null); onOpenRecipe?.(r); }}><b style={{ flex: 1 }}>{r.title}</b><span className="desc">{r.minutes} min</span></button>)}
               </div>
-            ) : <p className="desc" style={{ margin: 0 }}>No Baste recipes from {open[1]} yet.</p>}
+            ) : <p className="desc" style={{ margin: 0 }}>No Feta recipes from {open[1]} yet.</p>}
             <button className="btn ghost wide" onClick={() => setOpen(null)}>Close</button>
           </div>
         </div>

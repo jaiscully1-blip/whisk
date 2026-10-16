@@ -47,7 +47,7 @@ export default function SharedList({ token }) {
           ))}
         </section>
       ))}
-      <p className="desc sl-foot">Shared from <b>Baste</b>, the cooking game. Ticks show up on their list too.</p>
+      <p className="desc sl-foot">Shared from <b>Feta</b>, the cooking game. Ticks show up on their list too.</p>
     </main>
   );
 }

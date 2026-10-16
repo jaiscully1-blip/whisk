@@ -39,7 +39,7 @@ function Channel() {
       </div>
       {!data && !err && Array.from({ length: 3 }, (_, i) => <div key={i} className="card vid-card skel" aria-hidden="true"><span className="vid-thumb" /><span style={{ flex: 1 }}><i /><i /></span></div>)}
       {err && <div className="empty"><b>{err}</b><div className="row" style={{ justifyContent: 'center', marginTop: 10 }}><button className="btn ghost sm" onClick={load}>Try again</button><a className="btn ghost sm" href={p.url} target="_blank" rel="noopener noreferrer">Open on YouTube</a></div></div>}
-      {data && !data.found && <div className="empty"><b>Baste can’t list this channel’s videos</b>{data.needsKey ? 'Video lists need YouTube switched on for Baste.' : 'YouTube doesn’t share this kind of channel link.'}<a className="btn ghost" href={p.url} target="_blank" rel="noopener noreferrer" style={{ marginTop: 12 }}>Open on YouTube</a></div>}
+      {data && !data.found && <div className="empty"><b>Feta can’t list this channel’s videos</b>{data.needsKey ? 'Video lists need YouTube switched on for Feta.' : 'YouTube doesn’t share this kind of channel link.'}<a className="btn ghost" href={p.url} target="_blank" rel="noopener noreferrer" style={{ marginTop: 12 }}>Open on YouTube</a></div>}
       {data?.found && !vids.length && <div className="empty"><b>No cooking videos lately</b>Nothing recent here is about cooking.<a className="btn ghost" href={p.url} target="_blank" rel="noopener noreferrer" style={{ marginTop: 12 }}>Open on YouTube</a></div>}
       {vids.map((v) => (
         <button key={v.id} type="button" className="card vid-card" onClick={() => setOpen(v)}>

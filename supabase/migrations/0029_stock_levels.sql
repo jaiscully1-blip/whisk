@@ -1,4 +1,4 @@
--- Baste setup 22: stock levels. A pantry item is now Full, Good, Low or Out.
+-- Feta setup 22: stock levels. A pantry item is now Full, Good, Low or Out.
 --  • "Full" is the old "stocked" value (nothing is renamed, so saved games keep working); "Good" is new, between Full and Low.
 --  • Cooking a recipe drops what it used one level (done by the app); Reup puts a Low or Out item on your shopping list.
 -- Safe to run more than once. Existing pantry items are untouched.

@@ -1,4 +1,4 @@
--- Baste 0007 — cuisine bingo runs in 5-day rounds instead of weeks.
+-- Feta 0007 — cuisine bingo runs in 5-day rounds instead of weeks.
 -- Rounds are counted from a fixed day (Mon 5 Jan 2026, UTC), so everyone's card changes on the same day.
 -- weekly_bingo.week_start now holds the first day of the round.
 

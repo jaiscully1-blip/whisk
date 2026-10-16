@@ -1,27 +1,43 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
   <rect width="256" height="256" rx="56" fill="#E6F2DC"/>
-  <ellipse cx="128" cy="246" rx="40" ry="6" fill="#2A2433" opacity=".12"/>
-  <!-- handle + steel ring -->
-  <rect x="112" y="200" width="32" height="56" rx="13" fill="#17171B" stroke="#2A2433" stroke-width="4"/>
-  <rect x="103" y="194" width="50" height="14" rx="7" fill="#C9D1DB" stroke="#2A2433" stroke-width="4"/>
-  <!-- see-through wire balloon -->
-  <path d="M128 198C72 168 58 116 72 90C86 64 170 64 184 90C198 116 184 168 128 198Z" fill="#FFFFFF" fill-opacity=".45" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M128 198C90 168 84 120 94 92M128 198C166 168 172 120 162 92" fill="none" stroke="#8C96A3" stroke-width="3.5" stroke-linecap="round"/>
-  <path d="M128 198C110 168 108 122 113 90M128 198C146 168 148 122 143 90M128 198V86" fill="none" stroke="#A9B2BD" stroke-width="3" stroke-linecap="round"/>
-  <!-- face -->
-  <ellipse cx="101" cy="150" rx="11" ry="6.5" fill="#FF9C8A" opacity=".7"/>
-  <ellipse cx="157" cy="148" rx="11" ry="6.5" fill="#FF9C8A" opacity=".7"/>
-  <ellipse cx="105" cy="124" rx="16" ry="18" fill="#FFFFFF" stroke="#2A2433" stroke-width="3.5"/>
-  <ellipse cx="151" cy="121" rx="16" ry="18" fill="#FFFFFF" stroke="#2A2433" stroke-width="3.5"/>
-  <circle cx="103" cy="130" r="8.5" fill="#2A2433"/><circle cx="149" cy="127" r="8.5" fill="#2A2433"/>
-  <circle cx="107" cy="126" r="3" fill="#FFFFFF"/><circle cx="153" cy="123" r="3" fill="#FFFFFF"/>
-  <path d="M130 162.7Q130 171.7 134.75 172.2Q139.5 167.9 139.5 158.9" fill="#FF7A6B" stroke="#2A2433" stroke-width="2.5" stroke-linejoin="round"/>
-  <path d="M116 160Q127 167 141 158" fill="none" stroke="#2A2433" stroke-width="4" stroke-linecap="round"/>
-  <!-- chef toque, tipped to the side -->
-  <g transform="rotate(-9 128 80)">
-    <path d="M70 92C56 86 54 62 72 54C76 34 100 26 116 36C126 20 154 22 160 40C178 34 196 50 188 70C196 78 192 90 184 92Z" fill="#FFFFFF" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
-    <path d="M100 52q6-10 16-14M146 42q10 2 14 12" fill="none" stroke="#D9E4D2" stroke-width="4" stroke-linecap="round"/>
-    <rect x="66" y="84" width="124" height="24" rx="8" fill="#FFFFFF" stroke="#2A2433" stroke-width="5"/>
-    <path d="M74 98h108" stroke="#E6EDE1" stroke-width="4" stroke-linecap="round"/>
+  <!-- cheese knife held like a bat (behind the hoof) -->
+  <g transform="rotate(12 202 206)">
+    <rect x="193" y="178" width="18" height="50" rx="8" fill="#C98F52" stroke="#2A2433" stroke-width="4"/>
+    <path d="M190 182 V74 Q190 46 196 28 L202 46 L208 28 Q214 46 214 74 V182 Z" fill="#E3E8EE" stroke="#2A2433" stroke-width="4" stroke-linejoin="round"/>
+    <ellipse cx="202" cy="98" rx="5" ry="9" fill="#E6F2DC" stroke="#2A2433" stroke-width="3"/>
+    <ellipse cx="202" cy="130" rx="5" ry="9" fill="#E6F2DC" stroke="#2A2433" stroke-width="3"/>
+    <ellipse cx="202" cy="162" rx="5" ry="8" fill="#E6F2DC" stroke="#2A2433" stroke-width="3"/>
+    <rect x="189" y="176" width="26" height="9" rx="4" fill="#B9C2CD" stroke="#2A2433" stroke-width="4"/>
   </g>
+  <!-- chef coat -->
+  <path d="M22 262 C22 214 66 196 128 196 C190 196 234 214 234 262 Z" fill="#FFFFFF" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M128 200 V262" stroke="#2A2433" stroke-width="4"/>
+  <circle cx="114" cy="226" r="5" fill="#C9D1DB" stroke="#2A2433" stroke-width="3"/><circle cx="142" cy="226" r="5" fill="#C9D1DB" stroke="#2A2433" stroke-width="3"/>
+  <circle cx="114" cy="248" r="5" fill="#C9D1DB" stroke="#2A2433" stroke-width="3"/><circle cx="142" cy="248" r="5" fill="#C9D1DB" stroke="#2A2433" stroke-width="3"/>
+  <path d="M100 196 L128 214 L156 196 Z" fill="#E94F4F" stroke="#2A2433" stroke-width="4" stroke-linejoin="round"/>
+  <!-- sleeve + hoof gripping the handle -->
+  <path d="M176 238 L206 212" stroke="#2A2433" stroke-width="40" stroke-linecap="round"/><path d="M176 238 L206 212" stroke="#FFFFFF" stroke-width="31" stroke-linecap="round"/>
+  <circle cx="208" cy="206" r="15" fill="#A8693F" stroke="#2A2433" stroke-width="4"/>
+  <path d="M199 202 Q208 198 217 202 M199 210 Q208 206 217 210" stroke="#2A2433" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".55"/>
+  <!-- wool head cloud -->
+  <circle cx="78" cy="128" r="26" fill="#2A2433" stroke="#2A2433" stroke-width="8"/><circle cx="70" cy="160" r="24" fill="#2A2433" stroke="#2A2433" stroke-width="8"/><circle cx="84" cy="98" r="24" fill="#2A2433" stroke="#2A2433" stroke-width="8"/><circle cx="178" cy="128" r="26" fill="#2A2433" stroke="#2A2433" stroke-width="8"/><circle cx="186" cy="160" r="24" fill="#2A2433" stroke="#2A2433" stroke-width="8"/><circle cx="172" cy="98" r="24" fill="#2A2433" stroke="#2A2433" stroke-width="8"/><circle cx="128" cy="168" r="30" fill="#2A2433" stroke="#2A2433" stroke-width="8"/><circle cx="100" cy="176" r="26" fill="#2A2433" stroke="#2A2433" stroke-width="8"/><circle cx="156" cy="176" r="26" fill="#2A2433" stroke="#2A2433" stroke-width="8"/><circle cx="96" cy="86" r="24" fill="#2A2433" stroke="#2A2433" stroke-width="8"/><circle cx="160" cy="86" r="24" fill="#2A2433" stroke="#2A2433" stroke-width="8"/><circle cx="128" cy="80" r="26" fill="#2A2433" stroke="#2A2433" stroke-width="8"/><circle cx="78" cy="128" r="26" fill="#FFFFFF"/><circle cx="70" cy="160" r="24" fill="#FFFFFF"/><circle cx="84" cy="98" r="24" fill="#FFFFFF"/><circle cx="178" cy="128" r="26" fill="#FFFFFF"/><circle cx="186" cy="160" r="24" fill="#FFFFFF"/><circle cx="172" cy="98" r="24" fill="#FFFFFF"/><circle cx="128" cy="168" r="30" fill="#FFFFFF"/><circle cx="100" cy="176" r="26" fill="#FFFFFF"/><circle cx="156" cy="176" r="26" fill="#FFFFFF"/><circle cx="96" cy="86" r="24" fill="#FFFFFF"/><circle cx="160" cy="86" r="24" fill="#FFFFFF"/><circle cx="128" cy="80" r="26" fill="#FFFFFF"/>
+  <!-- ears -->
+  <g transform="rotate(14 80 138)"><ellipse cx="78" cy="140" rx="13" ry="25" fill="#F6A77C" stroke="#2A2433" stroke-width="4"/><ellipse cx="78" cy="142" rx="6" ry="16" fill="#F29AA8"/></g>
+  <g transform="rotate(-14 176 138)"><ellipse cx="178" cy="140" rx="13" ry="25" fill="#F6A77C" stroke="#2A2433" stroke-width="4"/><ellipse cx="178" cy="142" rx="6" ry="16" fill="#F29AA8"/></g>
+  <!-- face -->
+  <ellipse cx="128" cy="140" rx="39" ry="45" fill="#F6A77C" stroke="#2A2433" stroke-width="4"/>
+  <path d="M96 106 Q112 90 128 98 Q144 90 160 106 Q144 112 128 108 Q112 112 96 106 Z" fill="#FFFFFF" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="111" cy="132" r="12.5" fill="#fff" stroke="#2A2433" stroke-width="3.5"/><circle cx="145" cy="132" r="12.5" fill="#fff" stroke="#2A2433" stroke-width="3.5"/>
+  <circle cx="113" cy="133" r="5" fill="#2A2433"/><circle cx="147" cy="133" r="5" fill="#2A2433"/><circle cx="115" cy="131" r="1.8" fill="#fff"/><circle cx="149" cy="131" r="1.8" fill="#fff"/>
+  <ellipse cx="128" cy="150" rx="5" ry="3.5" fill="#D9805B"/>
+  <path d="M112 160 Q128 177 144 160" stroke="#2A2433" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <circle cx="98" cy="152" r="7" fill="#FF8A7A" opacity=".45"/><circle cx="158" cy="152" r="7" fill="#FF8A7A" opacity=".45"/>
+  <!-- chef hat -->
+  <g transform="translate(0 13)"><g stroke="#2A2433" stroke-width="4" stroke-linejoin="round">
+    <circle cx="96" cy="50" r="19" fill="#FFFFFF"/><circle cx="160" cy="50" r="19" fill="#FFFFFF"/><circle cx="128" cy="38" r="24" fill="#FFFFFF"/>
+  </g>
+  <g fill="#FFFFFF"><circle cx="96" cy="50" r="16"/><circle cx="160" cy="50" r="16"/><circle cx="128" cy="38" r="21"/><rect x="92" y="48" width="72" height="24" /></g>
+  <path d="M96 64 V86 Q96 90 100 90 H156 Q160 90 160 86 V64" fill="#FFFFFF" stroke="#2A2433" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="94" y="78" width="68" height="14" rx="5" fill="#F3F5EE" stroke="#2A2433" stroke-width="4"/>
+  <path d="M112 66 V78 M128 62 V78 M144 66 V78" stroke="#C9D1DB" stroke-width="3" stroke-linecap="round"/></g>
 </svg>

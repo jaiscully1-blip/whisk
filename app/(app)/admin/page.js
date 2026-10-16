@@ -4,7 +4,7 @@ import PushSetup from '@/components/PushSetup';
 import { useWhisk } from '@/components/AppShell';
 import { fmt } from '@/lib/game';
 
-// Backend dashboard: what players do in Baste. Only accounts with profiles.is_admin = true can load it
+// Backend dashboard: what players do in Feta. Only accounts with profiles.is_admin = true can load it
 // (the database functions refuse everyone else). Players who said no to usage data are not recorded at all.
 const PERIODS = [[1, 'Today'], [7, '7 days'], [30, '30 days'], [90, '90 days']];
 
@@ -60,7 +60,7 @@ export default function Admin() {
     setFeed((f) => [...f, ...(data || [])]);
   }
 
-  if (denied) return <div className="empty" style={{ marginTop: 24 }}><b>Not available</b>This page is only for Baste admins.</div>;
+  if (denied) return <div className="empty" style={{ marginTop: 24 }}><b>Not available</b>This page is only for Feta admins.</div>;
   if (!ov) return <p className="muted">Loading…</p>;
   return (
     <div className="stack adm">

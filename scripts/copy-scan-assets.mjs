@@ -1,4 +1,4 @@
-// Copies the on-device scanners into public/ before each build, so they're served from Baste itself (no CDN,
+// Copies the on-device scanners into public/ before each build, so they're served from Feta itself (no CDN,
 // works with the strict CSP, cached by the service worker after the first use):
 //   public/ocr/    — receipt reader (Tesseract.js worker, its WebAssembly engine, English text model)
 //   public/zxing/  — barcode reader (ZXing WebAssembly)

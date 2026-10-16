@@ -30,7 +30,7 @@ export default function NeverShowSheet({ onClose }) {
           <h2 style={{ fontSize: 26 }}>Never show me</h2>
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
         </div>
-        <p className="desc" style={{ margin: 0 }}>Baste hides every recipe that uses these, everywhere in the game.</p>
+        <p className="desc" style={{ margin: 0 }}>Feta hides every recipe that uses these, everywhere in the game.</p>
         <span className="eyebrow">Allergies</span>
         <div className="row never-pick" style={{ gap: 6 }}>
           {Object.keys(ALLERGENS).map((k) => (
@@ -44,7 +44,7 @@ export default function NeverShowSheet({ onClose }) {
           <button className="btn" type="submit" aria-label="Add ingredient"><Icon name="plus" size={18} /></button>
         </form>
         {custom.length > 0 && <div className="row" style={{ gap: 6 }}>{custom.map((w) => <button key={w} type="button" className="chip on" onClick={() => toggle(w)} aria-label={`Show ${w} again`}>{w}<Icon name="x" size={14} /></button>)}</div>}
-        <p className="desc warnbox" style={{ margin: 0 }}><Icon name="shield" size={16} />Baste reads each recipe’s ingredient names. Packaged foods (sauces, stock, bread) can contain allergens a recipe doesn’t name, so always check the label.</p>
+        <p className="desc warnbox" style={{ margin: 0 }}><Icon name="shield" size={16} />Feta reads each recipe’s ingredient names. Packaged foods (sauces, stock, bread) can contain allergens a recipe doesn’t name, so always check the label.</p>
         {allRecipes && <span className="desc" aria-live="polite">{allRecipes.filter((r) => allowed(r, list)).length} of {allRecipes.length} recipes will show</span>}
         <button className="btn wide" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
       </div>

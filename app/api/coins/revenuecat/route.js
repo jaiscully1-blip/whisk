@@ -36,10 +36,10 @@ export async function POST(req) {
   }
   if (e.type !== 'NON_RENEWING_PURCHASE') return ok({ ignored: String(e.type || 'unknown').slice(0, 40) });
 
-  // Baste links use the Supabase user id as the RevenueCat App User ID; anonymous RevenueCat ids are skipped.
+  // Feta links use the Supabase user id as the RevenueCat App User ID; anonymous RevenueCat ids are skipped.
   const user = [e.app_user_id, e.original_app_user_id, ...(Array.isArray(e.aliases) ? e.aliases : [])].find((x) => typeof x === 'string' && UUID.test(x));
   const product = typeof e.product_id === 'string' ? e.product_id : '';
-  if (!user || !/^[A-Za-z0-9._-]{1,100}$/.test(product)) { console.error('revenuecat purchase without a Baste player', txn); return ok({ ignored: 'no player' }); }
+  if (!user || !/^[A-Za-z0-9._-]{1,100}$/.test(product)) { console.error('revenuecat purchase without a Feta player', txn); return ok({ ignored: 'no player' }); }
 
   let real;
   try { real = await findPurchase(user, product, txn); } catch (err) { console.error('revenuecat check', err?.message); return NextResponse.json({ error: 'retry' }, { status: 502 }); }

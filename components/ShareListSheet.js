@@ -32,7 +32,7 @@ export default function ShareListSheet({ onClose }) {
           <h2 style={{ fontSize: 26 }}>Share your list</h2>
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
         </div>
-        <p className="desc" style={{ margin: 0 }}>Anyone with this link can see your shopping list and tick things off as they shop. They don’t need Baste.</p>
+        <p className="desc" style={{ margin: 0 }}>Anyone with this link can see your shopping list and tick things off as they shop. They don’t need Feta.</p>
         <input className="input mono" readOnly value={url || 'Making a link…'} aria-label="Share link" onFocus={(e) => e.target.select()} />
         <button className="btn wide" onClick={share} disabled={!url || busy}><Icon name="share" size={18} />Send the link</button>
         <div className="row" style={{ justifyContent: 'space-between' }}>

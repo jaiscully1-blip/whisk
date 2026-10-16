@@ -11,7 +11,7 @@ import LogMealSheet from './LogMealSheet';
 import { cultureStyle, motifFor } from '@/lib/culture';
 import Scene from './Scene';
 
-// Search anything — a country, a dish, a sauce, an ingredient. Free: Baste's own list of dishes from all 193 countries,
+// Search anything — a country, a dish, a sauce, an ingredient. Free: Feta's own list of dishes from all 193 countries,
 // plus Wikipedia for anything else. Tap a dish and its card flips: what you have / need, and a YouTube button.
 const PAGE = 20;
 export const TYPE_LABEL = { main: 'Main', soup: 'Soup', side: 'Side', salad: 'Salad', bread: 'Bread', 'street food': 'Street food', snack: 'Snack', dessert: 'Dessert', sauce: 'Sauce', drink: 'Drink', breakfast: 'Breakfast' };

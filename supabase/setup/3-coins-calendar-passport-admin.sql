@@ -1,15 +1,15 @@
--- Baste setup step 3 of 4: 0006_whisk_coins_reset.sql, 0007_bingo_five_days.sql, 0008_passport_countries.sql, 0009_local_calendar.sql, 0010_hockey_helmet.sql, 0011_activity_onboarding_admin.sql
+-- Feta setup step 3 of 4: 0006_whisk_coins_reset.sql, 0007_bingo_five_days.sql, 0008_passport_countries.sql, 0009_local_calendar.sql, 0010_hockey_helmet.sql, 0011_activity_onboarding_admin.sql
 -- Paste ALL of this into Supabase → SQL Editor → New query → Run. Safe to run more than once.
 
 -- ======================= 0006_whisk_coins_reset.sql =======================
--- Baste 0006: July 18 coin gift, renamed shop items, coin packs (Bitcoin via BTCPay), two-step game reset.
+-- Feta 0006: July 18 coin gift, renamed shop items, coin packs (Bitcoin via BTCPay), two-step game reset.
 -- Safe to run more than once. Run after 0001–0005.
 
 -- ---------- renamed items (ids stay the same, so owners keep them) ----------
 update public.items set name = '50 lb Dumbbell' where id = 'acc-watch';
 update public.items set name = 'Basketball Backpack' where id = 'acc-crystal-backpack';
 
--- ---------- July 18: Baste Wrapped + 5,000 free coins, once a year ----------
+-- ---------- July 18: Feta Wrapped + 5,000 free coins, once a year ----------
 create or replace function public.record_login(p_local_date date, p_local_hour int, p_user_agent text default null, p_device text default null)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare
@@ -150,7 +150,7 @@ grant execute on function public.reset_game() to authenticated;
 grant execute on function public.credit_coin_order(uuid, text, numeric, text) to anon, authenticated;   -- guarded by the webhook secret
 
 -- ======================= 0007_bingo_five_days.sql =======================
--- Baste 0007 — cuisine bingo runs in 5-day rounds instead of weeks.
+-- Feta 0007 — cuisine bingo runs in 5-day rounds instead of weeks.
 -- Rounds are counted from a fixed day (Mon 5 Jan 2026, UTC), so everyone's card changes on the same day.
 -- weekly_bingo.week_start now holds the first day of the round.
 
@@ -216,7 +216,7 @@ grant execute on function public.get_bingo() to authenticated;
 grant execute on function public.claim_bingo() to authenticated;
 
 -- ======================= 0008_passport_countries.sql =======================
--- Baste 0008 — the passport becomes a stamp album of all 193 UN member states.
+-- Feta 0008 — the passport becomes a stamp album of all 193 UN member states.
 -- Each web recipe carries the country it comes from (data->>'country', ISO 3166 alpha-2, from 0005).
 -- Every logged meal remembers that country, so the album can count meals per country.
 -- Safe to re-run.
@@ -244,7 +244,7 @@ create trigger meals_country before insert or update of web_recipe_id, country o
 update public.meals m set web_recipe_id = m.web_recipe_id where m.web_recipe_id is not null and m.country is null;
 
 -- ======================= 0009_local_calendar.sql =======================
--- Baste 0009 — days follow the player's real calendar, where they live.
+-- Feta 0009 — days follow the player's real calendar, where they live.
 -- The app sends the device's time zone (IANA name, e.g. America/New_York) once the player agrees to it in the
 -- cookie & privacy popup. Every "today" (streaks, daily quest, weekly challenges, bingo rounds) is then the
 -- player's local date. Opening and closing the app any number of times never changes the day.
@@ -475,11 +475,11 @@ grant execute on function public.get_bingo() to authenticated;
 grant execute on function public.claim_bingo() to authenticated;
 
 -- ======================= 0010_hockey_helmet.sql =======================
--- Baste 0010 — the shop's Chef Hat becomes a Hockey Helmet. Same item id, so anyone who bought it keeps it.
+-- Feta 0010 — the shop's Chef Hat becomes a Hockey Helmet. Same item id, so anyone who bought it keeps it.
 update public.items set name = 'Hockey Helmet' where id = 'hat-chef-hat';
 
 -- ======================= 0011_activity_onboarding_admin.sql =======================
--- Baste 0011 — activity log (what players tap and choose), first-run tutorial flag, admin dashboard access.
+-- Feta 0011 — activity log (what players tap and choose), first-run tutorial flag, admin dashboard access.
 -- Activity is only recorded for players who allowed "Usage data" in the cookie & privacy popup (the app checks
 -- consent before sending, and log_events checks it again here). Safe to re-run.
 

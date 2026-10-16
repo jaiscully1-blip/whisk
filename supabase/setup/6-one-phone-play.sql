@@ -1,4 +1,4 @@
--- Baste setup step 6: 0013_one_phone_play.sql
+-- Feta setup step 6: 0013_one_phone_play.sql
 -- Paste ALL of this into Supabase → SQL Editor → New query → Run. Safe to run more than once.
 
 -- 0013: one phone, no account. Players start with "Start playing" (Supabase anonymous sign-in: no email, no password),

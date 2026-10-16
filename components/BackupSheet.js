@@ -44,13 +44,13 @@ export default function BackupSheet({ supabase, mode = 'backup', onClose }) {
         {sent ? (
           <div className="stack" style={{ gap: 8, textAlign: 'center', padding: '8px 0' }}>
             <b style={{ fontSize: 20 }}>Check your email</b>
-            <p className="desc" style={{ margin: 0 }}>{backup ? <>We sent a link to <b>{sent}</b>. Tap it on this phone and your game is backed up. Nothing else changes.</> : <>If <b>{sent}</b> has a Baste game, a link is on its way. Tap it on this phone to get your game back.</>}</p>
+            <p className="desc" style={{ margin: 0 }}>{backup ? <>We sent a link to <b>{sent}</b>. Tap it on this phone and your game is backed up. Nothing else changes.</> : <>If <b>{sent}</b> has a Feta game, a link is on its way. Tap it on this phone to get your game back.</>}</p>
             <button className="btn wide" onClick={onClose}>OK</button>
           </div>
         ) : (
           <>
             <p className="desc" style={{ margin: 0 }}>{backup ? 'Right now your game lives only on this phone. Back it up and you can get it back on any phone: same coins, pantry, streak and outfits.' : 'Backed up your game before? Sign in the same way to get it back on this phone.'}</p>
-            {ways === null ? <p className="muted">Loading…</p> : none ? <p className="desc warnbox"><Icon name="shield" size={16} />Backups aren’t switched on for Baste yet. Your game is still saved on this phone.</p> : (
+            {ways === null ? <p className="muted">Loading…</p> : none ? <p className="desc warnbox"><Icon name="shield" size={16} />Backups aren’t switched on for Feta yet. Your game is still saved on this phone.</p> : (
               <>
                 {ways.apple && <button className="btn wide sso apple" onClick={() => oauth('apple')} disabled={!!busy}>{busy === 'apple' ? 'Opening…' : 'Continue with Apple'}</button>}
                 {ways.google && <button className="btn wide sso google" onClick={() => oauth('google')} disabled={!!busy}>{busy === 'google' ? 'Opening…' : 'Continue with Google'}</button>}

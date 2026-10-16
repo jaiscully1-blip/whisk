@@ -7,7 +7,7 @@ import BackupSheet from '@/components/BackupSheet';
 
 // One phone, no account to start: "Start playing" makes a private game for this phone
 // (Supabase anonymous sign-in), so the database still keeps every player's data to themselves.
-// First, a plain-words disclaimer: Baste records what you do in the app. Accept → recorded, Decline → you still
+// First, a plain-words disclaimer: Feta records what you do in the app. Accept → recorded, Decline → you still
 // play and nothing is recorded. The choice is saved with the game (see AppShell) and can be changed in Settings.
 export default function AuthForm() {
   const router = useRouter();
@@ -39,17 +39,17 @@ export default function AuthForm() {
     <main className="auth">
       <div className="card login">
         <img src="/icon.svg" alt="" width="64" height="64" style={{ borderRadius: 18 }} />
-        <h1>Welcome to Baste</h1>
+        <h1>Welcome to Feta</h1>
         <p className="muted" style={{ margin: 0 }}>Cook real food, earn coins, fill your passport.</p>
-        {deleted && <p className="judge-note" role="status">Your data is deleted. Thanks for cooking with Baste!</p>}
+        {deleted && <p className="judge-note" role="status">Your data is deleted. Thanks for cooking with Feta!</p>}
         {judge && <p className="judge-note" role="status">You’re invited to judge a Cook Off! Start playing to vote for the best plate.</p>}
 
         <section className="disclaimer" aria-labelledby="dc-h">
           <h2 id="dc-h">Before you start</h2>
-          <p>While you play, Baste records what you do in the app: what you tap, what you pick and what you search. It helps us make the game better.</p>
+          <p>While you play, Feta records what you do in the app: what you tap, what you pick and what you search. It helps us make the game better.</p>
           <p>We don’t record anything else you type, and we never sell it. You can change this any time in <b>Me → Settings → Cookies &amp; privacy</b>.</p>
           <p className="dc-device"><b>Your game saves on this device only.</b> There’s no account, so it can’t move to another phone or browser. Deleting the app or clearing this browser’s data erases it, coins included.</p>
-          <div className="dc-btns" role="radiogroup" aria-label="Accept or decline: Baste records what you do, and your game saves on this device only">
+          <div className="dc-btns" role="radiogroup" aria-label="Accept or decline: Feta records what you do, and your game saves on this device only">
             <button type="button" role="radio" aria-checked={choice === 'accept'} className={`dc-btn ${choice === 'accept' ? 'on' : ''}`} onClick={() => pick('accept')}>Accept</button>
             <button type="button" role="radio" aria-checked={choice === 'decline'} className={`dc-btn ${choice === 'decline' ? 'on' : ''}`} onClick={() => pick('decline')}>Decline</button>
           </div>

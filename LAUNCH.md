@@ -1,4 +1,4 @@
-# Launch Baste: Supabase → localhost → Vercel
+# Launch Feta: Supabase → localhost → Vercel
 
 About 20 minutes. Do the steps in order. **Never paste keys into chat, screenshots or code.** They only go in Vercel's Environment Variables and your local `.env.local`.
 
@@ -19,7 +19,7 @@ About 20 minutes. Do the steps in order. **Never paste keys into chat, screensho
    - New query → paste all of `supabase/migrations/0008_passport_countries.sql` → **Run**. Meals remember their country for the 193-country passport. (Run it after 0005, which seeds each recipe's country.)
    - New query → paste all of `supabase/migrations/0009_local_calendar.sql` → **Run**. Days, streaks and daily rewards follow each player's own time zone (after they allow it in the cookie popup).
    - New query → paste all of `supabase/migrations/0010_hockey_helmet.sql` → **Run**. The Chef Hat in the shop becomes a Hockey Helmet.
-   - New query → paste all of `supabase/migrations/0011_activity_onboarding_admin.sql` → **Run**. Adds the activity log (only for players who allow "Help improve Baste"), the first-run tour flag and the backend dashboard.
+   - New query → paste all of `supabase/migrations/0011_activity_onboarding_admin.sql` → **Run**. Adds the activity log (only for players who allow "Help improve Feta"), the first-run tour flag and the backend dashboard.
    - New query → paste all of `supabase/migrations/0012_dishes_and_stamp_coins.sql` → **Run**. Adds the list of 1,787 dishes from all 193 countries (so any dish can be logged toward its country's stamp) and pays 5,000 coins per passport stamp.
    - Make yourself an admin so you can open **/admin** (the backend dashboard). In a new query, with your email:
      `update public.profiles set is_admin = true where id = (select id from auth.users where email = 'YOUR-EMAIL');`
@@ -38,7 +38,7 @@ About 20 minutes. Do the steps in order. **Never paste keys into chat, screensho
    Save. (Without this step the link still works, but only in the same browser you signed up in.)
    Then open the **Magic Link** template and add this line so the reset code shows up in the email:
    ```
-   <p>Your Baste code: <b>{{ .Token }}</b></p>
+   <p>Your Feta code: <b>{{ .Token }}</b></p>
    ```
 6. **URLs.** **Authentication → URL Configuration**:
    - **Site URL:** `http://localhost:3000` for now (change it to your Vercel URL in step 3.5).
@@ -46,7 +46,7 @@ About 20 minutes. Do the steps in order. **Never paste keys into chat, screensho
 7. **Keys.** **Project Settings → API Keys** (or **API**). You need:
    - **Project URL** (`https://xxxx.supabase.co`)
    - **anon / publishable key**. This one is safe in the browser because Row Level Security protects every row.
-   - Do **not** use the `service_role` / secret key anywhere. Baste doesn't need it.
+   - Do **not** use the `service_role` / secret key anywhere. Feta doesn't need it.
 
 ---
 
@@ -95,7 +95,7 @@ Open **http://localhost:3000** → **Create account** → confirm the email → 
    | `YOUTUBE_API_KEY` | from Google Cloud (see 3b) | **server only**, free. Tick **Sensitive**. Optional: without it the YouTube button opens a YouTube search. |
 
 3. Click **Deploy**.
-4. **Rate limiting across all servers (do this before sharing the link).** In your Vercel project → **Storage** (or **Marketplace**) → **Upstash for Redis** → create a free database → **Connect** it to the whisk project. It adds the Redis env vars automatically; Baste accepts both `UPSTASH_REDIS_REST_*` and `KV_REST_API_*`. Then **Redeploy**.
+4. **Rate limiting across all servers (do this before sharing the link).** In your Vercel project → **Storage** (or **Marketplace**) → **Upstash for Redis** → create a free database → **Connect** it to the whisk project. It adds the Redis env vars automatically; Feta accepts both `UPSTASH_REDIS_REST_*` and `KV_REST_API_*`. Then **Redeploy**.
 5. **Point Supabase at the live site.** Supabase → Authentication → URL Configuration → **Site URL** = `https://YOUR-APP.vercel.app`, and add `https://YOUR-APP.vercel.app/**` to Redirect URLs. In Vercel set `NEXT_PUBLIC_SITE_URL` to the same address → **Redeploy**.
 6. Open the live URL, create an account, confirm the email, and check the pantry, Cook, a challenge, the shop and the Me tab.
 
@@ -103,7 +103,7 @@ Open **http://localhost:3000** → **Create account** → confirm the email → 
 
 ## 3b. YouTube button (free)
 
-Dish search is free: it uses Baste's own dish list (all 193 countries) and Wikipedia. To make each dish's YouTube button open the most-watched video that's really about that dish (greyed out when there isn't one):
+Dish search is free: it uses Feta's own dish list (all 193 countries) and Wikipedia. To make each dish's YouTube button open the most-watched video that's really about that dish (greyed out when there isn't one):
 
 1. console.cloud.google.com → create a project (free, no card needed for this API) → **APIs & Services → Library** → **YouTube Data API v3** → **Enable**.
 2. **APIs & Services → Credentials → Create credentials → API key**. Click the key → **API restrictions → Restrict key → YouTube Data API v3** → Save.
@@ -113,13 +113,13 @@ Free quota is 10,000 units a day; a dish nobody has opened yet costs 101, so abo
 
 ## 3c. Coin packs with Apple Pay (RevenueCat) — optional, do it when you want to sell coins
 
-Players tap a pack on **Me → Get coins** and pay on RevenueCat's checkout page with **Apple Pay** (iPhone), Google Pay or a card. RevenueCat runs the payment on **your own Stripe account** and tells Baste, which adds the coins. When Baste becomes a phone app, the same packs sell through Apple / Google in-app purchase with no change to the crediting. Until this is set up, the buttons say "isn't set up yet" and nothing breaks. Buying needs a backed-up game (Apple, Google or email), so paid coins can't be lost with the phone.
+Players tap a pack on **Me → Get coins** and pay on RevenueCat's checkout page with **Apple Pay** (iPhone), Google Pay or a card. RevenueCat runs the payment on **your own Stripe account** and tells Feta, which adds the coins. When Feta becomes a phone app, the same packs sell through Apple / Google in-app purchase with no change to the crediting. Until this is set up, the buttons say "isn't set up yet" and nothing breaks. Buying needs a backed-up game (Apple, Google or email), so paid coins can't be lost with the phone.
 
 Costs: no monthly fee. Stripe keeps about 2.9% + 30¢ per sale. RevenueCat is free until $2,500 a month in sales, then 1%.
 
 1. **Stripe**: stripe.com → create an account → finish **Activate payments** (your details + bank account for payouts). Apple Pay / Google Pay are on by default.
-2. **RevenueCat**: revenuecat.com → sign up → create a project "Baste" → **Apps & providers → Add app → Web (RevenueCat Billing)** → **Connect Stripe** (sign in to Stripe and approve the RevenueCat app).
-3. **Products** (Product catalog → Products → in the Web app), all **Consumable**, with these exact identifiers and prices (they must match the prices shown in Baste):
+2. **RevenueCat**: revenuecat.com → sign up → create a project "Feta" → **Apps & providers → Add app → Web (RevenueCat Billing)** → **Connect Stripe** (sign in to Stripe and approve the RevenueCat app).
+3. **Products** (Product catalog → Products → in the Web app), all **Consumable**, with these exact identifiers and prices (they must match the prices shown in Feta):
    - `coins-1000` $2.00 · `coins-3000` $5.00 · `coins-10000` $10.00 · `coins-15000` $20.00
 4. **Offering**: Product catalog → Offerings → New, identifier `default`, make it **Current**. Add 4 **packages** with identifiers `coins-1000`, `coins-3000`, `coins-10000`, `coins-15000`, each holding the product with the same name.
 5. **Web Purchase Link**: Web → Web Purchase Links → New for the `default` offering. Set the **success redirect** to `https://YOUR-APP.vercel.app/me?paid=1`. Copy the **production** link (looks like `https://pay.rev.cat/abc123…`) → Vercel → `REVENUECAT_PURCHASE_LINK`.
@@ -128,7 +128,7 @@ Costs: no monthly fee. Stripe keeps about 2.9% + 30¢ per sale. RevenueCat is fr
 8. **Webhook**: RevenueCat → Integrations → **Webhooks → Add**: URL `https://YOUR-APP.vercel.app/api/coins/revenuecat`, **Authorization header** = `Bearer ` + the same value, events: **All**, environment: **Both**. Vercel → **Redeploy**. Press **Send test event**: it should show 200.
 9. **Test** before going live: in Vercel add `REVENUECAT_ALLOW_SANDBOX` = `1`, redeploy, then open the **sandbox** version of your Web Purchase Link with `/<your player id>?package_id=coins-1000` (or temporarily put the sandbox link in `REVENUECAT_PURCHASE_LINK`) and pay with Stripe's test card 4242 4242 4242 4242. Coins should arrive within seconds. Then **delete** `REVENUECAT_ALLOW_SANDBOX`, put the production link back, and redeploy.
 
-Later, for the phone app: add the App Store / Google Play apps in the same RevenueCat project, create the same 4 consumables there (ids `baste.coins1000`, `baste.coins3000`, `baste.coins10000`, `baste.coins15000` are already mapped in the database), and in the app call RevenueCat with the player's Baste id as the App User ID.
+Later, for the phone app: add the App Store / Google Play apps in the same RevenueCat project, create the same 4 consumables there (ids `feta.coins1000`, `feta.coins3000`, `feta.coins10000`, `feta.coins15000` are already mapped in the database), and in the app call RevenueCat with the player's Feta id as the App User ID.
 
 Selling coins to kids: the Get coins sheet says "Ask a parent before buying". Refunds made in Stripe / RevenueCat take the coins back automatically.
 

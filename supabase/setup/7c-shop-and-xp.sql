@@ -1,8 +1,8 @@
--- Baste setup step 7c: 0015_free_chef_coat_pilot_coat_xp.sql
+-- Feta setup step 7c: 0015_free_chef_coat_pilot_coat_xp.sql
 -- Paste ALL of this into Supabase → SQL Editor → New query → Run. Safe to run more than once.
 
 -- 0015: shop + XP tweaks. Safe to run more than once.
---  • The White Chef Coat is free now: Baste wears it whenever no top is picked (like the classic toque).
+--  • The White Chef Coat is free now: Feta wears it whenever no top is picked (like the classic toque).
 --    It leaves the shop; anyone who bought it gets their 1,500 coins back, once.
 --  • New in its shop spot: the Airline Pilot Coat (1,500 coins).
 --  • Cooking a recipe and sending the photo gives +20 XP (was 50). Saving a recipe stays +5 XP.
@@ -38,7 +38,7 @@ begin
     select * into r from web_recipes w where w.id = p_recipe_id and w.active;
     if not found then raise exception 'unknown recipe'; end if;
   else
-    -- a dish from Baste's list of 193 countries (the server can't be told a made-up dish or country)
+    -- a dish from Feta's list of 193 countries (the server can't be told a made-up dish or country)
     select * into dsh from dishes d where d.country = p_country and lower(d.name) = lower(trim(p_dish));
     if not found then raise exception 'unknown dish'; end if;
   end if;

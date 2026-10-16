@@ -42,7 +42,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   const pathname = usePathname();
   const [pendingTab, setPendingTab] = useState(null);
   useEffect(() => { setPendingTab(null); }, [pathname]);
-  // keep Baste's static files on the phone (see public/sw.js) so it opens fast on weak wifi or cell data
+  // keep Feta's static files on the phone (see public/sw.js) so it opens fast on weak wifi or cell data
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
     const go = () => navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -88,7 +88,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
     setWelcome(true); setProfile((p) => ({ ...p, onboarded_at: p.onboarded_at || new Date().toISOString() }));
     supabase.rpc('set_onboarded', { p_done: true });
   }, [privacyOpen, profile?.id, profile?.onboarded_at]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Started Baste from a friend's invite link: use their code once (the server checks it's a new game).
+  // Started Feta from a friend's invite link: use their code once (the server checks it's a new game).
   useEffect(() => {
     if (!profile?.id) return;
     let ref = null; try { ref = localStorage.getItem('whisk-ref'); } catch {}
@@ -251,7 +251,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
     const id = typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(go, { timeout: 5000 }) : setTimeout(go, 3000);
     return () => { if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(id); else clearTimeout(id); };
   }, []);
-  // Activity log follows the "Help improve Baste" choice.
+  // Activity log follows the "Help improve Feta" choice.
   useEffect(() => { startActivity(supabase, !!consent?.usage, deviceLabel()); }, [consent, supabase]);
   useEffect(() => { trackPage(pathname); }, [pathname, consent]);
   // Moved to a new time zone? Days follow you (only if you allowed local time).
@@ -283,10 +283,10 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
       <div className={`shell ${night ? 'theme-night' : 'theme-day'}`} data-tab={((pendingTab || pathname || '').split('/')[1]) || 'home'}>
         <header className="hud">
           <div className="hud-in">
-            <Link href="/home" prefetch className="brand" aria-label="Baste home"><img src="/icon.svg" alt="" />baste</Link>
+            <Link href="/home" prefetch className="brand" aria-label="Feta home"><img src="/icon.svg" alt="" />feta</Link>
             {hello && <div className={`hud-hello ${helloOn ? 'on' : ''}`} role="status" aria-hidden={!helloOn}>
-              <span>{hello.first ? 'Welcome to Baste' : 'Welcome back'}{profile?.display_name ? `, ${profile.display_name}` : ''}!</span>
-              {hello.gift > 0 && <small>+{fmt(hello.gift)} coins, a gift from Baste</small>}
+              <span>{hello.first ? 'Welcome to Feta' : 'Welcome back'}{profile?.display_name ? `, ${profile.display_name}` : ''}!</span>
+              {hello.gift > 0 && <small>+{fmt(hello.gift)} coins, a gift from Feta</small>}
             </div>}
             <div className={`pills ${helloOn ? 'away' : ''}`}>
               <RunningTimer />
@@ -313,7 +313,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
               {kind !== 'cooked' && <button className="x" type="button" aria-label="Close" onClick={closePopup}><Icon name="x" /></button>}
               {kind === 'country'
                 ? <svg className="country-badge" viewBox="0 0 200 200" width="190" height="190" aria-hidden="true"><defs><clipPath id="cb-clip"><circle cx="100" cy="100" r="94" /></clipPath></defs><g clipPath="url(#cb-clip)" dangerouslySetInnerHTML={{ __html: countryArt(popup.country) }} /><circle cx="100" cy="100" r="94" fill="none" stroke="#E0A93B" strokeWidth="8" /><circle cx="100" cy="100" r="98" fill="none" stroke="#3B2C24" strokeWidth="2.4" /></svg>
-                : <WhiskStage pose={kind === 'cooked' ? 'cooked' : 'default'} outfit={outfit} interactive={false} height={kind === 'cooked' ? 250 : 300} zoom={1.15} label={`Baste: ${title}`} />}
+                : <WhiskStage pose={kind === 'cooked' ? 'cooked' : 'default'} outfit={outfit} interactive={false} height={kind === 'cooked' ? 250 : 300} zoom={1.15} label={`Feta: ${title}`} />}
               <h2>{title}</h2>
               {kind === 'cooked' && (
                 <>

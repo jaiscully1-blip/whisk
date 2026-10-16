@@ -1,4 +1,4 @@
--- Baste 0008 — the passport becomes a stamp album of all 193 UN member states.
+-- Feta 0008 — the passport becomes a stamp album of all 193 UN member states.
 -- Each web recipe carries the country it comes from (data->>'country', ISO 3166 alpha-2, from 0005).
 -- Every logged meal remembers that country, so the album can count meals per country.
 -- Safe to re-run.

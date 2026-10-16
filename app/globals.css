@@ -427,6 +427,15 @@ button, a, [role="button"], [role="tab"], select, input { touch-action: manipula
 .ing-list li { display: grid; grid-template-columns: minmax(70px, auto) 1fr; gap: 10px; align-items: baseline; font-size: 15px; padding-bottom: 6px; border-bottom: 1px dashed var(--line); }
 .ing-list li.need { color: var(--bad, #B3261E); }
 .ing-q { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* ingredient list: As written | By bowl */
+.ing-seg { display: inline-flex; align-self: flex-start; padding: 3px; gap: 2px; border-radius: 999px; background: var(--track); border: 1px solid var(--line); }
+.ing-seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 800; min-height: 32px; padding: 0 14px; border-radius: 999px; cursor: pointer; }
+.ing-seg button.on { background: var(--card); color: var(--fg); box-shadow: 0 1px 0 var(--tile-edge, var(--line)); }
+.bowl { border-left: 4px solid var(--line); padding-left: 10px; }
+.bowl-wet { border-left-color: var(--accent); }
+.bowl-dry { border-left-color: var(--pop); }
+.bowl-cook { border-left-color: var(--muted); }
+.bowl .eyebrow .muted { text-transform: none; letter-spacing: 0; font-weight: 700; }
 .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; counter-reset: none; }
 .steps li { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
 .step-n { width: 30px; height: 30px; border-radius: 99px; background: var(--accent); color: #fff; display: grid; place-items: center; font: 700 15px var(--f-display); }
@@ -665,6 +674,9 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .cm-ready ul { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
 .cm-ready li { font-size: 20px; font-weight: 700; padding: 10px 14px; border-radius: 14px; background: var(--card); border: 2px solid var(--tile-edge, var(--line)); }
 .cm-ready li b { color: var(--accent); }
+.cm-bowl { margin-top: 14px; border-left: 4px solid var(--line); padding-left: 12px; }
+.cm-bowl.bowl-wet { border-left-color: var(--accent); } .cm-bowl.bowl-dry { border-left-color: var(--pop); } .cm-bowl.bowl-all { border-left: 0; padding-left: 0; }
+.cm-bowl h3 { font-size: 16px; margin: 0; } .cm-bowl h3 span { color: var(--muted); font-weight: 700; font-size: 13px; }
 .cm-bottom { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
 .cm-bottom .btn { min-height: 60px; font-size: 18px; }
 .cm-hint { text-align: center; font-size: 12px; font-weight: 800; color: var(--muted); margin-top: 8px; }

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
 import { timerApi } from '@/lib/timers';
 import { formatQty, ingredientLine, parseFactor, stepParts } from '@/lib/recipes/scale';
+import { hasBowls, prepGroups } from '@/lib/recipes/prep';
 
 // The full recipe, written for a first-time cook: every ingredient measured, numbered steps that say which bowl
 // or pan things go in, and a servings multiplier (type any number next to the ×) that rescales every amount.
@@ -52,14 +53,25 @@ export function ServingsX({ base, factor, onChange, id }) {
 // Every ingredient with its measurement, grouped like the recipe page ("For the sauce" …).
 export function IngredientList({ r, factor = 1, missing = [] }) {
   const list = r.ingredients || [];
+  const canBowl = hasBowls(list);
+  const [bowls, setBowls] = useState(false);   // "By bowl" is remembered on this phone
+  useEffect(() => { try { setBowls(localStorage.getItem('whisk-bowls') === '1'); } catch {} }, []);
+  const pick = (on) => { setBowls(on); try { localStorage.setItem('whisk-bowls', on ? '1' : '0'); } catch {} };
   if (!list.length) return null;
-  const groups = []; for (const g of list) { const k = g.group || ''; let grp = groups.find((x) => x.k === k); if (!grp) groups.push(grp = { k, items: [] }); grp.items.push(g); }
+  const groups = canBowl && bowls ? prepGroups(list).map((b) => ({ k: b.label, hint: b.hint, bowl: b.id, items: b.items })) : [];
+  if (!groups.length) for (const g of list) { const k = g.group || ''; let grp = groups.find((x) => x.k === k); if (!grp) groups.push(grp = { k, items: [] }); grp.items.push(g); }
   const miss = missing.map((m) => m.toLowerCase());
   return (
     <div className="stack ing-list" style={{ gap: 10 }}>
+      {canBowl && (
+        <div className="seg ing-seg" role="group" aria-label="How to list the ingredients">
+          <button type="button" className={bowls ? '' : 'on'} aria-pressed={!bowls} onClick={() => pick(false)}>As written</button>
+          <button type="button" className={bowls ? 'on' : ''} aria-pressed={bowls} onClick={() => pick(true)}>By bowl</button>
+        </div>
+      )}
       {groups.map((grp) => (
-        <div key={grp.k || '_'}>
-          {grp.k && <span className="eyebrow">{grp.k}</span>}
+        <div key={grp.k || '_'} className={grp.bowl ? `bowl bowl-${grp.bowl}` : undefined}>
+          {grp.k && <span className="eyebrow">{grp.k}{grp.hint ? <span className="muted"> · {grp.hint}</span> : null}</span>}
           <ul>{grp.items.map((g, i) => { const it = g.item.toLowerCase().trim(); const need = miss.some((m) => m === it || (m.length > 3 && it === `${m}s`)); return (
             <li key={i} className={need ? 'need' : ''}><span className="ing-q">{g.qty == null ? '' : ingredientLine({ ...g, item: '', note: null }, factor).trim()}</span><span>{g.item}{g.note ? <span className="muted">, {g.note}</span> : null}</span></li>
           ); })}</ul>

@@ -11,7 +11,8 @@
     "seed:recipes": "node scripts/gen-recipes-sql.mjs",
     "prebuild": "node scripts/copy-scan-assets.mjs",
     "predev": "node scripts/copy-scan-assets.mjs",
-    "test:receipt": "node lib/scan/receipt.test.mjs"
+    "test:receipt": "node lib/scan/receipt.test.mjs",
+    "test:prep": "node lib/recipes/prep.test.mjs"
   },
   "dependencies": {
     "@fontsource/fredoka": "5.3.0",

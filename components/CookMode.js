@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
 import { StepTimer } from './RecipeSteps';
 import { ingredientLine, stepParts } from '@/lib/recipes/scale';
+import { hasBowls, prepGroups } from '@/lib/recipes/prep';
 
 // Cook mode: the recipe, one step at a time, in big text, for messy hands. The screen stays awake while it's open.
 // Tap anywhere to go on; tap the left edge (or swipe right) to go back. Page 0 is "get these ready" (every
@@ -50,7 +51,12 @@ export default function CookMode({ r, factor = 1, canFinish, onFinish, onClose }
           <div className="cm-ready">
             <h2>{r.title}</h2>
             <span className="eyebrow">Get these ready</span>
-            <ul>{(r.ingredients || []).map((g, i) => <li key={i}><b>{g.qty == null ? '' : ingredientLine({ ...g, item: '', note: null }, factor).trim()}</b> {g.item}</li>)}</ul>
+            {(hasBowls(r.ingredients) ? prepGroups(r.ingredients) : [{ id: 'all', items: r.ingredients || [] }]).map((b) => (
+              <div key={b.id} className={`cm-bowl bowl-${b.id}`}>
+                {b.label && <h3>{b.label} <span>{b.hint}</span></h3>}
+                <ul>{b.items.map((g, i) => <li key={i}><b>{g.qty == null ? '' : ingredientLine({ ...g, item: '', note: null }, factor).trim()}</b> {g.item}</li>)}</ul>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="cm-step" key={at}>

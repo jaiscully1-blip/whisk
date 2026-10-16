@@ -215,6 +215,14 @@ await step('cook', async () => {
   check('recipe sheet links to Budget Bytes', (await page.locator('[role=dialog] .src a').first().getAttribute('href')).includes('budgetbytes.com'));
   const dlg = page.locator('[role=dialog]');
   check('every ingredient is measured (full list from the recipe page)', (await dlg.locator('.ing-list li').count()) >= 6 && (await dlg.locator('.ing-q').filter({ hasText: /\d/ }).count()) >= 5);
+  // prep groups: As written | By bowl
+  const asWritten = await dlg.locator('.ing-list li').count();
+  check('recipe offers "As written | By bowl" and starts as written', (await dlg.locator('.ing-seg').count()) === 1 && (await dlg.locator('.bowl').count()) === 0);
+  await dlg.getByRole('button', { name: 'By bowl' }).click();
+  const bowlTitles = await dlg.locator('.bowl .eyebrow').allInnerTexts();
+  check('By bowl: 2+ labelled groups, same number of ingredients, none lost', bowlTitles.length >= 2 && bowlTitles.every((t) => /bowl|pan/i.test(t)) && (await dlg.locator('.ing-list li').count()) === asWritten, bowlTitles.join(' | '));
+  await dlg.locator('.ing-seg').scrollIntoViewIfNeeded(); await shot('recipe-by-bowl');
+  check('By bowl is remembered after reload', await page.evaluate(() => localStorage.getItem('whisk-bowls')) === '1');
   check('numbered beginner steps with measured amounts', (await dlg.locator('ol.steps li').count()) >= 6 && (await dlg.locator('ol.steps .amt').count()) >= 3);
   check('steps say which bowl or pan things go in', /bowl|skillet|pot|pan|baking dish/i.test(await dlg.locator('ol.steps').innerText()));
   check('cooking it is +100 XP and 500 coins', (await dlg.getByText('+100 XP · 500 coins when you cook it').count()) === 1);
@@ -241,6 +249,8 @@ await step('cook', async () => {
   const cm = page.locator('.cookmode');
   await cm.waitFor();
   check('Cook mode opens on "Get ready" with every ingredient', (await cm.locator('.cm-count').innerText()) === 'Get ready' && (await cm.locator('.cm-ready li').count()) >= 6);
+  await shot('cookmode-by-bowl');
+  check('Cook mode "Get ready" is grouped by bowl too', (await cm.locator('.cm-bowl h3').count()) >= 2);
   await cm.locator('.cm-page').click({ position: { x: 300, y: 200 } });
   check('tap anywhere → step 1, in big text', /^Step 1 of \d+$/.test(await cm.locator('.cm-count').innerText()) && parseFloat(await cm.locator('.cm-step p').evaluate((e) => getComputedStyle(e).fontSize)) >= 24);
   await cm.locator('.cm-page').click({ position: { x: 300, y: 200 } });

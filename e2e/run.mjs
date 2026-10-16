@@ -266,6 +266,7 @@ await step('cook', async () => {
   await page.locator('[aria-label="Log a meal"] input[type=file]').setInputFiles(photo);
   await page.click('text=Submit');
   await page.getByRole('heading', { name: 'Cooked it!' }).waitFor({ timeout: 15000 });
+  await page.waitForTimeout(1800); if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'popup-cooked.png') });
   check('submit photo → "Cooked it!" popup', true);
   check('cooking pays +100 XP and +500 coins', await page.locator('.toast', { hasText: /\+\d+ XP · \+500 coins/ }).count().then((n) => n >= 1).catch(() => false) || /500 coins/.test(await page.locator('.toast').allInnerTexts().then((t) => t.join(' '))), await page.locator('.toast').allInnerTexts().then((t) => t.join(' | ')));
   await page.click('[aria-label="Liked it"]'); await page.waitForTimeout(500);

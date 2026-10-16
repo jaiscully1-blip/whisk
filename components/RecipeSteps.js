@@ -1,9 +1,11 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
 import { timerApi } from '@/lib/timers';
 import { formatQty, ingredientLine, parseFactor, stepParts } from '@/lib/recipes/scale';
 import { hasBowls, prepGroups } from '@/lib/recipes/prep';
+import { swapsFor } from '@/lib/recipes/subs';
+import { usePantry } from './usePantry';
 
 // The full recipe, written for a first-time cook: every ingredient measured, numbered steps that say which bowl
 // or pan things go in, and a servings multiplier (type any number next to the ×) that rescales every amount.
@@ -51,12 +53,22 @@ export function ServingsX({ base, factor, onChange, id }) {
 }
 
 // Every ingredient with its measurement, grouped like the recipe page ("For the sauce" …).
+// What a swap looks like at this recipe's size: "1/4 cup unsweetened applesauce" (or just its name when it is a mix).
+const swapAmount = (g, o, factor) => (g.qty != null && o.ratio != null && !/ \+ /.test(o.name)
+  ? ingredientLine({ qty: g.qty * o.ratio, unit: o.unit || g.unit, item: o.name }, factor) : o.name);
+// Only claim "You have this" when the pantry item is that exact thing (or a more specific one): plain "Rice" is not "brown rice".
+const haveIt = (o, pantry) => { const main = o.name.split(/ \+ |, | or /)[0].toLowerCase().trim(); if (main.length < 3 || /^any /.test(main)) return false;
+  return (pantry || []).some((p) => { const n = p.name.toLowerCase().trim(); return p.status !== 'out' && n.length >= 3 && (n === main || n === `${main}s` || n.includes(main)); }); };
+
 export function IngredientList({ r, factor = 1, missing = [] }) {
   const list = r.ingredients || [];
   const canBowl = hasBowls(list);
   const [bowls, setBowls] = useState(false);   // "By bowl" is remembered on this phone
+  const [openSwap, setOpenSwap] = useState(null);   // index of the ingredient whose swaps are showing
+  const [pantry] = usePantry();
   useEffect(() => { try { setBowls(localStorage.getItem('whisk-bowls') === '1'); } catch {} }, []);
   const pick = (on) => { setBowls(on); try { localStorage.setItem('whisk-bowls', on ? '1' : '0'); } catch {} };
+  useEffect(() => { setOpenSwap(null); }, [r?.id]);
   if (!list.length) return null;
   const groups = canBowl && bowls ? prepGroups(list).map((b) => ({ k: b.label, hint: b.hint, bowl: b.id, items: b.items })) : [];
   if (!groups.length) for (const g of list) { const k = g.group || ''; let grp = groups.find((x) => x.k === k); if (!grp) groups.push(grp = { k, items: [] }); grp.items.push(g); }
@@ -72,9 +84,33 @@ export function IngredientList({ r, factor = 1, missing = [] }) {
       {groups.map((grp) => (
         <div key={grp.k || '_'} className={grp.bowl ? `bowl bowl-${grp.bowl}` : undefined}>
           {grp.k && <span className="eyebrow">{grp.k}{grp.hint ? <span className="muted"> · {grp.hint}</span> : null}</span>}
-          <ul>{grp.items.map((g, i) => { const it = g.item.toLowerCase().trim(); const need = miss.some((m) => m === it || (m.length > 3 && it === `${m}s`)); return (
-            <li key={i} className={need ? 'need' : ''}><span className="ing-q">{g.qty == null ? '' : ingredientLine({ ...g, item: '', note: null }, factor).trim()}</span><span>{g.item}{g.note ? <span className="muted">, {g.note}</span> : null}</span></li>
-          ); })}</ul>
+          <ul>{grp.items.map((g, i) => {
+            const it = g.item.toLowerCase().trim(); const need = miss.some((m) => m === it || (m.length > 3 && it === `${m}s`));
+            const idx = list.indexOf(g), swaps = swapsFor(g.item), open = openSwap === idx && swaps.length > 0;
+            const label = <>{g.item}{g.note ? <span className="muted">, {g.note}</span> : null}</>;
+            return (
+              <Fragment key={i}>
+                <li className={`${need ? 'need' : ''} ${swaps.length ? 'has-swap' : ''}`}>
+                  <span className="ing-q">{g.qty == null ? '' : ingredientLine({ ...g, item: '', note: null }, factor).trim()}</span>
+                  {swaps.length
+                    ? <button type="button" className={`ing-swap ${open ? 'on' : ''}`} aria-expanded={open} aria-label={`${g.item}: ${open ? 'hide' : 'show'} swaps`} onClick={() => setOpenSwap(open ? null : idx)}><span>{label}</span><Icon name="flip" size={14} /></button>
+                    : <span>{label}</span>}
+                </li>
+                {open && (
+                  <li className="swap-panel" aria-label={`Swaps for ${g.item}`}>
+                    <span className="eyebrow">Instead of {g.item}</span>
+                    {swaps.map((o) => (
+                      <div key={o.name} className="swap-opt">
+                        <div className="swap-top"><b>{swapAmount(g, o, factor)}</b>{haveIt(o, pantry) && <span className="chip have">You have this</span>}</div>
+                        <span className="muted">{o.how}</span>
+                      </div>
+                    ))}
+                    <span className="swap-note">Swaps change the taste or texture a little.</span>
+                  </li>
+                )}
+              </Fragment>
+            );
+          })}</ul>
         </div>
       ))}
     </div>

@@ -223,6 +223,18 @@ await step('cook', async () => {
   const bowlTitles = await dlg.locator('.bowl .eyebrow').allInnerTexts();
   check('By bowl: 2+ labelled groups, same number of ingredients, none lost', bowlTitles.length >= 2 && bowlTitles.every((t) => /bowl|pan/i.test(t)) && (await dlg.locator('.ing-list li').count()) === asWritten, bowlTitles.join(' | '));
   await dlg.locator('.ing-seg').scrollIntoViewIfNeeded(); await shot('recipe-by-bowl');
+  // tap an ingredient for a swap
+  const swapBtns = dlg.locator('.ing-swap');
+  check('ingredients with a known swap are tappable (dotted underline + swap icon)', (await swapBtns.count()) >= 3 && (await swapBtns.first().getAttribute('aria-expanded')) === 'false');
+  const riceBtn = dlg.locator('.ing-swap', { hasText: /rice/i }).first();
+  await riceBtn.click();
+  const panel = dlg.locator('.swap-panel');
+  check('tap: swaps open under the ingredient, with an amount and how-to for each', (await panel.count()) === 1 && (await panel.locator('.swap-opt').count()) >= 2 && /brown rice/i.test(await panel.innerText()) && /\d/.test(await panel.locator('.swap-opt b').first().innerText()));
+  await panel.scrollIntoViewIfNeeded(); await page.evaluate(() => document.querySelector('.swap-panel')?.scrollIntoView({ block: 'center' })); await page.waitForTimeout(300); if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'recipe-swaps.png') });
+  const second = dlg.locator('.ing-swap').nth(1); await second.click();
+  check('opening another closes the first (one panel at a time)', (await dlg.locator('.swap-panel').count()) === 1 && (await riceBtn.getAttribute('aria-expanded')) === 'false');
+  await second.click();
+  check('tap again closes it', (await dlg.locator('.swap-panel').count()) === 0);
   check('By bowl is remembered after reload', await page.evaluate(() => localStorage.getItem('whisk-bowls')) === '1');
   check('numbered beginner steps with measured amounts', (await dlg.locator('ol.steps li').count()) >= 6 && (await dlg.locator('ol.steps .amt').count()) >= 3);
   check('steps say which bowl or pan things go in', /bowl|skillet|pot|pan|baking dish/i.test(await dlg.locator('ol.steps').innerText()));

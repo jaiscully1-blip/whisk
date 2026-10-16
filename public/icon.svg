@@ -1,41 +1,53 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <rect width="256" height="256" rx="56" fill="#E6F2DC"/>
-  <!-- whisk held like a bat (behind the wing) -->
-  <g transform="rotate(12 202 206)">
-    <rect x="194" y="176" width="16" height="54" rx="8" fill="#C9D1DB" stroke="#2A2433" stroke-width="4"/>
-    <path d="M202 180 C168 152 166 80 202 30 C238 80 236 152 202 180 Z" fill="#fff" fill-opacity=".55" stroke="#2A2433" stroke-width="4" stroke-linejoin="round"/>
-    <ellipse cx="202" cy="106" rx="19" ry="62" fill="none" stroke="#2A2433" stroke-width="3"/>
-    <ellipse cx="202" cy="108" rx="8" ry="56" fill="none" stroke="#2A2433" stroke-width="3"/>
-    <rect x="190" y="174" width="24" height="10" rx="5" fill="#B9C2CD" stroke="#2A2433" stroke-width="4"/>
+  <rect width="256" height="256" rx="56" fill="#CFE9B5"/>
+  <g transform="translate(9 12) scale(.88)">
+  <ellipse cx="128" cy="251" rx="70" ry="7" fill="#2A2433" opacity=".13"/>
+  <!-- whisk (behind the head, in front of the body) -->
+  <g transform="translate(206 20) rotate(14 0 160)">
+    <g><path d="M0 176 C-40 140 -40 66 0 22 C40 66 40 140 0 176 Z" fill="none" stroke="#2A2433" stroke-width="7" stroke-linejoin="round"/><path d="M0 176 C-27 140 -27 66 0 22 C27 66 27 140 0 176 Z" fill="none" stroke="#2A2433" stroke-width="7" stroke-linejoin="round"/><path d="M0 176 C-14 140 -14 66 0 22 C14 66 14 140 0 176 Z" fill="none" stroke="#2A2433" stroke-width="7" stroke-linejoin="round"/><path d="M0 176 C-40 140 -40 66 0 22 C40 66 40 140 0 176 Z" fill="none" stroke="#E4E9EF" stroke-width="3.2" stroke-linejoin="round"/><path d="M0 176 C-27 140 -27 66 0 22 C27 66 27 140 0 176 Z" fill="none" stroke="#E4E9EF" stroke-width="3.2" stroke-linejoin="round"/><path d="M0 176 C-14 140 -14 66 0 22 C14 66 14 140 0 176 Z" fill="none" stroke="#E4E9EF" stroke-width="3.2" stroke-linejoin="round"/></g>
+    <path d="M0 22 V176" stroke="#2A2433" stroke-width="7"/><path d="M0 22 V176" stroke="#E4E9EF" stroke-width="3.2"/>
+    <rect x="-9" y="170" width="18" height="12" rx="4" fill="#B9C2CD" stroke="#2A2433" stroke-width="4"/>
+    <rect x="-8" y="180" width="16" height="62" rx="8" fill="#C9D1DB" stroke="#2A2433" stroke-width="4"/>
+    <path d="M-3 188 V232" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".8"/>
   </g>
-  <!-- chef coat -->
-  <path d="M22 262 C22 214 66 196 128 196 C190 196 234 214 234 262 Z" fill="#FFFFFF" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M128 204 V262" stroke="#2A2433" stroke-width="4"/>
-  <g fill="#C9D1DB" stroke="#2A2433" stroke-width="3"><circle cx="114" cy="228" r="5"/><circle cx="142" cy="228" r="5"/><circle cx="114" cy="249" r="5"/><circle cx="142" cy="249" r="5"/></g>
-  <path d="M100 196 L128 214 L156 196 Z" fill="#E94F4F" stroke="#2A2433" stroke-width="4" stroke-linejoin="round"/>
-  <!-- left wing + sleeve, right sleeve + wing gripping the whisk -->
-  <path d="M60 244 L44 228" stroke="#2A2433" stroke-width="36" stroke-linecap="round"/><path d="M60 244 L44 228" stroke="#FFFFFF" stroke-width="27" stroke-linecap="round"/>
-  <ellipse cx="40" cy="224" rx="13" ry="15" fill="#FFD84A" stroke="#2A2433" stroke-width="4" transform="rotate(-25 40 224)"/>
-  <path d="M176 238 L206 212" stroke="#2A2433" stroke-width="40" stroke-linecap="round"/><path d="M176 238 L206 212" stroke="#FFFFFF" stroke-width="31" stroke-linecap="round"/>
-  <ellipse cx="208" cy="206" rx="15" ry="16" fill="#FFD84A" stroke="#2A2433" stroke-width="4"/>
-  <path d="M199 200 Q208 196 217 200 M199 209 Q208 205 217 209" stroke="#FFC21F" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- body -->
+  <ellipse cx="128" cy="190" rx="64" ry="58" fill="#FFD84A" stroke="#2A2433" stroke-width="5"/>
+  <!-- chef coat on the tummy -->
+  <path d="M92 168 Q128 152 164 168 L170 232 Q128 246 86 232 Z" fill="#FFFFFF" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M128 164 V240" stroke="#2A2433" stroke-width="3.5"/>
+  <g fill="#C9D1DB" stroke="#2A2433" stroke-width="3"><circle cx="115" cy="192" r="5"/><circle cx="141" cy="192" r="5"/><circle cx="115" cy="214" r="5"/><circle cx="141" cy="214" r="5"/></g>
+  <path d="M104 164 L128 182 L152 164 Z" fill="#E94F4F" stroke="#2A2433" stroke-width="4" stroke-linejoin="round"/>
+  <!-- feet -->
+  <g fill="#FF9A2E" stroke="#2A2433" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M92 250 L80 258 M104 252 L104 260 M116 250 L128 258"/><path d="M140 250 L128 258 M152 252 L152 260 M164 250 L176 258"/>
+    <rect x="94" y="240" width="20" height="14" rx="6"/><rect x="142" y="240" width="20" height="14" rx="6"/>
+  </g>
+  <!-- left wing hanging at the side -->
+  <path d="M70 168 C46 176 40 214 58 232 C74 222 82 196 84 176 Z" fill="#FFD84A" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M52 218 Q62 218 66 208 M58 228 Q68 226 72 214" stroke="#F5B820" stroke-width="3.5" fill="none" stroke-linecap="round"/>
   <!-- head -->
-  <circle cx="128" cy="140" r="64" fill="#FFD84A" stroke="#2A2433" stroke-width="5"/>
-  <path d="M92 188 Q128 208 164 188" stroke="#FFC21F" stroke-width="5" fill="none" stroke-linecap="round" opacity=".6"/>
-  <!-- face -->
-  <ellipse cx="104" cy="134" rx="8.5" ry="10" fill="#2A2433"/><ellipse cx="152" cy="134" rx="8.5" ry="10" fill="#2A2433"/>
-  <circle cx="107" cy="130" r="3.2" fill="#fff"/><circle cx="155" cy="130" r="3.2" fill="#fff"/>
-  <circle cx="86" cy="154" r="9" fill="#FF8A7A" opacity=".55"/><circle cx="170" cy="154" r="9" fill="#FF8A7A" opacity=".55"/>
-  <path d="M112 150 Q128 138 144 150 Q128 170 112 150 Z" fill="#FF9A2E" stroke="#2A2433" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M116 152 Q128 158 140 152" stroke="#2A2433" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-  <!-- tuft -->
-  <path d="M120 78 Q118 62 126 56 M130 78 Q134 60 144 58" stroke="#2A2433" stroke-width="4" fill="none" stroke-linecap="round"/>
-  <!-- chef hat, tilted a little -->
-  <g transform="translate(0 14) rotate(-5 128 70)">
-    <g stroke="#2A2433" stroke-width="4" stroke-linejoin="round"><circle cx="98" cy="46" r="19" fill="#FFFFFF"/><circle cx="158" cy="46" r="19" fill="#FFFFFF"/><circle cx="128" cy="32" r="24" fill="#FFFFFF"/></g>
-    <g fill="#FFFFFF"><circle cx="98" cy="46" r="16"/><circle cx="158" cy="46" r="16"/><circle cx="128" cy="32" r="21"/><rect x="94" y="44" width="68" height="24"/></g>
-    <path d="M98 60 V84 Q98 88 102 88 H154 Q158 88 158 84 V60" fill="#FFFFFF" stroke="#2A2433" stroke-width="4" stroke-linejoin="round"/>
-    <rect x="95" y="76" width="66" height="14" rx="5" fill="#F3F5EE" stroke="#2A2433" stroke-width="4"/>
-    <path d="M113 62 V76 M128 58 V76 M143 62 V76" stroke="#C9D1DB" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="128" cy="114" r="58" fill="#FFD84A" stroke="#2A2433" stroke-width="5"/>
+  <path d="M82 138 Q86 150 98 152 M174 138 Q170 150 158 152" stroke="#F5B820" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <ellipse cx="103" cy="118" rx="8.5" ry="10.5" fill="#2A2433"/><ellipse cx="153" cy="118" rx="8.5" ry="10.5" fill="#2A2433"/>
+  <circle cx="106" cy="114" r="3.4" fill="#fff"/><circle cx="156" cy="114" r="3.4" fill="#fff"/><circle cx="101" cy="122" r="1.6" fill="#fff"/><circle cx="151" cy="122" r="1.6" fill="#fff"/>
+  <circle cx="84" cy="140" r="9.5" fill="#FF8A7A" opacity=".6"/><circle cx="172" cy="140" r="9.5" fill="#FF8A7A" opacity=".6"/>
+  <path d="M112 134 Q128 122 144 134 Q128 154 112 134 Z" fill="#FF9A2E" stroke="#2A2433" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M116 136 Q128 142 140 136" stroke="#2A2433" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- chef hat: the band wraps the head (curved), the puffs sit on top -->
+  <g transform="translate(0 2) translate(128 92) scale(.86) rotate(-6) translate(-128 -92)">
+    <g stroke="#2A2433" stroke-width="5" stroke-linejoin="round" fill="#FFFFFF">
+      <circle cx="94" cy="44" r="21"/><circle cx="162" cy="44" r="21"/><circle cx="128" cy="30" r="27"/>
+    </g>
+    <g fill="#FFFFFF"><circle cx="94" cy="44" r="18"/><circle cx="162" cy="44" r="18"/><circle cx="128" cy="30" r="24"/><rect x="84" y="46" width="88" height="34"/></g>
+    <path d="M80 56 L82 84 Q128 100 174 84 L176 56" fill="#FFFFFF" stroke="#2A2433" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M80 78 Q128 98 176 78 L174 98 Q128 118 82 98 Z" fill="#F3F5EE" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M104 62 V86 M128 66 V94 M152 62 V86" stroke="#C9D1DB" stroke-width="3.5" stroke-linecap="round"/>
   </g>
+  <!-- right wing raised, feather tips gripping the whisk handle -->
+  <path d="M170 176 C190 170 206 176 214 196 C204 206 188 206 172 198 Z" fill="#FFD84A" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
+  <g transform="rotate(14 214 190)">
+    <path d="M200 204 C198 190 206 182 216 182 C228 182 234 192 232 204 C230 214 222 218 214 218 C206 218 202 212 200 204 Z" fill="#FFD84A" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M203 194 H229 M203 203 H230 M205 212 H228" stroke="#F5B820" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+</g>
 </svg>

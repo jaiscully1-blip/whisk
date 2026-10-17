@@ -21,7 +21,8 @@
     <path d="M62 236 Q128 252 194 236" stroke="#E4E9EF" stroke-width="10" fill="none"/>
   </g>
   <ellipse cx="128" cy="190" rx="64" ry="58" fill="none" stroke="#2A2433" stroke-width="5"/>
-  <!-- collar lapels and buttons -->
+  <!-- neckerchief fills the V, then the lapels -->
+  <path d="M114 158 L128 192 L142 158 Z" fill="#E94F4F" stroke="#2A2433" stroke-width="3.5" stroke-linejoin="round"/>
   <path d="M100 158 L128 190 L116 160 Z M156 158 L128 190 L140 160 Z" fill="#FFFFFF" stroke="#2A2433" stroke-width="3.5" stroke-linejoin="round"/>
   <g fill="#C9D1DB" stroke="#2A2433" stroke-width="3"><circle cx="116" cy="204" r="5"/><circle cx="140" cy="204" r="5"/><circle cx="116" cy="224" r="5"/><circle cx="140" cy="224" r="5"/></g>
   <!-- feet -->
@@ -32,12 +33,18 @@
   <!-- left wing hanging at the side -->
   <path d="M70 168 C46 176 40 214 58 232 C74 222 82 196 84 176 Z" fill="#FFD84A" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
   <path d="M52 218 Q62 218 66 208 M58 228 Q68 226 72 214" stroke="#F5B820" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <!-- left sleeve -->
+  <defs><clipPath id="wing-l"><path d="M70 168 C46 176 40 214 58 232 C74 222 82 196 84 176 Z"/></clipPath>
+        <clipPath id="wing-r"><path d="M170 176 C190 170 206 176 214 196 C204 206 188 206 172 198 Z"/></clipPath></defs>
+  <g clip-path="url(#wing-l)"><path d="M30 150 H110 V204 Q70 214 30 200 Z" fill="#FFFFFF"/><path d="M36 204 Q70 216 108 204" stroke="#E4E9EF" stroke-width="9" fill="none"/></g>
+  <path d="M70 168 C46 176 40 214 58 232 C74 222 82 196 84 176 Z" fill="none" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M45 204 Q70 214 84 202" stroke="#2A2433" stroke-width="3.5" fill="none" stroke-linecap="round"/>
   <!-- head -->
   <circle cx="128" cy="114" r="58" fill="#FFD84A" stroke="#2A2433" stroke-width="5"/>
   <path d="M82 138 Q86 150 98 152 M174 138 Q170 150 158 152" stroke="#F5B820" stroke-width="3.5" fill="none" stroke-linecap="round"/>
   <ellipse cx="103" cy="118" rx="8.5" ry="10.5" fill="#2A2433"/><ellipse cx="153" cy="118" rx="8.5" ry="10.5" fill="#2A2433"/>
   <circle cx="106" cy="114" r="3.4" fill="#fff"/><circle cx="156" cy="114" r="3.4" fill="#fff"/><circle cx="101" cy="122" r="1.6" fill="#fff"/><circle cx="151" cy="122" r="1.6" fill="#fff"/>
-  <circle cx="84" cy="140" r="9.5" fill="#FF8A7A" opacity=".6"/><circle cx="172" cy="140" r="9.5" fill="#FF8A7A" opacity=".6"/>
+  <circle cx="90" cy="138" r="8" fill="#FF8A7A" opacity=".6"/><circle cx="166" cy="138" r="8" fill="#FF8A7A" opacity=".6"/>
   <path d="M112 134 Q128 122 144 134 Q128 154 112 134 Z" fill="#FF9A2E" stroke="#2A2433" stroke-width="4" stroke-linejoin="round"/>
   <path d="M116 136 Q128 142 140 136" stroke="#2A2433" stroke-width="2.5" fill="none" stroke-linecap="round"/>
   <!-- chef hat: the band wraps the head (curved), the puffs sit on top -->
@@ -52,6 +59,9 @@
   </g>
   <!-- right wing raised, feather tips gripping the whisk handle -->
   <path d="M170 176 C190 170 206 176 214 196 C204 206 188 206 172 198 Z" fill="#FFD84A" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
+  <g clip-path="url(#wing-r)"><rect x="160" y="160" width="40" height="60" fill="#FFFFFF"/></g>
+  <path d="M170 176 C190 170 206 176 214 196 C204 206 188 206 172 198 Z" fill="none" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M199 174 Q196 190 201 203" stroke="#2A2433" stroke-width="3.5" fill="none" stroke-linecap="round"/>
   <g transform="rotate(14 214 190)">
     <path d="M200 204 C198 190 206 182 216 182 C228 182 234 192 232 204 C230 214 222 218 214 218 C206 218 202 212 200 204 Z" fill="#FFD84A" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
     <path d="M203 194 H229 M203 203 H230 M205 212 H228" stroke="#F5B820" stroke-width="3.5" stroke-linecap="round"/>

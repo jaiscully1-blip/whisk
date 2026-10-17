@@ -40,7 +40,7 @@ page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resourc
 page.on('pageerror', (e) => problems.push(`pageerror@${curStep} ${page.url()} after #${results.length} (${(results[results.length - 1] || [])[1]}): ${e.message.slice(0, 1200)}`));
 page.on('response', (r) => { if (r.status() >= 400 && !/api\/barcode/.test(r.url())) problems.push(`HTTP ${r.status()} ${r.request().method()} ${r.url()}`); });
 const shot = async (n) => { if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `${n}.png`), fullPage: true }); };
-const step = async (name, fn) => { curStep = name; if (process.env.ONLY && !['signed-out redirect', 'log in', process.env.ONLY].includes(name)) return; try { await fn(); } catch (e) { check(name, false, e.message.split('\n').filter((l) => /locator|Timeout|waiting/.test(l)).slice(0, 3).join(' | ') || String(e.message).slice(0, 300)); await shot(`fail-${name.replace(/\W+/g, '-')}`); } };
+const step = async (name, fn) => { curStep = name; if (process.env.ONLY && !['signed-out redirect', 'log in', ...String(process.env.ONLY).split('|')].includes(name)) return; try { await fn(); } catch (e) { check(name, false, e.message.split('\n').filter((l) => /locator|Timeout|waiting/.test(l)).slice(0, 3).join(' | ') || String(e.message).slice(0, 300)); await shot(`fail-${name.replace(/\W+/g, '-')}`); } };
 const openSettings = async (p = page) => { if (!(await p.getByTestId('settings-page').count())) await p.getByTestId('hud-settings').click(); await p.getByTestId('settings-page').waitFor(); };
 const cookTab = async (id) => { const sel = `[data-testid=cook-tab-${id}]`; await page.waitForFunction((q) => { const el = document.querySelector(q); return el && Object.keys(el).some((k) => k.startsWith('__reactProps')); }, sel, { timeout: 15000 }); await page.locator(sel).click(); };
 const nav = async (n) => { if (await page.getByTestId('settings-page').count()) await page.getByTestId('settings-back').click(); await page.getByRole('navigation').getByRole('link', { name: n, exact: true }).click(); };
@@ -636,6 +636,31 @@ await step('cooking history', async () => {
   await shot('09-history');
   await page.getByRole('link', { name: 'Me', exact: true }).first().click(); await page.locator('.pcard').waitFor();
 });
+await step('languages', async () => {
+  await nav('Me');
+  await page.getByTestId('hud-settings').click(); await page.getByTestId('settings-page').waitFor();
+  check('the language picker lists English, Spanish, German, Portuguese, French and Chinese', (await page.locator('#lang-pick option').allInnerTexts()).join('|') === 'English|Español|Deutsch|Português|Français|中文');
+  await page.selectOption('#lang-pick', 'es');
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Despensa' }).waitFor({ timeout: 5000 });
+  check('Spanish: the tabs change', (await page.getByRole('navigation', { name: 'Main' }).innerText()).includes('Inicio') && /Cocinar/.test(await page.getByRole('navigation', { name: 'Main' }).innerText()));
+  check('Spanish: Settings rows change', /Modo noche/.test(await page.getByTestId('settings-page').innerText()));
+  check('the page language is set for screen readers', (await page.evaluate(() => document.documentElement.lang)) === 'es');
+  await page.selectOption('#lang-pick', 'zh');
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: '食品柜' }).waitFor({ timeout: 5000 });
+  check('Chinese: tabs and settings change', /夜间模式/.test(await page.getByTestId('settings-page').innerText()));
+  await shot('10-chinese-settings');
+  await page.selectOption('#lang-pick', 'es');
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Despensa' }).waitFor({ timeout: 5000 });
+  await page.reload(); await page.waitForTimeout(2500);
+  check('the language is remembered after a reload', await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Despensa' }).isVisible());
+  await closePopups();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Yo', exact: true }).click(); await page.locator('.pcard').waitFor();
+  await page.getByTestId('hud-settings').click(); await page.getByTestId('settings-page').waitFor();
+  await page.selectOption('#lang-pick', 'en');
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Pantry' }).waitFor({ timeout: 5000 });
+  check('back to English', /Night mode/.test(await page.getByTestId('settings-page').innerText()));
+  await page.getByTestId('settings-back').click();
+});
 await step('compete layout', async () => {
   await nav('Compete'); await page.locator('.globe').waitFor();
   check('Cuisine bingo is gone from Compete (the globe leads, after the friends card)', (await page.getByText('Cuisine bingo').count()) === 0 && (await page.locator('main .bingo').count()) === 0);
@@ -1147,6 +1172,16 @@ await step('friends and group chat', async () => {
   await page.getByRole('button', { name: 'Back to chats' }).click();
   await shot('12b-friends-chats');
   check('Back returns to the list, where the group sits at the top', (await page.locator('.chat-item').first().innerText()).includes('Dinner crew'));
+  // a shared grocery list with one friend
+  await page.locator('.fr-list summary').click();
+  await page.getByTestId('shared-list').first().click();
+  await page.getByTestId('chat-shoplist').waitFor({ timeout: 8000 });
+  await page.locator('#gl-add').fill('bread'); await page.getByTestId('gl-add-btn').click();
+  await page.locator('[data-testid="gl-items"] li').first().waitFor();
+  check('a friend row opens a two-person shared list, ready to add to', /bread/.test(await page.getByTestId('gl-items').innerText()));
+  await page.getByTestId('chat-shoplist').getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Back to chats' }).click();
+  check('the shared list sits in the chat list as its own two-person chat', (await page.locator('.chat-item', { hasText: '&' }).count()) >= 1);
   await ctx6.close();
 });
 await step('settings gear, backup file and guess the cook', async () => {

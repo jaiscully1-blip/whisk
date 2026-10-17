@@ -20,7 +20,7 @@ const later = (key, fn) => { clearTimeout(pending.get(key)); pending.set(key, se
 const cancel = (key) => { clearTimeout(pending.get(key)); pending.delete(key); };
 
 export default function Pantry() {
-  const { supabase, say, refreshProfile, ui, setUi } = useWhisk();
+  const { supabase, say, refreshProfile, ui, setUi, t } = useWhisk();
   const tab = ui.pantryTab && ui.pantryTab !== 'saved' ? ui.pantryTab : 'pantry'; const setTab = (t) => setUi({ pantryTab: t });   // saved recipes moved to Cook
   const filter = ui.pantryFilter || 'All'; const setFilter = (f) => setUi({ pantryFilter: f });
   const [items, reloadItems, setItems] = usePantry();   // remembered between tabs (lib/cache.js)
@@ -167,7 +167,7 @@ export default function Pantry() {
 
   return (
     <div className="stack">
-      <div className="page-title"><h1>Pantry</h1></div>
+      <div className="page-title"><h1>{t('Pantry')}</h1></div>
       <div className="row tabrow" role="tablist">
         <button className={`btn sm ${tab === 'pantry' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'pantry'} onClick={() => setTab('pantry')}>Pantry {items ? `(${items.length})` : ''}</button>
         <button className={`btn sm ${tab === 'list' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'list'} onClick={() => setTab('list')}>Shopping list {list ? `(${list.length})` : ''}</button>
@@ -177,12 +177,12 @@ export default function Pantry() {
       {tab === 'kitchen' ? <KitchenTab items={items} /> : tab === 'pantry' ? (
         <>
           <div className="grid2 scanrow">
-            <button data-tour="scan" data-tip="receipt" className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('receipt')}><Icon name="receipt" size={22} />Scan receipt</button>
-            <button className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} data-tip="barcode" onClick={() => setScan('barcode')}><Icon name="barcode" size={22} />Scan barcode</button>
+            <button data-tour="scan" data-tip="receipt" className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('receipt')}><Icon name="receipt" size={22} />{t('Scan receipt')}</button>
+            <button className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} data-tip="barcode" onClick={() => setScan('barcode')}><Icon name="barcode" size={22} />{t('Scan barcode')}</button>
           </div>
           {quick.length > 0 && (
-            <section className="quick" aria-label="Quick add">
-              <span className="eyebrow">Quick add</span>
+            <section className="quick" aria-label={t('Quick add')}>
+              <span className="eyebrow">{t('Quick add')}</span>
               <div className="quick-row">{quick.map((q) => { const ex = (items || []).find((i) => i.name.toLowerCase() === q.name.toLowerCase()); const stocked = ex?.status === 'stocked'; return (
                 <button key={q.name} type="button" className={`chip quick-chip ${stocked ? 'have' : ''}`} onClick={() => quickAdd(q)} aria-label={stocked ? `${q.name} is stocked` : `Quick add ${q.name}`}>{stocked ? <Icon name="check" size={14} /> : <Icon name="plus" size={14} />}{q.name}</button>
               ); })}</div>
@@ -190,9 +190,9 @@ export default function Pantry() {
           )}
           <form className="card stack" onSubmit={addPantry}>
             <div className="grid2">
-              <div style={{ gridColumn: '1 / -1' }}><label className="lbl" htmlFor="p-name">Item</label><input id="p-name" className="input" maxLength={60} placeholder="e.g. Frozen chicken breast" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-              <div><label className="lbl" htmlFor="p-qty">Amount</label><input id="p-qty" className="input" maxLength={30} placeholder="2 lb" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
-              <div style={{ minWidth: 0 }}><label className="lbl" htmlFor="p-exp">Expires</label><div className="date-wrap"><input id="p-exp" className={`input ${form.expires_on ? '' : 'empty'}`} type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} />{!form.expires_on && <span className="date-hint" aria-hidden="true">Pick a date</span>}</div>{form.expires_on && <button type="button" className="date-reset" onClick={() => setForm({ ...form, expires_on: '' })} aria-label="Reset the expiry date">Reset</button>}</div>
+              <div style={{ gridColumn: '1 / -1' }}><label className="lbl" htmlFor="p-name">{t('Item')}</label><input id="p-name" className="input" maxLength={60} placeholder="e.g. Frozen chicken breast" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+              <div><label className="lbl" htmlFor="p-qty">{t('Amount')}</label><input id="p-qty" className="input" maxLength={30} placeholder="2 lb" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
+              <div style={{ minWidth: 0 }}><label className="lbl" htmlFor="p-exp">{t('Expires')}</label><div className="date-wrap"><input id="p-exp" className={`input ${form.expires_on ? '' : 'empty'}`} type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} />{!form.expires_on && <span className="date-hint" aria-hidden="true">Pick a date</span>}</div>{form.expires_on && <button type="button" className="date-reset" onClick={() => setForm({ ...form, expires_on: '' })} aria-label="Reset the expiry date">Reset</button>}</div>
             </div>
             <button data-tour="add" data-tip="add" className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
           </form>
@@ -202,8 +202,8 @@ export default function Pantry() {
           </div>
           <KitchenFloat items={items} filter={filter} />
 
-          {items === null ? <p className="muted">Loading your pantry…</p> : items.length === 0 ? (
-            <div className="empty"><b>Your pantry is empty</b></div>
+          {items === null ? <p className="muted">{t('Loading your pantry…')}</p> : items.length === 0 ? (
+            <div className="empty"><b>{t('Your pantry is empty')}</b></div>
           ) : groups.map(([cat, list]) => (
             <section key={cat} className="stack" style={{ gap: 8 }}>
               <span className="eyebrow">{cat} · {list.length}</span>
@@ -237,14 +237,14 @@ export default function Pantry() {
         </>
       ) : (
         <>
-          <button type="button" className="btn ghost wide share-btn" onClick={() => setSharing(true)}><Icon name="share" size={18} />Share list</button>
+          <button type="button" className="btn ghost wide share-btn" onClick={() => setSharing(true)}><Icon name="share" size={18} />{t('Share list')}</button>
           <form className="row" onSubmit={addToList} style={{ flexWrap: 'nowrap' }}>
-            <label htmlFor="s-new" className="lbl" hidden>Add item</label>
-            <input id="s-new" className="input" maxLength={60} placeholder="Add an item" value={newItem} onChange={(e) => setNewItem(e.target.value)} />
-            <button className="btn" type="submit" aria-label="Add"><Icon name="plus" size={18} /></button>
+            <label htmlFor="s-new" className="lbl" hidden>{t('Add item')}</label>
+            <input id="s-new" className="input" maxLength={60} placeholder={t('Add an item')} value={newItem} onChange={(e) => setNewItem(e.target.value)} />
+            <button className="btn" type="submit" aria-label={t('Add')}><Icon name="plus" size={18} /></button>
           </form>
           <StaplesCheck quick={quick} items={items} list={list} onAdd={addStaples} />
-          {list === null ? <p className="muted">Loading…</p> : list.length === 0 ? <div className="empty"><b>Nothing to buy</b></div> : aisles.map(([aisle, rows]) => (
+          {list === null ? <p className="muted">{t('Loading…')}</p> : list.length === 0 ? <div className="empty"><b>{t('Nothing to buy')}</b></div> : aisles.map(([aisle, rows]) => (
             <section key={aisle} className="stack" style={{ gap: 6 }}>
               <span className="eyebrow">{aisle} · {rows.length}</span>
               {rows.map((it) => (

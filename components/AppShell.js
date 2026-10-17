@@ -16,6 +16,7 @@ import { startActivity, setPage as trackPage } from '@/lib/activity';
 import { timerApi } from '@/lib/timers';
 import Icon, { Coin, Flame } from './Icon';
 import OfflineNote from './OfflineNote';
+import { translate, guessLang, LANG_CODES } from '@/lib/i18n';
 import { fmt, levelFor } from '@/lib/game';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 import { countryArt } from '@/lib/world/flair';
@@ -195,7 +196,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
     const { data } = await supabase.from('loadouts').select('top_id, hat_id, glasses_id, shoes_id, acc_id').eq('user_id', initialProfile.id).maybeSingle();
     if (data) setLoadout(data);
   }, [supabase, initialProfile.id]);
-  // say('Saved') · say('Removed eggs', { label: 'Undo', run: fn }): a toast with one button, shown a little longer
+  // say(t('Saved')) · say('Removed eggs', { label: 'Undo', run: fn }): a toast with one button, shown a little longer
   const say = useCallback((msg, action = null) => { setToast(action ? { msg, action } : msg); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(''), action ? 5000 : 2800); }, []);
   const showPopup = useCallback((p) => setPopups((q) => [...q, p]), []);
 
@@ -288,8 +289,24 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   // "Never show me": recipes using anything the player listed are gone from every list in the app.
   const neverKey = (profile?.never_show || []).join('|');
   const shownRecipes = useMemo(() => (recipes && neverKey ? recipes.filter((r) => allowed(r, profile.never_show)) : recipes), [recipes, neverKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const value = useMemo(() => ({ profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, recipes: shownRecipes, allRecipes: recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump }),
-    [profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, shownRecipes, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump]);
+  // The language starts as English on the server and in the first client render (so the page hydrates cleanly),
+  // then switches to this phone's saved choice, or the one saved on the account.
+  const [lang, setLangState] = useState('en');
+  useEffect(() => {
+    let l = null; try { l = localStorage.getItem('yoke-lang'); } catch {}
+    const pick = LANG_CODES.includes(l) ? l : LANG_CODES.includes(ui.lang) ? ui.lang : 'en';
+    setLangState(pick);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const setLang = useCallback((code) => {
+    if (!LANG_CODES.includes(code)) return;
+    setLangState(code);
+    try { if (consentRef.current?.preferences) localStorage.setItem('yoke-lang', code); } catch {}
+    setUi({ lang: code });
+  }, [setUi]);
+  const t = useCallback((text, vars) => translate(lang, text, vars), [lang]);
+  useEffect(() => { try { document.documentElement.lang = lang; } catch {} }, [lang]);
+  const value = useMemo(() => ({ lang, setLang, t, profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, recipes: shownRecipes, allRecipes: recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump }),
+    [lang, setLang, t, profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, shownRecipes, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump]);
 
   return (
     <Ctx.Provider value={value}>
@@ -305,7 +322,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
               <RunningTimer />
               <span className="pill" data-tip="streak" title={profile?.vacation_since ? 'Vacation mode: your streak is paused' : 'Cooking streak'}>{profile?.vacation_since ? <Icon name="plane" size={16} /> : <Flame />}{profile?.streak_days || 0}d</span>
               <Link href="/me#shop" prefetch className="pill" data-tip="coins" title="Coins" style={{ textDecoration: 'none' }}><Coin />{fmt(profile?.coins)}</Link>
-              <Link href="/me" prefetch className="pill gear" title="Settings" aria-label="Settings" data-testid="hud-settings" onClick={(e) => { if ((pathname || '').startsWith('/me')) { e.preventDefault(); window.dispatchEvent(new Event('yoke-settings')); } else { try { sessionStorage.setItem('yoke-settings', '1'); } catch {} } }}><Icon name="gear" size={18} /></Link>
+              <Link href="/me" prefetch className="pill gear" title={t('Settings')} aria-label={t('Settings')} data-testid="hud-settings" onClick={(e) => { if ((pathname || '').startsWith('/me')) { e.preventDefault(); window.dispatchEvent(new Event('yoke-settings')); } else { try { sessionStorage.setItem('yoke-settings', '1'); } catch {} } }}><Icon name="gear" size={18} /></Link>
             </div>
           </div>
         </header>
@@ -315,7 +332,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
             {NAV.map(([href, label, icon]) => (
               // prefetch: each tab is fetched ahead of time, so a tap switches straight away instead of waiting on the server.
               // The tab lights up the moment it's touched (pendingTab), not when the page arrives.
-              <Link key={href} href={href} prefetch data-tip={`tab-${href.slice(1)}`} onClick={() => setPendingTab(href)} aria-current={(pendingTab ? pendingTab === href : pathname.startsWith(href)) ? 'page' : undefined}><Icon name={icon} size={24} />{label}</Link>
+              <Link key={href} href={href} prefetch data-tip={`tab-${href.slice(1)}`} onClick={() => setPendingTab(href)} aria-current={(pendingTab ? pendingTab === href : pathname.startsWith(href)) ? 'page' : undefined}><Icon name={icon} size={24} />{t(label)}</Link>
             ))}
           </div>
         </nav>
@@ -325,7 +342,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
         {kind && !privacyOpen && (
           <div className="popup-scrim" role="presentation" onClick={(e) => { if (kind !== 'cooked' && e.target === e.currentTarget) closePopup(); }}>
             <div className="popup" role="dialog" aria-modal="true" aria-label={title}>
-              {kind !== 'cooked' && <button className="x" type="button" aria-label="Close" onClick={closePopup}><Icon name="x" /></button>}
+              {kind !== 'cooked' && <button className="x" type="button" aria-label={t('Close')} onClick={closePopup}><Icon name="x" /></button>}
               {kind === 'country'
                 ? <svg className="country-badge" viewBox="0 0 200 200" width="190" height="190" aria-hidden="true"><defs><clipPath id="cb-clip"><circle cx="100" cy="100" r="94" /></clipPath></defs><g clipPath="url(#cb-clip)" dangerouslySetInnerHTML={{ __html: countryArt(popup.country) }} /><circle cx="100" cy="100" r="94" fill="none" stroke="#E0A93B" strokeWidth="8" /><circle cx="100" cy="100" r="98" fill="none" stroke="#3B2C24" strokeWidth="2.4" /></svg>
                 : <img className="popup-chick" src="/icon.svg" alt="Yoke" width="170" height="170" />}
@@ -369,7 +386,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
 
 /** A text field that remembers what you typed (across reloads and devices) until you submit it. */
 export function useDraft(key, initial = '') {
-  const { ui, setUi } = useWhisk();
+  const { ui, setUi, t } = useWhisk();
   const value = ui.drafts?.[key] ?? initial;
   const set = useCallback((v) => setUi((c) => ({ drafts: { ...(c.drafts || {}), [key]: v } })), [key, setUi]);
   const clear = useCallback(() => setUi((c) => { const d = { ...(c.drafts || {}) }; delete d[key]; return { drafts: d }; }), [key, setUi]);

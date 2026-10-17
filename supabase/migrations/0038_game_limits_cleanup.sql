@@ -78,3 +78,5 @@ grant execute on function public.admin_set_setting(text, int), public.admin_now(
 
 -- once a day at 04:15 UTC (needs pg_cron; run this one line yourself in the SQL editor after turning pg_cron on):
 -- select cron.schedule('yoke-cleanup', '15 4 * * *', $$select public.cleanup_old_games()$$);
+
+notify pgrst, 'reload schema';

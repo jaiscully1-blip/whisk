@@ -6,7 +6,7 @@ import { addToShoppingList, listMsg } from '@/lib/shoplist';
 
 // the group's shared shopping list: anyone in the chat can add, tick off or remove things
 export default function ChatShopList({ group, onClose, onChanged }) {
-  const { supabase, say } = useWhisk();
+  const { supabase, say, t } = useWhisk();
   const [items, setItems] = useState(null);
   const [text, setText] = useState('');
   const load = useCallback(async () => {
@@ -38,13 +38,13 @@ export default function ChatShopList({ group, onClose, onChanged }) {
   return (
     <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label="Group shopping list" data-testid="chat-shoplist">
-        <h2 style={{ fontSize: 24, margin: 0 }}>Shopping list</h2>
-        <p className="desc" style={{ margin: 0 }}>Shared with everyone in this chat. Only the list is shared, never your pantry.</p>
+        <h2 style={{ fontSize: 24, margin: 0 }}>{t('Shopping list')}</h2>
+        <p className="desc" style={{ margin: 0 }}>{t('Shared with everyone in this chat. Only the list is shared, never your pantry.')}</p>
         <form className="row" style={{ flexWrap: 'nowrap', gap: 8 }} onSubmit={add}>
-          <input id="gl-add" className="chat-in" style={{ flex: 1 }} maxLength={60} autoComplete="off" placeholder="Add things (commas for several)" value={text} onChange={(e) => setText(e.target.value)} />
-          <button className="btn sm" type="submit" disabled={!text.trim()} data-testid="gl-add-btn">Add</button>
+          <input id="gl-add" className="chat-in" style={{ flex: 1 }} maxLength={60} autoComplete="off" placeholder={t('Add things (commas for several)')} value={text} onChange={(e) => setText(e.target.value)} />
+          <button className="btn sm" type="submit" disabled={!text.trim()} data-testid="gl-add-btn">{t('Add')}</button>
         </form>
-        {items === null ? <p className="muted">Loading…</p> : items.length === 0 ? <p className="muted">Nothing on the list yet.</p> : (
+        {items === null ? <p className="muted">{t('Loading…')}</p> : items.length === 0 ? <p className="muted">{t('Nothing on the list yet.')}</p> : (
           <ul className="gl-list" data-testid="gl-items">
             {[...todo, ...done].map((it) => (
               <li key={it.id} className={it.done ? 'done' : ''}>
@@ -55,9 +55,9 @@ export default function ChatShopList({ group, onClose, onChanged }) {
             ))}
           </ul>
         )}
-        {todo.length > 0 && <button type="button" className="btn ghost wide" onClick={copy} data-testid="gl-copy"><Icon name="bag" size={18} />Copy to my own list</button>}
+        {todo.length > 0 && <button type="button" className="btn ghost wide" onClick={copy} data-testid="gl-copy"><Icon name="bag" size={18} />{t('Copy to my own list')}</button>}
         {done.length > 0 && <button type="button" className="btn ghost wide" onClick={clear} data-testid="gl-clear">Clear {done.length} ticked</button>}
-        <button className="btn wide" onClick={onClose}>Done</button>
+        <button className="btn wide" onClick={onClose}>{t('Done')}</button>
       </div>
     </div>
   );

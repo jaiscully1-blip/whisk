@@ -42,6 +42,12 @@ create table if not exists public.chat_messages (
   constraint chat_messages_photo_ck check (photo_path is null or char_length(photo_path) <= 200),
   constraint chat_messages_shape_ck check ((kind = 'text' and body is not null and btrim(body) <> '') or (kind = 'photo' and photo_path is not null) or (kind in ('cookoff', 'uiu', 'guess', 'video') and meta is not null))
 );
+-- running this again after an older version: bring the message rules up to date (a table that already exists keeps its old rules otherwise)
+alter table public.chat_messages add column if not exists meta jsonb;
+alter table public.chat_messages drop constraint if exists chat_messages_kind_ck;
+alter table public.chat_messages add constraint chat_messages_kind_ck check (kind in ('text', 'photo', 'cookoff', 'uiu', 'guess', 'video'));
+alter table public.chat_messages drop constraint if exists chat_messages_shape_ck;
+alter table public.chat_messages add constraint chat_messages_shape_ck check ((kind = 'text' and body is not null and btrim(body) <> '') or (kind = 'photo' and photo_path is not null) or (kind in ('cookoff', 'uiu', 'guess', 'video') and meta is not null));
 create index if not exists chat_messages_group_idx on public.chat_messages (group_id, created_at desc);
 create index if not exists chat_messages_photo_idx on public.chat_messages (photo_path) where photo_path is not null;
 create table if not exists public.chat_reports (
@@ -460,6 +466,25 @@ begin
   return n;
 end $$;
 
+-- a two-person list with one friend ("shared list"): opens the one you already have, or makes it
+alter table public.chat_groups add column if not exists pair_key text;
+create unique index if not exists chat_groups_pair_key on public.chat_groups (pair_key) where pair_key is not null;
+create or replace function public.open_shared_list(p_code text) returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
+declare uid uuid := auth.uid(); other uuid; k text; gid uuid;
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  select id into other from profiles where ref_code = upper(btrim(coalesce(p_code, '')));
+  if other is null or other = uid or not _are_friends(uid, other) then raise exception 'you can only share a list with a friend'; end if;
+  k := least(uid::text, other::text) || ':' || greatest(uid::text, other::text);
+  select id into gid from chat_groups where pair_key = k;
+  if gid is null then
+    if (select count(*) from chat_members where user_id = uid) >= 30 then raise exception 'you are in too many groups'; end if;
+    insert into chat_groups (name, owner, pair_key) values (left(_chat_name(uid) || ' & ' || _chat_name(other), 30), uid, k) returning id into gid;
+  end if;
+  insert into chat_members (group_id, user_id) values (gid, uid), (gid, other) on conflict do nothing;
+  return gid;
+end $$;
+
 -- ---------- admins: reported messages ----------
 create or replace function public.admin_chat_reports() returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 begin
@@ -501,14 +526,17 @@ revoke execute on function public.create_chat(text, text[]), public.add_to_chat(
   public.get_chat(uuid, timestamptz, timestamptz), public.admin_chat_reports(), public.admin_set_chat_hidden(uuid, boolean),
   public.get_chat_bgs(), public.buy_chat_bg(text), public.set_chat_bg(uuid, text),
   public.send_chat_video(uuid, text, text, text[], text[]),
-  public.get_chat_list(uuid), public.add_chat_list(uuid, text[]), public.set_chat_list_done(uuid, boolean), public.remove_chat_list(uuid), public.clear_chat_list_done(uuid) from public, anon;
+  public.get_chat_list(uuid), public.add_chat_list(uuid, text[]), public.set_chat_list_done(uuid, boolean), public.remove_chat_list(uuid), public.clear_chat_list_done(uuid), public.open_shared_list(text) from public, anon;
 grant execute on function public.create_chat(text, text[]), public.add_to_chat(uuid, text), public.leave_chat(uuid), public.remove_from_chat(uuid, text), public.set_chat_muted(uuid, boolean),
   public.set_chat_user_muted(text, boolean), public.send_chat(uuid, text, text, text), public.send_chat_game(uuid, text, text), public.delete_chat_message(uuid), public.report_chat_message(uuid, text), public.get_chats(),
   public.get_chat(uuid, timestamptz, timestamptz), public.admin_chat_reports(), public.admin_set_chat_hidden(uuid, boolean),
   public.get_chat_bgs(), public.buy_chat_bg(text), public.set_chat_bg(uuid, text),
   public.send_chat_video(uuid, text, text, text[], text[]),
-  public.get_chat_list(uuid), public.add_chat_list(uuid, text[]), public.set_chat_list_done(uuid, boolean), public.remove_chat_list(uuid), public.clear_chat_list_done(uuid) to authenticated;
+  public.get_chat_list(uuid), public.add_chat_list(uuid, text[]), public.set_chat_list_done(uuid, boolean), public.remove_chat_list(uuid), public.clear_chat_list_done(uuid), public.open_shared_list(text) to authenticated;
 revoke execute on function public.push_chat(text, uuid, uuid) from public;
 grant execute on function public.push_chat(text, uuid, uuid) to anon, authenticated;   -- the secret is the lock, like push_cookoff
 revoke execute on function public._in_chat(uuid, uuid), public._chat_name(uuid), public._chat_game_state(text, jsonb) from public, anon, authenticated;
 grant execute on function public._chat_photo_visible(text) to authenticated;
+
+-- make the API see the new functions right away
+notify pgrst, 'reload schema';

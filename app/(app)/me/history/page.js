@@ -13,7 +13,7 @@ const PAGE = 24;
 const monthKey = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
 export default function History() {
-  const { supabase, allRecipes } = useWhisk();
+  const { supabase, allRecipes, t } = useWhisk();
   const [pantry] = usePantry();
   const [rows, setRows] = useState(null);
   const [q, setQ] = useState('');
@@ -68,9 +68,9 @@ export default function History() {
 
   return (
     <div className="stack" data-testid="history-page">
-      <div className="page-title"><h1>Cooking history</h1><Link className="btn ghost sm" href="/me"><Icon name="back" size={16} />Me</Link></div>
-      {rows === null ? <p className="muted">Loading…</p> : rows.length === 0 ? (
-        <div className="empty"><b>Nothing cooked yet</b>Log a plate after you cook and it shows up here.</div>
+      <div className="page-title"><h1>{t('Cooking history')}</h1><Link className="btn ghost sm" href="/me"><Icon name="back" size={16} />{t('Me')}</Link></div>
+      {rows === null ? <p className="muted">{t('Loading…')}</p> : rows.length === 0 ? (
+        <div className="empty"><b>{t('Nothing cooked yet')}</b>{t('Log a plate after you cook and it shows up here.')}</div>
       ) : (
         <>
           <div className="hist-stats" data-testid="history-stats">
@@ -81,18 +81,18 @@ export default function History() {
           </div>
           {stats.goTo.length > 0 && (
             <section className="card stack" style={{ gap: 6 }} data-testid="history-goto">
-              <span className="eyebrow">Your go-tos</span>
+              <span className="eyebrow">{t('Your go-tos')}</span>
               {stats.goTo.map((g) => <div key={g.recipe_id || g.title} className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}><b>{g.title}</b><span className="muted">{g.n} times</span></div>)}
             </section>
           )}
           <div className="stack" style={{ gap: 8 }}>
-            <label className="field" style={{ width: '100%', display: 'block' }}><input id="hist-q" style={{ width: '100%' }} type="search" aria-label="Search your history" placeholder="Search what you cooked" value={q} onChange={(e) => { setQ(e.target.value); setShown(PAGE); }} /></label>
+            <label className="field" style={{ width: '100%', display: 'block' }}><input id="hist-q" style={{ width: '100%' }} type="search" aria-label="Search your history" placeholder={t('Search what you cooked')} value={q} onChange={(e) => { setQ(e.target.value); setShown(PAGE); }} /></label>
             <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-              <button type="button" className={`chip ${liked ? 'on' : ''}`} aria-pressed={liked} onClick={() => { setLiked((v) => !v); setShown(PAGE); }} data-testid="hist-liked">Liked</button>
+              <button type="button" className={`chip ${liked ? 'on' : ''}`} aria-pressed={liked} onClick={() => { setLiked((v) => !v); setShown(PAGE); }} data-testid="hist-liked">{t('Liked')}</button>
               {cuisines.map(([c, n]) => <button key={c} type="button" className={`chip ${cuisine === c ? 'on' : ''}`} aria-pressed={cuisine === c} onClick={() => { setCuisine((x) => (x === c ? '' : c)); setShown(PAGE); }}>{c} · {n}</button>)}
             </div>
           </div>
-          {list.length === 0 ? <p className="muted">Nothing matches that.</p> : groups.map((g) => (
+          {list.length === 0 ? <p className="muted">{t('Nothing matches that.')}</p> : groups.map((g) => (
             <section key={g.k} className="stack" style={{ gap: 8 }}>
               <h2 style={{ fontSize: 18, margin: '8px 0 0' }}>{g.k}</h2>
               {g.items.map((r) => {
@@ -104,7 +104,7 @@ export default function History() {
                       <b>{r.title}</b>
                       <small className="muted">{new Date(r.cooked_at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}{r.cuisine ? ` · ${r.cuisine}` : ''}{r.rating === 'up' ? ' · Liked' : r.rating === 'down' ? ' · Not for me' : ''}</small>
                     </div>
-                    {rec && <button type="button" className="btn ghost sm" onClick={() => open(r)} data-testid="hist-again">Cook again</button>}
+                    {rec && <button type="button" className="btn ghost sm" onClick={() => open(r)} data-testid="hist-again">{t('Cook again')}</button>}
                   </article>
                 );
               })}

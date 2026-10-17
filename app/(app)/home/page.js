@@ -19,7 +19,7 @@ const mix = (id, seed) => { let h = seed >>> 0; for (let i = 0; i < id.length; i
 // Home is "Discover a Dish": recipes you can't fully make yet (plus a defrost reminder when frozen meat is waiting).
 // Always a fresh random mix each time it opens (Shuffle for another).
 export default function Home() {
-  const { supabase, recipes, say, ui, setUi } = useWhisk();
+  const { supabase, recipes, say, ui, setUi, t } = useWhisk();
   const time = ui.homeTime || 'any', useUp = !!ui.homeUseUp;
   const [pantry, reload] = usePantry();
   const [saved, reloadSaved] = useSaved();
@@ -52,33 +52,33 @@ export default function Home() {
   return (
     <div className="stack" style={{ paddingTop: 16 }}>
       {frozen.length > 0 && <ThawBanner items={frozen} onChanged={reload} />}
-      <div className="page-title" style={{ margin: '6px 0 0' }}><h1>Discover a Dish</h1>{almost && almost.length > 1 && <button type="button" className="title-link" onClick={shuffle}><Icon name="shuffle" size={18} />Shuffle</button>}</div>
+      <div className="page-title" style={{ margin: '6px 0 0' }}><h1>{t('Discover a Dish')}</h1>{almost && almost.length > 1 && <button type="button" className="title-link" onClick={shuffle}><Icon name="shuffle" size={18} />{t('Shuffle')}</button>}</div>
       <DishFilters time={time} useUp={useUp} expiring={expiring} onTime={(v) => { setUi({ homeTime: v }); setShown(PAGE); }} onUseUp={(v) => { setUi({ homeUseUp: v }); setShown(PAGE); }} />
       {almost === null ? <p className="muted">Checking your pantry…</p> : almost.length === 0 && (time !== 'any' || useUp) ? (
         <div className="empty"><b>{useUp ? 'Nothing to use up' : 'No dishes match'}</b>{useUp ? 'No dish needs the food that is about to go off.' : 'Try another time.'}<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><button type="button" className="btn ghost" onClick={() => setUi({ homeTime: 'any', homeUseUp: false })}>Show everything</button></div></div>
       ) : almost.length === 0 ? (
-        <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">Add pantry items</Link><Link className="btn ghost" href="/cook">What can I make?</Link></div></div>
+        <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">{t('Add pantry items')}</Link><Link className="btn ghost" href="/cook">{t('What can I make?')}</Link></div></div>
       ) : almost.slice(0, shown).map(({ r, c, soon, needs }, i, arr) => (
         <div key={r.id} className="stack" style={{ gap: 8 }}>
-        {soon.length > 0 && i === 0 && <h2 className="away-h soon-h">Use it before it goes bad</h2>}
+        {soon.length > 0 && i === 0 && <h2 className="away-h soon-h">{t('Use it before it goes bad')}</h2>}
         <div className="card stack rcard" style={{ gap: 8 }}>
           <Postcard iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} />
           <div className="rcard-body stack" style={{ gap: 8 }}>
           <span className="eyebrow">{r.cuisine}</span>
           <h2 style={{ fontSize: 22 }}>{r.title}</h2>
-          <span className="src"><a href={r.url} target="_blank" rel="noopener noreferrer">Full recipe</a> · {r.minutes} min</span>
+          <span className="src"><a href={r.url} target="_blank" rel="noopener noreferrer">{t('Full recipe')}</a> · {r.minutes} min</span>
           {soon.length > 0 && <span className="chip soon"><Icon name="timer" size={14} />Uses your {soon.map((p) => p.name.toLowerCase()).slice(0, 2).join(' and ')} before it goes bad</span>}
           <DietTags recipe={r} max={3} />
           <div className="row">{needs.slice(0, SHOW).map((m) => <span key={m} className="chip need">+ {m}</span>)}{needs.length > SHOW && <button type="button" className="chip more-need" onClick={() => setOpen(r)} aria-label={`See all ${needs.length} you need`}>+{needs.length - SHOW} more</button>}</div>
           <div className="row" style={{ flexWrap: 'nowrap' }}>
-            <button className="btn ghost" style={{ flex: 1 }} onClick={() => addToList(r, needs)}>Add to list</button>
-            <button className="btn" style={{ flex: 1 }} onClick={() => setOpen(r)}>Open recipe</button>
+            <button className="btn ghost" style={{ flex: 1 }} onClick={() => addToList(r, needs)}>{t('Add to list')}</button>
+            <button className="btn" style={{ flex: 1 }} onClick={() => setOpen(r)}>{t('Open recipe')}</button>
           </div>
           </div>
         </div>
         </div>
       ))}
-      {almost && almost.length > shown && <div ref={moreRef}><button className="btn ghost wide" onClick={() => setShown((n) => n + PAGE)}>Show more</button></div>}
+      {almost && almost.length > shown && <div ref={moreRef}><button className="btn ghost wide" onClick={() => setShown((n) => n + PAGE)}>{t('Show more')}</button></div>}
       {open && <RecipeSheet recipe={open} pantry={pantry} saved={saved?.get(open.id)} onClose={() => setOpen(null)} onChanged={() => { reload(); reloadSaved(); }} />}
     </div>
   );

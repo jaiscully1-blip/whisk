@@ -22,12 +22,13 @@ import RecipeSheet from '@/components/RecipeSheet';
 import { usePantry, useWorld } from '@/components/usePantry';
 import { useRouter } from 'next/navigation';
 import { levelFor, fmt, dayNumber } from '@/lib/game';
+import { LANGS } from '@/lib/i18n';
 
 const EMPTY_LIST = [];
 const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
 
 export default function Me() {
-  const { account, supabase, profile, setProfile, refreshProfile, say, ui, setUi, openPrivacy, replayTour, dataVersion, allRecipes, bump } = useWhisk();
+  const { account, supabase, profile, setProfile, refreshProfile, say, ui, setUi, openPrivacy, replayTour, dataVersion, allRecipes, bump, t, lang, setLang } = useWhisk();
   const router = useRouter();
   const [medata] = useCached('me', () => fetchMe(supabase), [dataVersion]);   // remembered between tabs (lib/cache.js)
   const meals = medata?.meals || EMPTY_LIST, history = medata?.history || EMPTY_LIST;
@@ -108,9 +109,9 @@ export default function Me() {
       <div data-tour="name" className="page-title me-title" style={{ flexWrap: 'nowrap' }}>
         {editing ? (
           <form className="row" style={{ flexWrap: 'nowrap', flex: 1 }} onSubmit={saveName}>
-            <label htmlFor="nm" hidden>Your name</label>
+            <label htmlFor="nm" hidden>{t('Your name')}</label>
             <input id="nm" className="input" maxLength={40} value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} autoFocus onKeyDown={(e) => { if (e.key === 'Escape') setEditing(false); }} />
-            <button className="btn sm" type="submit">Save</button>
+            <button className="btn sm" type="submit">{t('Save')}</button>
           </form>
         ) : (
           <>
@@ -136,7 +137,7 @@ export default function Me() {
 
       {meals.length > 0 && (
         <>
-          <div className="row" style={{ justifyContent: 'space-between' }}><h2 style={{ fontSize: 22 }}>Plate journal</h2><Link className="btn ghost sm" href="/me/history" data-testid="see-history">Cooking history</Link></div>
+          <div className="row" style={{ justifyContent: 'space-between' }}><h2 style={{ fontSize: 22 }}>{t('Plate journal')}</h2><Link className="btn ghost sm" href="/me/history" data-testid="see-history">{t('Cooking history')}</Link></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))', gap: 8 }}>
             {meals.map((m) => (
               <figure key={m.id} style={{ margin: 0, position: 'relative' }}>
@@ -151,72 +152,78 @@ export default function Me() {
       )}
 
       {settingsOpen && (
-        <div className="settings-page" role="dialog" aria-modal="true" aria-label="Settings" data-testid="settings-page">
-          <div className="settings-top"><button type="button" className="btn ghost sm" onClick={() => setSettingsOpen(false)} aria-label="Back to Me" data-testid="settings-back"><Icon name="chevron" size={18} style={{ transform: 'rotate(180deg)' }} />Back</button><h2 style={{ margin: 0, fontSize: 22 }}>Settings</h2></div>
+        <div className="settings-page" role="dialog" aria-modal="true" aria-label={t('Settings')} data-testid="settings-page">
+          <div className="settings-top"><button type="button" className="btn ghost sm" onClick={() => setSettingsOpen(false)} aria-label={t('Back to Me')} data-testid="settings-back"><Icon name="chevron" size={18} style={{ transform: 'rotate(180deg)' }} />{t('Back')}</button><h2 style={{ margin: 0, fontSize: 22 }}>{t('Settings')}</h2></div>
           <div className="settings-body stack">
       <div className="card stack" style={{ gap: 0, padding: 0 }}>
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }}>
-          <Icon name="moon" /><span style={{ flex: 1, fontWeight: 700 }}>Night mode</span>
-          <button role="switch" aria-checked={profile?.theme_pref === 'night'} aria-label="Night mode" onClick={() => saveSetting({ theme_pref: profile.theme_pref === 'night' ? 'day' : 'night' })} style={{ width: 56, height: 34, borderRadius: 99, border: 0, padding: 4, background: profile?.theme_pref === 'night' ? 'var(--accent)' : 'var(--line)', display: 'flex', justifyContent: profile?.theme_pref === 'night' ? 'flex-end' : 'flex-start' }}>
+          <Icon name="moon" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Night mode')}</span>
+          <button role="switch" aria-checked={profile?.theme_pref === 'night'} aria-label={t('Night mode')} onClick={() => saveSetting({ theme_pref: profile.theme_pref === 'night' ? 'day' : 'night' })} style={{ width: 56, height: 34, borderRadius: 99, border: 0, padding: 4, background: profile?.theme_pref === 'night' ? 'var(--accent)' : 'var(--line)', display: 'flex', justifyContent: profile?.theme_pref === 'night' ? 'flex-end' : 'flex-start' }}>
             <span style={{ width: 26, height: 26, borderRadius: 99, background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.25)' }} />
           </button>
         </div>
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }}>
-          <Icon name="cook" /><span style={{ flex: 1, fontWeight: 700 }}>Weekly cooking goal</span>
+          <Icon name="globe" /><label htmlFor="lang-pick" style={{ flex: 1, fontWeight: 700 }}>{t('Language')}</label>
+          <select id="lang-pick" data-testid="lang-pick" value={lang} onChange={(e) => setLang(e.target.value)} style={{ minHeight: 40, borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--fg)', padding: '0 10px', font: 'inherit', fontWeight: 700 }}>
+            {LANGS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+          </select>
+        </div>
+        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }}>
+          <Icon name="cook" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Weekly cooking goal')}</span>
           <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Fewer meals" onClick={() => saveSetting({ weekly_goal: Math.max(1, goal - 1) }, `Goal: ${Math.max(1, goal - 1)} meals a week`)}>−</button>
           <output style={{ minWidth: 28, textAlign: 'center', fontWeight: 800 }}>{goal}</output>
           <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="More meals" onClick={() => saveSetting({ weekly_goal: Math.min(14, goal + 1) }, `Goal: ${Math.min(14, goal + 1)} meals a week`)}>+</button>
         </div>
         {profile?.skill_level !== undefined && (
           <button className="row setbtn" data-testid="level-row" onClick={() => setLevelOpen(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
-            <Icon name="learn" /><span style={{ flex: 1, fontWeight: 700 }}>Cooking level</span><span className="desc">{levelLabel(profile.skill_level) || 'Not set'}{learns(profile.skill_level) ? ' · Learn on' : ''}</span><Icon name="chevron" />
+            <Icon name="learn" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Cooking level')}</span><span className="desc">{levelLabel(profile.skill_level) || 'Not set'}{learns(profile.skill_level) ? ' · Learn on' : ''}</span><Icon name="chevron" />
           </button>
         )}
         <button className="row setbtn" onClick={() => setNever(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
-          <Icon name="shield" /><span style={{ flex: 1, fontWeight: 700 }}>Never show me</span><span className="desc">{(profile?.never_show || []).length ? `${profile.never_show.length} hidden` : 'Allergies, dislikes'}</span><Icon name="chevron" />
+          <Icon name="shield" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Never show me')}</span><span className="desc">{(profile?.never_show || []).length ? `${profile.never_show.length} hidden` : 'Allergies, dislikes'}</span><Icon name="chevron" />
         </button>
         <NotifySettings />
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
-          <Icon name="plane" /><span style={{ flex: 1, fontWeight: 700 }}>Vacation mode</span>
-          <button role="switch" aria-checked={!!profile?.vacation_since} aria-label="Vacation mode" onClick={toggleVacation} className={`switch ${profile?.vacation_since ? 'on' : ''}`}><span /></button>
+          <Icon name="plane" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Vacation mode')}</span>
+          <button role="switch" aria-checked={!!profile?.vacation_since} aria-label={t('Vacation mode')} onClick={toggleVacation} className={`switch ${profile?.vacation_since ? 'on' : ''}`}><span /></button>
           <span className="desc" style={{ width: '100%' }}>{profile?.vacation_since ? 'Your streak is paused. It picks up where you left off when you cook again or turn this off (up to 30 days).' : 'Going away? Pause your streak so the days away don’t count.'}</span>
         </div>
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }}>
-          <span style={{ width: 24, textAlign: 'center', fontWeight: 900, fontFamily: 'var(--f-display)' }} aria-hidden="true">Aa</span><span style={{ flex: 1, fontWeight: 700 }}>Text size</span>
+          <span style={{ width: 24, textAlign: 'center', fontWeight: 900, fontFamily: 'var(--f-display)' }} aria-hidden="true">Aa</span><span style={{ flex: 1, fontWeight: 700 }}>{t('Text size')}</span>
           <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Smaller text" disabled={scaleAt === 0} onClick={() => setUi({ textScale: TEXT_SCALES[Math.max(0, scaleAt - 1)] })}>−</button>
           <output style={{ minWidth: 44, textAlign: 'center', fontWeight: 800 }} aria-live="polite">{Math.round(TEXT_SCALES[scaleAt] * 100)}%</output>
           <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Bigger text" disabled={scaleAt === TEXT_SCALES.length - 1} onClick={() => setUi({ textScale: TEXT_SCALES[Math.min(TEXT_SCALES.length - 1, scaleAt + 1)] })}>+</button>
         </div>
-        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="snow" /><span style={{ flex: 1, fontWeight: 700 }}>Streak freezes</span><b>{profile?.streak_freezes ?? 1}</b><span className="desc" style={{ width: '100%' }}>Miss one day and a freeze keeps your streak. You get one each week; it doesn’t stack. Out of freezes? Cook twice the next day and your streak comes back, free.</span></div>
+        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="snow" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Streak freezes')}</span><b>{profile?.streak_freezes ?? 1}</b><span className="desc" style={{ width: '100%' }}>Miss one day and a freeze keeps your streak. You get one each week; it doesn’t stack. Out of freezes? Cook twice the next day and your streak comes back, free.</span></div>
         <button className="row setbtn" onClick={openPrivacy} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
-          <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Cookies &amp; privacy</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />
+          <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Cookies & privacy')}</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />
         </button>
         <button className="row setbtn" onClick={() => setHowTo(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
-          <Icon name="flag" /><span style={{ flex: 1, fontWeight: 700 }}>How Yoke works</span><Icon name="chevron" />
+          <Icon name="flag" /><span style={{ flex: 1, fontWeight: 700 }}>{t('How Yoke works')}</span><Icon name="chevron" />
         </button>
         <button className="row setbtn" onClick={() => { replayTour(); say('The tips will show again as you tap things'); }} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
-          <img src="/icon.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>Show tips again</span><Icon name="chevron" />
+          <img src="/icon.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Show tips again')}</span><Icon name="chevron" />
         </button>
         {profile?.is_admin && <Link href="/admin" className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', textDecoration: 'none', color: 'var(--fg)', flexWrap: 'nowrap' }}><Icon name="compete" /><span style={{ flex: 1, fontWeight: 700 }}>Backend dashboard</span><Icon name="chevron" /></Link>}
         <div className="stack" style={{ padding: '12px 16px', gap: 4 }}>
           {account?.anon ? <>
-            <span className="row" style={{ gap: 8, fontWeight: 700, flexWrap: 'nowrap' }}><Icon name="me" />Your game is saved on this phone</span>
+            <span className="row" style={{ gap: 8, fontWeight: 700, flexWrap: 'nowrap' }}><Icon name="me" />{t('Your game is saved on this phone')}</span>
             <span className="desc">Deleting the app or clearing this browser’s data would start a new game. Back it up to keep it safe.</span>
-            <button className="btn sm" style={{ alignSelf: 'flex-start', marginTop: 4 }} onClick={() => setBackingUp(true)}><Icon name="shield" size={16} />Back up your game</button>
+            <button className="btn sm" style={{ alignSelf: 'flex-start', marginTop: 4 }} onClick={() => setBackingUp(true)}><Icon name="shield" size={16} />{t('Back up your game')}</button>
           </> : <>
-            <span className="row" style={{ gap: 8, fontWeight: 700, flexWrap: 'nowrap', color: 'var(--fresh)' }}><Icon name="check" />Your game is backed up</span>
+            <span className="row" style={{ gap: 8, fontWeight: 700, flexWrap: 'nowrap', color: 'var(--fresh)' }}><Icon name="check" />{t('Your game is backed up')}</span>
             <span className="desc">With {(account?.providers || []).map((p) => ({ google: 'Google', apple: 'Apple', email: 'email' }[p] || p)).join(' and ') || 'email'}{account?.email ? ` (${account.email})` : ''}. On a new phone, choose “Get it back” on the start screen.</span>
           </>}
           <div className="row" style={{ gap: 8, marginTop: 6 }}>
-            <button type="button" className="btn ghost sm" data-testid="backup-file" onClick={downloadBackup}><Icon name="share" size={16} />Save backup file</button>
-            <label className="btn ghost sm" style={{ cursor: 'pointer' }}>Restore from file<input type="file" accept="application/json,.json" data-testid="restore-file" onChange={restoreFile} style={{ display: 'none' }} /></label>
+            <button type="button" className="btn ghost sm" data-testid="backup-file" onClick={downloadBackup}><Icon name="share" size={16} />{t('Save backup file')}</button>
+            <label className="btn ghost sm" style={{ cursor: 'pointer' }}>{t('Restore from file')}<input type="file" accept="application/json,.json" data-testid="restore-file" onChange={restoreFile} style={{ display: 'none' }} /></label>
           </div>
           <span className="desc">The file holds your pantry, shopping list, saved and own recipes. Coins and streaks come back with “Back up your game”.</span>
           <span className="desc" style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Player ID: <span className="mono" style={{ userSelect: 'all' }}>{profile?.id}</span></span>
         </div>
       </div>
-      <button className="row setbtn danger-row" onClick={() => setDeleting(true)} style={{ alignSelf: 'stretch', justifyContent: 'center', background: 'none', border: 0, padding: 10 }}><Icon name="trash" size={18} />Delete my data</button>
-      <button onClick={() => setResetting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, color: 'var(--muted)', fontSize: 11, textDecoration: 'underline', padding: 8, minHeight: 32 }}>Reset game</button>
+      <button className="row setbtn danger-row" onClick={() => setDeleting(true)} style={{ alignSelf: 'stretch', justifyContent: 'center', background: 'none', border: 0, padding: 10 }}><Icon name="trash" size={18} />{t('Delete my data')}</button>
+      <button onClick={() => setResetting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, color: 'var(--muted)', fontSize: 11, textDecoration: 'underline', padding: 8, minHeight: 32 }}>{t('Reset game')}</button>
           </div>
         </div>
       )}
@@ -227,8 +234,8 @@ export default function Me() {
       {recipe && <RecipeSheet recipe={recipe} pantry={pantry || []} onClose={() => setRecipe(null)} />}
       {howTo && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setHowTo(false); }}>
-          <div className="sheet stack howto" role="dialog" aria-modal="true" aria-label="How Yoke works">
-            <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}><h2 style={{ margin: 0 }}>How Yoke works</h2><button type="button" className="btn ghost sm" onClick={() => setHowTo(false)} aria-label="Close"><Icon name="x" /></button></div>
+          <div className="sheet stack howto" role="dialog" aria-modal="true" aria-label={t('How Yoke works')}>
+            <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}><h2 style={{ margin: 0 }}>{t('How Yoke works')}</h2><button type="button" className="btn ghost sm" onClick={() => setHowTo(false)} aria-label={t('Close')}><Icon name="x" /></button></div>
             <span className="desc">Read what you need, skip what you don’t.</span>
             {Object.entries(TIPS).map(([id, [t, txt]]) => (
               <details key={id} className="howto-row"><summary>{t}</summary><p>{txt}</p></details>

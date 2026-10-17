@@ -1211,7 +1211,7 @@ await expectFail('players cannot read the guesses table directly', GA, `select *
 await expectFail('players cannot write the guesses table directly', GA, `insert into cook_guesses (user_id, meal_id, guess_id, correct, day) values ('${GA}', '${ps[0]}', '${GB}', true, current_date)`);
 }
 // ================= 0037: friends group chat =================
-try { const f = fs.readFileSync('./supabase/migrations/0037_chat.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0037 runs (twice)', true); }
+try { await db.exec(fs.readFileSync('./supabase/tests/fixtures/0037_chat_first_version.sql', 'utf8')); const f = fs.readFileSync('./supabase/migrations/0037_chat.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0037 runs on top of the first version, and twice', true); }
 catch (e) { check('0037 runs (twice)', false, e.message); }
 {
 const H = [1, 2, 3, 4, 5].map((n) => `c3c3c3c3-0000-4000-8000-00000000000${n}`);
@@ -1395,6 +1395,13 @@ check('clearing removes only the ticked things', (await cq(CA, `select public.cl
 await cq(CA, `select public.remove_chat_list('${gl.find((x) => x.name === 'Rice').id}')`);
 check('any member can remove a thing', (await cq(CA, `select public.get_chat_list('${GG}') r`)).rows[0].r.length === 1);
 await expectFail('the list holds at most 100 things', CA, `select public.add_chat_list('${GG}', (select array_agg('item' || i) from generate_series(1, 101) i))`);
+// a two-person shared list with a friend
+const sl = (await cq(CA, `select public.open_shared_list('${cB}') r`)).rows[0].r;
+const sl2 = (await cq(CB, `select public.open_shared_list('${(await code(CA))}') r`)).rows[0].r;
+check('a shared list with a friend opens the same two-person chat from either side', sl === sl2 && (await db.query(`select count(*)::int n from chat_members where group_id = '${sl}'`)).rows[0].n === 2);
+await expectFail('a shared list needs a friend', CA, `select public.open_shared_list('${cE}')`);
+await cq(CA, `select public.add_chat_list('${sl}', array['Bread'])`);
+check('the friend sees what was added to the shared list', (await cq(CB, `select public.get_chat_list('${sl}') r`)).rows[0].r.length === 1);
 // backgrounds
 const bgs = (await cq(CA, `select public.get_chat_bgs() r`)).rows[0].r;
 check('the background shop lists looks with prices', bgs.length === 6 && bgs.every((b) => b.price > 0 && b.owned === false));
@@ -1413,6 +1420,7 @@ await expectFail('someone outside the group cannot set a background', CD, `selec
 await cq(CA, `select public.set_chat_bg('${GG}', null)`);
 check('the plain colour can be chosen again', (await cq(CA, `select public.get_chat('${GG}', null, null) r`)).rows[0].r.group.bg === null);
 }
+{ const chk = (await db.query(fs.readFileSync('./supabase/setup/30b-check-chat.sql', 'utf8').split('-- also tell')[0].replace(/;\s*$/, ''))).rows; check('the chat check query finds nothing missing', chk.length === 0, JSON.stringify(chk)); }
 // ================= 0038: game size cap, tidy-up, admin counts =================
 try { const f = fs.readFileSync('./supabase/migrations/0038_game_limits_cleanup.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0038 runs (twice)', true); }
 catch (e) { check('0038 runs (twice)', false, e.message); }

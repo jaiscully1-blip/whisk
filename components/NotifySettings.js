@@ -10,7 +10,7 @@ const HOURS = Array.from({ length: 24 }, (_, h) => [h, h === 0 ? '12 AM' : h < 1
 const b64 = (s) => { const p = '='.repeat((4 - (s.length % 4)) % 4); const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(r, (c) => c.charCodeAt(0)); };
 
 export default function NotifySettings() {
-  const { supabase, profile, setProfile, say } = useWhisk();
+  const { supabase, profile, setProfile, say, t } = useWhisk();
   const [env, setEnv] = useState(null);   // 'ok' | 'install' (iPhone: add to Home Screen first) | 'no'
   const [busy, setBusy] = useState(false);
   const on = profile?.notify_hour != null;
@@ -45,8 +45,8 @@ export default function NotifySettings() {
   }
   return (
     <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
-      <Icon name="bell" /><span style={{ flex: 1, fontWeight: 700 }}>Notifications</span>
-      {env === 'ok' && <button role="switch" aria-checked={on} aria-label="Notifications" disabled={busy} onClick={() => (on ? setHour(null) : turnOn())} className={`switch ${on ? 'on' : ''}`}><span /></button>}
+      <Icon name="bell" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Notifications')}</span>
+      {env === 'ok' && <button role="switch" aria-checked={on} aria-label={t('Notifications')} disabled={busy} onClick={() => (on ? setHour(null) : turnOn())} className={`switch ${on ? 'on' : ''}`}><span /></button>}
       {on && env === 'ok' && (
         <div className="row" style={{ width: '100%', flexWrap: 'nowrap', gap: 8, marginTop: 6 }}>
           <label htmlFor="n-hour" className="desc" style={{ flex: 1 }}>At most one a day, around</label>

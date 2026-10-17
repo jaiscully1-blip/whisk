@@ -27,7 +27,7 @@ function proposeChallenges(recipes, pantry) {
 }
 
 export default function Compete() {
-  const { supabase, refreshProfile, say, recipes, ui, setUi, dataVersion } = useWhisk();
+  const { supabase, refreshProfile, say, recipes, ui, setUi, dataVersion, t } = useWhisk();
   const [pantry] = usePantry();
   const [cdata, setCdata] = useCached('compete', () => fetchCompete(supabase), [dataVersion]);   // remembered between tabs
   const challenges = cdata?.challenges ?? null;
@@ -56,14 +56,14 @@ export default function Compete() {
 
   return (
     <div className="stack">
-      <div className="page-title"><h1>Compete</h1><span className="muted">Resets in {resetIn}</span></div>
+      <div className="page-title"><h1>{t('Compete')}</h1><span className="muted">Resets in {resetIn}</span></div>
       <FriendsCard />
 
       <WorldGlobe />
 
-      <h2 data-tour="challenges" data-tip="challenges" style={{ fontSize: 22 }}>This week’s challenges</h2>
-      {challenges === null || !recipes ? <p className="muted">Loading…</p> : challenges.length === 0 ? (
-        <div className="empty"><b>No challenges yet</b></div>
+      <h2 data-tour="challenges" data-tip="challenges" style={{ fontSize: 22 }}>{t('This week’s challenges')}</h2>
+      {challenges === null || !recipes ? <p className="muted">{t('Loading…')}</p> : challenges.length === 0 ? (
+        <div className="empty"><b>{t('No challenges yet')}</b></div>
       ) : challenges.map((c) => {
         const r = recipeOf(c); if (!r) return null;
         const [tier, bg, ink] = TIER[c.slot] || TIER[3]; const on = !!flipped[c.id];

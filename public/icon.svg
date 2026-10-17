@@ -15,9 +15,8 @@
   <!-- chef coat: wraps the whole body from the neck down, clipped to the body outline -->
   <defs><clipPath id="body-clip"><ellipse cx="128" cy="190" rx="64" ry="58"/></clipPath></defs>
   <g clip-path="url(#body-clip)">
-    <rect x="60" y="158" width="136" height="100" fill="#FFFFFF"/>
+    <rect x="60" y="130" width="136" height="130" fill="#FFFFFF"/>
     <path d="M128 168 V250" stroke="#2A2433" stroke-width="3.5"/>
-    <path d="M70 172 Q86 168 100 160 M186 172 Q170 168 156 160" stroke="#2A2433" stroke-width="3.5" fill="none" stroke-linecap="round"/>
     <path d="M62 236 Q128 252 194 236" stroke="#E4E9EF" stroke-width="10" fill="none"/>
   </g>
   <ellipse cx="128" cy="190" rx="64" ry="58" fill="none" stroke="#2A2433" stroke-width="5"/>

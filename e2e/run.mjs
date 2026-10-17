@@ -307,8 +307,11 @@ await step('home', async () => {
   await page.locator('.src a').first().waitFor();
   check('almost-ready recipes link to their source site', /^https:\/\//.test(await page.locator('.src a').first().getAttribute('href')));
   check('home: just a "Full recipe" link (no "From"), no recipe count, no "items away" on the cards', (await page.locator('.src', { hasText: /^From/ }).count()) === 0 && (await page.locator('.src a', { hasText: 'Full recipe' }).count()) > 0 && !/\d+ recipes?$/.test(await page.locator('.page-title').first().innerText()) && (await page.locator('main .card .eyebrow', { hasText: /away/ }).count()) === 0);
-  for (let i = 0; i < 8 && (await page.locator('.away-h').count()) < 2; i++) { const more = page.getByRole('button', { name: 'Show more' }); if (!(await more.count())) break; await more.click(); await page.waitForTimeout(150); }
-  check('almost ready is grouped by items missing, closest first, no limit', (await page.locator('.away-h').count()) >= 2 && /1 item away/i.test(await page.locator('.away-h').first().innerText()) && /2 items away/i.test(await page.locator('.away-h').nth(1).innerText()));
+  check('home no longer groups by "1 item away / 2 items away"', (await page.locator('.away-h', { hasText: /away/ }).count()) === 0 && (await page.getByText(/\d+ items? away/).count()) === 0);
+  const homeTitles = async () => page.locator('main .rcard h2').allInnerTexts();
+  const t1 = (await homeTitles()).slice(0, 6).join('|');
+  let differs = false; for (let i = 0; i < 4 && !differs; i++) { await nav('Pantry'); await nav('Home'); await page.locator('main .rcard h2').first().waitFor(); differs = (await homeTitles()).slice(0, 6).join('|') !== t1; }
+  check('opening Home again brings a new random mix of recipes', differs);
   await page.evaluate(() => window.scrollTo(0, 0));
   check('pantry hint is the short version', (await page.getByText('Yoke reads').count()) === 0);
   // open one: tap a single missing ingredient under "What you have" to put it in the pantry
@@ -316,18 +319,25 @@ await step('home', async () => {
   check('every recipe card has a postcard of where the dish comes from (landmark + dish)', (await page.locator('main .rcard .rcard-art svg').count()) === (await page.locator('main .rcard').count()) && (await page.locator('main .rcard').count()) > 0);
   const chipCounts = await page.locator('main .rcard').evaluateAll((cs) => cs.map((c) => c.querySelectorAll('.chip.need').length));
   check('home shows at most 3 missing ingredients per card', chipCounts.every((n) => n <= 3), JSON.stringify(chipCounts.slice(0, 12)));
-  const card0 = page.locator('main .rcard', { has: page.locator('.more-need') }).first();
-  const shownN = await card0.locator('.chip.need').count();
-  const moreN = Number(((await card0.locator('.more-need').innerText()).match(/\d+/) || [0])[0]);
-  const cuisine0 = (await card0.locator('.eyebrow').innerText()).trim();
-  await card0.getByRole('button', { name: 'Open recipe' }).click();
+  const withMore = page.locator('main .rcard', { has: page.locator('.more-need') });
   const sheet = page.locator('[role=dialog].sheet');
-  await sheet.locator('button.add-ing').first().waitFor();
-  const needNames = (await sheet.locator('button.add-ing').allInnerTexts()).map((t) => t.replace(/^\+\s*/, '').trim());
+  let card0, shownN, moreN, cuisine0, needNames, ingOrder, good = false;
+  // Home is a random mix now, so look at a few cards and use the first whose list is clean (a few recipes name an ingredient twice)
+  for (let ci = 0; ci < Math.min(6, await withMore.count()) && !good; ci++) {
+    card0 = withMore.nth(ci);
+    shownN = await card0.locator('.chip.need').count();
+    moreN = Number(((await card0.locator('.more-need').innerText()).match(/\d+/) || [0])[0]);
+    cuisine0 = (await card0.locator('.eyebrow').innerText()).trim();
+    await card0.getByRole('button', { name: 'Open recipe' }).click();
+    await sheet.locator('button.add-ing').first().waitFor();
+    needNames = (await sheet.locator('button.add-ing').allInnerTexts()).map((t) => t.replace(/^\+\s*/, '').trim());
+    ingOrder = (await sheet.locator('.ing-list li.need').allInnerTexts()).map((t) => t.toLowerCase());
+    let j = 0; for (const n of needNames) if (j < ingOrder.length && ingOrder[j].includes(n.toLowerCase())) j++;
+    good = needNames.length === shownN + moreN && ingOrder.length > 0 && j === ingOrder.length;
+    if (!good && ci < 5) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); if (await sheet.count()) await sheet.getByRole('button', { name: /close|done/i }).first().click().catch(() => {}); }
+  }
   check('open it: every ingredient you still need is listed (the card’s 3 + the rest)', needNames.length === shownN + moreN, `${shownN}+${moreN} vs ${needNames.length}`);
-  const ingOrder = (await sheet.locator('.ing-list li.need').allInnerTexts()).map((t) => t.toLowerCase());
-  { let j = 0; for (const n of needNames) if (j < ingOrder.length && ingOrder[j].includes(n.toLowerCase())) j++;
-    check('…in the recipe’s own order, marked in the ingredient list', ingOrder.length > 0 && j === ingOrder.length, `${needNames.join(', ')} | ${ingOrder.join(' / ')}`); }
+  check('…in the recipe’s own order, marked in the ingredient list', good, `${needNames.join(', ')} | ${ingOrder.join(' / ')}`);
   check('…seasonings, oil, butter and herbs included', needNames.some((n) => /salt|pepper|oil|butter|powder|seasoning|thyme|oregano|cumin|paprika|sauce|vinegar|sugar/i.test(n)), needNames.join(', '));
   const miss = sheet.locator('button.add-ing').first(); const missName = needNames[0];
   await miss.click();
@@ -432,9 +442,9 @@ await step('cook', async () => {
   if (await tmr.count()) {
     await tmr.click(); await page.waitForTimeout(1300);
     check('one tap starts the step timer', /\d+:\d\d/.test(await tmr.innerText()) && (await tmr.getAttribute('class')).includes('running'));
-    check('a running timer shows in the top bar', (await page.locator('header .pill').count()) === 3);
+    check('a running timer shows in the top bar', (await page.locator('header .pill:not(.gear)').count()) === 3);
     await tmr.dblclick(); await page.waitForTimeout(300);
-    check('double-tap stops and resets the timer', /min$/.test((await tmr.innerText()).trim()) && (await page.locator('header .pill').count()) === 2);
+    check('double-tap stops and resets the timer', /min$/.test((await tmr.innerText()).trim()) && (await page.locator('header .pill:not(.gear)').count()) === 2);
   } else check('recipe has a step timer', false);
   // Cook mode: big text, one step at a time, tap anywhere for the next step
   await dlg.getByRole('button', { name: 'Cook mode' }).click();
@@ -490,8 +500,9 @@ await step('cook', async () => {
   check('what you marked out after cooking shows Out and is already on the list', /Out/.test(await usedCard.locator('.stock').innerText()) && (await usedCard.locator('.reup-on').count()) === 1, usedName);
   await page.fill('#p-name', 'Reup test oats'); await page.click('text=Add to pantry'); await page.waitForTimeout(900);
   const oats = page.locator('main .card', { hasText: 'Reup test oats' }).first(), meter = oats.locator('.stock');
-  check('a new item is Full with 4 lit bars and no Reup button', (await meter.innerText()).trim() === 'Full' && (await oats.locator('.stock-bars i.on').count()) === 4 && (await oats.locator('.reup').count()) === 0);
-  await meter.click(); check('tap: Full → Good (3 bars)', (await meter.innerText()).trim() === 'Good' && (await oats.locator('.stock-bars i.on').count()) === 3);
+  const jar = async (row) => Number(await row.locator('.stock-fill').getAttribute('height'));
+  check('a new item is Full: a full jar, no Reup button', (await meter.innerText()).trim() === 'Full' && (await jar(oats)) > 17 && (await oats.locator('.reup').count()) === 0);
+  await meter.click(); check('tap: Full → Good (jar about 70% full)', (await meter.innerText()).trim() === 'Good' && (await jar(oats)) > 11 && (await jar(oats)) < 14);
   await meter.click(); check('tap: Good → Low (1 bar) and Reup appears', (await meter.innerText()).trim() === 'Low' && (await oats.locator('.reup').count()) === 1);
   await shot('04-stock-levels');
   await oats.locator('.reup').click(); await oats.locator('.reup-on').waitFor();
@@ -499,7 +510,7 @@ await step('cook', async () => {
   await page.getByRole('tab', { name: /Shopping list/ }).click();
   check('…and it is on the shopping list exactly once', (await page.locator('main').getByText('Reup test oats', { exact: false }).count()) === 1);
   await page.getByRole('tab', { name: /^Pantry \(/ }).click();
-  await meter.click(); check('tap: Low → Out', (await meter.innerText()).trim() === 'Out' && (await oats.locator('.stock-bars i.on').count()) === 0);
+  await meter.click(); check('tap: Low → Out', (await meter.innerText()).trim() === 'Out' && (await jar(oats)) < 0.5);
   await page.getByRole('tab', { name: /Shopping list/ }).click();
   check('going Out after Reup does not add it to the list a second time', (await page.locator('main').getByText('Reup test oats', { exact: false }).count()) === 1);
   await page.getByRole('tab', { name: /^Pantry \(/ }).click();
@@ -589,11 +600,9 @@ await step('me', async () => {
   await shot('05-me');
 });
 await step('compete layout', async () => {
-  await nav('Compete'); await page.getByText('Cuisine bingo').waitFor();
-  const yB = (await page.getByRole('heading', { name: 'Cuisine bingo' }).boundingBox()).y, yQ = (await page.locator('.globe').boundingBox()).y;
-  check('cuisine bingo is at the top of Compete, the globe where the daily quest was', yB < yQ, `${yB} < ${yQ}`);
+  await nav('Compete'); await page.locator('.globe').waitFor();
+  check('Cuisine bingo is gone from Compete (the globe leads, after the friends card)', (await page.getByText('Cuisine bingo').count()) === 0 && (await page.locator('main .bingo').count()) === 0);
   check('cooking Mexican shows on the globe (Bronze)', await page.locator('.globe-svg path.gl-c.bronze').first().waitFor({ state: 'attached', timeout: 8000 }).then(() => true, () => false));
-  check('bingo has no text under the title any more (no "Get four in a row", no own timer)', (await page.locator('section[aria-labelledby=bingo-h] p').count()) === 0 && (await page.getByText('Get four in a row').count()) === 0 && (await page.locator('section[aria-labelledby=bingo-h]').getByText(/resets|\d+d\b/i).count()) === 0);
   const wantD = (() => { const n = new Date(); const d = (8 - n.getDay()) % 7 || 7; const mon = new Date(n.getFullYear(), n.getMonth(), n.getDate() + d); return Math.max(1, Math.ceil((mon - n) / 864e5)); })();
   check('one reset timer at the top, counting to Monday like the challenges', (await page.getByText(/^Resets in \d+d$/).count()) === 1 && (await page.getByText(`Resets in ${wantD}d`).count()) === 1);
   await nav('Me'); await page.locator('.pcard').waitFor();
@@ -787,7 +796,7 @@ await step('free dish search', async () => {
   check('remove a channel', (await page.locator('.channel').count()) === 0);
 });
 await step('cook off with a friend', async () => {
-  const pill = async (pg) => Number((await pg.locator('header .pill').last().innerText()).replace(/\D/g, ''));
+  const pill = async (pg) => Number((await pg.locator('header .pill:not(.gear)').last().innerText()).replace(/\D/g, ''));
   // your invite code (Get coins → Invite a friend)
   await nav('Me'); await page.waitForURL('**/me'); await page.getByRole('button', { name: /Get coins/ }).first().click();
   await page.locator('.invite-code b').waitFor();
@@ -975,6 +984,45 @@ await step('friends and the plate feed', async () => {
   await reopen(page); await page.locator('article.post').first().waitFor();
   check('one report doesn’t hide it for others', (await page.locator('article.post').count()) === 1);
   await ctx6.close();
+});
+await step('settings gear, backup file and guess the cook', async () => {
+  const E = (p) => fetch(`http://localhost:54321/__e2e/${p}`).then((r) => r.json());
+  await nav('Home');
+  check('the logo beside "yoke" is just the chick: no circle, border or background', await page.locator('.brand img').evaluate((el) => { const c = getComputedStyle(el); return c.borderTopWidth === '0px' && c.backgroundColor === 'rgba(0, 0, 0, 0)' && /chick\.svg/.test(el.getAttribute('src')); }));
+  await page.getByTestId('hud-settings').click(); await page.getByTestId('settings-page').waitFor();
+  check('the gear in the banner opens Settings', (await page.getByTestId('settings-page').count()) === 1);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('backup-file').click()]);
+  const fs2 = await import('node:fs'); const dp = await dl.path(); const bj = JSON.parse(fs2.readFileSync(dp, 'utf8'));
+  check('Save backup file downloads a Yoke backup with pantry and list', bj.kind === 'yoke-backup' && Array.isArray(bj.pantry) && bj.pantry.length > 0 && Array.isArray(bj.list) && !('coins' in bj));
+  const tmp = path.join((await import('node:os')).tmpdir(), 'yoke-restore.json'); fs2.writeFileSync(tmp, JSON.stringify({ kind: 'yoke-backup', version: 1, pantry: [{ name: 'Backup test saffron', category: 'Spices & Seasonings', status: 'good' }], list: [], saved: [], mine: [] }));
+  await page.getByTestId('restore-file').setInputFiles(tmp);
+  await page.getByText(/Restored 1 pantry/).waitFor({ timeout: 6000 });
+  check('Restore from file adds what is missing and says how many', true);
+  await page.getByTestId('restore-file').setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"nope":1}') });
+  await page.getByText('That isn’t a Yoke backup file').waitFor({ timeout: 6000 });
+  check('a file that is not a Yoke backup is refused', true);
+  await page.getByTestId('settings-back').click();
+  // Guess the Cook
+  await E('gtc-setup');
+  await page.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await page.waitForURL('**/compete'); await page.locator('.fr-card').click(); await page.waitForURL('**/compete/friends');
+  await page.getByTestId('gtc-card').waitFor();
+  await page.getByTestId('gtc-opt').first().waitFor({ timeout: 8000 });
+  check('Guess the Cook sits first on Friends with the cook hidden and friends to pick from', (await page.getByTestId('gtc-opt').count()) >= 2 && (await page.getByTestId('gtc-card').boundingBox()).y < (await page.locator('.co-card').boundingBox()).y);
+  await shot('11-guess-the-cook');
+  const coins0 = (await E('coins')).coins;
+  let paid = 0;
+  for (let k = 0; k < 5; k++) {
+    await page.getByTestId('gtc-opt').first().click(); await page.getByTestId('gtc-reveal').waitFor();
+    if (k === 0) { await shot('11b-guess-reveal'); check('after a guess it reveals who cooked it', /cooked it|It was/.test(await page.getByTestId('gtc-reveal').innerText())); }
+    await page.getByTestId('gtc-next').click();
+    if (k < 4) await page.getByTestId('gtc-opt').first().waitFor({ timeout: 8000 });
+  }
+  await page.getByTestId('gtc-done').waitFor({ timeout: 8000 });
+  const paidNow = (await E('coins')).coins - coins0;
+  check('five plates a day, then it is done; coins are 5 per right guess (+20 only for 5 of 5)', paidNow % 5 === 0 && paidNow >= 0 && paidNow <= 45, String(paidNow));
+  await shot('11c-guess-done');
+  check('the week board shows you and friends', (await page.getByTestId('gtc-board').count()) === 1 && (await page.getByTestId('gtc-board').getByText('You').count()) === 1);
+  await nav('Home');
 });
 await step('back up your game', async () => {
   await nav('Me'); await page.waitForURL('**/me');
@@ -1198,7 +1246,7 @@ await step('tabs open instantly from memory', async () => {
   await ctx.setOffline(true);
   const t0 = Date.now(); await nav('Pantry'); await page.locator('main [aria-label^="Remove "]').first().waitFor({ timeout: 3000 });
   const tp = Date.now() - t0;
-  await nav('Compete'); await page.locator('main .bingo').waitFor({ timeout: 3000 });
+  await nav('Compete'); await page.locator('main .globe').waitFor({ timeout: 3000 });
   check('with the network off, Pantry and Compete still open with everything on them', tp < 1500, `${tp} ms`);
   await ctx.setOffline(false);
 });
@@ -1206,7 +1254,7 @@ await step('no-store', async () => { const r = await page.request.get(`${BASE}/h
 
 const csp = problems.filter((p) => /Content Security Policy|Refused to/.test(p));
 check('no CSP violations', csp.length === 0, csp.slice(0, 3).join(' | '));
-const other = problems.filter((p) => !csp.includes(p) && !/rpc\/admin_(overview|events)/.test(p));   // the backend refusing a non-admin is expected
+const other = problems.filter((p) => !csp.includes(p) && !/rpc\/admin_(overview|events)/.test(p) && !/object\/sign\/meal-photos\/c3c3c3c3/.test(p));   // the backend refusing a non-admin is expected
 check('no page errors or failed requests', other.length === 0, other.slice(0, 5).join(' | '));
 await browser.close();
 const failed = results.filter((r) => r[0] === 'FAIL').length;

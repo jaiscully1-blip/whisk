@@ -4,7 +4,6 @@ import { useCached } from '@/lib/cache';
 import { fetchCompete } from '@/components/tabData';
 import DietTags from '@/components/DietTags';
 import CookMode from '@/components/CookMode';
-import { postcardSvg } from '@/lib/scenes';
 import { useWhisk } from '@/components/AppShell';
 import LogMealSheet from '@/components/LogMealSheet';
 import Icon, { Coin } from '@/components/Icon';
@@ -31,19 +30,12 @@ export default function Compete() {
   const { supabase, refreshProfile, say, recipes, ui, setUi, dataVersion } = useWhisk();
   const [pantry] = usePantry();
   const [cdata, setCdata] = useCached('compete', () => fetchCompete(supabase), [dataVersion]);   // remembered between tabs
-  const challenges = cdata?.challenges ?? null, bingo = cdata?.bingo ?? null;
+  const challenges = cdata?.challenges ?? null;
   const setChallenges = (v) => setCdata((x) => ({ ...(x || {}), challenges: typeof v === 'function' ? v(x?.challenges) : v }));
-  const setBingo = (v) => setCdata((x) => ({ ...(x || {}), bingo: typeof v === 'function' ? v(x?.bingo) : v }));
   const [logging, setLogging] = useState(null);
   const [factors, setFactors] = useState({});
   const [cookMode, setCookMode] = useState(null);   // { c, r } while a challenge is open in Cook mode   // servings × per challenge card
   // Boxes you've already seen cooked stay flipped; a newly cooked one flips over the first time you see it.
-  const bingoSeen = useMemo(() => { try { return new Set(JSON.parse(localStorage.getItem(`whisk-bingo:${bingo?.cells?.join('|')}`) || '[]')); } catch { return new Set(); } }, [bingo?.cells]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!bingo?.cells) return;
-    const hits = bingo.cells.filter((c, i) => bingo.marks?.[i]);
-    try { localStorage.setItem(`whisk-bingo:${bingo.cells.join('|')}`, JSON.stringify(hits)); } catch {}
-  }, [bingo]);
   const flipped = ui.flipped || {};
 
   const load = async () => { const d = await fetchCompete(supabase); if (d) setCdata(d); };
@@ -55,11 +47,6 @@ export default function Compete() {
     supabase.rpc('set_weekly_challenges', { p_recipe_ids: ids }).then(({ error }) => { if (!error) supabase.rpc('get_weekly_challenges').then(({ data }) => setChallenges(data || [])); });
   }, [challenges, recipes, pantry, supabase]);
 
-  async function claimBingo() {
-    const { data, error } = await supabase.rpc('claim_bingo');
-    if (error) { say('Get 4 in a row first.'); return; }
-    setBingo((x) => ({ ...x, claimed: true })); say(`BINGO! +${data?.xp ?? 200} XP`); refreshProfile();
-  }
   const flip = (id) => setUi({ flipped: { ...flipped, [id]: !flipped[id] } });
 
   // One timer for everything on this page: challenges and the bingo card both reset on Monday (the player's own calendar).
@@ -71,24 +58,6 @@ export default function Compete() {
     <div className="stack">
       <div className="page-title"><h1>Compete</h1><span className="muted">Resets in {resetIn}</span></div>
       <FriendsCard />
-      {bingo && (
-        <section data-tour="bingo" data-tip="bingo" className="stack" style={{ gap: 10 }} aria-labelledby="bingo-h">
-          <div className="row" style={{ justifyContent: 'space-between' }}><h2 id="bingo-h" style={{ fontSize: 22 }}>Cuisine bingo</h2><span className="chip xp">+200 XP</span></div>
-          <div role="grid" aria-label="Bingo card" className="bingo">
-            {bingo.cells.map((cell, i) => { const hit = bingo.marks?.[i]; return (
-              <div key={i} role="gridcell" className={`${hit ? 'on' : ''} ${hit && !bingoSeen.has(cell) ? 'fresh' : ''}`} style={{ '--d': `${(i % 4) * 90}ms` }} aria-label={`${cell}${hit ? ', cooked' : ''}`}>
-                <div className="b-in">
-                  <span className="b-face">{cell}</span>
-                  {hit && <span className="b-face b-back"><span className="b-art" aria-hidden="true" dangerouslySetInnerHTML={{ __html: postcardSvg({ cuisine: cell, title: cell }) }} /><b><Icon name="check" size={13} />{cell}</b></span>}
-                </div>
-              </div>
-            ); })}
-          </div>
-          {bingo.claimed ? <span className="row" style={{ color: 'var(--fresh)', fontWeight: 800 }}><Icon name="check" />Bingo claimed</span>
-            : bingo.lines > 0 ? <button className="btn" onClick={claimBingo}>Claim BINGO · +200 XP</button>
-            : <span className="muted" style={{ fontWeight: 800, fontSize: 13 }}>{(bingo.marks || []).filter(Boolean).length}/16 cooked</span>}
-        </section>
-      )}
 
       <WorldGlobe />
 

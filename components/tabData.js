@@ -5,9 +5,9 @@ import { load } from '@/lib/cache';
 import { fetchPantry, fetchSaved, fetchList, fetchKitchens } from './usePantry';
 
 export async function fetchCompete(supabase) {
-  const [c, b, q] = await Promise.all([supabase.rpc('get_weekly_challenges'), supabase.rpc('get_bingo'), supabase.rpc('get_daily_quest')]);
-  if (c.error && b.error && q.error) return undefined;
-  return { challenges: c.data || [], bingo: b.error ? null : b.data, quest: q.error ? null : q.data };
+  const [c, q] = await Promise.all([supabase.rpc('get_weekly_challenges'), supabase.rpc('get_daily_quest')]);
+  if (c.error && q.error) return undefined;
+  return { challenges: c.data || [], quest: q.error ? null : q.data };
 }
 export async function fetchMe(supabase) {
   const journal = (cols) => supabase.from('meals').select(cols).order('cooked_at', { ascending: false }).limit(12);

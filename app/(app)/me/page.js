@@ -14,6 +14,7 @@ import { ProfileCard, MyKitchen, KitchenShop, CountryChallenges } from '@/compon
 import ResetSheet from '@/components/ResetSheet';
 import NeverShowSheet from '@/components/NeverShowSheet';
 import BackupSheet from '@/components/BackupSheet';
+import { makeBackup, parseBackup, restoreBackup } from '@/lib/backupFile';
 import NotifySettings from '@/components/NotifySettings';
 import ShareSwitch from '@/components/ShareSwitch';
 import DeleteDataSheet from '@/components/DeleteDataSheet';
@@ -26,7 +27,7 @@ const EMPTY_LIST = [];
 const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
 
 export default function Me() {
-  const { account, supabase, profile, setProfile, refreshProfile, say, ui, setUi, openPrivacy, replayTour, dataVersion, allRecipes } = useWhisk();
+  const { account, supabase, profile, setProfile, refreshProfile, say, ui, setUi, openPrivacy, replayTour, dataVersion, allRecipes, bump } = useWhisk();
   const router = useRouter();
   const [medata] = useCached('me', () => fetchMe(supabase), [dataVersion]);   // remembered between tabs (lib/cache.js)
   const meals = medata?.meals || EMPTY_LIST, history = medata?.history || EMPTY_LIST;
@@ -34,6 +35,20 @@ export default function Me() {
   const [getCoins, setGetCoins] = useState(false);
   const [levelOpen, setLevelOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  async function downloadBackup() {
+    const b = await makeBackup(supabase);
+    const url = URL.createObjectURL(new Blob([JSON.stringify(b, null, 1)], { type: 'application/json' }));
+    const a = document.createElement('a'); a.href = url; a.download = `yoke-backup-${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    say('Backup saved');
+  }
+  async function restoreFile(e) {
+    const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
+    if (f.size > 2_000_000) { say('That file is too big to be a Yoke backup'); return; }
+    const b = parseBackup(await f.text()); if (!b) { say('That isn’t a Yoke backup file'); return; }
+    const r = await restoreBackup(supabase, b); bump();
+    say(`Restored ${r.pantry} pantry, ${r.list} list, ${r.saved} saved, ${r.mine} own recipes`);
+  }
+  useEffect(() => { const h = () => { if (window.location.hash === '#settings') setSettingsOpen(true); }; h(); window.addEventListener('hashchange', h); return () => window.removeEventListener('hashchange', h); }, []);
   const [howTo, setHowTo] = useState(false);
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -191,6 +206,11 @@ export default function Me() {
             <span className="row" style={{ gap: 8, fontWeight: 700, flexWrap: 'nowrap', color: 'var(--fresh)' }}><Icon name="check" />Your game is backed up</span>
             <span className="desc">With {(account?.providers || []).map((p) => ({ google: 'Google', apple: 'Apple', email: 'email' }[p] || p)).join(' and ') || 'email'}{account?.email ? ` (${account.email})` : ''}. On a new phone, choose “Get it back” on the start screen.</span>
           </>}
+          <div className="row" style={{ gap: 8, marginTop: 6 }}>
+            <button type="button" className="btn ghost sm" data-testid="backup-file" onClick={downloadBackup}><Icon name="share" size={16} />Save backup file</button>
+            <label className="btn ghost sm" style={{ cursor: 'pointer' }}>Restore from file<input type="file" accept="application/json,.json" data-testid="restore-file" onChange={restoreFile} style={{ display: 'none' }} /></label>
+          </div>
+          <span className="desc">The file holds your pantry, shopping list, saved and own recipes. Coins and streaks come back with “Back up your game”.</span>
           <span className="desc" style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Player ID: <span className="mono" style={{ userSelect: 'all' }}>{profile?.id}</span></span>
         </div>
       </div>

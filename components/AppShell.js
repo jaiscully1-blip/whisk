@@ -295,7 +295,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
       <div className={`shell ${night ? 'theme-night' : 'theme-day'}`} data-tab={((pendingTab || pathname || '').split('/')[1]) || 'home'}>
         <header className="hud">
           <div className="hud-in">
-            <Link href="/home" prefetch className="brand" aria-label="Yoke home"><img src="/icon.svg" alt="" />yoke</Link>
+            <Link href="/home" prefetch className="brand" aria-label="Yoke home"><img src="/chick.svg" alt="" />yoke</Link>
             {hello && <div className={`hud-hello ${helloOn ? 'on' : ''}`} role="status" aria-hidden={!helloOn}>
               <span>{hello.first ? 'Welcome to Yoke' : 'Welcome back'}{profile?.display_name ? `, ${profile.display_name}` : ''}!</span>
               {hello.gift > 0 && <small>+{fmt(hello.gift)} coins, a gift from Yoke</small>}
@@ -304,6 +304,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
               <RunningTimer />
               <span className="pill" data-tip="streak" title={profile?.vacation_since ? 'Vacation mode: your streak is paused' : 'Cooking streak'}>{profile?.vacation_since ? <Icon name="plane" size={16} /> : <Flame />}{profile?.streak_days || 0}d</span>
               <Link href="/me#shop" prefetch className="pill" data-tip="coins" title="Coins" style={{ textDecoration: 'none' }}><Coin />{fmt(profile?.coins)}</Link>
+              <Link href="/me#settings" prefetch className="pill gear" title="Settings" aria-label="Settings" data-testid="hud-settings"><Icon name="gear" size={18} /></Link>
             </div>
           </div>
         </header>

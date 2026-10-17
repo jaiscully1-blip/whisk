@@ -1147,6 +1147,69 @@ await expectFail('a cancelled code cannot be joined', UB, `select public.join_ui
 check('my_uiu lists only open or live challenges', (await uiu(UA, `select public.my_uiu() r`)).rows[0].r.every((x) => ['open', 'live'].includes(x.status)));
 
 }
+// ================= 0036: Guess the Cook =================
+try { const f = fs.readFileSync('./supabase/migrations/0036_guess_the_cook.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0036 runs (twice)', true); }
+catch (e) { check('0036 runs (twice)', false, e.message); }
+{
+const G = [1, 2, 3, 4, 5].map((n) => `b2b2b2b2-0000-4000-8000-00000000000${n}`);
+const [GA, GB, GC, GD, GE] = G;
+await db.exec(`insert into auth.users (id, email) values ${G.map((g, i) => `('${g}', 'g${i}@x.com')`).join(',')}`);
+await db.exec(`update profiles set display_name = case id ${G.map((g, i) => `when '${g}' then '${['Ana', 'Ben', 'Cy', 'Di', 'Ed'][i]}'`).join(' ')} end where id in (${G.map((g) => `'${g}'`).join(',')})`);
+const fr = (a, b) => db.exec(`insert into friends (user_id, friend_id) values ('${a}', '${b}'), ('${b}', '${a}') on conflict do nothing`);
+const plate = async (u, t, shared = true) => (await db.query(`insert into meals (user_id, title, photo_path, shared_at) values ('${u}', '${t}', '${u}/${t}.jpg', ${shared ? 'now()' : 'null'}) returning id`)).rows[0].id;
+const q = (u, sql) => as(u, () => db.query(sql));
+const round = async (u) => (await q(u, `select public.get_guess_round() r`)).rows[0].r;
+const guess = async (u, m, g) => (await q(u, `select public.guess_cook('${m}', '${g}') r`)).rows[0].r;
+const coins = async (u) => (await db.query(`select coins from profiles where id = '${u}'`)).rows[0].coins;
+const ownerOf = async (id) => (await db.query(`select user_id from meals where id = '${id}'`)).rows[0].user_id;
+
+check('with no friends the game asks for friends', (await round(GA)).state === 'need_friends');
+await fr(GA, GB);
+check('with one friend it still asks for another (the answer would be obvious)', (await round(GA)).state === 'need_friends');
+await fr(GA, GC);
+check('two friends but no shared plates: nothing to guess yet', (await round(GA)).state === 'no_plates');
+await plate(GB, 'private-one', false);
+check('a private plate is never offered', (await round(GA)).state === 'no_plates');
+const own = await plate(GA, 'mine');
+check('your own plate is never offered', (await round(GA)).state === 'no_plates');
+const ps = []; for (let i = 0; i < 7; i++) ps.push(await plate(i % 2 ? GB : GC, `dish${i}`));
+const r1 = await round(GA);
+check('a round shows a plate with the cook hidden: only a title, cuisine and photo', r1.state === 'play' && Object.keys(r1.plate).sort().join() === 'cuisine,id,photo,title');
+check('the choices are the real cook and other friends only', r1.options.length === 2 && r1.options.every((o) => [GB, GC].includes(o.id)));
+await expectFail('a stranger cannot be picked', GA, `select public.guess_cook('${r1.plate.id}', '${GD}')`);
+await expectFail('you cannot guess your own plate', GA, `select public.guess_cook('${own}', '${GB}')`);
+await expectFail('someone who is not a friend cannot guess a plate', GE, `select public.guess_cook('${r1.plate.id}', '${GB}')`);
+const owner = await ownerOf(r1.plate.id), other = owner === GB ? GC : GB;
+const c0 = await coins(GA);
+const wrong = await guess(GA, r1.plate.id, other);
+check('a wrong guess reveals the cook and pays nothing', wrong.correct === false && wrong.cook_id === owner && wrong.coins === 0 && (await coins(GA)) === c0);
+await expectFail('a plate can only be guessed once', GA, `select public.guess_cook('${r1.plate.id}', '${owner}')`);
+const r2 = await round(GA);
+check('the guessed plate is not offered again', r2.state === 'play' && r2.plate.id !== r1.plate.id && r2.played === 1 && r2.left === 4);
+const right = await guess(GA, r2.plate.id, await ownerOf(r2.plate.id));
+check('a right guess pays 5 coins and starts a run', right.correct && right.coins === 5 && right.run === 1 && (await coins(GA)) === c0 + 5);
+for (let k = 0; k < 3; k++) { const r = await round(GA); await guess(GA, r.plate.id, await ownerOf(r.plate.id)); }
+const rr = await round(GA);
+check('five plates a day, then the game is done', rr.state === 'done');
+check('the day summary counts right answers (4 right of 5, no perfect bonus)', rr.correct === 4 && rr.played === 5 && rr.perfect === false);
+const extra = await plate(GB, 'extra');
+await expectFail('a sixth guess in one day is refused', GA, `select public.guess_cook('${extra}', '${GB}')`);
+check('total coins that day: 4 right guesses = 20', (await coins(GA)) === c0 + 20);
+await fr(GD, GB); await fr(GD, GC);
+const d0 = await coins(GD); let last;
+for (let k = 0; k < 5; k++) { const r = await round(GD); last = await guess(GD, r.plate.id, await ownerOf(r.plate.id)); }
+check('5 out of 5 pays 5 x 5 + 20 = 45 coins, the daily maximum', last.perfect === true && (await coins(GD)) === d0 + 45);
+await fr(GE, GB); await fr(GE, GC);
+const rp = await plate(GB, 'reported'); await q(GE, `select public.report_meal('${rp}', 'spam')`);
+const hid = await plate(GC, 'hidden'); await db.exec(`update meals set hidden_at = now() where id = '${hid}'`);
+const seen = new Set(); for (let k = 0; k < 5; k++) { const r = await round(GE); if (r.state !== 'play') break; seen.add(r.plate.id); await guess(GE, r.plate.id, await ownerOf(r.plate.id)); }
+check('reported and hidden plates are never offered', !seen.has(rp) && !seen.has(hid));
+const board = (await q(GA, `select public.guess_board() r`)).rows[0].r;
+check('the board lists you and your friends with names and counts only', board.length === 3 && board.every((b) => Object.keys(b).sort().join() === 'me,name,played,right') && board.find((b) => b.me).right === 4);
+check('the board is best first', board.every((b, i) => i === 0 || board[i - 1].right >= b.right));
+await expectFail('players cannot read the guesses table directly', GA, `select * from cook_guesses`);
+await expectFail('players cannot write the guesses table directly', GA, `insert into cook_guesses (user_id, meal_id, guess_id, correct, day) values ('${GA}', '${ps[0]}', '${GB}', true, current_date)`);
+}
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

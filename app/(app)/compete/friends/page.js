@@ -5,6 +5,7 @@ import { useWhisk } from '@/components/AppShell';
 import Icon from '@/components/Icon';
 import CookOffCard from '@/components/CookOffCard';
 import UseItUpCard from '@/components/UseItUpCard';
+import GuessCook from '@/components/GuessCook';
 
 // Friends' plates. Step by step: add a friend with their code → they say yes → you see the plates they choose to
 // share (plates are private until shared), love them, or report one. Nothing here is public.
@@ -104,6 +105,7 @@ export default function Friends() {
         </section>
       )}
 
+      <GuessCook />
       <CookOffCard />
       <UseItUpCard />
 

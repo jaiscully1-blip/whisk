@@ -997,6 +997,156 @@ await expectFail('the 101st recipe is refused (limit is 100)', LR, `insert into 
 await as(LQ, () => db.query(`select public.reset_game()`));
 check('Reset game clears my recipes', (await db.query(`select count(*)::int n from my_recipes where user_id = '${LQ}'`)).rows[0].n === 0);
 
+// ================= 0035: Use-It-Up Week (placeholder, filled in below) =================
+try { const f = fs.readFileSync('./supabase/migrations/0035_use_it_up.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0035 runs (twice)', true); }
+catch (e) { check('0035 runs (twice)', false, e.message); }
+
+{
+const UA = 'a1a1a1a1-0000-4000-8000-000000000001', UB = 'a1a1a1a1-0000-4000-8000-000000000002', UC = 'a1a1a1a1-0000-4000-8000-000000000003', UD = 'a1a1a1a1-0000-4000-8000-000000000004', UE = 'a1a1a1a1-0000-4000-8000-000000000005';
+await db.exec(`insert into auth.users (id, email) values ('${UA}', 'ua@x.com'), ('${UB}', 'ub@x.com'), ('${UC}', 'uc@x.com'), ('${UD}', 'ud@x.com'), ('${UE}', 'ue@x.com')`);
+const pant = (u, items) => db.exec(items.map(([n, d]) => `insert into pantry_items (user_id, name, category, expires_on) values ('${u}', '${n}', 'Other', _user_today('${u}') + (${d}))`).join(';'));
+await pant(UA, [['milk', 1], ['spinach', 2], ['yogurt', 5], ['rice', 30], ['eggs', 6], ['bread', 10]]);
+await pant(UB, [['Milk', 1], ['spinach', 3], ['yogurt', 4], ['kale', 2], ['beans', 20], ['tomatoes', 7], ['old cheese', -1]]);
+await pant(UC, [['a1', 1], ['a2', 2], ['c3', 20], ['d4', 40]]);
+await pant(UD, [['x1', 1], ['x2', 2]]);
+const uiu = (u, sql) => as(u, () => db.query(sql));
+const uget = async (u, code) => (await uiu(u, `select public.get_uiu('${code}') r`)).rows[0].r;
+const meal = async (u, t = 'Dish') => (await db.query(`insert into meals (user_id, title, photo_path, cooked_at) values ('${u}', '${t}', '${u}/p.jpg', now()) returning id`)).rows[0].id;
+const submit = (u, code, mealId, items) => uiu(u, `select public.submit_uiu_dish('${code}', '${mealId}', array[${items.map((i) => `'${i}'`).join(',')}]) r`);
+const goLive = (code) => db.exec(`update uiu_matches set started_at = now() - interval '1 hour', ends_at = now() + interval '7 days' - interval '1 hour' where code = '${code}'`);
+const finish = async (code) => { await uiu(UA, `select public.finish_uiu('${code}')`); await uiu(UB, `select public.finish_uiu('${code}')`); };
+
+// ---- same-ingredients mode ----
+await expectFail('players cannot read challenge tables directly', UA, `select * from uiu_matches`);
+await expectFail('a mode must be picked', UA, `select public.create_uiu('wild', '{}')`);
+await expectFail('only your own expiring items can be picked', UA, `select public.create_uiu('same', array['kale'])`);
+await expectFail('at most 5 picks', UA, `select public.create_uiu('same', array['milk','spinach','yogurt','eggs','x','y'])`);
+const cs = (await uiu(UA, `select public.create_uiu('same', array['yogurt']) c`)).rows[0].c;
+check('creating gives a 6-character code', /^[A-Z0-9]{6}$/.test(cs), cs);
+await expectFail('you cannot join your own code', UA, `select public.join_uiu('${cs}', '{}')`);
+await expectFail('a made-up code is refused', UB, `select public.join_uiu('ZZZZZZ', '{}')`);
+await expectFail('a short code is refused', UB, `select public.join_uiu('AB', '{}')`);
+check('peek tells the joiner the mode and who made it', (await uiu(UB, `select public.peek_uiu('${cs}') r`)).rows[0].r.mode === 'same');
+await expectFail('the joiner can only pick their own expiring items', UB, `select public.join_uiu('${cs}', array['eggs'])`);
+{ const w = await uget(UA, cs); check('a waiting match can be read before anyone joins (no opponent yet)', w.status === 'open' && w.opponent === null); }
+await uiu(UB, `select public.join_uiu('${cs}', array['kale'])`);
+let g = await uget(UA, cs);
+check('the match is live after both join, with a start time a few seconds ahead', g.status === 'live' && new Date(g.started_at) > new Date(g.now));
+check('shared list = items both have + each player\'s picks (milk, spinach, yogurt, kale)', JSON.stringify(g.items.map((i) => i.name.toLowerCase()).sort()) === JSON.stringify(['kale', 'milk', 'spinach', 'yogurt']), JSON.stringify(g.items.map((i) => i.name)));
+check('items expiring within 2 days are worth 2 points, others 1', g.items.find((i) => /milk/i.test(i.name)).pts === 2 && g.items.find((i) => i.name === 'yogurt').pts === 1);
+const gb = await uget(UB, cs);
+check('neither player sees pantry items outside the shared list', !JSON.stringify(g).match(/beans|tomatoes|rice|bread|eggs|cheese/) && !JSON.stringify(gb).match(/beans|tomatoes|rice|bread|eggs|cheese/));
+check('the opponent is shown as a name, score and counts only', Object.keys(g.opponent).sort().join() === 'dishes,finished,items_total,name,score');
+await expectFail('a third player cannot look at the match', UC, `select public.get_uiu('${cs}')`);
+await expectFail('nobody else can join a live match', UC, `select public.join_uiu('${cs}', '{}')`);
+await goLive(cs);
+const mA1 = await meal(UA), mB1 = await meal(UB), mA2 = await meal(UA), mB2 = await meal(UB), mC = await meal(UC);
+await expectFail('you cannot use someone else\'s meal', UA, `select public.submit_uiu_dish('${cs}', '${mB1}', array['milk'])`);
+await expectFail('items must be on the list', UA, `select public.submit_uiu_dish('${cs}', '${mA1}', array['rice'])`);
+const old = await meal(UA, 'Old'); await db.exec(`update meals set cooked_at = now() - interval '3 hours' where id = '${old}'`);
+await expectFail('a meal cooked before the challenge started does not count', UA, `select public.submit_uiu_dish('${cs}', '${old}', array['milk'])`);
+let r1 = (await submit(UA, cs, mA1, ['milk', 'spinach'])).rows[0].r;
+check('milk (2) + spinach (2) = 4 points', r1.points === 4 && Number(r1.score) === 4, JSON.stringify(r1));
+await expectFail('the same meal cannot be submitted twice', UA, `select public.submit_uiu_dish('${cs}', '${mA1}', array['yogurt'])`);
+await expectFail('an item scores only once per player', UA, `select public.submit_uiu_dish('${cs}', '${mA2}', array['milk'])`);
+let r2 = (await submit(UB, cs, mB1, ['kale', 'yogurt'])).rows[0].r;
+check('kale (2) + yogurt (1) = 3 points for the other player', r2.points === 3);
+check('UA takes yogurt for 1: 5 points', Number((await submit(UA, cs, mA2, ['yogurt'])).rows[0].r.score) === 5);
+check('both players can score the same shared item (UB uses milk too)', Number((await submit(UB, cs, mB2, ['milk'])).rows[0].r.score) === 5);
+g = await uget(UA, cs);
+check('5-5 with 2 dishes each: not decided yet while both are still playing', g.status === 'live' && g.opponent.score === 5 && g.opponent.dishes === 2);
+const ua0 = (await db.query(`select coins from profiles where id = '${UA}'`)).rows[0].coins, ub0 = (await db.query(`select coins from profiles where id = '${UB}'`)).rows[0].coins;
+await uiu(UA, `select public.finish_uiu('${cs}')`);
+check('the match stays open until both have finished', (await uget(UB, cs)).status === 'live');
+await uiu(UB, `select public.finish_uiu('${cs}')`);
+g = await uget(UA, cs);
+check('tie-break: same score and dishes → whoever submitted their last dish first (UA) wins', g.status === 'done' && g.winner === 'me', JSON.stringify([g.status, g.winner]));
+const ua1 = (await db.query(`select coins from profiles where id = '${UA}'`)).rows[0].coins, ub1 = (await db.query(`select coins from profiles where id = '${UB}'`)).rows[0].coins;
+check('the winner gets 500 coins and the loser 0', ua1 - ua0 === 500 && ub1 - ub0 === 0 && g.coins === 500);
+await uiu(UA, `select public.finish_uiu('${cs}')`); await uget(UB, cs); await uget(UA, cs);
+check('paying happens only once', (await db.query(`select coins from profiles where id = '${UA}'`)).rows[0].coins === ua1);
+check('the loser sees they lost', (await uget(UB, cs)).winner === 'them');
+await expectFail('nothing can be submitted after it ends', UA, `select public.submit_uiu_dish('${cs}', '${mC}', array['milk'])`);
+
+// ---- tie-break 1: most dishes (same score) ----
+const c2 = (await uiu(UA, `select public.create_uiu('same', '{}') c`)).rows[0].c; await uiu(UB, `select public.join_uiu('${c2}', '{}')`); await goLive(c2);
+const t1 = await meal(UA), t2 = await meal(UA), t3 = await meal(UB);
+await submit(UA, c2, t1, ['yogurt']); await submit(UA, c2, t2, ['spinach']);          // 1 + 2 = 3 in 2 dishes
+await submit(UB, c2, t3, ['milk', 'yogurt']);                                           // 2 + 1 = 3 in 1 dish
+await finish(c2);
+check('tie-break 1: equal score → the player with more dishes wins', (await uget(UA, c2)).winner === 'me');
+// ---- tie-breaks 3 and 4 (identical in everything but timing) ----
+const c3 = (await uiu(UA, `select public.create_uiu('same', '{}') c`)).rows[0].c; await uiu(UB, `select public.join_uiu('${c3}', '{}')`); await goLive(c3);
+const u1 = await meal(UA), u2 = await meal(UB);
+await submit(UA, c3, u1, ['milk']); await submit(UB, c3, u2, ['spinach']);
+await db.exec(`update uiu_dishes set created_at = now() where code = '${c3}'`);
+await db.exec(`update uiu_matches set host_finished_at = now(), guest_finished_at = now() - interval '1 minute' where code = '${c3}'`);
+await uiu(UA, `select public.finish_uiu('${c3}')`);
+check('still level → the player who finished first wins (UB)', (await uget(UB, c3)).winner === 'me');
+const c3b = (await uiu(UA, `select public.create_uiu('same', '{}') c`)).rows[0].c; await uiu(UB, `select public.join_uiu('${c3b}', '{}')`); await goLive(c3b);
+await db.exec(`update uiu_matches set host_finished_at = now(), guest_finished_at = now() where code = '${c3b}'`); await uiu(UA, `select public.finish_uiu('${c3b}')`);
+const gb3 = await uget(UA, c3b);
+check('nobody cooked anything: there is still one winner, but no coins', gb3.status === 'done' && (gb3.winner === 'me' || gb3.winner === 'them') && gb3.coins === 0);
+
+// ---- expiry: past the use-by date never scores ----
+const c4 = (await uiu(UA, `select public.create_uiu('same', '{}') c`)).rows[0].c; await uiu(UB, `select public.join_uiu('${c4}', '{}')`); await goLive(c4);
+const e1 = await meal(UA);
+await db.exec(`update uiu_items set expires_on = (_user_today('${UA}')) - 1 where code = '${c4}' and lower(name) = 'milk'`);
+await expectFail('an item past its use-by date does not score', UA, `select public.submit_uiu_dish('${c4}', '${e1}', array['milk'])`);
+const e1b = await meal(UA);
+const mixed = (await submit(UA, c4, e1b, ['milk', 'spinach'])).rows[0].r;
+check('in a mixed dish only the in-date item scores, and the expired one is flagged to check', mixed.items_scored === 1 && mixed.check_these.length === 1 && /milk/i.test(mixed.check_these[0]));
+check('the match screen flags an expired item for the player to check', (await uget(UA, c4)).items.find((i) => /milk/i.test(i.name)).expired === true);
+
+// ---- different-ingredients mode ----
+const cd = (await uiu(UA, `select public.create_uiu('different', '{}') c`)).rows[0].c;
+await uiu(UB, `select public.join_uiu('${cd}', '{}')`);
+let da = await uget(UA, cd), dbb = await uget(UB, cd);
+check('each player is scored on their own expiring items (UA 4, UB 5)', da.items.length === 4 && dbb.items.length === 5 && da.me.items_total === 4 && da.opponent.items_total === 5, JSON.stringify([da.items.length, dbb.items.length]));
+check('expired food is never on a list', !JSON.stringify(dbb).includes('old cheese'));
+check('in different mode a player never sees the other\'s item names', !JSON.stringify(da).match(/kale|tomatoes/) && !JSON.stringify(dbb).match(/eggs/));
+await goLive(cd);
+await db.exec(`insert into pantry_items (user_id, name, category, expires_on) values ('${UA}', 'cucumber', 'Other', _user_today('${UA}') + 1)`);
+const d0 = await meal(UA);
+await expectFail('items added after the match starts do not count', UA, `select public.submit_uiu_dish('${cd}', '${d0}', array['cucumber'])`);
+await submit(UA, cd, d0, ['milk', 'spinach', 'yogurt']);
+check('score is the percent rescued: 3 of 4 = 75%', Number((await uget(UA, cd)).me.score) === 75);
+const d1 = await meal(UB), d2 = await meal(UB);
+await submit(UB, cd, d1, ['kale', 'tomatoes']); await submit(UB, cd, d2, ['Milk']);
+check('3 of 5 = 60%', Number((await uget(UB, cd)).me.score) === 60);
+const wa0 = (await db.query(`select coins from profiles where id = '${UA}'`)).rows[0].coins;
+await finish(cd);
+const dres = await uget(UA, cd);
+check('highest percentage wins (75% beats 60%) even with fewer dishes', dres.winner === 'me' && dres.coins === 500 && (await db.query(`select coins from profiles where id = '${UA}'`)).rows[0].coins === wa0 + 500);
+// different mode tie-break: equal percent → most dishes
+const cdt = (await uiu(UA, `select public.create_uiu('different', '{}') c`)).rows[0].c; await uiu(UB, `select public.join_uiu('${cdt}', '{}')`); await goLive(cdt);
+const f1 = await meal(UA), f2 = await meal(UB), f3 = await meal(UB);
+await db.exec(`insert into uiu_items (code, user_id, name, expires_on) select '${cdt}', '${UB}', 'extra', _user_today('${UB}') + 3 where false`);
+await submit(UA, cdt, f1, ['milk', 'spinach', 'yogurt', 'eggs']);                       // 4 of 4 = 100%
+await submit(UB, cdt, f2, ['Milk', 'spinach', 'yogurt']); await submit(UB, cdt, f3, ['kale', 'tomatoes']);   // 5 of 5 = 100% with 2 dishes
+await finish(cdt);
+check('different mode tie-break: equal percent → most dishes wins', (await uget(UB, cdt)).winner === 'me');
+
+// ---- fewer than 3 items, rematch, expiry of the week ----
+const cf = (await uiu(UA, `select public.create_uiu('different', '{}') c`)).rows[0].c;
+await expectFail('a player with fewer than 3 items in the whole pantry cannot join', UD, `select public.join_uiu('${cf}', '{}')`);
+await uiu(UC, `select public.join_uiu('${cf}', '{}')`);
+const gc = await uget(UC, cf);
+check('under 3 expiring items: topped up from their own pantry (soonest first, never expired)', gc.items.length === 3 && gc.items.some((i) => i.name === 'c3') && !gc.items.some((i) => i.name === 'd4'));
+await expectFail('a rematch needs a finished match', UA, `select public.rematch_uiu('${cf}')`);
+const rc = (await uiu(UA, `select public.rematch_uiu('${cd}') c`)).rows[0].c;
+check('rematch makes a fresh code in the same mode', /^[A-Z0-9]{6}$/.test(rc) && rc !== cd && (await uiu(UB, `select public.peek_uiu('${rc}') r`)).rows[0].r.mode === 'different');
+check('the other player is offered that rematch', (await uget(UB, cd)).rematch_code === rc);
+check('asking again gives the same rematch, not another', (await uiu(UB, `select public.rematch_uiu('${cd}') c`)).rows[0].c === rc);
+const ce = (await uiu(UA, `select public.create_uiu('same', '{}') c`)).rows[0].c; await uiu(UB, `select public.join_uiu('${ce}', '{}')`);
+await db.exec(`update uiu_matches set started_at = now() - interval '8 days', ends_at = now() - interval '1 day' where code = '${ce}'`);
+check('after 7 days the challenge closes by itself', (await uget(UA, ce)).status === 'done');
+const co = (await uiu(UE, `select public.create_uiu('different', '{}') c`)).rows[0].c;
+await uiu(UE, `select public.cancel_uiu('${co}')`);
+await expectFail('a cancelled code cannot be joined', UB, `select public.join_uiu('${co}', '{}')`);
+check('my_uiu lists only open or live challenges', (await uiu(UA, `select public.my_uiu() r`)).rows[0].r.every((x) => ['open', 'live'].includes(x.status)));
+
+}
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

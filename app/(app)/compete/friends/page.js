@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useWhisk } from '@/components/AppShell';
 import Icon from '@/components/Icon';
 import CookOffCard from '@/components/CookOffCard';
+import UseItUpCard from '@/components/UseItUpCard';
 
 // Friends' plates. Step by step: add a friend with their code → they say yes → you see the plates they choose to
 // share (plates are private until shared), love them, or report one. Nothing here is public.
@@ -104,6 +105,7 @@ export default function Friends() {
       )}
 
       <CookOffCard />
+      <UseItUpCard />
 
       <section className="card stack" style={{ gap: 10 }} aria-label="Add a friend">
         <div><span className="eyebrow">Your friend code</span>

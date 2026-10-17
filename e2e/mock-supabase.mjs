@@ -31,7 +31,7 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on sequences to anon, authenticated;
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
-for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql', '0012_dishes_and_stamp_coins.sql', '0013_one_phone_play.sql', '0014_recipe_steps.sql', '0015_free_chef_coat_pilot_coat_xp.sql', '0016_bingo_weekly_with_challenges.sql', '0017_cookoff_and_invites.sql', '0018_cookoff_judges.sql', '0019_safety_streaks_sharing.sql', '0020_friends_feed.sql', '0021_notifications.sql', '0022_kitchen_layouts.sql', '0023_cook_rewards.sql', '0024_dream_kitchen_world.sql', '0025_magnets_night.sql', '0026_more_recipes.sql', '0027_revenuecat_coins.sql', '0028_baste_name.sql', '0029_stock_levels.sql', '0030_feta_name.sql', '0031_yoke_name.sql', '0032_learn_quiz.sql', '0033_learn_hourly.sql', '0034_my_recipes.sql'].filter((f) => !process.env.MOCK_UPTO || f <= process.env.MOCK_UPTO)) {   // MOCK_UPTO=0018_… : a database that hasn't run the newer SQL yet
+for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql', '0012_dishes_and_stamp_coins.sql', '0013_one_phone_play.sql', '0014_recipe_steps.sql', '0015_free_chef_coat_pilot_coat_xp.sql', '0016_bingo_weekly_with_challenges.sql', '0017_cookoff_and_invites.sql', '0018_cookoff_judges.sql', '0019_safety_streaks_sharing.sql', '0020_friends_feed.sql', '0021_notifications.sql', '0022_kitchen_layouts.sql', '0023_cook_rewards.sql', '0024_dream_kitchen_world.sql', '0025_magnets_night.sql', '0026_more_recipes.sql', '0027_revenuecat_coins.sql', '0028_baste_name.sql', '0029_stock_levels.sql', '0030_feta_name.sql', '0031_yoke_name.sql', '0032_learn_quiz.sql', '0033_learn_hourly.sql', '0034_my_recipes.sql', '0035_use_it_up.sql'].filter((f) => !process.env.MOCK_UPTO || f <= process.env.MOCK_UPTO)) {   // MOCK_UPTO=0018_… : a database that hasn't run the newer SQL yet
   await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8').replace('create extension if not exists pgcrypto;', ''));
 }
 await db.exec(`insert into auth.users (id, email) values ('${E2E_USER.id}', '${E2E_USER.email}')`);
@@ -70,7 +70,7 @@ const isAnon = (uid) => (amrByUid.get(uid) || []).some((m) => m.method === 'anon
 const userObj = (uid) => ({ id: uid, aud: 'authenticated', role: 'authenticated', is_anonymous: isAnon(uid), email: isAnon(uid) ? '' : E2E_USER.email, email_confirmed_at: '2026-01-01T00:00:00Z', app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, identities: [], created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' });
 const uidFrom = (req) => tokens.get((req.headers.authorization || '').replace(/^Bearer /, '')) || null;
 const refreshes = new Map();   // refresh token → user (so a second phone stays its own player)
-const amrByUid = new Map(); let anonSignups = 0;
+const amrByUid = new Map(); let anonSignups = 0; let lastAnon = null;
 
 // ---------- PostgREST subset ----------
 function splitTop(s) { const out = []; let depth = 0, cur = ''; for (const ch of s) { if (ch === '(') depth++; if (ch === ')') depth--; if (ch === ',' && !depth) { out.push(cur.trim()); cur = ''; } else cur += ch; } if (cur.trim()) out.push(cur.trim()); return out; }
@@ -272,6 +272,7 @@ const server = http.createServer(async (req, res) => {
       // The first "Start playing" is the main test player; any later one (a friend's phone) is a brand-new player with the same starter pantry.
       let who = E2E_USER.id;
       if (anonSignups > 1) { who = randomUUID(); await db.exec(`insert into auth.users (id, email) values ('${who}', null)`); await db.exec(`insert into public.pantry_items (user_id, name, category) values ${START.map(([n, c]) => `('${who}', '${n.replace(/'/g, "''")}', '${c}')`).join(', ')}`); }
+      lastAnon = who;
       amrByUid.set(who, [{ method: 'anonymous', timestamp: Math.floor(Date.now() / 1000) }]);
       const s = session(who); s.user = { ...s.user, email: '', is_anonymous: true, app_metadata: { provider: 'anonymous', providers: ['anonymous'] } }; refreshes.set(s.refresh_token, who); return send(res, 200, s);
     }
@@ -296,6 +297,8 @@ const server = http.createServer(async (req, res) => {
     if (path === '/__e2e/rc-opened') return send(res, 200, rcOpened);
     if (path === '/__e2e/events') { const r = await db.query(`select kind, page, target, value from app_events order by id`); return send(res, 200, r.rows); }
     if (path === '/__e2e/unlock-quiz') { await db.query(`update profiles set learn_next = null where id = $1`, [E2E_USER.id]); return send(res, 200, { ok: true }); }
+    if (path === '/__e2e/uiu-items') { const uid = url.searchParams.get('who') === 'friend' ? lastAnon : E2E_USER.id; for (const [n, d] of [['milk', 1], ['spinach', 2], ['yogurt', 3]]) await db.query(`insert into pantry_items (user_id, name, category, expires_on) values ($1, $2, 'Other', _user_today($1) + $3::int)`, [uid, n, d]); const chk = await db.query(`select name, expires_on::text, status, _user_today(user_id)::text t from pantry_items where user_id = $1 and name in ('milk','spinach','yogurt')`, [uid]); return send(res, 200, { ok: true, chk: chk.rows }); }
+    if (path === '/__e2e/uiu-meal') { const uid = url.searchParams.get('who') === 'friend' ? lastAnon : E2E_USER.id; await db.query(`insert into meals (user_id, title, photo_path) values ($1, $2, $3)`, [uid, url.searchParams.get('t') || 'Rescue stir-fry', `${uid}/uiu.jpg`]); return send(res, 200, { ok: true }); }
     if (path === '/__e2e/coins') { const r = await db.query(`select coins from profiles where id = $1`, [E2E_USER.id]); return send(res, 200, { coins: r.rows[0]?.coins }); }
     if (path === '/__e2e/quiz-answers') { const r = await db.query(`select array_agg(q.answer order by array_position(a.qids, q.id)) ans from quiz_attempts a join lesson_questions q on q.id = any(a.qids) where a.id = $1`, [url.searchParams.get('attempt')]); return send(res, 200, r.rows[0]?.ans || []); }
     if (path === '/__e2e/make-admin') { await db.exec(`update profiles set is_admin = true where id = '${E2E_USER.id}'`); return send(res, 200, { ok: true }); }

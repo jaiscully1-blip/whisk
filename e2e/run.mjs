@@ -40,7 +40,7 @@ page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resourc
 page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
 page.on('response', (r) => { if (r.status() >= 400 && !/api\/barcode/.test(r.url())) problems.push(`HTTP ${r.status()} ${r.request().method()} ${r.url()}`); });
 const shot = async (n) => { if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `${n}.png`), fullPage: true }); };
-const step = async (name, fn) => { curStep = name; try { await fn(); } catch (e) { check(name, false, e.message.split('\n').filter((l) => /locator|Timeout|waiting/.test(l)).slice(0, 3).join(' | ')); await shot(`fail-${name.replace(/\W+/g, '-')}`); } };
+const step = async (name, fn) => { curStep = name; try { await fn(); } catch (e) { check(name, false, e.message.split('\n').filter((l) => /locator|Timeout|waiting/.test(l)).slice(0, 3).join(' | ') || String(e.message).slice(0, 300)); await shot(`fail-${name.replace(/\W+/g, '-')}`); } };
 const openSettings = async (p = page) => { if (!(await p.getByTestId('settings-page').count())) await p.getByTestId('settings-btn').click(); await p.getByTestId('settings-page').waitFor(); };
 const nav = async (n) => { if (await page.getByTestId('settings-page').count()) await page.getByTestId('settings-back').click(); await page.getByRole('navigation').getByRole('link', { name: n, exact: true }).click(); };
 const closePopups = async () => { await page.locator('.popup-scrim').first().waitFor({ timeout: 3000 }).catch(() => {}); for (let i = 0; i < 4; i++) { const x = page.locator('.popup-scrim [aria-label=Close]').first(); const leave = page.locator('.popup-scrim').getByRole('button', { name: 'Leave' }).first(); if (await x.count()) await x.click(); else if (await leave.count()) await leave.click(); else break; await page.waitForTimeout(400); } };
@@ -226,6 +226,65 @@ await step('recipe import', async () => {
   await page.getByTestId('mine-view').waitFor({ state: 'detached' });
   await page.waitForTimeout(600);
   check('deleting a recipe removes it', (await page.getByTestId('mine-item').count()) === 1);
+  await nav('Home');
+});
+await step('use-it-up week', async () => {
+  const E = (path) => fetch(`http://localhost:54321/__e2e/${path}`).then((r) => r.json());
+  const ctxF = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: 'America/New_York' });
+  const fp2 = await ctxF.newPage(); await fp2.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
+  await fp2.goto(`${BASE}/login`); await fp2.getByRole('radio', { name: 'Accept' }).click(); await fp2.getByRole('button', { name: 'Start playing' }).click(); await fp2.waitForURL('**/cook');
+  await E('uiu-items?who=me'); await E('uiu-items?who=friend');
+  const toFriends = async (pg, refresh = false) => { if (refresh) { await pg.getByRole('navigation').getByRole('link', { name: 'Pantry', exact: true }).click(); await pg.waitForURL('**/pantry'); await pg.waitForTimeout(1200); } await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete'); await pg.locator('.fr-card').click(); await pg.waitForURL('**/compete/friends'); await pg.getByTestId('uiu-card').waitFor(); };
+  await toFriends(page, true);
+  check('Use-It-Up Week card sits on the Cook Off screen with Start Challenge and Join with Code', (await page.getByTestId('uiu-start').count()) === 1 && (await page.getByTestId('uiu-join').count()) === 1);
+  const cardY = (await page.getByTestId('uiu-card').boundingBox()).y, coY = (await page.locator('.co-card').boundingBox()).y;
+  check('the card is below the Cook Off friend-code entry', cardY > coY);
+  await shot('10-use-it-up-card');
+  await page.getByTestId('uiu-start').click();
+  check('Start offers both modes', (await page.getByTestId('uiu-mode-same').count()) === 1 && (await page.getByTestId('uiu-mode-different').count()) === 1);
+  await page.locator('[data-testid=uiu-pick]', { hasText: 'milk' }).click();
+  await shot('10b-use-it-up-start');
+  await page.getByTestId('uiu-create').click(); await page.waitForURL('**/compete/useitup?code=*');
+  const code = new URL(page.url()).searchParams.get('code');
+  await page.getByTestId('uiu-code-show').waitFor();
+  check('Create Code shows a 6-character code', /^[A-Z0-9]{6}$/.test(code) && (await page.getByTestId('uiu-code-show').innerText()) === code);
+  // the friend joins with the code, choosing their own item to add
+  await toFriends(fp2, true);
+  await fp2.getByTestId('uiu-join').click(); await fp2.getByTestId('uiu-code').fill(code); await fp2.getByRole('button', { name: 'Next' }).click();
+  await fp2.getByTestId('uiu-join-go').waitFor();
+  check('Join with Code shows the mode and who invited you', /Same ingredients/.test(await fp2.locator('[data-testid=uiu-card]').innerText()));
+  await fp2.locator('[data-testid=uiu-pick]', { hasText: 'yogurt' }).click();
+  await fp2.getByTestId('uiu-join-go').click(); await fp2.waitForURL('**/compete/useitup?code=*');
+  await fp2.getByTestId('uiu-countdown').waitFor({ timeout: 6000 });
+  check('both see "Week starts in" counting down', /Week starts in/.test(await fp2.getByTestId('uiu-countdown').innerText()));
+  await shot('10c-use-it-up-countdown');
+  await fp2.getByTestId('uiu-score').waitFor({ timeout: 10000 }); await page.getByTestId('uiu-score').waitFor({ timeout: 12000 });
+  check('after the countdown the week starts: scores for you and your friend', (await page.getByTestId('uiu-score').locator('.card').count()) === 2 && /7 days left/.test(await page.getByTestId('uiu-days').innerText()));
+  const listText = await page.locator('.uiu-items').innerText();
+  check('the shared list is milk, spinach, yogurt (both have them)', /milk/i.test(listText) && /spinach/i.test(listText) && /yogurt/i.test(listText));
+  await shot('10d-use-it-up-week');
+  // each player cooks something and adds it
+  await E('uiu-meal?who=me&t=Spinach omelette'); await E('uiu-meal?who=friend&t=Yogurt bowl');
+  for (const pg of [page, fp2]) { await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete'); await pg.locator('.fr-card').click(); await pg.waitForURL('**/compete/friends'); await pg.locator('.uiu-resume').first().click(); await pg.getByTestId('uiu-submit').waitFor(); }
+  await page.getByTestId('uiu-meal').selectOption({ index: 1 }); await page.locator('[data-testid=uiu-use]', { hasText: 'milk' }).click(); await page.locator('[data-testid=uiu-use]', { hasText: 'spinach' }).click();
+  await page.getByTestId('uiu-send').click();
+  await page.waitForFunction(() => /4 pts/.test(document.querySelector('[data-testid=uiu-score]')?.innerText || ''), null, { timeout: 8000 });
+  check('milk (2) + spinach (2) = 4 points shows on the scoreboard', /4 pts/.test(await page.getByTestId('uiu-score').innerText()));
+  await fp2.getByTestId('uiu-meal').selectOption({ index: 1 }); await fp2.locator('[data-testid=uiu-use]', { hasText: 'yogurt' }).click(); await fp2.getByTestId('uiu-send').click();
+  await fp2.waitForFunction(() => /1 pt\b/.test(document.querySelector('[data-testid=uiu-score]')?.innerText || ''), null, { timeout: 8000 });
+  check('the friend scores 1 point for yogurt, and sees only your score and counts', /4 pts/.test(await fp2.getByTestId('uiu-score').innerText()) && !/spinach omelette/i.test(await fp2.getByTestId('uiu-page').innerText()));
+  const coinsBefore = (await E('coins')).coins;
+  page.on('dialog', (d) => d.accept()); fp2.on('dialog', (d) => d.accept());
+  await page.getByTestId('uiu-finish').click(); await fp2.getByTestId('uiu-finish').click();
+  await page.getByTestId('uiu-results').waitFor({ timeout: 12000 }); await fp2.getByTestId('uiu-results').waitFor({ timeout: 12000 });
+  check('results: the higher score wins, with both names, scores and dish counts', /You won/.test(await page.getByTestId('uiu-results').innerText()) && /4 pts/.test(await page.getByTestId('uiu-results').innerText()) && /1 pt\b/.test(await page.getByTestId('uiu-results').innerText()) && /1 dish/.test(await page.getByTestId('uiu-results').innerText()));
+  check('the winner gets 500 coins and the friend is told', /\+500 coins/.test(await page.getByTestId('uiu-results').innerText()) && /won 500 coins/.test(await fp2.getByTestId('uiu-results').innerText()) && (await E('coins')).coins === coinsBefore + 500);
+  await shot('10e-use-it-up-results');
+  await page.getByTestId('uiu-rematch').click(); await page.waitForFunction((c) => { const n = new URL(location.href).searchParams.get('code'); return n && n !== c; }, code, { timeout: 10000 }).catch(() => {}); const code2 = new URL(page.url()).searchParams.get('code');
+  check('Rematch is one tap and gives a new code', /^[A-Z0-9]{6}$/.test(code2) && code2 !== code);
+  await fp2.waitForFunction(() => /Join rematch/.test(document.querySelector('[data-testid=uiu-rematch]')?.innerText || ''), null, { timeout: 14000 }).catch(() => {});
+  check('the friend is offered the rematch', /Join rematch/.test(await fp2.getByTestId('uiu-rematch').innerText()));
+  await ctxF.close();
   await nav('Home');
 });
 await step('home', async () => {

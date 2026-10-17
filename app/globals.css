@@ -1290,3 +1290,10 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .import-note { margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, #E0A93B 18%, var(--card)); font-weight: 700; font-size: 14px; }
 .mine-open { flex: 1; min-width: 0; text-align: left; background: none; border: 0; color: var(--fg); padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .mine-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; line-height: 1.45; }
+
+/* ---------- Use-It-Up Week ---------- */
+.uiu-resume { background: var(--gold-soft); border-radius: 14px; padding: 10px 12px; color: var(--fg); text-decoration: none; }
+.uiu-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.uiu-items li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: var(--track); flex-wrap: wrap; }
+.uiu-items li.used { background: var(--fresh-soft); }
+.uiu-items li.late { border: 1.5px dashed var(--bad); }

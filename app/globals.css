@@ -1101,31 +1101,7 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .saved-card .saved-open .eyebrow { background: var(--card); padding: 3px 9px; border-radius: 99px; box-shadow: 0 2px 0 var(--tile-edge); color: var(--fg); }
 .saved-title { font-family: var(--f-display); font-size: 19px; line-height: 1.15; text-shadow: 0 0 6px var(--card), 0 0 12px var(--card); }
 .saved-card .saved-x { margin: 0 10px 12px 0; background: var(--card); }
-/* Discover a Dish filters: one slim row (little price tags on a string + a stove knob) */
-.df { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 2px 2px; }
-.df-string { position: relative; display: flex; gap: 6px; padding-top: 8px; }
-.df-string::before { content: ''; position: absolute; left: -4px; right: -4px; top: 2px; height: 1.5px; background: repeating-linear-gradient(90deg, var(--muted) 0 5px, transparent 5px 8px); opacity: .6; }
-.df-tag { position: relative; width: 44px; height: 34px; padding: 9px 0 0; border: 0; cursor: pointer; background: #F6E7C8; color: #2E7D32;
-  clip-path: polygon(50% 0, 100% 22%, 100% 100%, 0 100%, 0 22%); border-radius: 0 0 8px 8px; transform-origin: 50% -6px; transform: rotate(var(--tilt));
-  transition: transform .25s cubic-bezier(.3, 1.6, .5, 1), background .15s; filter: drop-shadow(0 2px 0 rgba(0,0,0,.25)); }
-.df-tag::after { content: ''; position: absolute; top: 4px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--bg); }
-.df-tag b { font-family: var(--f-display); font-size: 14px; letter-spacing: -.03em; }
-.df-tag.on { background: var(--accent); color: var(--btn-ink, #1d2a12); transform: rotate(0) translateY(2px); animation: df-swing .55s ease-out; }
-@keyframes df-swing { 0% { transform: rotate(var(--tilt)); } 40% { transform: rotate(calc(var(--tilt) * -1.5)); } 100% { transform: rotate(0) translateY(2px); } }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.df-knobwrap { display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 0; color: var(--fg); cursor: pointer; }
-.df-knob { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle, #2E2F33 0 56%, transparent 57%), conic-gradient(from -150deg, #8BC34A 0 60deg, #FFB547 60deg 120deg, #FF8A3D 120deg 180deg, #E5392B 180deg 240deg, transparent 240deg); box-shadow: 0 3px 0 var(--tile-edge); }
-.df-knob-face { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(145deg, #F2F3F5, #A9AEB5); box-shadow: inset 0 -2px 3px rgba(0,0,0,.25); position: relative; transition: transform .35s cubic-bezier(.3, 1.4, .5, 1); }
-.df-knob-face i { position: absolute; left: 50%; top: 3px; width: 3px; height: 9px; margin-left: -1.5px; border-radius: 2px; background: #2E2F33; }
-.df-lvl { display: grid; gap: 1px; font-weight: 800; font-size: 12px; line-height: 1.1; text-align: left; min-width: 64px; }
-.df-flames { display: inline-flex; height: 11px; }
-.df-flame { fill: var(--line); }
-.df-flame.on { fill: #FF8A3D; animation: df-flicker 1.2s ease-in-out infinite; }
-@keyframes df-flicker { 50% { transform: scaleY(1.12) translateY(-1px); } }
-@media (prefers-reduced-motion: reduce) { .df-tag.on, .df-flame.on { animation: none; } }
-.rcard-meta { display: flex; gap: 6px; flex-wrap: wrap; }
-.chip.price { background: #F6E7C8; color: #2E7D32; font-weight: 800; }
-.chip.heat { background: color-mix(in srgb, #FF8A3D 18%, transparent); color: var(--fg); font-weight: 800; }
 
 /* 3D kitchen: the room shows only the walls facing you (classes set as the view turns, no re-draw) */
 .k3:not(.fb) .on-b, .k3:not(.fr) .on-r, .k3.fb .off-b, .k3.fr .off-r { display: none; }
@@ -1152,17 +1128,6 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .kface.holed > .kskin, .kface.holed > .kknob { pointer-events: auto; }
 .kclose { position: absolute; width: 12px; height: 12px; padding: 0; border: .6px solid var(--tile-edge); border-radius: 50%; background: var(--card); color: var(--fg); display: grid; place-items: center; box-shadow: 0 .8px 0 var(--tile-edge), 0 1px 3px rgba(0,0,0,.25); cursor: pointer; opacity: .94; }
 .kstage .k3.view .k3-home { display: none; }   /* the Back button under the kitchen does this */
-/* price + difficulty row: always fits the screen width */
-.df { gap: 8px; max-width: 100%; overflow: hidden; padding: 4px 4px 2px; }
-.df-string { flex: 1 1 auto; min-width: 0; gap: 5px; }
-.df-tag { flex: 1 1 0; min-width: 0; max-width: 46px; width: auto; }
-.df-tag b { font-size: 13px; }
-.df-knobwrap { flex: none; flex-direction: column; gap: 2px; }
-.df-knob { width: 34px; height: 34px; }
-.df-knob-face { width: 22px; height: 22px; }
-.df-knob-face i { height: 7px; }
-.df-lvl { min-width: 0; font-size: 10.5px; text-align: center; justify-items: center; white-space: nowrap; }
-.df-flames { display: none; }
 .kcloset .kc-wall { backface-visibility: visible; -webkit-backface-visibility: visible; }
 
 /* ---------- in-game scanners (components/ScanSheet.js) ---------- */
@@ -1333,3 +1298,21 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .saved-card.rcard .rcard-body { margin-top: 70px; }
 .cook-ask .btn { padding-inline: 10px; font-size: 15px; white-space: nowrap; }
 .saved-card .saved-list { margin: 0 0 12px 0; background: var(--card); }
+
+/* Discover a Dish filters: time chips + the Use it up switch */
+.df { display: grid; gap: 10px; }
+.df-times { display: flex; gap: 8px; }
+.df-time { flex: 1 1 0; min-width: 0; height: 40px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); color: var(--fg); font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; transition: background .15s, border-color .15s, transform .1s; }
+.df-time:active { transform: scale(.97); }
+.df-time.on { background: var(--accent); border-color: var(--accent); color: var(--btn-ink, #1d2a12); }
+.df-uiu { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--card); color: var(--fg); font: inherit; text-align: left; cursor: pointer; transition: background .2s, border-color .2s, box-shadow .2s; }
+.df-uiu-track { position: relative; flex: none; width: 50px; height: 28px; border-radius: 14px; background: var(--line); transition: background .2s; }
+.df-uiu-knob { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #6b7280; box-shadow: 0 1px 3px rgba(0,0,0,.35); transition: transform .22s cubic-bezier(.3,1.4,.5,1), color .2s; }
+.df-uiu-txt { display: grid; gap: 1px; min-width: 0; }
+.df-uiu-txt b { font-size: 15px; }
+.df-uiu-txt small { font-size: 12px; opacity: .7; }
+.df-uiu.on { border-color: #FF8A3D; background: color-mix(in srgb, #FF8A3D 14%, var(--card)); box-shadow: 0 0 0 3px color-mix(in srgb, #FF8A3D 22%, transparent); }
+.df-uiu.on .df-uiu-track { background: #FF8A3D; }
+.df-uiu.on .df-uiu-knob { transform: translateX(22px); color: #FF8A3D; animation: df-tick 1.6s ease-in-out infinite; }
+@keyframes df-tick { 0%, 100% { transform: translateX(22px) rotate(0); } 50% { transform: translateX(22px) rotate(-12deg); } }
+@media (prefers-reduced-motion: reduce) { .df-uiu.on .df-uiu-knob { animation: none; } }

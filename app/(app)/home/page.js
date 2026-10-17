@@ -10,8 +10,7 @@ import { usePantry, useSaved } from '@/components/usePantry';
 import { addToShoppingList, listMsg } from '@/lib/shoplist';
 import { checkRecipe, thawState, usesSoon, shoppingNeeds, canon } from '@/lib/recipes/match';
 import Postcard from '@/components/Postcard';
-import DishFilters from '@/components/DishFilters';
-import { priceTier, levelOf, costPerServing, PRICE_TIERS, LEVELS } from '@/lib/recipes/cost';
+import DishFilters, { timeOk } from '@/components/DishFilters';
 
 const PAGE = 10;
 const SHOW = 3;   // missing ingredients shown on a card; the recipe lists them all
@@ -21,7 +20,7 @@ const mix = (id, seed) => { let h = seed >>> 0; for (let i = 0; i < id.length; i
 // Always a fresh random mix each time it opens (Shuffle for another).
 export default function Home() {
   const { supabase, recipes, say, ui, setUi } = useWhisk();
-  const prices = Array.isArray(ui.homePrice) ? ui.homePrice : [], level = ui.homeLevel || 'any';
+  const time = ui.homeTime || 'any', useUp = !!ui.homeUseUp;
   const [pantry, reload] = usePantry();
   const [saved, reloadSaved] = useSaved();
   const [open, setOpen] = useState(null);
@@ -36,15 +35,16 @@ export default function Home() {
     // A fresh random mix every time Home opens (and on Shuffle). Recipes that use food about to go bad still come first.
     const ordered = list.sort((a, b) => mix(a.r.id, seed) - mix(b.r.id, seed));
     const all = [...ordered.filter((x) => x.soon.length), ...ordered.filter((x) => !x.soon.length)];
-    // your budget and how hard you want it (Discover a Dish filters)
-    return all.filter(({ r }) => (!prices.length || prices.includes(priceTier(r))) && (level === 'any' || levelOf(r) === level));
-  }, [pantry, recipes, seed, prices.join(','), level]); // eslint-disable-line react-hooks/exhaustive-deps
+    // how long you have, and "Use it up" (Discover a Dish filters)
+    return all.filter(({ r, soon }) => timeOk(time, r.minutes) && (!useUp || soon.length));
+  }, [pantry, recipes, seed, time, useUp]); // eslint-disable-line react-hooks/exhaustive-deps
   const shuffle = () => { setSeed((x) => (x + 0x9e3779b9) >>> 0); setShown(PAGE); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   useEffect(() => {
     const el = moreRef.current; if (!el || !almost || shown >= almost.length) return;
     const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) setShown((n) => n + PAGE); }, { rootMargin: '500px' });
     io.observe(el); return () => io.disconnect();
   }, [almost, shown]);
+  const expiring = useMemo(() => new Set((pantry || []).filter((p) => p.status !== 'out' && p.expires_on && (new Date(String(p.expires_on).slice(0, 10) + 'T00:00:00') - new Date(new Date().toDateString())) / 864e5 <= 3 && (new Date(String(p.expires_on).slice(0, 10) + 'T00:00:00') - new Date(new Date().toDateString())) / 864e5 >= 0).map((p) => canon(p.name))).size, [pantry]);
   const frozen = (pantry || []).filter((p) => { const t = thawState(p); return t && t.state !== 'thawed'; });
 
   async function addToList(r, missing) { say(listMsg(await addToShoppingList(supabase, missing))); }
@@ -53,9 +53,9 @@ export default function Home() {
     <div className="stack" style={{ paddingTop: 16 }}>
       {frozen.length > 0 && <ThawBanner items={frozen} onChanged={reload} />}
       <div className="page-title" style={{ margin: '6px 0 0' }}><h1>Discover a Dish</h1>{almost && almost.length > 1 && <button type="button" className="title-link" onClick={shuffle}><Icon name="shuffle" size={18} />Shuffle</button>}</div>
-      <DishFilters prices={prices} level={level} onPrices={(v) => { setUi({ homePrice: v }); setShown(PAGE); }} onLevel={(v) => { setUi({ homeLevel: v }); setShown(PAGE); }} />
-      {almost === null ? <p className="muted">Checking your pantry…</p> : almost.length === 0 && (prices.length || level !== 'any') ? (
-        <div className="empty"><b>No dishes match</b>Try another price tag or turn the knob.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><button type="button" className="btn ghost" onClick={() => setUi({ homePrice: [], homeLevel: 'any' })}>Show everything</button></div></div>
+      <DishFilters time={time} useUp={useUp} expiring={expiring} onTime={(v) => { setUi({ homeTime: v }); setShown(PAGE); }} onUseUp={(v) => { setUi({ homeUseUp: v }); setShown(PAGE); }} />
+      {almost === null ? <p className="muted">Checking your pantry…</p> : almost.length === 0 && (time !== 'any' || useUp) ? (
+        <div className="empty"><b>{useUp ? 'Nothing to use up' : 'No dishes match'}</b>{useUp ? 'No dish needs the food that is about to go off.' : 'Try another time.'}<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><button type="button" className="btn ghost" onClick={() => setUi({ homeTime: 'any', homeUseUp: false })}>Show everything</button></div></div>
       ) : almost.length === 0 ? (
         <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">Add pantry items</Link><Link className="btn ghost" href="/cook">What can I make?</Link></div></div>
       ) : almost.slice(0, shown).map(({ r, c, soon, needs }, i, arr) => (
@@ -67,10 +67,6 @@ export default function Home() {
           <span className="eyebrow">{r.cuisine}</span>
           <h2 style={{ fontSize: 22 }}>{r.title}</h2>
           <span className="src"><a href={r.url} target="_blank" rel="noopener noreferrer">Full recipe</a> · {r.minutes} min</span>
-          <div className="rcard-meta">
-            <span className="chip price" title={PRICE_TIERS[priceTier(r) - 1].name}>{PRICE_TIERS[priceTier(r) - 1].tag} · ~${costPerServing(r).toFixed(2)} a serving</span>
-            <span className="chip heat">{LEVELS.find((l) => l.id === levelOf(r)).name}</span>
-          </div>
           {soon.length > 0 && <span className="chip soon"><Icon name="timer" size={14} />Uses your {soon.map((p) => p.name.toLowerCase()).slice(0, 2).join(' and ')} before it goes bad</span>}
           <DietTags recipe={r} max={3} />
           <div className="row">{needs.slice(0, SHOW).map((m) => <span key={m} className="chip need">+ {m}</span>)}{needs.length > SHOW && <button type="button" className="chip more-need" onClick={() => setOpen(r)} aria-label={`See all ${needs.length} you need`}>+{needs.length - SHOW} more</button>}</div>

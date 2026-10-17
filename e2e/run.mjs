@@ -292,17 +292,25 @@ await step('use-it-up week', async () => {
 await step('home', async () => {
   await page.getByRole('heading', { name: 'Discover a Dish' }).waitFor();
   check('home shows Discover a Dish', true);
-  // budget price tags + the difficulty knob
-  check('price tags ($ to $$$$) and a small difficulty knob in one slim row', (await page.locator('.df-tag').count()) === 4 && (await page.locator('.df-knob').count()) === 1 && (await page.locator('.df').boundingBox()).height < 70);
+  // time chips + the Use it up switch (replaced the price tags and difficulty knob)
+  check('time chips (15 min, 30 min, 1 hr+) and the Use it up switch; no price tags or knob', (await page.locator('.df-time').count()) === 3 && (await page.getByTestId('use-it-up-toggle').count()) === 1 && (await page.locator('.df-tag, .df-knob, .chip.price, .chip.heat').count()) === 0);
   await page.locator('.rcard').first().waitFor();
-  await page.locator('.df-tag', { hasText: 'Pocket change' }).click(); await page.waitForTimeout(300);
-  const tags = await page.locator('.rcard .chip.price').allInnerTexts();
-  check('Pocket change shows only dishes under $2 a serving', tags.length > 0 && tags.every((t) => t.startsWith('$ ·')), tags.slice(0, 3).join(' | '));
-  await page.locator('.df-knobwrap').click(); await page.waitForTimeout(300);
-  const heat = await page.locator('.rcard .chip.heat').allInnerTexts();
-  check('…and the knob narrows it to Easy', heat.every((t) => t === 'Easy') && (await page.locator('.df-lvl.on').innerText()).includes('Easy'), heat.join(','));
+  const mins = async () => (await page.locator('.rcard .src').allInnerTexts()).map((t) => Number((t.match(/(\d+) min/) || [])[1]));
+  await page.locator('.df-time', { hasText: '15 min' }).click(); await page.waitForTimeout(300);
+  let ms = await mins();
+  check('15 min shows only dishes of 15 minutes or less', ms.length > 0 && ms.every((m) => m <= 15), ms.join(','));
+  await page.locator('.df-time', { hasText: '1 hr+' }).click(); await page.waitForTimeout(300);
+  ms = await mins();
+  check('1 hr+ shows only dishes of an hour or more', ms.length > 0 && ms.every((m) => m >= 60), ms.join(','));
+  await page.locator('.df-time', { hasText: '1 hr+' }).click(); await page.waitForTimeout(300);
+  check('tapping the chip again clears it', (await page.locator('.df-time.on').count()) === 0);
+  const sw = page.getByTestId('use-it-up-toggle');
+  await sw.click(); await page.waitForTimeout(300);
+  const soonOnly = (await page.locator('.rcard').count()) === 0 ? (await page.getByText('Nothing to use up').count()) === 1 : (await page.locator('.rcard').count()) === (await page.locator('.rcard .chip.soon').count());
+  check('Use it up switches on and shows only dishes that rescue expiring food', (await sw.getAttribute('aria-checked')) === 'true' && soonOnly);
   await shot('01a-home-filters');
-  await page.locator('.df-tag', { hasText: 'Pocket change' }).click(); for (let k = 0; k < 3; k++) await page.locator('.df-knobwrap').click();
+  await sw.click(); await page.waitForTimeout(300);
+  check('…and off again', (await sw.getAttribute('aria-checked')) === 'false' && (await page.locator('.rcard').count()) > 0);
   check('home has no challenges or Fridge Raid', (await page.getByText('This week’s challenges').count()) === 0 && (await page.getByText('Fridge Raid').count()) === 0);
   await page.getByText('Ground beef is frozen').waitFor();
   check('home reminds you to defrost frozen ground beef', true);

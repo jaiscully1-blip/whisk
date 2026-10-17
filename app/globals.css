@@ -1279,3 +1279,8 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .quiz-score.perfect { background: var(--gold-soft); }
 .quiz-rev.ok { border-left: 5px solid var(--fresh); }
 .quiz-rev.no { border-left: 5px solid var(--bad); }
+
+/* ---------- Me › Settings page ---------- */
+.settings-page { position: fixed; inset: 0; z-index: 45; background: var(--bg); overflow-y: auto; padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px)); }
+.settings-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.settings-body { max-width: 720px; margin: 0 auto; padding: 16px 16px 0; gap: 12px; }

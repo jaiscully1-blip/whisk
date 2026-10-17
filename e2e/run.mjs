@@ -41,7 +41,8 @@ page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
 page.on('response', (r) => { if (r.status() >= 400 && !/api\/barcode/.test(r.url())) problems.push(`HTTP ${r.status()} ${r.request().method()} ${r.url()}`); });
 const shot = async (n) => { if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `${n}.png`), fullPage: true }); };
 const step = async (name, fn) => { curStep = name; try { await fn(); } catch (e) { check(name, false, e.message.split('\n').filter((l) => /locator|Timeout|waiting/.test(l)).slice(0, 3).join(' | ')); await shot(`fail-${name.replace(/\W+/g, '-')}`); } };
-const nav = (n) => page.getByRole('navigation').getByRole('link', { name: n, exact: true }).click();
+const openSettings = async (p = page) => { if (!(await p.getByTestId('settings-page').count())) await p.getByTestId('settings-btn').click(); await p.getByTestId('settings-page').waitFor(); };
+const nav = async (n) => { if (await page.getByTestId('settings-page').count()) await page.getByTestId('settings-back').click(); await page.getByRole('navigation').getByRole('link', { name: n, exact: true }).click(); };
 const closePopups = async () => { await page.locator('.popup-scrim').first().waitFor({ timeout: 3000 }).catch(() => {}); for (let i = 0; i < 4; i++) { const x = page.locator('.popup-scrim [aria-label=Close]').first(); const leave = page.locator('.popup-scrim').getByRole('button', { name: 'Leave' }).first(); if (await x.count()) await x.click(); else if (await leave.count()) await leave.click(); else break; await page.waitForTimeout(400); } };
 
 await step('signed-out redirect', async () => { await page.goto(`${BASE}/home`); check('signed-out /home redirects to /login', page.url().includes('/login')); });
@@ -158,12 +159,13 @@ await step('learn quiz', async () => {
   check('the Learn button keeps counting down after the second quiz', /Next quiz in/.test(await page.getByTestId('learn-btn').innerText()));
   // Me: change level. Expert hides Learn; Novice brings it back.
   await nav('Me');
+  await openSettings();
   check('Me shows your cooking level', /Beginner/.test(await page.getByTestId('level-row').innerText()));
   await page.getByTestId('level-row').click(); await page.locator('.lv-opt', { hasText: 'Expert' }).click();
-  await page.locator('.nav a[href="/cook"]').click(); await page.waitForURL('**/cook'); await page.waitForTimeout(500);
+  await nav('Cook'); await page.waitForURL('**/cook'); await page.waitForTimeout(500);
   check('Expert hides Learn', (await page.getByTestId('learn-btn').count()) === 0);
-  await nav('Me'); await page.getByTestId('level-row').click(); await page.locator('.lv-opt', { hasText: 'Novice' }).click();
-  await page.locator('.nav a[href="/cook"]').click(); await page.waitForURL('**/cook'); await page.waitForTimeout(500);
+  await nav('Me'); await openSettings(); await page.getByTestId('level-row').click(); await page.locator('.lv-opt', { hasText: 'Novice' }).click();
+  await nav('Cook'); await page.waitForURL('**/cook'); await page.waitForTimeout(500);
   check('Novice shows Learn again', (await page.getByTestId('learn-btn').count()) === 1);
   await nav('Home');
 });
@@ -525,6 +527,7 @@ await step('me settings', async () => {
   await nav('Me'); await page.getByText('Settings').waitFor();
   check('autosave is not shown', (await page.getByText('Autosave').count()) === 0);
   check('day counter starts at Day 1', (await page.locator('.dayno').innerText()) === 'Day 1');
+  await openSettings();
   await page.getByRole('button', { name: /Cookies & privacy/ }).click();
   check('cookie choices can be reopened from Settings', await page.getByRole('dialog', { name: 'Your choices' }).isVisible());
   check('Settings shows 4 purposes incl. usage data (on, from Accept), essential locked on', (await page.locator('.cc-switch').count()) === 4 && (await page.getByText('Help improve Yoke').count()) === 1 && (await page.locator('.cc-switch.locked[aria-checked=true]').count()) === 1 && (await page.locator('.cc-switch[aria-checked=true]').count()) === 4);
@@ -765,7 +768,7 @@ await step('never show me, vacation, streak repair note', async () => {
   await page.goto(`${BASE}/cook`); await page.waitForTimeout(1200); await closePopups();
   await page.click('text=What can I make?'); await page.getByText(/recipes? you can make right now/).waitFor();
   const n0 = parseInt(await page.getByText(/recipes? you can make right now/).innerText(), 10);
-  await nav('Me'); await page.getByRole('button', { name: /Never show me/ }).click();
+  await nav('Me'); await openSettings(); await page.getByRole('button', { name: /Never show me/ }).click();
   const ns = page.locator('[role=dialog][aria-label="Never show me"]');
   check('Never show me: one-tap allergies + any ingredient, and a check-the-label note', (await ns.locator('.never-pick .chip').count()) === 9 && (await ns.getByText(/always check the label/).count()) === 1);
   await ns.getByRole('button', { name: 'Eggs' }).click();
@@ -778,7 +781,7 @@ await step('never show me, vacation, streak repair note', async () => {
   const ingText = (await page.locator('[role=dialog] .ing-list').innerText()).toLowerCase();
   check('recipes with eggs or cilantro are gone from Cook', n1 < n0 && !/\begg|cilantro/.test(ingText), `${n0} → ${n1}`);
   await page.locator('[role=dialog] [aria-label="Close"]').first().click();
-  await nav('Me'); await page.getByRole('button', { name: /Never show me/ }).click();
+  await nav('Me'); await openSettings(); await page.getByRole('button', { name: /Never show me/ }).click();
   await ns.getByRole('button', { name: 'Eggs' }).click(); await ns.getByRole('button', { name: 'Show cilantro again' }).click(); await ns.getByRole('button', { name: 'Save' }).click(); await page.waitForTimeout(500);
   check('clearing it shows everything again', /Allergies, dislikes/.test(await page.getByRole('button', { name: /Never show me/ }).innerText()));
   await page.getByRole('switch', { name: 'Vacation mode' }).click(); await page.waitForTimeout(600);
@@ -857,6 +860,7 @@ await step('friends and the plate feed', async () => {
 });
 await step('back up your game', async () => {
   await nav('Me'); await page.waitForURL('**/me');
+  await openSettings();
   check('an unsaved game says so and offers a backup', (await page.getByText('Your game is saved on this phone').count()) === 1);
   await page.getByRole('button', { name: 'Back up your game' }).click();
   const bk = page.getByRole('dialog', { name: 'Back up your game' });
@@ -885,7 +889,7 @@ await step('get my game back', async () => {
   await ctx7.close();
 });
 await step('notifications', async () => {
-  await nav('Me'); await page.waitForURL('**/me');
+  await nav('Me'); await page.waitForURL('**/me'); await openSettings();
   check('Me has Notifications (off until you turn it on), with only-useful wording', (await page.getByRole('switch', { name: 'Notifications' }).getAttribute('aria-checked')) === 'false' && (await page.getByText(/Only useful ones/).count()) === 1);
   const bad = await page.request.post(`${BASE}/api/push/due`, { headers: { Authorization: 'Bearer wrong' } });
   check('the hourly sender refuses without the secret', bad.status() === 401);
@@ -1058,6 +1062,7 @@ await step('delete my data', async () => {
   await dp.goto(`${BASE}/login`); await dp.getByRole('radio', { name: 'Accept' }).click(); await dp.getByRole('button', { name: 'Start playing' }).click(); await dp.waitForURL('**/cook');
   await dp.waitForTimeout(1500); await dp.mouse.click(5, 400);
   await dp.getByRole('navigation').getByRole('link', { name: 'Me', exact: true }).click(); await dp.waitForURL('**/me');
+  await openSettings(dp);
   const uid = await dp.locator('.mono').first().innerText();
   await dp.getByRole('button', { name: 'Delete my data' }).click();
   const del = dp.getByRole('dialog', { name: 'Delete my data' });

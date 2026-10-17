@@ -17,7 +17,7 @@ export default function LearnSheet({ onClose }) {
   const [err, setErr] = useState('');
   const st = learnState(profile);
   const [nextAt, setNextAt] = useState(null);   // set the moment a quiz is finished, so the countdown starts without waiting for a reload
-  const left = useCountdown(nextAt || profile?.learn_next);
+  const left = useCountdown(nextAt || profile?.learn_next, true);
 
   async function start() {
     setBusy(true); setErr(''); setRes(null); setI(0); setPicks([]);

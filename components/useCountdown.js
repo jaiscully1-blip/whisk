@@ -2,9 +2,9 @@
 import { useEffect, useState } from 'react';
 
 // Seconds left until an ISO time (0 when it has passed), ticking once a second only while there is time left.
-export default function useCountdown(iso) {
+export default function useCountdown(iso, eager = false) {   // eager: for things that only ever render in the browser (sheets), so there is no empty first frame
   const calc = () => (iso ? Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 1000)) : 0);
-  const [left, setLeft] = useState(calc);
+  const [left, setLeft] = useState(eager ? calc : 0);   // 0 on the first render (server and browser agree), the real value right after
   useEffect(() => {
     setLeft(calc());
     if (!iso || calc() <= 0) return undefined;

@@ -9,6 +9,8 @@ import { postGame } from '@/lib/chatGame';
 import CookOffCard from './CookOffCard';
 import UseItUpCard, { uiuError } from './UseItUpCard';
 import GuessCook from './GuessCook';
+import { VideoCard, VideoSheet, VideoShare } from './ChatVideo';
+import { parseVideo } from '@/lib/video';
 
 // One group chat, full screen, like a text thread: bubbles, photos, emoji. Refreshes every few seconds while it is open
 // (no live connection, so it costs nothing to run). Report, mute a person, mute the group's notifications.
@@ -68,6 +70,8 @@ export default function ChatView({ id, onClose, onChanged }) {
   const [friends, setFriends] = useState(null);
   const [looks, setLooks] = useState(null);         // background shop: null = closed, [] = loading
   const [buyingBg, setBuyingBg] = useState(false);
+  const [vidShare, setVidShare] = useState(null);   // null = closed, string = the link to start with
+  const [vidWatch, setVidWatch] = useState(null);   // a video message being watched
   const listRef = useRef(null);
   const lastAt = useRef(null);
   const stick = useRef(true);                       // keep the view at the newest message unless you scrolled up
@@ -86,16 +90,31 @@ export default function ChatView({ id, onClose, onChanged }) {
   }, [supabase, id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [load]);
 
-  // check for new messages every 4 seconds while the screen is showing
+  // live: a tiny "something new" ping goes out over a realtime channel when anyone sends; it carries no message text,
+  // so the real messages still come only through the checked get_chat call. Slow polling covers a dropped connection.
+  const dRef = useRef(null); dRef.current = d;
+  const chan = useRef(null); const live = useRef(false);
+  const check = useCallback(async () => {
+    if (document.hidden) return;
+    const since = lastAt.current ? new Date(new Date(lastAt.current).getTime() - 3000).toISOString() : new Date(0).toISOString();
+    const { data } = await supabase.rpc('get_chat', { p_group: id, p_after: since });
+    if (data && data.messages.some((m) => !dRef.current?.messages.some((x) => x.id === m.id))) load();
+  }, [supabase, id, load]);
   useEffect(() => {
-    const t = setInterval(async () => {
-      if (document.hidden) return;
-      const since = lastAt.current ? new Date(new Date(lastAt.current).getTime() - 3000).toISOString() : new Date(0).toISOString();
-      const { data } = await supabase.rpc('get_chat', { p_group: id, p_after: since });
-      if (data && data.messages.some((m) => !d?.messages.some((x) => x.id === m.id))) load();
-    }, 4000);
+    let ch = null;
+    try {
+      ch = supabase.channel(`chat:${id}`, { config: { broadcast: { self: false } } });
+      ch.on('broadcast', { event: 'ping' }, () => { check(); }).subscribe((st) => { live.current = st === 'SUBSCRIBED'; });
+      chan.current = ch;
+    } catch { live.current = false; }
+    return () => { live.current = false; chan.current = null; try { if (ch) supabase.removeChannel(ch); } catch {} };
+  }, [supabase, id, check]);
+  useEffect(() => {
+    let n = 0; const t = setInterval(() => { n += 1; if (!live.current || n % 4 === 0) check(); }, 5000);
     return () => clearInterval(t);
-  }, [supabase, id, d, load]);
+  }, [check]);
+  const ping = useCallback(() => { try { chan.current?.send({ type: 'broadcast', event: 'ping', payload: {} }); } catch {} }, []);
+  useEffect(() => { const h = (e) => { if (e.detail === id) ping(); }; window.addEventListener('yoke:chat-posted', h); return () => window.removeEventListener('yoke:chat-posted', h); }, [id, ping]);
 
   // game cards change as people join and play: look again every 20 seconds
   const hasGame = (d?.messages || []).some((m) => m.game);
@@ -103,9 +122,10 @@ export default function ChatView({ id, onClose, onChanged }) {
   useEffect(() => { const el = listRef.current; if (el && stick.current) el.scrollTop = el.scrollHeight; }, [d?.messages?.length]);
   const onScroll = () => { const el = listRef.current; if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; };
 
-  async function pushed(msg) { fetch('/api/push/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ msg }) }).catch(() => {}); }
+  async function pushed(msg) { ping(); fetch('/api/push/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ msg }) }).catch(() => {}); }
   async function send(e) {
     e?.preventDefault(); const t = text.trim(); if (!t || busy) return;
+    if (parseVideo(t)) { setVidShare(t); setText(''); return; }
     setBusy(true); const { data, error } = await supabase.rpc('send_chat', { p_group: id, p_kind: 'text', p_body: t });
     setBusy(false);
     if (error) { say(String(error.message || 'Couldn’t send that.').replace(/^\w/, (x) => x.toUpperCase())); return; }
@@ -123,12 +143,17 @@ export default function ChatView({ id, onClose, onChanged }) {
       setText(''); stick.current = true; await load(); pushed(data.id);
     } catch (e) { say(String(e?.message || 'Couldn’t send that photo.').replace(/^\w/, (x) => x.toUpperCase())); } finally { setBusy(false); }
   }
+  async function sendVideo(v) {
+    const { data, error } = await supabase.rpc('send_chat_video', { p_group: id, p_url: v.url, p_title: v.title || null, p_ingredients: v.ingredients, p_steps: v.steps });
+    if (error) { say(String(error.message || 'Couldn’t share that.').replace(/^\w/, (x) => x.toUpperCase())); return false; }
+    stick.current = true; await load(); pushed(data.id); return true;
+  }
   async function toggleBell() {
     const on = !d.group.muted; const { error } = await supabase.rpc('set_chat_muted', { p_group: id, p_on: on });
     if (error) { say('Couldn’t change that.'); return; }
     setD((x) => ({ ...x, group: { ...x.group, muted: on } })); onChanged?.(); say(on ? 'Notifications off for this chat' : 'Notifications on for this chat');
   }
-  async function del(m) { setMenu(null); await supabase.rpc('delete_chat_message', { p_msg: m.id }); load(); }
+  async function del(m) { setMenu(null); await supabase.rpc('delete_chat_message', { p_msg: m.id }); load(); ping(); }
   async function report(m, reason) {
     const { error } = await supabase.rpc('report_chat_message', { p_msg: m.id, p_reason: reason }); setReporting(null); setMenu(null);
     if (error) { say('Couldn’t report that.'); return; }
@@ -205,7 +230,7 @@ export default function ChatView({ id, onClose, onChanged }) {
             <div key={m.id} className={`chat-row ${m.mine ? 'mine' : ''} ${first ? 'first' : ''}`}>
               {gap && <div className="chat-stamp">{stamp(m.at)}</div>}
               {!m.mine && first && <span className="chat-name" style={{ color: color(m.name) }}>{m.name}</span>}
-              {m.game !== undefined && GAMES[m.kind] ? <GameCard m={m} onMore={() => setMenu(m)} onPlay={() => setGame('guess')} /> : <button type="button" className={`chat-bubble ${m.kind}`} onClick={() => setMenu(m)} aria-label={`${m.mine ? 'Your' : `${m.name}’s`} message. Tap for options`}>
+              {m.kind === 'video' ? <VideoCard m={m} onWatch={() => setVidWatch(m)} onMore={() => setMenu(m)} /> : m.game !== undefined && GAMES[m.kind] ? <GameCard m={m} onMore={() => setMenu(m)} onPlay={() => setGame('guess')} /> : <button type="button" className={`chat-bubble ${m.kind}`} onClick={() => setMenu(m)} aria-label={`${m.mine ? 'Your' : `${m.name}’s`} message. Tap for options`}>
                 {m.kind === 'photo' && (urls[m.photo]
                   ? <img src={urls[m.photo]} alt="Photo in the chat" loading="lazy" decoding="async" onClick={(e) => { e.stopPropagation(); setViewer(urls[m.photo]); }} />
                   : <span className="chat-ph">Photo…</span>)}
@@ -222,6 +247,7 @@ export default function ChatView({ id, onClose, onChanged }) {
             <label className="chat-opt" role="menuitem"><span className="chat-oi cam"><Icon name="camera" size={22} /></span>Camera<input type="file" accept="image/*" capture="environment" hidden onChange={(e) => { sendPhoto(e.target.files?.[0]); e.target.value = ''; }} /></label>
             <label className="chat-opt" role="menuitem"><span className="chat-oi pho"><Icon name="photo" size={22} /></span>Photos<input type="file" accept="image/*" hidden data-testid="chat-photo" onChange={(e) => { sendPhoto(e.target.files?.[0]); e.target.value = ''; }} /></label>
             <button type="button" className="chat-opt" role="menuitem" onClick={() => { setPlus(false); setEmoji(true); }}><span className="chat-oi emo"><Icon name="smile" size={22} /></span>Emoji</button>
+            <button type="button" className="chat-opt" role="menuitem" onClick={() => { setPlus(false); setVidShare(''); }} data-testid="plus-video"><span className="chat-oi vid"><Icon name="play" size={22} /></span>Recipe video</button>
             <button type="button" className="chat-opt" role="menuitem" onClick={() => { setPlus(false); setGame('cookoff'); }} data-testid="plus-cookoff"><span className="chat-oi gm"><Icon name="cook" size={22} /></span>Cook Off</button>
             <button type="button" className="chat-opt" role="menuitem" onClick={() => { setPlus(false); setGame('uiu'); }} data-testid="plus-uiu"><span className="chat-oi gm"><Icon name="timer" size={22} /></span>Use-It-Up Week</button>
             <button type="button" className="chat-opt" role="menuitem" onClick={() => { setPlus(false); setGame('guess'); }} data-testid="plus-guess"><span className="chat-oi gm"><Icon name="dart" size={22} /></span>Guess the Cook</button>
@@ -262,6 +288,8 @@ export default function ChatView({ id, onClose, onChanged }) {
           </div>
         </div>
       )}
+      {vidShare !== null && <VideoShare initialUrl={vidShare} onSend={sendVideo} onClose={() => setVidShare(null)} />}
+      {vidWatch && <VideoSheet m={vidWatch} onClose={() => setVidWatch(null)} />}
       {looks && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setLooks(null); }}>
           <div className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label="Chat background" data-testid="chat-bgs">
@@ -301,9 +329,9 @@ export default function ChatView({ id, onClose, onChanged }) {
         </div>
       )}
       {game && (
-        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) { setGame(null); load(); } }}>
+        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) { setGame(null); load(); ping(); } }}>
           <div className="sheet stack game-sheet" role="dialog" aria-modal="true" aria-label={GAMES[game][0]} data-testid="chat-game-sheet">
-            <div className="row" style={{ justifyContent: 'flex-end' }}><button type="button" className="btn ghost sm" onClick={() => { setGame(null); load(); }} aria-label="Close"><Icon name="x" /></button></div>
+            <div className="row" style={{ justifyContent: 'flex-end' }}><button type="button" className="btn ghost sm" onClick={() => { setGame(null); load(); ping(); }} aria-label="Close"><Icon name="x" /></button></div>
             {game === 'cookoff' && <CookOffCard groupId={id} />}
             {game === 'uiu' && <UseItUpCard groupId={id} />}
             {game === 'guess' && <>

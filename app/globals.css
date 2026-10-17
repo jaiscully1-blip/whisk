@@ -1393,3 +1393,15 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .bg-tile .bg-prev { --fg: #231f1a; }
 .chat-full[data-bg="tiles"] .chat-compose input, .chat-full[data-bg="gingham"] .chat-compose input, .chat-full[data-bg="herbs"] .chat-compose input, .chat-full[data-bg="sunset"] .chat-compose input, .chat-full[data-bg="ocean"] .chat-compose input,
 .chat-full[data-bg="tiles"] .chat-compose textarea, .chat-full[data-bg="gingham"] .chat-compose textarea, .chat-full[data-bg="herbs"] .chat-compose textarea, .chat-full[data-bg="sunset"] .chat-compose textarea, .chat-full[data-bg="ocean"] .chat-compose textarea { background: #f3f0ea; color: #231f1a; border-color: rgba(0, 0, 0, .14); }
+
+/* recipe videos in chat */
+.chat-bubble.video { cursor: default; gap: 8px; min-width: 230px; padding: 12px 14px; align-items: start; justify-items: start; }
+.chat-row.mine .chat-bubble.video { background: var(--card); color: var(--fg); box-shadow: 0 0 0 2px var(--accent) inset; }
+.vid-top { display: flex; align-items: center; gap: 10px; width: 100%; }
+.vid-top b { flex: 1; min-width: 0; }
+.vid-sheet { max-height: 94dvh; }
+.vid-frame { width: 100%; border: 0; border-radius: 14px; background: #000; height: min(62dvh, 560px); }
+.vid-frame.instagram { height: min(70dvh, 640px); background: #fff; }
+.vid-frame.youtube { height: min(62dvh, 560px); }
+.vid-list { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+.chat-oi.vid { background: #e5484d; color: #fff; }

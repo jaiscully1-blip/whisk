@@ -36,7 +36,7 @@ export default function ChatList({ chats, friends, onOpen, onMade }) {
           <span className="post-av" style={{ background: color(c.name) }} aria-hidden="true">{c.name.slice(0, 1).toUpperCase()}</span>
           <span className="chat-item-txt">
             <b>{c.name}{c.muted && <Icon name="bellx" size={14} style={{ marginLeft: 6, opacity: .6 }} />}</b>
-            <small>{c.last ? `${c.last.name}: ${c.last.kind === 'photo' ? 'Photo' : c.last.body}` : `${c.members} people`}</small>
+            <small>{c.last ? `${c.last.name}: ${c.last.kind === 'photo' ? 'Photo' : c.last.kind === 'video' ? `Video: ${c.last.body}` : c.last.body}` : `${c.members} people`}</small>
           </span>
           <span className="chat-item-meta">{c.last && <small>{ago(c.last.at)}</small>}{c.unread > 0 && <span className="fr-dot">{c.unread > 99 ? '99+' : c.unread}</span>}</span>
         </button>

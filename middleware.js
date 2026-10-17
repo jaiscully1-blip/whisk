@@ -6,14 +6,14 @@ const PUBLIC_PATHS = ['/', '/login', '/signup', '/check-email', '/auth/confirm',
 
 function buildCsp(nonce) {
   const supa = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const supaWs = supa.replace(/^https:/, 'wss:');
+  const supaWs = supa.replace(/^http(s?):/, 'ws$1:');
   const dev = process.env.NODE_ENV !== 'production';
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${dev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: https://i.ytimg.com https://yt3.ggpht.com https://yt3.googleusercontent.com ${supa}`,
-    "frame-src https://www.youtube-nocookie.com",
+    "frame-src https://www.youtube-nocookie.com https://www.tiktok.com https://www.instagram.com",
     "font-src 'self'",
     `connect-src 'self' ${supa} ${supaWs}`,
     "worker-src 'self' blob:",

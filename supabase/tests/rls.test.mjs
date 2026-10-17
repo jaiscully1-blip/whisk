@@ -1365,6 +1365,20 @@ check('a game invite buzzes the group with a Join message', pj.length >= 1 && /U
 const gg = (await cq(CA, `select public.create_chat('Full', '{}') g`)).rows[0].g;
 for (let i = 0; i < 24; i++) { const u = `d4d4d4d4-0000-4000-8000-0000000001${String(i).padStart(2, '0')}`; await db.exec(`insert into auth.users (id, email) values ('${u}', 'z${i}@x.com')`); await frd(CA, u); await db.exec(`insert into chat_members (group_id, user_id) values ('${gg}', '${u}')`); }
 await expectFail('a group holds at most 25 people', CA, `select public.add_to_chat('${gg}', '${cB}')`);
+// recipe videos
+const vid = (u, url, t = 'Pasta', ing = ['200g pasta', ' ', 'garlic'], st = ['Boil', 'Toss']) => cq(u, `select public.send_chat_video('${GG}', '${url}', '${t}', array[${ing.map((x) => `'${x}'`).join(',')}]::text[], array[${st.map((x) => `'${x}'`).join(',')}]::text[]) r`);
+await vid(CA, 'https://www.tiktok.com/@chef.joe/video/7234567890123456789');
+const vm = (await db.query(`select m.meta from chat_messages m where kind = 'video' order by created_at desc limit 1`)).rows[0].meta;
+check('a TikTok link is read into its video id, title, ingredients and steps', vm.platform === 'tiktok' && vm.ref === '7234567890123456789' && vm.title === 'Pasta' && vm.ingredients.length === 2 && vm.steps.length === 2);
+await vid(CA, 'https://www.instagram.com/reel/Cabc123XYZ/?igsh=x');
+check('an Instagram reel link is accepted', (await db.query(`select meta from chat_messages where kind = 'video' order by created_at desc limit 1`)).rows[0].meta.sub === 'reel');
+await vid(CA, 'https://youtu.be/dQw4w9WgXcQ');
+check('a YouTube link is accepted', (await db.query(`select meta from chat_messages where kind = 'video' order by created_at desc limit 1`)).rows[0].meta.platform === 'youtube');
+await expectFail('a link to some other site is refused', CA, `select public.send_chat_video('${GG}', 'https://evil.example.com/video/123456789')`);
+await expectFail('a look-alike address is refused', CA, `select public.send_chat_video('${GG}', 'https://tiktok.com.evil.example/@a/video/123456789')`);
+await expectFail('a plain http link is refused', CA, `select public.send_chat_video('${GG}', 'http://www.tiktok.com/@a/video/123456789')`);
+await expectFail('someone outside the group cannot share a video', CD, `select public.send_chat_video('${GG}', 'https://youtu.be/dQw4w9WgXcQ')`);
+check('a shared video shows in the chat list preview', (await cq(CA, `select public.get_chats() r`)).rows[0].r.some((c) => c.last && c.last.kind === 'video'));
 // backgrounds
 const bgs = (await cq(CA, `select public.get_chat_bgs() r`)).rows[0].r;
 check('the background shop lists looks with prices', bgs.length === 6 && bgs.every((b) => b.price > 0 && b.owned === false));

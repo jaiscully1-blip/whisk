@@ -6,6 +6,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
+import { WebSocketServer } from 'ws';
 
 const PORT = Number(process.env.MOCK_PORT || 54321);
 export const E2E_USER = { id: 'e2e00000-0000-4000-8000-000000000001', email: 'cook@whisk.test', password: 'whisk-e2e-pass' };
@@ -393,5 +394,28 @@ const server = http.createServer(async (req, res) => {
     if (!process.env.QUIET) console.error('mock error', req.method, path, code, e.message);
     return send(res, status, { code, message: e.message, details: e.detail || null, hint: e.hint || null });
   }
+});
+// a tiny stand-in for Supabase Realtime (Phoenix protocol v2): joins succeed, and broadcasts reach everyone else on the same channel
+const wss = new WebSocketServer({ noServer: true });
+const subs = new Map();   // topic -> Set of sockets
+server.on('upgrade', (req, socket, head) => { if (!req.url.startsWith('/realtime/v1/websocket')) { socket.destroy(); return; } wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req)); });
+wss.on('connection', (ws) => {
+  ws.on('message', (raw, isBinary) => {
+    if (isBinary) {   // a user broadcast: kind 3, six length bytes, then join ref, ref, topic, event, metadata, payload
+      const b = Buffer.from(raw); if (b[0] !== 3) return;
+      let o = 7; const take = (n) => { const x = b.subarray(o, o + n).toString(); o += n; return x; };
+      take(b[1]); take(b[2]); const topic = take(b[3]); const event = take(b[4]); take(b[5]);
+      let payload = {}; try { payload = JSON.parse(b.subarray(o).toString()); } catch {}
+      for (const other of subs.get(topic) || []) if (other !== ws && other.readyState === 1) other.send(JSON.stringify([null, null, topic, 'broadcast', { type: 'broadcast', event, payload }]));
+      return;
+    }
+    let m; try { m = JSON.parse(String(raw)); } catch { return; }
+    const [jr, ref, topic, event, payload] = m;
+    if (event === 'phx_join') { (subs.get(topic) || subs.set(topic, new Set()).get(topic)).add(ws); ws.send(JSON.stringify([jr, ref, topic, 'phx_reply', { status: 'ok', response: { postgres_changes: [] } }])); }
+    else if (event === 'heartbeat') ws.send(JSON.stringify([null, ref, 'phoenix', 'phx_reply', { status: 'ok', response: {} }]));
+    else if (event === 'phx_leave') { subs.get(topic)?.delete(ws); ws.send(JSON.stringify([jr, ref, topic, 'phx_reply', { status: 'ok', response: {} }])); }
+    else if (event === 'broadcast') { for (const o of subs.get(topic) || []) if (o !== ws && o.readyState === 1) o.send(JSON.stringify([null, null, topic, 'broadcast', payload])); }
+  });
+  ws.on('close', () => { for (const set of subs.values()) set.delete(ws); });
 });
 server.listen(PORT, () => console.log(`mock supabase on http://localhost:${PORT}`));

@@ -1083,6 +1083,30 @@ await step('friends and group chat', async () => {
     if (SHOTS) { await fp.getByTestId('chat-bgs').getByRole('button', { name: 'Done' }).click(); await fp.screenshot({ path: path.join(SHOTS, '12c-chat-background.png') }); await fp.getByTestId('chat-bgbtn').click(); await fp.getByTestId('chat-bgs').waitFor(); }
   }
   await fp.getByTestId('chat-bgs').getByRole('button', { name: 'Done' }).click();
+  // recipe videos: paste a link, add the recipe, the friend watches it inside the chat
+  await page.getByRole('button', { name: 'Add a photo or emoji' }).click(); await page.getByTestId('plus-video').click();
+  await page.locator('#vid-url').fill('https://vm.tiktok.com/ZMabc/');
+  check('a short link is refused with advice', (await page.getByTestId('video-share').innerText()).includes('Use the full link') && await page.getByTestId('video-send').isDisabled());
+  await page.locator('#vid-url').fill('https://www.tiktok.com/@chef.joe/video/7234567890123456789');
+  await page.locator('#vid-title').fill('Creamy tomato pasta');
+  await page.locator('#vid-ing').fill('200g pasta\n2 cloves garlic\ntinned tomatoes');
+  await page.locator('#vid-steps').fill('Boil the pasta\nFry the garlic\nStir it all together');
+  await page.getByTestId('video-send').click();
+  await page.getByTestId('chat-video-card').waitFor({ timeout: 8000 });
+  await fp.getByRole('button', { name: /see who is in this group/ }).click(); await fp.getByTestId('chat-people').getByRole('button', { name: 'Unmute' }).click(); await fp.getByTestId('chat-people').getByRole('button', { name: 'Done' }).click();
+  await fp.getByTestId('chat-video-card').waitFor({ timeout: 3500 });   // live: faster than the slow fallback checks
+  check('the friend gets the video card with its recipe counts', /Creamy tomato pasta/.test(await fp.getByTestId('chat-video-card').innerText()) && /3 ingredients/.test(await fp.getByTestId('chat-video-card').innerText()));
+  await fp.getByTestId('chat-video-watch').click(); await fp.getByTestId('chat-video-sheet').waitFor();
+  check('the video plays in an official embed inside the app', (await fp.locator('.vid-frame').getAttribute('src')) === 'https://www.tiktok.com/embed/v2/7234567890123456789');
+  check('the ingredients and steps sit beside it', (await fp.locator('[data-testid="vid-ingredients"] li').count()) === 3 && (await fp.locator('[data-testid="vid-steps"] li').count()) === 3);
+  await fp.getByTestId('vid-add-list').click(); await fp.locator('.toast', { hasText: 'Added 3' }).waitFor();
+  check('one tap adds the ingredients to the shopping list', true);
+  await fp.getByTestId('chat-video-sheet').getByRole('button', { name: 'Close' }).click();
+  // pasting a link into the message box opens the share sheet instead of sending it as text
+  await page.locator('#chat-in').fill('https://youtu.be/dQw4w9WgXcQ'); await page.getByRole('button', { name: 'Send' }).click();
+  await page.getByTestId('video-share').waitFor();
+  check('a pasted link opens the share sheet with the link filled in', (await page.locator('#vid-url').inputValue()) === 'https://youtu.be/dQw4w9WgXcQ');
+  await page.getByTestId('video-share').getByRole('button', { name: 'Cancel' }).click();
   await fp.getByRole('button', { name: 'Back to chats' }).click();
   check('the chat list shows the muted bell', (await fp.locator('.chat-item', { hasText: 'Dinner crew' }).locator('svg').count()) >= 1);
   await page.getByRole('button', { name: 'Back to chats' }).click();

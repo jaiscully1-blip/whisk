@@ -1,7 +1,7 @@
 -- 0037: Friends group chat. Safe to run more than once. Run after 0036.
 --  • A group is a named chat of friends (up to 25). Anyone can start one and add their own friends. Only the group's
 --    maker can remove people; anyone can leave.
---  • Messages are text, a photo, or a game card: a Cook Off or Use-It-Up invite (with Join), or Guess the Cook ('cookoff' / 'uiu' / 'guess').
+--  • Messages are text, a photo, a recipe video (a TikTok / Instagram / YouTube link with the ingredients and steps typed in by whoever shares it), or a game card: a Cook Off or Use-It-Up invite (with Join), or Guess the Cook ('cookoff' / 'uiu' / 'guess').
 --    Game cards are made by send_chat_game, which checks the game is really yours; the card's details come from the database, not the phone.
 --  • Safety: report a message (it vanishes for you right away, and for everyone after 2 different reporters; admins can
 --    see reports), mute a person (their messages are hidden for you), mute a group's notifications.
@@ -37,10 +37,10 @@ create table if not exists public.chat_messages (
   hidden_at timestamptz,
   pushed_at timestamptz,
   created_at timestamptz not null default now(),
-  constraint chat_messages_kind_ck check (kind in ('text', 'photo', 'cookoff', 'uiu', 'guess')),
+  constraint chat_messages_kind_ck check (kind in ('text', 'photo', 'cookoff', 'uiu', 'guess', 'video')),
   constraint chat_messages_body_ck check (body is null or char_length(body) <= 500),
   constraint chat_messages_photo_ck check (photo_path is null or char_length(photo_path) <= 200),
-  constraint chat_messages_shape_ck check ((kind = 'text' and body is not null and btrim(body) <> '') or (kind = 'photo' and photo_path is not null) or (kind in ('cookoff', 'uiu', 'guess') and meta is not null))
+  constraint chat_messages_shape_ck check ((kind = 'text' and body is not null and btrim(body) <> '') or (kind = 'photo' and photo_path is not null) or (kind in ('cookoff', 'uiu', 'guess', 'video') and meta is not null))
 );
 create index if not exists chat_messages_group_idx on public.chat_messages (group_id, created_at desc);
 create index if not exists chat_messages_photo_idx on public.chat_messages (photo_path) where photo_path is not null;
@@ -200,6 +200,36 @@ begin
   return jsonb_build_object('id', m.id, 'at', m.created_at);
 end $$;
 
+-- share a recipe video: a TikTok, Instagram or YouTube link plus the ingredients and steps (typed by the sharer; nothing is read from the video by a machine)
+create or replace function public.send_chat_video(p_group uuid, p_url text, p_title text default null, p_ingredients text[] default '{}', p_steps text[] default '{}') returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare uid uuid := auth.uid(); u text := btrim(coalesce(p_url, '')); mm text[]; plat text; ref text; sub text; meta jsonb; m chat_messages%rowtype; ing jsonb; stp jsonb;
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  if not _in_chat(p_group, uid) then raise exception 'not in that group'; end if;
+  if char_length(u) > 300 then raise exception 'that link is too long'; end if;
+  mm := regexp_match(u, '^https://(?:www\.|m\.)?tiktok\.com/@[A-Za-z0-9._-]{1,40}/video/([0-9]{6,25})');
+  if mm is not null then plat := 'tiktok'; ref := mm[1]; end if;
+  if plat is null then
+    mm := regexp_match(u, '^https://(?:www\.)?instagram\.com/(reel|reels|p|tv)/([A-Za-z0-9_-]{5,20})');
+    if mm is not null then plat := 'instagram'; sub := case when mm[1] in ('reel', 'reels') then 'reel' else 'p' end; ref := mm[2]; end if;
+  end if;
+  if plat is null then
+    mm := regexp_match(u, '^https://(?:www\.|m\.)?youtube\.com/shorts/([A-Za-z0-9_-]{11})');
+    if mm is null then mm := regexp_match(u, '^https://youtu\.be/([A-Za-z0-9_-]{11})'); end if;
+    if mm is null then mm := regexp_match(u, '^https://(?:www\.|m\.)?youtube\.com/watch\?(?:[^#]*&)?v=([A-Za-z0-9_-]{11})'); end if;
+    if mm is not null then plat := 'youtube'; ref := mm[1]; end if;
+  end if;
+  if plat is null then raise exception 'paste the full link to a TikTok, Instagram or YouTube video'; end if;
+  if (select count(*) from chat_messages where sender = uid and kind = 'video' and created_at > now() - interval '1 hour') >= 10 then raise exception 'that is plenty of videos for now'; end if;
+  select coalesce(jsonb_agg(left(t, 80)), '[]'::jsonb) into ing from (select btrim(x) t from unnest(coalesce(p_ingredients, '{}')) x where btrim(x) <> '' limit 30) q;
+  select coalesce(jsonb_agg(left(t, 240)), '[]'::jsonb) into stp from (select btrim(x) t from unnest(coalesce(p_steps, '{}')) x where btrim(x) <> '' limit 20) q;
+  meta := jsonb_build_object('platform', plat, 'ref', ref, 'sub', sub, 'title', nullif(left(btrim(coalesce(p_title, '')), 80), ''), 'ingredients', ing, 'steps', stp);
+  insert into chat_messages (group_id, sender, kind, meta) values (p_group, uid, 'video', meta) returning * into m;
+  update chat_groups set last_at = m.created_at where id = p_group;
+  update chat_members set last_read_at = m.created_at where group_id = p_group and user_id = uid;
+  return jsonb_build_object('id', m.id, 'at', m.created_at);
+end $$;
+
 -- how a game card looks right now (so a finished game stops saying Join)
 create or replace function public._chat_game_state(p_kind text, p_meta jsonb) returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare st text; n int;
@@ -243,7 +273,7 @@ begin
       'unread', (select count(*) from chat_messages m where m.group_id = g.id and m.sender <> uid and m.created_at > me.last_read_at and m.hidden_at is null
                    and not exists (select 1 from chat_mutes cm where cm.user_id = uid and cm.muted_id = m.sender)
                    and not exists (select 1 from chat_reports r where r.message_id = m.id and r.reporter = uid)),
-      'last', (select jsonb_build_object('kind', m.kind, 'body', left(coalesce(m.body, case m.kind when 'cookoff' then 'Cook Off' when 'uiu' then 'Use-It-Up Week' when 'guess' then 'Guess the Cook' end, ''), 80), 'name', case when m.sender = uid then 'You' else _chat_name(m.sender) end, 'at', m.created_at)
+      'last', (select jsonb_build_object('kind', m.kind, 'body', left(coalesce(m.body, case m.kind when 'cookoff' then 'Cook Off' when 'uiu' then 'Use-It-Up Week' when 'guess' then 'Guess the Cook' when 'video' then coalesce(m.meta ->> 'title', 'Recipe video') end, ''), 80), 'name', case when m.sender = uid then 'You' else _chat_name(m.sender) end, 'at', m.created_at)
                  from chat_messages m where m.group_id = g.id and m.hidden_at is null
                    and (m.sender = uid or (not exists (select 1 from chat_mutes cm where cm.user_id = uid and cm.muted_id = m.sender)
                    and not exists (select 1 from chat_reports r where r.message_id = m.id and r.reporter = uid)))
@@ -292,7 +322,7 @@ begin
   select name into gname from chat_groups where id = m.group_id;
   who := _chat_name(m.sender);
   txt := case m.kind when 'photo' then who || ' sent a photo' when 'cookoff' then who || ' started a Cook Off. Tap to join.' when 'uiu' then who || ' started Use-It-Up Week. Tap to join.'
-    when 'guess' then who || ' wants you to Guess the Cook' else who || ': ' || left(coalesce(m.body, ''), 90) end;
+    when 'guess' then who || ' wants you to Guess the Cook' when 'video' then who || ' shared a recipe video' else who || ': ' || left(coalesce(m.body, ''), 90) end;
   with due as (
     update chat_members cm set last_push_at = now()
     from profiles pr
@@ -399,11 +429,13 @@ create policy chat_photos_select on storage.objects for select to authenticated 
 revoke execute on function public.create_chat(text, text[]), public.add_to_chat(uuid, text), public.leave_chat(uuid), public.remove_from_chat(uuid, text), public.set_chat_muted(uuid, boolean),
   public.set_chat_user_muted(text, boolean), public.send_chat(uuid, text, text, text), public.send_chat_game(uuid, text, text), public.delete_chat_message(uuid), public.report_chat_message(uuid, text), public.get_chats(),
   public.get_chat(uuid, timestamptz, timestamptz), public.admin_chat_reports(), public.admin_set_chat_hidden(uuid, boolean),
-  public.get_chat_bgs(), public.buy_chat_bg(text), public.set_chat_bg(uuid, text) from public, anon;
+  public.get_chat_bgs(), public.buy_chat_bg(text), public.set_chat_bg(uuid, text),
+  public.send_chat_video(uuid, text, text, text[], text[]) from public, anon;
 grant execute on function public.create_chat(text, text[]), public.add_to_chat(uuid, text), public.leave_chat(uuid), public.remove_from_chat(uuid, text), public.set_chat_muted(uuid, boolean),
   public.set_chat_user_muted(text, boolean), public.send_chat(uuid, text, text, text), public.send_chat_game(uuid, text, text), public.delete_chat_message(uuid), public.report_chat_message(uuid, text), public.get_chats(),
   public.get_chat(uuid, timestamptz, timestamptz), public.admin_chat_reports(), public.admin_set_chat_hidden(uuid, boolean),
-  public.get_chat_bgs(), public.buy_chat_bg(text), public.set_chat_bg(uuid, text) to authenticated;
+  public.get_chat_bgs(), public.buy_chat_bg(text), public.set_chat_bg(uuid, text),
+  public.send_chat_video(uuid, text, text, text[], text[]) to authenticated;
 revoke execute on function public.push_chat(text, uuid, uuid) from public;
 grant execute on function public.push_chat(text, uuid, uuid) to anon, authenticated;   -- the secret is the lock, like push_cookoff
 revoke execute on function public._in_chat(uuid, uuid), public._chat_name(uuid), public._chat_game_state(text, jsonb) from public, anon, authenticated;

@@ -42,5 +42,9 @@
   },
   "overrides": {
     "postcss": "8.5.28"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "ws": "^8.22.0"
   }
 }

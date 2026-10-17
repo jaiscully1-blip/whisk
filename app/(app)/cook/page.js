@@ -26,6 +26,7 @@ export default function Cook() {
   const [pantry, reload] = usePantry();
   const [saved, reloadSaved] = useSaved();
   const [shown, setShown] = useState(PAGE);
+  const [yourTab, setYourTab] = useState('saved');   // Saved / My recipes / Channels share one spot
   const moreRef = useRef(null);
   const [dish, setDish] = useDraft('o-dish');
   const [hand, setHand] = useState(null);
@@ -94,12 +95,17 @@ export default function Cook() {
         </form>
       </div>
 
-      <section className="card stack saved-box" aria-labelledby="saved-h">
-        <h2 id="saved-h" style={{ fontSize: 20, margin: 0 }}><Icon name="star" size={18} /> Saved recipes</h2>
-        <SavedRecipes pantry={pantry} onChanged={reload} limit={4} />
-      </section>
-
-      <MyRecipes pantry={pantry} />
+      <div className="seg" role="tablist" aria-label="Your recipes">
+        {[['saved', 'Saved'], ['mine', 'My recipes'], ['channels', 'Channels']].map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={yourTab === k} className={yourTab === k ? 'on' : ''} onClick={() => setYourTab(k)} data-testid={`cook-tab-${k}`}>{l}</button>)}
+      </div>
+      <div hidden={yourTab !== 'saved'}>
+        <section className="card stack saved-box" aria-labelledby="saved-h">
+          <h2 id="saved-h" style={{ fontSize: 20, margin: 0 }}><Icon name="star" size={18} /> Saved recipes</h2>
+          <SavedRecipes pantry={pantry} onChanged={reload} limit={4} />
+        </section>
+      </div>
+      <div hidden={yourTab !== 'mine'}><MyRecipes pantry={pantry} /></div>
+      <div hidden={yourTab !== 'channels'}><MyYouTubers /></div>
 
       {hand && mode === 'raid' && (
         <div className="stack" style={{ gap: 8 }}><span className="eyebrow">Ingredients</span>
@@ -126,7 +132,6 @@ export default function Cook() {
 
       {mode === 'named' && ui.cookDish && <DishSearch q={ui.cookDish} pantry={pantry} />}
 
-      <MyYouTubers />
 
       {open && <RecipeSheet recipe={open} pantry={pantry || []} saved={saved?.get(open.id)} onClose={() => setOpen(null)} onChanged={() => { reload(); reloadSaved(); }} />}
     </div>

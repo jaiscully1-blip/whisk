@@ -37,11 +37,12 @@ const page = await ctx.newPage();
 await page.addInitScript(() => { window.__wl = { req: 0, rel: 0 }; Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: async () => { window.__wl.req++; return { release: async () => { window.__wl.rel++; } }; } } }); });   // a stand-in screen lock that counts
 page.setDefaultTimeout(12000);
 page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text()) && !(curStep === 'tabs open instantly from memory' && /Failed to fetch RSC payload/.test(m.text()))) problems.push(`console: ${m.text()} [in ${curStep}]`); });
-page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
+page.on('pageerror', (e) => problems.push(`pageerror@${curStep} ${page.url()} after #${results.length} (${(results[results.length - 1] || [])[1]}): ${e.message.slice(0, 1200)}`));
 page.on('response', (r) => { if (r.status() >= 400 && !/api\/barcode/.test(r.url())) problems.push(`HTTP ${r.status()} ${r.request().method()} ${r.url()}`); });
 const shot = async (n) => { if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `${n}.png`), fullPage: true }); };
-const step = async (name, fn) => { curStep = name; try { await fn(); } catch (e) { check(name, false, e.message.split('\n').filter((l) => /locator|Timeout|waiting/.test(l)).slice(0, 3).join(' | ') || String(e.message).slice(0, 300)); await shot(`fail-${name.replace(/\W+/g, '-')}`); } };
+const step = async (name, fn) => { curStep = name; if (process.env.ONLY && !['signed-out redirect', 'log in', process.env.ONLY].includes(name)) return; try { await fn(); } catch (e) { check(name, false, e.message.split('\n').filter((l) => /locator|Timeout|waiting/.test(l)).slice(0, 3).join(' | ') || String(e.message).slice(0, 300)); await shot(`fail-${name.replace(/\W+/g, '-')}`); } };
 const openSettings = async (p = page) => { if (!(await p.getByTestId('settings-page').count())) await p.getByTestId('hud-settings').click(); await p.getByTestId('settings-page').waitFor(); };
+const cookTab = async (id) => { const sel = `[data-testid=cook-tab-${id}]`; await page.waitForFunction((q) => { const el = document.querySelector(q); return el && Object.keys(el).some((k) => k.startsWith('__reactProps')); }, sel, { timeout: 15000 }); await page.locator(sel).click(); };
 const nav = async (n) => { if (await page.getByTestId('settings-page').count()) await page.getByTestId('settings-back').click(); await page.getByRole('navigation').getByRole('link', { name: n, exact: true }).click(); };
 const closePopups = async () => { await page.locator('.popup-scrim').first().waitFor({ timeout: 3000 }).catch(() => {}); for (let i = 0; i < 4; i++) { const x = page.locator('.popup-scrim [aria-label=Close]').first(); const leave = page.locator('.popup-scrim').getByRole('button', { name: 'Leave' }).first(); if (await x.count()) await x.click(); else if (await leave.count()) await leave.click(); else break; await page.waitForTimeout(400); } };
 
@@ -171,7 +172,9 @@ await step('learn quiz', async () => {
 });
 await step('recipe import', async () => {
   await nav('Cook'); await page.waitForURL('**/cook');
+  await cookTab('mine');
   await page.getByTestId('my-recipes').waitFor();
+  await page.getByText('Nothing here yet').waitFor({ timeout: 6000 }).catch(() => {});
   check('My recipes starts empty with an Add button', /Nothing here yet/.test(await page.getByTestId('my-recipes').innerText()));
   // a clean printed recipe page, drawn in the browser, so the on-device reader has something real to read
   const dataUrl = await page.evaluate(() => {
@@ -755,6 +758,7 @@ await step('free dish search', async () => {
   const free = await (await fetch('http://localhost:54321/__e2e/free-calls')).json();
   check('no AI used for search (costs nothing)', !free.anthropic.includes('web_search') && free.wiki >= 1 && free.youtube.length >= 1, JSON.stringify(free));
   await page.evaluate(() => window.scrollTo(0, 0));
+  await cookTab('channels');
   check('just an "Add Channel" button: no heading, no explainer text, no built-in channels', (await page.locator('.channel').count()) === 0 && (await page.getByRole('button', { name: 'Add Channel' }).count()) === 1 && (await page.getByText(/Your YouTubers|They’ll be right here/).count()) === 0 && (await page.getByText(/You Suck at Cooking|Not Another Cooking Show/).count()) === 0);
   await page.getByRole('button', { name: 'Add Channel' }).click();
   const yIn = page.getByLabel('@handle');
@@ -767,7 +771,7 @@ await step('free dish search', async () => {
   await page.getByRole('button', { name: 'Add Channel' }).click(); await yIn.fill('@mockkitchen'); await page.getByRole('button', { name: 'Add', exact: true }).click();
   check('the same channel can’t be added twice', (await page.getByText('Already on your list.').count()) === 1);
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await page.waitForTimeout(900); await page.reload(); await page.getByRole('button', { name: 'Add Channel' }).waitFor();
+  await page.waitForTimeout(2500); await page.reload(); await cookTab('channels'); await page.getByRole('button', { name: 'Add Channel' }).waitFor();
   check('your channels are saved with your game', (await page.locator('.channel', { hasText: 'Mock Kitchen' }).count()) === 1);
   // the channel page: cooking videos only, then cook along
   await page.route('https://www.youtube-nocookie.com/**', (r) => r.fulfill({ body: '<body style="background:#000"></body>', contentType: 'text/html' }));
@@ -790,7 +794,7 @@ await step('free dish search', async () => {
   await page.locator('.vid-card', { hasText: 'Carbonara' }).click();
   check('no written recipe: the steps are the video’s cooking chapters (intro and thanks left out)', /Step 1 of 3 · 1:12/.test(await page.locator('.vc-count').innerText()) && /Boiling the pasta/.test(await page.locator('.vc-text').innerText()));
   await page.getByRole('button', { name: 'Close' }).click();
-  await page.goto(`${BASE}/cook`); await page.getByRole('button', { name: 'Add Channel' }).waitFor();
+  await page.goto(`${BASE}/cook`); await cookTab('channels'); await page.getByRole('button', { name: 'Add Channel' }).waitFor();
   await page.getByRole('button', { name: 'Remove Mock Kitchen' }).click();
   check('remove a channel', (await page.locator('.channel').count()) === 0);
 });

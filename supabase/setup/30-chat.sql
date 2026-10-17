@@ -9,6 +9,22 @@
 --  • Chat backgrounds: a small shop of looks for your own view of a chat, paid for with coins. Cosmetic only: they change nothing in any game.
 -- Everything goes through the functions below; the tables can't be read or written directly.
 
+-- Before anything is created: check that the older setup files this one builds on have been run, and say plainly which one is missing.
+do $$
+declare miss text[] := '{}'; f text;
+begin
+  foreach f in array array['_are_friends', '_user_today', '_my_code', '_push_ok', 'create_cookoff', 'create_uiu', 'get_guess_round'] loop
+    if not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = f) then miss := miss || ('function ' || f); end if;
+  end loop;
+  foreach f in array array['friends', 'push_subs', 'cookoff_games', 'uiu_matches', 'cook_guesses', 'profiles'] loop
+    if to_regclass('public.' || f) is null then miss := miss || ('table ' || f); end if;
+  end loop;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'notify_hour') then miss := miss || 'profiles.notify_hour'; end if;
+  if cardinality(miss) > 0 then
+    raise exception 'Chat setup stopped: an earlier setup file has not been run. Missing: %. Run setup files 14, 28 and 29 first (then this one again).', array_to_string(miss, ', ');
+  end if;
+end $$;
+
 create table if not exists public.chat_groups (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(btrim(name)) between 1 and 30),

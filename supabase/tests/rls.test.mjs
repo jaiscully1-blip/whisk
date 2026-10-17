@@ -1443,6 +1443,26 @@ await db.exec(`update cookoff_games set created_at = now() - interval '31 days' 
 const cl2 = (await db.query(`select public.cleanup_old_games() r`)).rows[0].r;
 check('the tidy-up deletes games over 30 days old with their players', cl2.cookoff >= 1 && (await db.query(`select count(*)::int n from cookoff_games where code = 'CAPTS2'`)).rows[0].n === 0);
 }
+// ================= 0039: how early the going-off-soon notification warns you =================
+try { const f = fs.readFileSync('./supabase/migrations/0039_expiry_lead_time.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0039 runs (twice)', true); }
+catch (e) { check('0039 runs (twice)', false, e.message); }
+{
+const E1 = '5e000000-0000-0000-0000-00000000005e';
+await db.exec(`insert into auth.users (id, email) values ('${E1}', null)`);
+await db.exec(`update profiles set time_zone = 'UTC' where id = '${E1}'`);
+await as(E1, () => db.query(`select public.save_push('https://push.example.com/e1', 'BPe1', 'authe1')`));
+const utcHour = await hourIn('UTC');
+await as(E1, () => db.query(`select public.set_notify_hour(${utcHour})`));
+const inDays = async (n) => (await db.query(`select ((now() at time zone 'UTC')::date + ${n}) d`)).rows[0].d;
+await db.exec(`insert into pantry_items (user_id, name, category, expires_on) values ('${E1}', 'Spinach', 'Produce', '${ds(await inDays(3))}'), ('${E1}', 'Yogurt', 'Dairy & Eggs', '${ds(await inDays(2))}')`);
+check('the warning starts at 1 day ahead', (await db.query(`select expiry_days from profiles where id = '${E1}'`)).rows[0].expiry_days === 1);
+await expectFail('lead time is 0 to 3 days', E1, `select public.set_expiry_days(7)`);
+check('with 1 day ahead, food 2 and 3 days out stays quiet', (await as(null, () => db.query(`select public.push_due('cron-secret-123') as r`))).rows[0].r.length === 0);
+await as(E1, () => db.query(`select public.set_expiry_days(3)`));
+const dueE = (await as(null, () => db.query(`select public.push_due('cron-secret-123') as r`))).rows[0].r;
+check('with 3 days ahead the message names them and when', dueE.length === 1 && dueE[0].title === 'Yogurt and Spinach go off within 3 days', JSON.stringify(dueE));
+await expectFail('players cannot set someone else’s lead time', null, `select public.set_expiry_days(2)`);
+}
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_chat_bg', 'buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

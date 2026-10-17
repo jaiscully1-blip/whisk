@@ -12,11 +12,18 @@
   </g>
   <!-- body -->
   <ellipse cx="128" cy="190" rx="64" ry="58" fill="#FFD84A" stroke="#2A2433" stroke-width="5"/>
-  <!-- chef coat on the tummy -->
-  <path d="M92 168 Q128 152 164 168 L170 232 Q128 246 86 232 Z" fill="#FFFFFF" stroke="#2A2433" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M128 164 V240" stroke="#2A2433" stroke-width="3.5"/>
-  <g fill="#C9D1DB" stroke="#2A2433" stroke-width="3"><circle cx="115" cy="192" r="5"/><circle cx="141" cy="192" r="5"/><circle cx="115" cy="214" r="5"/><circle cx="141" cy="214" r="5"/></g>
-  <path d="M104 164 L128 182 L152 164 Z" fill="#E94F4F" stroke="#2A2433" stroke-width="4" stroke-linejoin="round"/>
+  <!-- chef coat: wraps the whole body from the neck down, clipped to the body outline -->
+  <defs><clipPath id="body-clip"><ellipse cx="128" cy="190" rx="64" ry="58"/></clipPath></defs>
+  <g clip-path="url(#body-clip)">
+    <rect x="60" y="158" width="136" height="100" fill="#FFFFFF"/>
+    <path d="M128 168 V250" stroke="#2A2433" stroke-width="3.5"/>
+    <path d="M70 172 Q86 168 100 160 M186 172 Q170 168 156 160" stroke="#2A2433" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <path d="M62 236 Q128 252 194 236" stroke="#E4E9EF" stroke-width="10" fill="none"/>
+  </g>
+  <ellipse cx="128" cy="190" rx="64" ry="58" fill="none" stroke="#2A2433" stroke-width="5"/>
+  <!-- collar lapels and buttons -->
+  <path d="M100 158 L128 190 L116 160 Z M156 158 L128 190 L140 160 Z" fill="#FFFFFF" stroke="#2A2433" stroke-width="3.5" stroke-linejoin="round"/>
+  <g fill="#C9D1DB" stroke="#2A2433" stroke-width="3"><circle cx="116" cy="204" r="5"/><circle cx="140" cy="204" r="5"/><circle cx="116" cy="224" r="5"/><circle cx="140" cy="224" r="5"/></g>
   <!-- feet -->
   <g fill="#FF9A2E" stroke="#2A2433" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
     <path d="M92 250 L80 258 M104 252 L104 260 M116 250 L128 258"/><path d="M140 250 L128 258 M152 252 L152 260 M164 250 L176 258"/>

@@ -17,6 +17,8 @@ export const fetchKitchens = (supabase) => supabase.from('kitchen_layouts').sele
   .then(({ data, error }) => (error ? (/kitchen_layouts|42P01|PGRST205/.test(`${error.code} ${error.message}`) ? [] : undefined) : data || []));
 export const fetchSaved = (supabase) => supabase.from('saved_recipes').select('recipe_id, rating, saved_at').order('saved_at', { ascending: false })
   .then(({ data, error }) => (error ? undefined : new Map((data || []).map((s) => [s.recipe_id, s]))));
+export const fetchMine = (supabase) => supabase.from('my_recipes').select('id, title, servings, minutes, ingredients, steps, created_at').order('created_at', { ascending: false })
+  .then(({ data, error }) => (error ? (/my_recipes|42P01|PGRST205/.test(`${error.code} ${error.message}`) ? [] : undefined) : data || []));
 export const fetchList = (supabase) => supabase.from('shopping_items').select('*').order('created_at').then(({ data, error }) => (error ? undefined : data || []));
 
 export function usePantry() {
@@ -28,6 +30,11 @@ export function useSaved() {
   const { supabase, dataVersion } = useWhisk();
   const [saved, , reload] = useCached('saved', () => fetchSaved(supabase), [dataVersion]);
   return [saved ?? null, reload];
+}
+export function useMine() {
+  const { supabase, dataVersion } = useWhisk();
+  const [rows, , reload] = useCached('mine', () => fetchMine(supabase), [dataVersion]);
+  return [rows ?? null, reload];
 }
 export function useList() {
   const { supabase, dataVersion } = useWhisk();

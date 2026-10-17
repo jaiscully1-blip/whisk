@@ -974,6 +974,29 @@ await expectFail('players cannot write their own streak or level directly', LQ, 
 await expectFail('players cannot write quiz rows directly', LQ, `insert into quiz_attempts (user_id, qids, day) values ('${LQ}', array[1,2,3], current_date)`);
 check('players only see their own attempts', (await as(LR, () => db.query(`select count(*)::int n from quiz_attempts`))).rows[0].n === 0);
 
+// ================= 0034: my recipes (imported from a photo or typed in) =================
+try { const f = fs.readFileSync('./supabase/migrations/0034_my_recipes.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0034 runs (twice)', true); }
+catch (e) { check('0034 runs (twice)', false, e.message); }
+const mine = async (u, title = 'Banana bread') => as(u, () => db.query(`insert into my_recipes (title, servings, minutes, ingredients, steps) values ('${title}', 8, 70, '[{"item":"bananas","qty":3}]'::jsonb, '["Mash","Bake"]'::jsonb) returning id`));
+const mr = (await mine(LQ)).rows[0].id;
+check('a player can save their own recipe', !!mr);
+check('the recipe belongs to the player who saved it', (await db.query(`select user_id from my_recipes where id = '${mr}'`)).rows[0].user_id === LQ);
+check('other players cannot see it', (await as(LR, () => db.query(`select count(*)::int n from my_recipes`))).rows[0].n === 0);
+await expectFail('a recipe cannot be filed under someone else', LQ, `insert into my_recipes (user_id, title, ingredients, steps) values ('${LR}', 'Sneaky', '["a"]'::jsonb, '["b"]'::jsonb)`);
+await expectFail('a recipe needs ingredients', LQ, `insert into my_recipes (title, ingredients, steps) values ('Empty', '[]'::jsonb, '["b"]'::jsonb)`);
+await expectFail('a recipe needs steps', LQ, `insert into my_recipes (title, ingredients, steps) values ('Empty', '["a"]'::jsonb, '[]'::jsonb)`);
+await expectFail('a title cannot be empty', LQ, `insert into my_recipes (title, ingredients, steps) values ('', '["a"]'::jsonb, '["b"]'::jsonb)`);
+await expectFail('a huge recipe is refused', LQ, `insert into my_recipes (title, ingredients, steps) values ('Big', '["${'x'.repeat(13000)}"]'::jsonb, '["b"]'::jsonb)`);
+await as(LQ, () => db.query(`update my_recipes set title = 'Banana bread v2' where id = '${mr}'`));
+check('a player can edit their own recipe', (await db.query(`select title from my_recipes where id = '${mr}'`)).rows[0].title === 'Banana bread v2');
+check('another player cannot edit it', (await as(LR, () => db.query(`update my_recipes set title = 'Hijack' where id = '${mr}' returning id`))).rows.length === 0);
+check('another player cannot delete it', (await as(LR, () => db.query(`delete from my_recipes where id = '${mr}' returning id`))).rows.length === 0);
+await expectFail('the owner cannot be changed by an update', LQ, `update my_recipes set user_id = '${LR}' where id = '${mr}'`);
+for (let k = 0; k < 100; k++) await db.exec(`insert into my_recipes (user_id, title, ingredients, steps) values ('${LR}', 'r${k}', '["a"]'::jsonb, '["b"]'::jsonb)`);
+await expectFail('the 101st recipe is refused (limit is 100)', LR, `insert into my_recipes (title, ingredients, steps) values ('one too many', '["a"]'::jsonb, '["b"]'::jsonb)`);
+await as(LQ, () => db.query(`select public.reset_game()`));
+check('Reset game clears my recipes', (await db.query(`select count(*)::int n from my_recipes where user_id = '${LQ}'`)).rows[0].n === 0);
+
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

@@ -1284,3 +1284,9 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .settings-page { position: fixed; inset: 0; z-index: 45; background: var(--bg); overflow-y: auto; padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px)); }
 .settings-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; background: var(--bg); border-bottom: 1px solid var(--line); }
 .settings-body { max-width: 720px; margin: 0 auto; padding: 16px 16px 0; gap: 12px; }
+
+/* ---------- my recipes / recipe import ---------- */
+.input.low { border-color: #E0A93B; background: color-mix(in srgb, #E0A93B 14%, var(--card)); }
+.import-note { margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, #E0A93B 18%, var(--card)); font-weight: 700; font-size: 14px; }
+.mine-open { flex: 1; min-width: 0; text-align: left; background: none; border: 0; color: var(--fg); padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.mine-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; line-height: 1.45; }

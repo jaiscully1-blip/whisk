@@ -169,6 +169,65 @@ await step('learn quiz', async () => {
   check('Novice shows Learn again', (await page.getByTestId('learn-btn').count()) === 1);
   await nav('Home');
 });
+await step('recipe import', async () => {
+  await nav('Cook'); await page.waitForURL('**/cook');
+  await page.getByTestId('my-recipes').waitFor();
+  check('My recipes starts empty with an Add button', /Nothing here yet/.test(await page.getByTestId('my-recipes').innerText()));
+  // a clean printed recipe page, drawn in the browser, so the on-device reader has something real to read
+  const dataUrl = await page.evaluate(() => {
+    const c = document.createElement('canvas'); c.width = 1300; c.height = 1500; const x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.fillStyle = '#111';
+    const rows = [['Lemon Garlic Pasta', 64], ['Serves: 4', 40], ['', 0], ['Ingredients', 50], ['8 oz spaghetti', 44], ['2 tbsp butter', 44], ['3 cloves garlic, minced', 44], ['1 lemon, juiced', 44], ['', 0], ['Directions', 50], ['1. Boil the spaghetti until tender.', 44], ['2. Melt the butter and cook the garlic.', 44], ['3. Toss with the lemon juice and serve.', 44]];
+    let y = 100; rows.forEach(([t, s]) => { if (!t) { y += 40; return; } x.font = `${s}px Arial, Helvetica, sans-serif`; x.fillText(t, 80, y); y += s * 1.7; });
+    return c.toDataURL('image/png');
+  });
+  const pageImg = { name: 'recipe.png', mimeType: 'image/png', buffer: Buffer.from(dataUrl.split(',')[1], 'base64') };
+  await page.getByTestId('mine-add').click(); await page.getByTestId('import-sheet').waitFor();
+  check('Add offers a photo, a picker and typing it in', (await page.getByTestId('import-pick').count()) === 1 && (await page.getByTestId('import-type').count()) === 1 && /Take a photo/.test(await page.getByTestId('import-sheet').innerText()));
+  await shot('09-import-start');
+  await page.getByTestId('import-file').setInputFiles(pageImg);
+  await page.getByTestId('ri-title').waitFor({ timeout: 90000 });
+  const title = await page.getByTestId('ri-title').inputValue();
+  const ings = await page.getByTestId('ri-ing').evaluateAll((els) => els.map((e) => e.value));
+  const steps = await page.getByTestId('ri-step').evaluateAll((els) => els.map((e) => e.value));
+  await shot('09b-import-review');
+  check('the reader got the recipe name', /lemon garlic pasta/i.test(title), title);
+  check('the reader found the 4 ingredients', ings.length === 4 && /spaghetti/i.test(ings[0]) && /butter/i.test(ings[1]) && /garlic/i.test(ings[2]) && /lemon/i.test(ings[3]), JSON.stringify(ings));
+  check('the reader found the 3 steps, numbers removed', steps.length === 3 && /boil/i.test(steps[0]) && !/^\d/.test(steps[0]), JSON.stringify(steps));
+  check('servings were picked up', (await page.locator('#ri-serv').inputValue()) === '4');
+  await page.getByTestId('ri-ing').nth(3).fill('1 lemon, juiced and zested');
+  await page.getByTestId('ri-save').click();
+  await page.getByTestId('import-sheet').waitFor({ state: 'detached' });
+  await page.getByTestId('mine-item').first().waitFor({ timeout: 8000 }).catch(() => {});
+  check('the saved recipe shows in My recipes', (await page.getByTestId('mine-item').count()) === 1 && /Lemon Garlic Pasta/i.test(await page.getByTestId('mine-item').innerText()));
+  await page.getByTestId('mine-item').click(); await page.getByTestId('mine-view').waitFor();
+  check('the recipe page shows ingredients, steps, and what you have or need', /spaghetti/i.test(await page.getByTestId('mine-view').innerText()) && (await page.locator('[data-testid=mine-view] .chip.have, [data-testid=mine-view] .chip.need').count()) === 4 && /zested/.test(await page.getByTestId('mine-view').innerText()));
+  await shot('09c-my-recipe');
+  await page.locator('[data-testid=mine-view] .chip', { hasText: '2×' }).click();
+  check('doubling the recipe doubles the amounts', /16 oz/.test(await page.getByTestId('mine-view').innerText()), (await page.getByTestId('mine-view').innerText()).replace(/\n/g, ' | ').slice(0, 400));
+  const missingBtn = page.getByTestId('mine-add-missing');
+  if (await missingBtn.count()) { await missingBtn.click(); await page.waitForTimeout(500); }
+  await page.getByTestId('mine-cook').click();
+  await page.locator('.cookmode').waitFor();
+  check('Cook mode works on your own recipe', /Get ready/.test(await page.locator('.cm-count').innerText()));
+  await page.locator('.cookmode').getByRole('button', { name: 'Leave cook mode' }).click();
+  await page.getByTestId('mine-edit').click(); await page.getByTestId('ri-title').fill('Lemon Garlic Noodles'); await page.getByTestId('ri-save').click();
+  await page.getByTestId('import-sheet').waitFor({ state: 'detached' });
+  await page.waitForTimeout(700);
+  check('editing a recipe saves the change', /Lemon Garlic Noodles/.test(await page.getByTestId('mine-item').innerText()));
+  // type one in
+  await page.getByTestId('mine-add').click(); await page.getByTestId('import-type').click();
+  await page.getByTestId('ri-title').fill('Toast'); await page.getByTestId('ri-ing').first().fill('2 slices bread'); await page.getByTestId('ri-step').first().fill('Toast the bread for 3 minutes.');
+  await page.getByTestId('ri-save').click(); await page.getByTestId('import-sheet').waitFor({ state: 'detached' });
+  await page.waitForTimeout(700);
+  check('a typed recipe saves too', (await page.getByTestId('mine-item').count()) === 2);
+  page.once('dialog', (d) => d.accept());
+  await page.getByTestId('mine-item').filter({ hasText: 'Toast' }).click(); await page.getByTestId('mine-delete').click();
+  await page.getByTestId('mine-view').waitFor({ state: 'detached' });
+  await page.waitForTimeout(600);
+  check('deleting a recipe removes it', (await page.getByTestId('mine-item').count()) === 1);
+  await nav('Home');
+});
 await step('home', async () => {
   await page.getByRole('heading', { name: 'Discover a Dish' }).waitFor();
   check('home shows Discover a Dish', true);

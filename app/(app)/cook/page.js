@@ -15,6 +15,7 @@ import BackupNudge from '@/components/BackupNudge';
 import MyYouTubers from '@/components/MyYouTubers';
 import DishSearch from '@/components/DishSearch';
 import SavedRecipes from '@/components/SavedRecipes';
+import MyRecipes from '@/components/MyRecipes';
 
 const SKIP = ['Spices & Seasonings', 'Sauces & Oils', 'Baking'];
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
@@ -95,6 +96,8 @@ export default function Cook() {
         <h2 id="saved-h" style={{ fontSize: 20, margin: 0 }}><Icon name="star" size={18} /> Saved recipes</h2>
         <SavedRecipes pantry={pantry} onChanged={reload} limit={4} />
       </section>
+
+      <MyRecipes pantry={pantry} />
 
       {hand && mode === 'raid' && (
         <div className="stack" style={{ gap: 8 }}><span className="eyebrow">Ingredients</span>

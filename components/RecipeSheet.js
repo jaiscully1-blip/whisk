@@ -1,4 +1,5 @@
 'use client';
+import { MacroBars, BatchCook } from './RecipeExtras';
 import { useState } from 'react';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
@@ -78,8 +79,10 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
             <small>per serving</small>
           </div>
         )}
+        <MacroBars nutrition={r.nutrition} />
         <DietTags recipe={r} />
         {c.frozen.length > 0 && <ThawBanner items={c.frozen} onChanged={onChanged} />}
+        <BatchCook base={r.servings} factor={factor} onChange={setFactor} kcal={r.nutrition?.calories} />
         <ServingsX base={r.servings} factor={factor} onChange={setFactor} id={`sx-${r.id}`} />
         {c.subs?.length > 0 && <div className="swaps"><b>Swaps that work</b>{c.subs.map((x) => <span key={x.need} className="chip have">{x.use} for {x.need.toLowerCase()}</span>)}</div>}
         {needs.length > 0 ? <>

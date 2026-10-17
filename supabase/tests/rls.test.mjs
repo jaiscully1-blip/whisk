@@ -1487,6 +1487,25 @@ await db.exec(`insert into meals (user_id, title, photo_path, calories) values (
 await expectFail('going far over does not claim', K2, `select public.claim_calorie_reward()`);
 await expectFail('claims table is closed to players', K1, `select * from calorie_claims`);
 }
+// ================= 0041: streak milestones =================
+try { const f = fs.readFileSync('./supabase/migrations/0041_streak_milestones.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0041 runs (twice)', true); }
+catch (e) { check('0041 runs (twice)', false, e.message); }
+{
+const T1 = '60000000-0000-0000-0000-000000000060';
+await db.exec(`insert into auth.users (id, email) values ('${T1}', null)`);
+await db.exec(`update profiles set time_zone = 'UTC', streak_days = 8, streak_last_date = (now() at time zone 'UTC')::date where id = '${T1}'`);
+const g = (await as(T1, () => db.query(`select public.get_streak() r`))).rows[0].r;
+check('at 8 days, 3 and 7 are ready, 14 is not', g.streak === 8 && g.milestones.filter((m) => m.ready).map((m) => m.days).join() === '3,7', JSON.stringify(g));
+await expectFail('14 days is too far', T1, `select public.claim_streak_milestone(14)`);
+await expectFail('only real milestones', T1, `select public.claim_streak_milestone(5)`);
+const c0 = (await db.query(`select coins from profiles where id = '${T1}'`)).rows[0].coins;
+await as(T1, () => db.query(`select public.claim_streak_milestone(7)`));
+check('7 days pays 500 coins', (await db.query(`select coins from profiles where id = '${T1}'`)).rows[0].coins === c0 + 500);
+await expectFail('each milestone pays once', T1, `select public.claim_streak_milestone(7)`);
+await db.exec(`update profiles set streak_last_date = (now() at time zone 'UTC')::date - 5 where id = '${T1}'`);
+await expectFail('a broken streak cannot claim', T1, `select public.claim_streak_milestone(3)`);
+await expectFail('claims table is closed to players', T1, `select * from streak_milestones`);
+}
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_chat_bg', 'buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

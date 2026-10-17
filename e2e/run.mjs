@@ -460,6 +460,13 @@ await step('cook', async () => {
   check('type 3 next to the × and every amount triples', Math.abs(qn(amt3) - 3 * qn(amt0)) < .05 && Math.abs(qn(ing3) - 3 * qn(ing0)) < .05 && /x|×/.test(await dlg.locator('.servx-in').innerText()) && /= \d+ servings/.test(await dlg.locator('.servx').innerText()), `${amt0} → ${amt3}, ${ing0} → ${ing3}`);
   await shot('02b-recipe-3x');
   await dlg.locator('.servx-in input').fill('1');
+  if (await dlg.getByTestId('macro-bars').count()) {
+    check('macro bars show calories, protein, carbs and fat as a share of a day', (await dlg.locator('[data-testid^=mb-]').count()) >= 3 && (await dlg.locator('[role=progressbar]').count()) >= 3);
+  } else check('this recipe has no nutrition, so no bars', true);
+  await dlg.getByTestId('batch-3').click();
+  check('batch ×3 triples the recipe and explains storage', /= \d+ servin/.test(await dlg.locator('.servx-total').innerText()) && /fridge up to 3 to 4 days/.test(await dlg.getByTestId('batch-info').innerText()));
+  await dlg.getByTestId('batch-3').click();
+  check('tapping it again goes back to as written', (await dlg.locator('.servx-total').innerText()) === 'as written');
   const tmr = page.locator('[role=dialog] button.timer').first();
   if (await tmr.count()) {
     await tmr.click(); await page.waitForTimeout(1300);
@@ -648,6 +655,17 @@ await step('calorie goal', async () => {
   check('the ring shows today’s total', /^\d+$/.test(await page.getByTestId('cal-today').textContent()));
   check('the notification lead-time picker is there', (await page.locator('#n-days').count()) >= 0);
   await shot('09b-calories');
+});
+await step('streak milestones', async () => {
+  await nav('Me');
+  await page.getByTestId('streak-card').waitFor({ timeout: 8000 });
+  const txt = await page.getByTestId('streak-card').innerText();
+  check('the streak card shows days and freezes', /Streak: \d+ day/.test(txt) && /freeze/.test(txt), txt.slice(0, 80));
+  check('all six milestones are listed', (await page.locator('[data-testid^=ms-]').count()) === 6);
+  const ready = page.locator('[data-testid^=ms-]:not([disabled])').first();
+  if (await ready.count()) { await ready.click(); await page.waitForFunction(() => /done/.test(document.querySelector('[data-testid=streak-card]').innerText)); check('claiming a ready milestone marks it done', true); }
+  else check('no milestone ready yet, none claimable', true);
+  await shot('09c-streak');
 });
 await step('languages', async () => {
   await nav('Me');

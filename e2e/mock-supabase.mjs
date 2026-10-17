@@ -31,7 +31,7 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on sequences to anon, authenticated;
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
-for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql', '0012_dishes_and_stamp_coins.sql', '0013_one_phone_play.sql', '0014_recipe_steps.sql', '0015_free_chef_coat_pilot_coat_xp.sql', '0016_bingo_weekly_with_challenges.sql', '0017_cookoff_and_invites.sql', '0018_cookoff_judges.sql', '0019_safety_streaks_sharing.sql', '0020_friends_feed.sql', '0021_notifications.sql', '0022_kitchen_layouts.sql', '0023_cook_rewards.sql', '0024_dream_kitchen_world.sql', '0025_magnets_night.sql', '0026_more_recipes.sql', '0027_revenuecat_coins.sql', '0028_baste_name.sql', '0029_stock_levels.sql', '0030_feta_name.sql', '0031_yoke_name.sql', '0032_learn_quiz.sql', '0033_learn_hourly.sql', '0034_my_recipes.sql', '0035_use_it_up.sql', '0036_guess_the_cook.sql'].filter((f) => !process.env.MOCK_UPTO || f <= process.env.MOCK_UPTO)) {   // MOCK_UPTO=0018_… : a database that hasn't run the newer SQL yet
+for (const f of ['0001_whisk_schema.sql', '0002_whisk_seed.sql', '0003_whisk_features.sql', '0004_whisk_web_recipes.sql', '0005_web_recipes_seed.sql', '0006_whisk_coins_reset.sql', '0007_bingo_five_days.sql', '0008_passport_countries.sql', '0009_local_calendar.sql', '0010_hockey_helmet.sql', '0011_activity_onboarding_admin.sql', '0012_dishes_and_stamp_coins.sql', '0013_one_phone_play.sql', '0014_recipe_steps.sql', '0015_free_chef_coat_pilot_coat_xp.sql', '0016_bingo_weekly_with_challenges.sql', '0017_cookoff_and_invites.sql', '0018_cookoff_judges.sql', '0019_safety_streaks_sharing.sql', '0020_friends_feed.sql', '0021_notifications.sql', '0022_kitchen_layouts.sql', '0023_cook_rewards.sql', '0024_dream_kitchen_world.sql', '0025_magnets_night.sql', '0026_more_recipes.sql', '0027_revenuecat_coins.sql', '0028_baste_name.sql', '0029_stock_levels.sql', '0030_feta_name.sql', '0031_yoke_name.sql', '0032_learn_quiz.sql', '0033_learn_hourly.sql', '0034_my_recipes.sql', '0035_use_it_up.sql', '0036_guess_the_cook.sql', '0037_chat.sql'].filter((f) => !process.env.MOCK_UPTO || f <= process.env.MOCK_UPTO)) {   // MOCK_UPTO=0018_… : a database that hasn't run the newer SQL yet
   await db.exec(fs.readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8').replace('create extension if not exists pgcrypto;', ''));
 }
 await db.exec(`insert into auth.users (id, email) values ('${E2E_USER.id}', '${E2E_USER.email}')`);
@@ -214,7 +214,19 @@ async function storage(req, res, uid, path, buf) {
     const [, bucket, name] = m; const objName = decodeURIComponent(name);
     if (!uid) return send(res, 403, { statusCode: '403', error: 'Unauthorized', message: 'new row violates row-level security policy' });
     await asUser(uid, (tx) => tx.query(`insert into storage.objects (bucket_id, name, owner, owner_id) values ($1, $2, $3::uuid, $3::text)`, [bucket, objName, uid]));
-    files.set(`${bucket}/${objName}`, { buf, type: req.headers['content-type'] || 'application/octet-stream' });
+    // supabase-js sends the file as multipart form data: keep just the file part, like the real storage server does
+    let body = buf, type = req.headers['content-type'] || 'application/octet-stream';
+    const bm = /^multipart\/form-data;\s*boundary=(.+)$/i.exec(type);
+    if (bm) {
+      const sep = Buffer.from(`--${bm[1]}`); let at = 0;
+      while ((at = buf.indexOf(sep, at)) >= 0) {
+        const hs = at + sep.length + 2, he = buf.indexOf('\r\n\r\n', hs); if (he < 0) break;
+        const head = buf.slice(hs, he).toString(); const next = buf.indexOf(sep, he); if (next < 0) break;
+        if (/filename=/i.test(head) || !/name="cacheControl"/.test(head)) { body = buf.slice(he + 4, next - 2); type = /content-type:\s*([^\r\n]+)/i.exec(head)?.[1] || 'image/jpeg'; if (/filename=/i.test(head)) break; }
+        at = next;
+      }
+    }
+    files.set(`${bucket}/${objName}`, { buf: body, type });
     return send(res, 200, { Key: `${bucket}/${objName}`, Id: randomUUID(), path: objName, id: randomUUID(), fullPath: `${bucket}/${objName}` });
   }
   return send(res, 404, { error: 'not found' });

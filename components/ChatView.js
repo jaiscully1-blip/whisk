@@ -1,0 +1,214 @@
+'use client';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useWhisk } from './AppShell';
+import Icon from './Icon';
+import { isPhoto, uploadTo } from '@/lib/photo';
+import { color, stamp, EMOJI } from '@/lib/social';
+
+// One group chat, full screen, like a text thread: bubbles, photos, emoji. Refreshes every few seconds while it is open
+// (no live connection, so it costs nothing to run). Report, mute a person, mute the group's notifications.
+const REASONS = [['spam', 'It’s spam'], ['rude', 'It’s rude or upsetting'], ['unsafe', 'It’s unsafe'], ['other', 'Something else']];
+const GAP = 30 * 60 * 1000;
+
+export default function ChatView({ id, onClose, onChanged }) {
+  const { supabase, say, profile } = useWhisk();
+  const [d, setD] = useState(null);                 // { group, members, messages, more }
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [urls, setUrls] = useState({});
+  const [menu, setMenu] = useState(null);           // a message whose options are open
+  const [reporting, setReporting] = useState(null);
+  const [people, setPeople] = useState(false);
+  const [plus, setPlus] = useState(false);
+  const [emoji, setEmoji] = useState(false);
+  const [viewer, setViewer] = useState(null);       // a photo opened big
+  const [friends, setFriends] = useState(null);
+  const listRef = useRef(null);
+  const lastAt = useRef(null);
+  const stick = useRef(true);                       // keep the view at the newest message unless you scrolled up
+
+  const sign = useCallback(async (msgs) => {
+    const need = msgs.map((m) => m.photo).filter((p) => p && !urls[p]);
+    if (!need.length) return;
+    const { data } = await supabase.storage.from('chat-photos').createSignedUrls(need, 3600);
+    setUrls((u) => ({ ...u, ...Object.fromEntries((data || []).filter((x) => x.signedUrl).map((x) => [x.path, x.signedUrl])) }));
+  }, [supabase, urls]);
+
+  const load = useCallback(async () => {
+    const { data, error } = await supabase.rpc('get_chat', { p_group: id });
+    if (error) { say('Couldn’t open that chat.'); onClose?.(); return; }
+    setD(data); lastAt.current = data.messages.length ? data.messages[data.messages.length - 1].at : null; sign(data.messages); onChanged?.();
+  }, [supabase, id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [load]);
+
+  // check for new messages every 4 seconds while the screen is showing
+  useEffect(() => {
+    const t = setInterval(async () => {
+      if (document.hidden) return;
+      const since = lastAt.current ? new Date(new Date(lastAt.current).getTime() - 3000).toISOString() : new Date(0).toISOString();
+      const { data } = await supabase.rpc('get_chat', { p_group: id, p_after: since });
+      if (data && data.messages.some((m) => !d?.messages.some((x) => x.id === m.id))) load();
+    }, 4000);
+    return () => clearInterval(t);
+  }, [supabase, id, d, load]);
+
+  useEffect(() => { const el = listRef.current; if (el && stick.current) el.scrollTop = el.scrollHeight; }, [d?.messages?.length]);
+  const onScroll = () => { const el = listRef.current; if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; };
+
+  async function pushed(msg) { fetch('/api/push/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ msg }) }).catch(() => {}); }
+  async function send(e) {
+    e?.preventDefault(); const t = text.trim(); if (!t || busy) return;
+    setBusy(true); const { data, error } = await supabase.rpc('send_chat', { p_group: id, p_kind: 'text', p_body: t });
+    setBusy(false);
+    if (error) { say(String(error.message || 'Couldn’t send that.').replace(/^\w/, (x) => x.toUpperCase())); return; }
+    setText(''); setEmoji(false); stick.current = true; load(); pushed(data.id);
+  }
+  async function sendPhoto(file) {
+    setPlus(false); if (!file) return;
+    if (!isPhoto(file)) { say('Pick a photo.'); return; }
+    setBusy(true);
+    try {
+      const path = await uploadTo(supabase, 'chat-photos', profile.id, file);
+      const cap = text.trim().slice(0, 200) || null;
+      const { data, error } = await supabase.rpc('send_chat', { p_group: id, p_kind: 'photo', p_body: cap, p_photo: path });
+      if (error) throw error;
+      setText(''); stick.current = true; await load(); pushed(data.id);
+    } catch (e) { say(String(e?.message || 'Couldn’t send that photo.').replace(/^\w/, (x) => x.toUpperCase())); } finally { setBusy(false); }
+  }
+  async function toggleBell() {
+    const on = !d.group.muted; const { error } = await supabase.rpc('set_chat_muted', { p_group: id, p_on: on });
+    if (error) { say('Couldn’t change that.'); return; }
+    setD((x) => ({ ...x, group: { ...x.group, muted: on } })); onChanged?.(); say(on ? 'Notifications off for this chat' : 'Notifications on for this chat');
+  }
+  async function del(m) { setMenu(null); await supabase.rpc('delete_chat_message', { p_msg: m.id }); load(); }
+  async function report(m, reason) {
+    const { error } = await supabase.rpc('report_chat_message', { p_msg: m.id, p_reason: reason }); setReporting(null); setMenu(null);
+    if (error) { say('Couldn’t report that.'); return; }
+    say('Thanks. You won’t see that message again.'); load();
+  }
+  async function muteUser(code, name, on) {
+    const { error } = await supabase.rpc('set_chat_user_muted', { p_code: code, p_on: on }); setMenu(null);
+    if (error) { say('Couldn’t change that.'); return; }
+    say(on ? `${name} is muted. You won’t see their messages.` : `${name} is unmuted`); load();
+  }
+  async function openPeople() {
+    setPeople(true);
+    const { data } = await supabase.rpc('get_friends'); setFriends(data?.friends || []);
+  }
+  async function addPerson(f) {
+    const { error } = await supabase.rpc('add_to_chat', { p_group: id, p_code: f.code });
+    if (error) { say(String(error.message || 'Couldn’t add them.').replace(/^\w/, (x) => x.toUpperCase())); return; }
+    say(`${f.name} is in the group`); load();
+  }
+  async function removePerson(m) {
+    if (!window.confirm(`Remove ${m.name} from this group?`)) return;
+    const { error } = await supabase.rpc('remove_from_chat', { p_group: id, p_code: m.code });
+    if (error) { say('Couldn’t remove them.'); return; } say(`${m.name} removed`); load();
+  }
+  async function leave() {
+    if (!window.confirm('Leave this group?')) return;
+    await supabase.rpc('leave_chat', { p_group: id }); onChanged?.(); onClose?.(); say('You left the group');
+  }
+
+  const msgs = d?.messages || [];
+  const memberIds = new Set((d?.members || []).map((m) => m.code));
+  const addable = (friends || []).filter((f) => !memberIds.has(f.code));
+
+  return (
+    <div className="chat-full" role="dialog" aria-modal="true" aria-label={d?.group?.name || 'Chat'} data-testid="chat-view">
+      <header className="chat-top">
+        <button type="button" className="chat-ico" onClick={onClose} aria-label="Back to chats"><Icon name="back" size={22} /></button>
+        <button type="button" className="chat-title" onClick={openPeople} aria-label={`${d?.group?.name || 'Chat'}: see who is in this group`}>
+          <b>{d?.group?.name || '…'}</b><small>{d ? `${d.members.length} ${d.members.length === 1 ? 'person' : 'people'}` : ''}</small>
+        </button>
+        <button type="button" className={`chat-ico ${d?.group?.muted ? 'off' : ''}`} onClick={toggleBell} disabled={!d} aria-pressed={!!d?.group?.muted} aria-label={d?.group?.muted ? 'Turn notifications on for this chat' : 'Turn notifications off for this chat'} data-testid="chat-bell"><Icon name={d?.group?.muted ? 'bellx' : 'bell'} size={22} /></button>
+      </header>
+
+      <div className="chat-list" ref={listRef} onScroll={onScroll} data-testid="chat-list">
+        {d === null ? <p className="muted" style={{ textAlign: 'center' }}>Opening…</p> : msgs.length === 0 ? <p className="chat-empty">No messages yet. Say hi.</p> : msgs.map((m, i) => {
+          const prev = msgs[i - 1];
+          const gap = !prev || new Date(m.at) - new Date(prev.at) > GAP;
+          const first = gap || prev.name !== m.name || prev.mine !== m.mine;
+          return (
+            <div key={m.id} className={`chat-row ${m.mine ? 'mine' : ''} ${first ? 'first' : ''}`}>
+              {gap && <div className="chat-stamp">{stamp(m.at)}</div>}
+              {!m.mine && first && <span className="chat-name" style={{ color: color(m.name) }}>{m.name}</span>}
+              <button type="button" className={`chat-bubble ${m.kind}`} onClick={() => setMenu(m)} aria-label={`${m.mine ? 'Your' : `${m.name}’s`} message. Tap for options`}>
+                {m.kind === 'photo' && (urls[m.photo]
+                  ? <img src={urls[m.photo]} alt="Photo in the chat" loading="lazy" decoding="async" onClick={(e) => { e.stopPropagation(); setViewer(urls[m.photo]); }} />
+                  : <span className="chat-ph">Photo…</span>)}
+                {m.body && <span className="chat-text">{m.body}</span>}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      <form className="chat-compose" onSubmit={send}>
+        {plus && (
+          <div className="chat-plus" role="menu" aria-label="Add to the chat">
+            <label className="chat-opt" role="menuitem"><span className="chat-oi cam"><Icon name="camera" size={22} /></span>Camera<input type="file" accept="image/*" capture="environment" hidden onChange={(e) => { sendPhoto(e.target.files?.[0]); e.target.value = ''; }} /></label>
+            <label className="chat-opt" role="menuitem"><span className="chat-oi pho"><Icon name="photo" size={22} /></span>Photos<input type="file" accept="image/*" hidden data-testid="chat-photo" onChange={(e) => { sendPhoto(e.target.files?.[0]); e.target.value = ''; }} /></label>
+            <button type="button" className="chat-opt" role="menuitem" onClick={() => { setPlus(false); setEmoji(true); }}><span className="chat-oi emo"><Icon name="smile" size={22} /></span>Emoji</button>
+          </div>
+        )}
+        {emoji && (
+          <div className="chat-emoji" role="group" aria-label="Emoji">
+            {EMOJI.map((e) => <button key={e} type="button" onClick={() => setText((t) => (t + e).slice(0, 500))} aria-label={`Add ${e}`}>{e}</button>)}
+          </div>
+        )}
+        <button type="button" className={`chat-ico plus ${plus ? 'on' : ''}`} onClick={() => { setPlus((v) => !v); setEmoji(false); }} aria-expanded={plus} aria-label="Add a photo or emoji"><Icon name="plus" size={22} /></button>
+        <label htmlFor="chat-in" hidden>Message</label>
+        <input id="chat-in" className="chat-in" maxLength={500} autoComplete="off" placeholder="Message" value={text} onChange={(e) => setText(e.target.value)} onFocus={() => { setPlus(false); setEmoji(false); }} />
+        <button type="submit" className="chat-send" disabled={!text.trim() || busy} aria-label="Send"><Icon name="send" size={20} /></button>
+      </form>
+
+      {menu && !reporting && (
+        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setMenu(null); }}>
+          <div className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label="Message options">
+            <b style={{ fontSize: 18 }}>{menu.mine ? 'Your message' : `${menu.name}’s message`}</b>
+            {menu.mine
+              ? <button className="btn ghost wide" onClick={() => del(menu)}><Icon name="trash" size={18} />Delete this message</button>
+              : <>
+                <button className="btn ghost wide" onClick={() => muteUser(menu.code, menu.name, true)}><Icon name="bellx" size={18} />Mute {menu.name}</button>
+                <button className="btn ghost wide" style={{ color: 'var(--bad)' }} onClick={() => setReporting(menu)}><Icon name="flag" size={18} />Report this message</button>
+              </>}
+            <button className="btn wide" onClick={() => setMenu(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {reporting && (
+        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) { setReporting(null); setMenu(null); } }}>
+          <div className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label="Report this message">
+            <h2 style={{ fontSize: 24 }}>What’s wrong with it?</h2>
+            <span className="desc">It disappears for you right away. Yoke checks reported messages.</span>
+            {REASONS.map(([k, l]) => <button key={k} className="btn ghost wide" onClick={() => report(reporting, k)}>{l}</button>)}
+            <button className="btn wide" onClick={() => { setReporting(null); setMenu(null); }}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {people && d && (
+        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setPeople(false); }}>
+          <div className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label="People in this group" data-testid="chat-people">
+            <h2 style={{ fontSize: 24 }}>{d.group.name}</h2>
+            {d.members.map((m) => (
+              <div key={m.code} className="fr-req">
+                <span className="post-av" style={{ background: color(m.name) }} aria-hidden="true">{m.name.slice(0, 1).toUpperCase()}</span>
+                <span><b>{m.me ? 'You' : m.name}</b>{m.owner && <span className="desc"> · made the group</span>}{m.muted && <span className="desc"> · muted</span>}</span>
+                {!m.me && <button className="btn ghost sm" onClick={() => muteUser(m.code, m.name, !m.muted)}>{m.muted ? 'Unmute' : 'Mute'}</button>}
+                {!m.me && d.group.mine && <button className="btn ghost sm" onClick={() => removePerson(m)} aria-label={`Remove ${m.name}`}><Icon name="x" size={16} /></button>}
+              </div>
+            ))}
+            {addable.length > 0 && <>
+              <span className="eyebrow">Add a friend</span>
+              <div className="fr-list">{addable.map((f) => <button key={f.code} type="button" className="chip fr-chip" onClick={() => addPerson(f)} aria-label={`Add ${f.name} to the group`}><span className="post-av sm" style={{ background: color(f.name) }} aria-hidden="true">{f.name.slice(0, 1).toUpperCase()}</span>{f.name}<Icon name="plus" size={14} /></button>)}</div>
+            </>}
+            <button className="btn ghost wide" style={{ color: 'var(--bad)' }} onClick={leave}>Leave group</button>
+            <button className="btn wide" onClick={() => setPeople(false)}>Done</button>
+          </div>
+        </div>
+      )}
+      {viewer && <div className="scrim chat-big" role="presentation" onClick={() => setViewer(null)}><img src={viewer} alt="Photo, full size" /></div>}
+    </div>
+  );
+}

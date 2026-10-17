@@ -56,7 +56,7 @@ export default function NotifySettings() {
       <span className="desc" style={{ width: '100%' }}>
         {env === 'install' ? 'On iPhone, add Yoke to your Home Screen first (Share → Add to Home Screen), then turn this on there.'
           : env === 'no' ? 'This browser can’t show notifications.'
-          : 'Only useful ones: food about to go off, “defrost the beef tonight”, and when a friend starts a Cook Off.'}
+          : 'Only useful ones: food about to go off, “defrost the beef tonight”, a new message in a chat (mute any chat), and when a friend starts a Cook Off.'}
       </span>
     </div>
   );

@@ -37,14 +37,17 @@ export default function Admin() {
   const [denied, setDenied] = useState(false);
   const [live, setLive] = useState(true);
   const [reports, setReports] = useState([]);   // reported plates (friends feed)
+  const [chatReports, setChatReports] = useState([]);   // reported chat messages
   const [thumbs, setThumbs] = useState({});
   const loadReports = useCallback(async () => {
     const { data, error } = await supabase.rpc('admin_reports'); if (error) return;
     setReports(data || []);
+    const cr = await supabase.rpc('admin_chat_reports'); setChatReports(cr.error ? [] : cr.data || []);
     const paths = (data || []).map((r) => r.photo).filter(Boolean);
     if (paths.length) { const { data: s } = await supabase.storage.from('meal-photos').createSignedUrls(paths, 3600); setThumbs(Object.fromEntries((s || []).filter((x) => x.signedUrl).map((x) => [x.path, x.signedUrl]))); }
   }, [supabase]);
   useEffect(() => { if (ov) loadReports(); }, [ov ? 1 : 0, loadReports]); // eslint-disable-line react-hooks/exhaustive-deps   (admins only: after the overview loads)
+  async function setChatHidden(r, hidden) { await supabase.rpc('admin_set_chat_hidden', { p_msg: r.msg, p_hidden: hidden }); loadReports(); }
   async function setHidden(r, hidden) { await supabase.rpc('admin_set_hidden', { p_meal: r.meal, p_hidden: hidden }); loadReports(); }
 
   const load = useCallback(async () => {
@@ -85,6 +88,19 @@ export default function Admin() {
                 <td>{thumbs[r.photo] ? <img src={thumbs[r.photo]} alt="" width="56" height="56" style={{ objectFit: 'cover', borderRadius: 8, verticalAlign: 'middle', marginRight: 8 }} /> : null}{r.title}</td>
                 <td>{r.name}</td><td>{r.reports} <span className="desc">({(r.reasons || []).join(', ')})</span></td>
                 <td>{r.hidden ? <button className="btn ghost sm" onClick={() => setHidden(r, false)}>Put back</button> : <button className="btn sm" onClick={() => setHidden(r, true)}>Hide</button>}</td>
+              </tr>
+            ))}</tbody></table>
+        </section>
+      )}
+      {chatReports.length > 0 && (
+        <section className="adm-card">
+          <h3>Reported chat messages</h3>
+          <table><thead><tr><th>Message</th><th>By</th><th>Reports</th><th></th></tr></thead>
+            <tbody>{chatReports.map((r) => (
+              <tr key={r.msg}>
+                <td>{r.kind === 'photo' ? '(photo) ' : ''}{r.body}</td>
+                <td>{r.name}</td><td>{r.reports} <span className="desc">({(r.reasons || []).join(', ')})</span></td>
+                <td>{r.hidden ? <button className="btn ghost sm" onClick={() => setChatHidden(r, false)}>Put back</button> : <button className="btn sm" onClick={() => setChatHidden(r, true)}>Hide</button>}</td>
               </tr>
             ))}</tbody></table>
         </section>

@@ -1210,6 +1210,124 @@ check('the board is best first', board.every((b, i) => i === 0 || board[i - 1].r
 await expectFail('players cannot read the guesses table directly', GA, `select * from cook_guesses`);
 await expectFail('players cannot write the guesses table directly', GA, `insert into cook_guesses (user_id, meal_id, guess_id, correct, day) values ('${GA}', '${ps[0]}', '${GB}', true, current_date)`);
 }
+// ================= 0037: friends group chat =================
+try { const f = fs.readFileSync('./supabase/migrations/0037_chat.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0037 runs (twice)', true); }
+catch (e) { check('0037 runs (twice)', false, e.message); }
+{
+const H = [1, 2, 3, 4, 5].map((n) => `c3c3c3c3-0000-4000-8000-00000000000${n}`);
+const [CA, CB, CC, CD, CE] = H;
+await db.exec(`insert into auth.users (id, email) values ${H.map((g, i) => `('${g}', 'h${i}@x.com')`).join(',')}`);
+await db.exec(`update profiles set display_name = case id ${H.map((g, i) => `when '${g}' then '${['Ann', 'Bo', 'Cat', 'Dev', 'Eli'][i]}'`).join(' ')} end where id in (${H.map((g) => `'${g}'`).join(',')})`);
+const frd = (a, b) => db.exec(`insert into friends (user_id, friend_id) values ('${a}', '${b}'), ('${b}', '${a}') on conflict do nothing`);
+const cq = (u, sql) => as(u, () => db.query(sql));
+const code = async (u) => (await db.query(`select public._my_code('${u}') c`)).rows[0].c;
+await frd(CA, CB); await frd(CA, CC); await frd(CB, CC); await frd(CA, CD);
+const cA = await code(CA), cB = await code(CB), cC = await code(CC), cD = await code(CD), cE = await code(CE);
+await expectFail('players cannot read chat tables directly', CA, `select * from chat_messages`);
+await expectFail('players cannot write chat tables directly', CA, `insert into chat_groups (name, owner) values ('x', '${CA}')`);
+await expectFail('a group needs a name', CA, `select public.create_chat('   ', '{}')`);
+const gid = (await cq(CA, `select public.create_chat('Dinner crew', array['${cB}', '${cE}', 'ZZZZZZ']) g`)).rows[0].g;
+const members = async (u, g) => (await cq(u, `select public.get_chat('${g}') r`)).rows[0].r.members;
+let mem = await members(CA, gid);
+check('a group starts with you and the friends you picked (not strangers or unknown codes)', mem.length === 2 && mem.some((m) => m.name === 'Bo') && !mem.some((m) => m.name === 'Eli'));
+await expectFail('you can only add your own friends', CA, `select public.add_to_chat('${gid}', '${cE}')`);
+await cq(CA, `select public.add_to_chat('${gid}', '${cC}')`);
+check('a member adds a friend', (await members(CA, gid)).length === 3);
+await expectFail('an outsider cannot add themselves or read the group', CD, `select public.get_chat('${gid}')`);
+await expectFail('an outsider cannot post', CD, `select public.send_chat('${gid}', 'text', 'hi')`);
+await expectFail('an empty text is refused', CA, `select public.send_chat('${gid}', 'text', '   ')`);
+await expectFail('a very long text is refused', CA, `select public.send_chat('${gid}', 'text', '${'x'.repeat(501)}')`);
+await expectFail('unknown message types are refused (game messages come later)', CA, `select public.send_chat('${gid}', 'game', 'hi')`);
+const m1 = (await cq(CA, `select public.send_chat('${gid}', 'text', 'Hello 🍳 crew') r`)).rows[0].r;
+check('a text with an emoji is sent', !!m1.id);
+await expectFail('a photo must already be uploaded', CA, `select public.send_chat('${gid}', 'photo', null, '${CA}/nope.jpg')`);
+await db.exec(`insert into storage.objects (bucket_id, name) values ('chat-photos', '${CA}/p1.jpg'), ('chat-photos', '${CB}/p2.jpg')`);
+await expectFail('a photo from someone else’s folder is refused', CA, `select public.send_chat('${gid}', 'photo', null, '${CB}/p2.jpg')`);
+const m2 = (await cq(CB, `select public.send_chat('${gid}', 'photo', 'dinner!', '${CB}/p2.jpg') r`)).rows[0].r;
+const chat = async (u, extra = '') => (await cq(u, `select public.get_chat('${gid}'${extra}) r`)).rows[0].r;
+let c = await chat(CC);
+check('everyone in the group sees both messages in order, with who sent them', c.messages.length === 2 && c.messages[0].body === 'Hello 🍳 crew' && c.messages[0].name === 'Ann' && c.messages[1].kind === 'photo' && c.messages[1].mine === false);
+check('your own messages are marked mine', (await chat(CA)).messages.filter((m) => m.mine).length === 1);
+const list = (await cq(CC, `select public.get_chats() r`)).rows[0].r;
+check('the chat list shows the group, last message and… already read after opening it', list.length === 1 && list[0].name === 'Dinner crew' && list[0].unread === 0 && list[0].last.kind === 'photo' && list[0].members === 3);
+await cq(CA, `select public.send_chat('${gid}', 'text', 'anyone hungry?')`);
+check('a new message from someone else is unread for the others', (await cq(CB, `select public.get_chats() r`)).rows[0].r[0].unread === 1 && (await cq(CA, `select public.get_chats() r`)).rows[0].r[0].unread === 0);
+const after = (await cq(CC, `select public.get_chat('${gid}', '${m2.at}') r`)).rows[0].r;
+check('refreshing with a time returns only newer messages', after.messages.length === 1 && after.messages[0].body === 'anyone hungry?');
+// photos
+await db.exec(`insert into friends (user_id, friend_id) values ('${CD}', '${CE}'), ('${CE}', '${CD}') on conflict do nothing`);
+const seeObj = async (u, n) => (await cq(u, `select count(*)::int n from storage.objects where bucket_id = 'chat-photos' and name = '${n}'`)).rows[0].n;
+check('a group member can open a photo sent to the group', (await seeObj(CC, `${CB}/p2.jpg`)) === 1);
+check('an outsider cannot open it', (await seeObj(CD, `${CB}/p2.jpg`)) === 0);
+check('a photo uploaded but never sent is private to its owner', (await seeObj(CA, `${CA}/p1.jpg`)) === 1 && (await seeObj(CB, `${CA}/p1.jpg`)) === 0);
+await expectFail('nobody can upload into someone else’s chat folder', CA, `insert into storage.objects (bucket_id, name) values ('chat-photos', '${CB}/evil.jpg')`);
+// safety
+await expectFail('you cannot report your own message', CA, `select public.report_chat_message('${m1.id}', 'spam')`);
+await expectFail('an outsider cannot report', CD, `select public.report_chat_message('${m1.id}', 'spam')`);
+await cq(CC, `select public.report_chat_message('${m2.id}', 'rude')`);
+check('one report hides a message for the reporter right away, not for others', (await chat(CC)).messages.every((m) => m.id !== m2.id) && (await chat(CA)).messages.some((m) => m.id === m2.id));
+check('the reporter can no longer open the photo', (await seeObj(CC, `${CB}/p2.jpg`)) === 0 && (await seeObj(CA, `${CB}/p2.jpg`)) === 1);
+await cq(CA, `select public.report_chat_message('${m2.id}', 'unsafe')`);
+check('a second reporter hides it for everyone', (await chat(CA)).messages.every((m) => m.id !== m2.id) && (await chat(CB)).messages.every((m) => m.id !== m2.id));
+check('the photo of a hidden message closes to the group', (await seeObj(CA, `${CB}/p2.jpg`)) === 0 && (await seeObj(CB, `${CB}/p2.jpg`)) === 1);
+const rep = (await db.query(`select count(*)::int n from chat_reports`)).rows[0].n;
+check('reports are stored once per reporter', rep === 2);
+await cq(CC, `select public.send_chat('${gid}', 'text', 'from Cat')`);
+await cq(CA, `select public.set_chat_user_muted('${cC}', true)`);
+check('muting a person hides their messages for you only', (await chat(CA)).messages.every((m) => m.name !== 'Cat') && (await chat(CB)).messages.some((m) => m.name === 'Cat'));
+check('the people list shows who you muted', (await chat(CA)).members.find((m) => m.name === 'Cat').muted === true);
+await cq(CA, `select public.set_chat_user_muted('${cC}', false)`);
+check('and you can unmute them', (await chat(CA)).messages.some((m) => m.name === 'Cat'));
+await expectFail('you cannot mute yourself', CA, `select public.set_chat_user_muted('${cA}', true)`);
+// delete own
+const mine = (await chat(CC)).messages.find((m) => m.name === 'Cat');
+await cq(CB, `select public.delete_chat_message('${mine.id}')`);
+check('you cannot delete someone else’s message', (await chat(CC)).messages.some((m) => m.id === mine.id));
+await cq(CC, `select public.delete_chat_message('${mine.id}')`);
+check('you can delete your own message', (await chat(CC)).messages.every((m) => m.id !== mine.id));
+// rate limit
+for (let i = 0; i < 20; i++) await db.exec(`insert into chat_messages (group_id, sender, kind, body) values ('${gid}', '${CB}', 'text', 'spam ${i}')`);
+await expectFail('more than 20 messages in a minute is refused', CB, `select public.send_chat('${gid}', 'text', 'one more')`);
+await db.exec(`delete from chat_messages where body like 'spam %'`);
+// admin
+await db.exec(`update profiles set is_admin = true where id = '${CD}'`);
+check('admins see reported messages', (await cq(CD, `select public.admin_chat_reports() r`)).rows[0].r.length >= 1);
+await expectFail('players cannot see the admin list', CA, `select public.admin_chat_reports()`);
+await expectFail('players cannot hide messages for everyone', CA, `select public.admin_set_chat_hidden('${m1.id}', true)`);
+await db.exec(`update profiles set is_admin = false where id = '${CD}'`);
+// owner tools
+await expectFail('only the maker can remove people', CB, `select public.remove_from_chat('${gid}', '${cC}')`);
+await cq(CA, `select public.remove_from_chat('${gid}', '${cC}')`);
+check('the maker removes someone', (await members(CA, gid)).length === 2);
+await expectFail('a removed person cannot read the group', CC, `select public.get_chat('${gid}')`);
+// notifications
+await db.exec(`insert into push_subs (endpoint, user_id, p256dh, auth) values ('https://push.example.com/cb', '${CB}', 'k', 'a')`);
+await db.exec(`update profiles set notify_hour = 17 where id = '${CB}'`);
+const mm = (await cq(CA, `select public.send_chat('${gid}', 'text', 'ping') r`)).rows[0].r;
+const push = async (sender, id, secret = 'cron-secret-123') => (await as(null, () => db.query(`select public.push_chat('${secret}', '${sender}', '${id}') r`))).rows[0].r;
+await expectFail('the push list needs the secret', null, `select public.push_chat('wrong', '${CA}', '${mm.id}')`);
+check('a push goes to members who turned notifications on, with the group name', (await push(CA, mm.id)).length === 1 && (await push(CA, mm.id)).length === 0);
+const mm2 = (await cq(CA, `select public.send_chat('${gid}', 'text', 'again') r`)).rows[0].r;
+check('at most one push per person per group every 5 minutes', (await push(CA, mm2.id)).length === 0);
+await db.exec(`update chat_members set last_push_at = null`);
+await cq(CB, `select public.set_chat_muted('${gid}', true)`);
+const mm3 = (await cq(CA, `select public.send_chat('${gid}', 'text', 'third') r`)).rows[0].r;
+check('a muted group sends no push', (await push(CA, mm3.id)).length === 0);
+await cq(CB, `select public.set_chat_muted('${gid}', false)`);
+await cq(CB, `select public.set_chat_user_muted('${cA}', true)`);
+const mm4 = (await cq(CA, `select public.send_chat('${gid}', 'text', 'fourth') r`)).rows[0].r;
+check('a muted person sends no push', (await push(CA, mm4.id)).length === 0);
+check('a push can only be asked for by the real sender', (await push(CB, mm4.id)).length === 0);
+// leaving
+await cq(CA, `select public.leave_chat('${gid}')`);
+check('when the maker leaves, the next member takes over', (await chat(CB)).group.mine === true);
+await cq(CB, `select public.leave_chat('${gid}')`);
+check('an empty group is deleted with its messages', (await db.query(`select count(*)::int n from chat_groups`)).rows[0].n === 0 && (await db.query(`select count(*)::int n from chat_messages`)).rows[0].n === 0);
+// limits
+const gg = (await cq(CA, `select public.create_chat('Full', '{}') g`)).rows[0].g;
+for (let i = 0; i < 24; i++) { const u = `d4d4d4d4-0000-4000-8000-0000000001${String(i).padStart(2, '0')}`; await db.exec(`insert into auth.users (id, email) values ('${u}', 'z${i}@x.com')`); await frd(CA, u); await db.exec(`insert into chat_members (group_id, user_id) values ('${gg}', '${u}')`); }
+await expectFail('a group holds at most 25 people', CA, `select public.add_to_chat('${gg}', '${cB}')`);
+}
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

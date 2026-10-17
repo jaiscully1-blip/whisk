@@ -48,7 +48,11 @@ export default function Me() {
     const r = await restoreBackup(supabase, b); bump();
     say(`Restored ${r.pantry} pantry, ${r.list} list, ${r.saved} saved, ${r.mine} own recipes`);
   }
-  useEffect(() => { const h = () => { if (window.location.hash === '#settings') setSettingsOpen(true); }; h(); window.addEventListener('hashchange', h); return () => window.removeEventListener('hashchange', h); }, []);
+  useEffect(() => {
+    const open = () => setSettingsOpen(true);
+    try { if (sessionStorage.getItem('yoke-settings')) { sessionStorage.removeItem('yoke-settings'); open(); } } catch {}
+    window.addEventListener('yoke-settings', open); return () => window.removeEventListener('yoke-settings', open);
+  }, []);
   const [howTo, setHowTo] = useState(false);
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -146,9 +150,6 @@ export default function Me() {
         </>
       )}
 
-      <button type="button" className="card row setbtn" data-testid="settings-btn" onClick={() => setSettingsOpen(true)} style={{ width: '100%', flexWrap: 'nowrap', gap: 10, color: 'var(--fg)', textAlign: 'left', padding: '14px 16px' }}>
-        <Icon name="more" /><b style={{ flex: 1, fontSize: 18 }}>Settings</b><span className="desc">Level, goal, notifications, privacy, backup</span><Icon name="chevron" />
-      </button>
       {settingsOpen && (
         <div className="settings-page" role="dialog" aria-modal="true" aria-label="Settings" data-testid="settings-page">
           <div className="settings-top"><button type="button" className="btn ghost sm" onClick={() => setSettingsOpen(false)} aria-label="Back to Me" data-testid="settings-back"><Icon name="chevron" size={18} style={{ transform: 'rotate(180deg)' }} />Back</button><h2 style={{ margin: 0, fontSize: 22 }}>Settings</h2></div>

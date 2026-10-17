@@ -27,7 +27,7 @@ function Picker({ picks, setPicks }) {
       <div className="row" style={{ gap: 6 }}>
         {soon.map((p) => <button key={p.id} type="button" className={`chip ${picks.includes(p.name) ? 'xp' : ''}`} aria-pressed={picks.includes(p.name)} onClick={() => toggle(p.name)} data-testid="uiu-pick">{p.name} · {daysTo(p.expires_on) === 0 ? 'today' : `${daysTo(p.expires_on)}d`}</button>)}
       </div>
-      <span className="desc">Only the names you tick are shown to your friend. Your pantry stays private.</span>
+      <span className="desc">Your friend only sees the names you tick.</span>
     </div>
   );
 }
@@ -65,7 +65,7 @@ export default function UseItUpCard() {
 
   return (
     <section className="card stack" data-tip="useitup" aria-labelledby="uiu-h" data-testid="uiu-card">
-      <div><h2 id="uiu-h" style={{ fontSize: 22 }}>Use-It-Up Week</h2><span className="desc">You and a friend race to rescue food before it expires. Seven days, one winner, 500 coins.</span></div>
+      <div><h2 id="uiu-h" style={{ fontSize: 22 }}>Use-It-Up Week</h2><span className="desc">Rescue expiring food. 7 days, 500 coins.</span></div>
       {mine.length > 0 && (
         <div className="stack" style={{ gap: 6 }}>
           {mine.map((m) => <Link key={m.code} href={`/compete/useitup?code=${m.code}`} className="row uiu-resume" style={{ flexWrap: 'nowrap', gap: 8 }}><b style={{ flex: 1 }}>{m.status === 'open' ? `Waiting for a friend · ${m.code}` : `Playing${m.with ? ` with ${m.with}` : ''}`}</b><Icon name="chevron" /></Link>)}

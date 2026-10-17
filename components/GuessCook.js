@@ -42,7 +42,7 @@ export default function GuessCook() {
     setReveal({ ...data, guessed: o.name, title: round.plate.title });
     if (data.coins > 0) refreshProfile();
   }
-  async function next() { setReveal(null); await load(); }
+  async function next() { setBusy(true); await load(); setReveal(null); setBusy(false); }
 
   if (!round) return <section className="card gtc" data-testid="gtc-card"><span className="eyebrow">Guess the Cook</span><p className="muted" style={{ margin: 0 }}>Loading…</p></section>;
   if (round.state === 'error') return null;
@@ -57,8 +57,8 @@ export default function GuessCook() {
         </span>
       </div>
 
-      {round.state === 'need_friends' && <p className="desc" style={{ margin: 0 }} data-testid="gtc-need">Add two friends to play. Each day you get five of their plates with the names hidden, and you guess who cooked each one.</p>}
-      {round.state === 'no_plates' && <p className="desc" style={{ margin: 0 }} data-testid="gtc-none">No new plates to guess yet. When your friends share what they cook, it shows up here.</p>}
+      {round.state === 'need_friends' && <p className="desc" style={{ margin: 0 }} data-testid="gtc-need">Add two friends to play. Guess who cooked their plates.</p>}
+      {round.state === 'no_plates' && <p className="desc" style={{ margin: 0 }} data-testid="gtc-none">No new plates yet. Friends’ shared plates show up here.</p>}
 
       {round.state === 'play' && (
         <>
@@ -91,7 +91,7 @@ export default function GuessCook() {
       {round.state === 'done' && (
         <div className="gtc-reveal done" data-testid="gtc-done">
           <b>{round.perfect ? 'Five out of five. You know your friends.' : `${round.correct} out of 5 today.`}</b>
-          <span className="desc">New plates tomorrow. {round.perfect ? 'That’s the most you can earn in a day.' : 'Five right earns a 20 coin bonus.'}</span>
+          <span className="desc">New plates tomorrow.</span>
         </div>
       )}
 

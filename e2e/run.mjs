@@ -41,7 +41,7 @@ page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
 page.on('response', (r) => { if (r.status() >= 400 && !/api\/barcode/.test(r.url())) problems.push(`HTTP ${r.status()} ${r.request().method()} ${r.url()}`); });
 const shot = async (n) => { if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `${n}.png`), fullPage: true }); };
 const step = async (name, fn) => { curStep = name; try { await fn(); } catch (e) { check(name, false, e.message.split('\n').filter((l) => /locator|Timeout|waiting/.test(l)).slice(0, 3).join(' | ') || String(e.message).slice(0, 300)); await shot(`fail-${name.replace(/\W+/g, '-')}`); } };
-const openSettings = async (p = page) => { if (!(await p.getByTestId('settings-page').count())) await p.getByTestId('settings-btn').click(); await p.getByTestId('settings-page').waitFor(); };
+const openSettings = async (p = page) => { if (!(await p.getByTestId('settings-page').count())) await p.getByTestId('hud-settings').click(); await p.getByTestId('settings-page').waitFor(); };
 const nav = async (n) => { if (await page.getByTestId('settings-page').count()) await page.getByTestId('settings-back').click(); await page.getByRole('navigation').getByRole('link', { name: n, exact: true }).click(); };
 const closePopups = async () => { await page.locator('.popup-scrim').first().waitFor({ timeout: 3000 }).catch(() => {}); for (let i = 0; i < 4; i++) { const x = page.locator('.popup-scrim [aria-label=Close]').first(); const leave = page.locator('.popup-scrim').getByRole('button', { name: 'Leave' }).first(); if (await x.count()) await x.click(); else if (await leave.count()) await leave.click(); else break; await page.waitForTimeout(400); } };
 
@@ -234,11 +234,10 @@ await step('use-it-up week', async () => {
   const fp2 = await ctxF.newPage(); await fp2.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
   await fp2.goto(`${BASE}/login`); await fp2.getByRole('radio', { name: 'Accept' }).click(); await fp2.getByRole('button', { name: 'Start playing' }).click(); await fp2.waitForURL('**/cook');
   await E('uiu-items?who=me'); await E('uiu-items?who=friend');
-  const toFriends = async (pg, refresh = false) => { if (refresh) { await pg.getByRole('navigation').getByRole('link', { name: 'Pantry', exact: true }).click(); await pg.waitForURL('**/pantry'); await pg.waitForTimeout(1200); } await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete'); await pg.locator('.fr-card').click(); await pg.waitForURL('**/compete/friends'); await pg.getByTestId('uiu-card').waitFor(); };
+  const toFriends = async (pg, refresh = false) => { if (refresh) { await pg.getByRole('navigation').getByRole('link', { name: 'Pantry', exact: true }).click(); await pg.waitForURL('**/pantry'); await pg.waitForTimeout(1200); } await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete'); await pg.locator('.fr-card').click(); await pg.waitForURL('**/compete/friends'); await pg.getByTestId('h2h-uiu').click(); await pg.getByTestId('uiu-card').waitFor(); };
   await toFriends(page, true);
   check('Use-It-Up Week card sits on the Cook Off screen with Start Challenge and Join with Code', (await page.getByTestId('uiu-start').count()) === 1 && (await page.getByTestId('uiu-join').count()) === 1);
-  const cardY = (await page.getByTestId('uiu-card').boundingBox()).y, coY = (await page.locator('.co-card').boundingBox()).y;
-  check('the card is below the Cook Off friend-code entry', cardY > coY);
+  check('Use-It-Up Week sits beside Cook Off in one head-to-head switch', (await page.getByTestId('h2h-cookoff').count()) === 1 && (await page.getByTestId('h2h-uiu').count()) === 1);
   await shot('10-use-it-up-card');
   await page.getByTestId('uiu-start').click();
   check('Start offers both modes', (await page.getByTestId('uiu-mode-same').count()) === 1 && (await page.getByTestId('uiu-mode-different').count()) === 1);
@@ -265,7 +264,7 @@ await step('use-it-up week', async () => {
   await shot('10d-use-it-up-week');
   // each player cooks something and adds it
   await E('uiu-meal?who=me&t=Spinach omelette'); await E('uiu-meal?who=friend&t=Yogurt bowl');
-  for (const pg of [page, fp2]) { await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete'); await pg.locator('.fr-card').click(); await pg.waitForURL('**/compete/friends'); await pg.locator('.uiu-resume').first().click(); await pg.getByTestId('uiu-submit').waitFor(); }
+  for (const pg of [page, fp2]) { await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete'); await pg.locator('.fr-card').click(); await pg.waitForURL('**/compete/friends'); await pg.getByTestId('h2h-uiu').click(); await pg.locator('.uiu-resume').first().click(); await pg.getByTestId('uiu-submit').waitFor(); }
   await page.getByTestId('uiu-meal').selectOption({ index: 1 }); await page.locator('[data-testid=uiu-use]', { hasText: 'milk' }).click(); await page.locator('[data-testid=uiu-use]', { hasText: 'spinach' }).click();
   await page.getByTestId('uiu-send').click();
   await page.waitForFunction(() => /4 pts/.test(document.querySelector('[data-testid=uiu-score]')?.innerText || ''), null, { timeout: 8000 });
@@ -651,7 +650,7 @@ await step('buy coins with Apple Pay (RevenueCat)', async () => {
   check('signed-out checkout is refused', (await fetch(`${BASE}/api/coins/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"pack":"coins-1000"}' })).status === 401);
 });
 await step('me settings', async () => {
-  await nav('Me'); await page.getByText('Settings').waitFor();
+  await nav('Me'); await page.getByTestId('hud-settings').waitFor();
   check('autosave is not shown', (await page.getByText('Autosave').count()) === 0);
   check('day counter starts at Day 1', (await page.locator('.dayno').innerText()) === 'Day 1');
   await openSettings();
@@ -949,7 +948,7 @@ await step('friends and the plate feed', async () => {
   const myCode = await page.locator('.fr-code').innerText();
   check('Friends shows your 6-letter code', /^[A-HJ-NP-Z2-9]{6}$/.test(myCode), myCode);
   check('no Share button: tap the code to copy it; no text in the add box', (await page.getByRole('button', { name: /^Share$/ }).count()) === 0 && (await page.locator('button.fr-copy').count()) === 1 && !(await page.locator('#fr-code').getAttribute('placeholder')));
-  check('"Add a friend to see what they cook." sits under Plates; Cook Off has the new line', (await page.getByText('Add a friend to see what they cook.').count()) === 1 && (await page.getByText('Yours stay private').count()) === 0 && (await page.getByText('The clock is ticking. The competition is heating up. And one winning dish.').count()) === 1);
+  check('Cook Off has the short line, and the old long helper texts are gone', (await page.getByText('Add a friend to see what they cook.').count()) === 0 && (await page.getByText('Yours stay private').count()) === 0 && (await page.getByText('One dish, one clock, one winner.').count()) === 1);
   const ctx6 = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 }); const fp = await ctx6.newPage(); await fp.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
   await fp.goto(`${BASE}/login`); await fp.getByRole('radio', { name: 'Accept' }).click(); await fp.getByRole('button', { name: 'Start playing' }).click(); await fp.waitForURL('**/cook');
   await fp.waitForTimeout(1200); await fp.mouse.click(5, 400);
@@ -1123,8 +1122,10 @@ await step('kitchen layout', async () => {
   check('My kitchens lists both; one is showing', (await page.locator('.kd-mine').count()) === 2 && (await page.locator('.kd-mine .chip.have').count()) === 1);
   await page.locator('.kd-mine', { hasText: 'My kitchen' }).locator('.kd-mine-main').click();
   await page.locator('.title-link', { hasText: 'Pantry' }).click(); await page.waitForURL(/\/pantry$/);
+  await page.getByRole('button', { name: 'Proteins', exact: true }).click();
   await page.locator('.kfloat .kbox').first().waitFor();
-  check('Pantry: your kitchen floats between the categories and the list', (await page.locator('.kfloat .kbox').count()) === 10);
+  check('Pantry: pick a category and your kitchen floats between the categories and the list', (await page.locator('.kfloat .kbox').count()) === 10);
+  await page.getByRole('button', { name: 'All', exact: true }).click();
   const todo = Number((await page.locator('.kf-go').innerText()).match(/\d+/)[0]);
   await page.locator('.kf-go').click(); await page.waitForURL('**/pantry/kitchen');
   await page.locator('.pa-box').first().waitFor();

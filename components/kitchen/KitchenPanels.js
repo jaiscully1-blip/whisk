@@ -63,7 +63,7 @@ export function KitchenFloat({ items, filter }) {
   const away = cat ? todo.filter((i) => i.category === cat).length : todo.length;
   return (
     <section className="kfloat" aria-label={cat ? `${cat} in your kitchen` : 'Your kitchen'}>
-      <Kitchen3D mode="mini" float place={place.key} pieces={pieces} open={open} spot={spot} height={230} scale={0.74} onTap={() => router.push('/pantry/kitchen')} />
+      {cat && <Kitchen3D mode="mini" float place={place.key} pieces={pieces} open={open} spot={spot} height={230} scale={0.74} onTap={() => router.push('/pantry/kitchen')} />}
       <div className="kf-bar">
         {cat ? <span className="chip kf-chip"><Sticker name={cat} category={cat} size={20} />{count ? `${count} in the kitchen` : 'none put away'}</span> : <span className="chip kf-chip">{shown.name}</span>}
         {away > 0

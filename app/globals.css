@@ -1310,3 +1310,25 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .gtc-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 15px; }
 .gtc-row.me { font-weight: 800; }
 .gtc-rank { width: 18px; text-align: center; font-weight: 800; color: var(--muted); }
+
+/* ===== clean-up: tighter banners, shorter cards, fewer big blocks ===== */
+.page-title { margin: 8px 0 10px; padding: 10px 16px; border-radius: 18px; box-shadow: 0 4px 0 var(--tab-d);
+  background: radial-gradient(circle at 94% 20%, rgba(255, 255, 255, .2) 0 22px, transparent 23px), var(--tab); }
+.page-title h1 { font-size: 26px; }
+.rcard-art { height: 176px; }
+.rcard-body { margin-top: 124px; }
+.globe-svg { max-width: 300px; }
+.catrow { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px; }
+.catrow::-webkit-scrollbar { display: none; }
+.catrow .chip { flex: none; white-space: nowrap; }
+.scanrow { gap: 8px; }
+.scanrow .card { padding: 10px 12px; gap: 8px; font-size: 15px; }
+.backup-nudge { padding: 8px 12px; gap: 8px; }
+.backup-nudge .desc { display: none; }
+.seg { display: flex; gap: 4px; padding: 4px; border-radius: 99px; background: var(--track); }
+.seg button { flex: 1; border: 0; border-radius: 99px; padding: 8px 10px; background: transparent; color: var(--muted); font: inherit; font-weight: 800; min-height: 40px; white-space: nowrap; }
+.seg button.on { background: var(--card); color: var(--fg); box-shadow: 0 2px 0 var(--tile-edge); }
+
+.saved-card.rcard .rcard-art { height: 116px; }
+.saved-card.rcard .rcard-body { margin-top: 70px; }
+.cook-ask .btn { padding-inline: 10px; font-size: 15px; white-space: nowrap; }

@@ -15,8 +15,8 @@ export default function FriendsCard() {
     <Link href="/compete/friends" prefetch className="card fr-card" data-tip="friends">
       <span className="fr-ico" aria-hidden="true"><Icon name="heart" size={26} /></span>
       <span style={{ flex: 1, minWidth: 0 }}>
-        <b>Friends’ plates</b>
-        <span className="desc">{asks ? `${asks} friend request${asks === 1 ? '' : 's'}` : f?.friends?.length ? `${f.friends.length} friend${f.friends.length === 1 ? '' : 's'} · Cook Off · plates` : 'Add friends and Cook Off'}</span>
+        <b>Friends</b>
+        <span className="desc">{asks ? `${asks} friend request${asks === 1 ? '' : 's'}` : f?.friends?.length ? `${f.friends.length} friend${f.friends.length === 1 ? '' : 's'} · Cook Off · plates` : 'Add friends to play'}</span>
       </span>
       {asks > 0 && <span className="fr-dot" aria-hidden="true">{asks}</span>}
       <Icon name="chevron" />

@@ -28,6 +28,7 @@ export default function Friends() {
   const [menu, setMenu] = useState(null);       // a post whose ⋯ menu is open
   const [reporting, setReporting] = useState(null);
   const [more, setMore] = useState(true);
+  const [h2h, setH2h] = useState('cookoff');   // Cook Off and Use-It-Up Week share one spot: both are "start or join a game with a code"
 
   const sign = useCallback(async (posts) => {
     const need = posts.map((p) => p.photo).filter((p) => p && !urls[p]);
@@ -106,8 +107,11 @@ export default function Friends() {
       )}
 
       <GuessCook />
-      <CookOffCard />
-      <UseItUpCard />
+      <div className="seg" role="tablist" aria-label="Head to head">
+        <button type="button" role="tab" aria-selected={h2h === 'cookoff'} className={h2h === 'cookoff' ? 'on' : ''} onClick={() => setH2h('cookoff')} data-testid="h2h-cookoff">Cook Off</button>
+        <button type="button" role="tab" aria-selected={h2h === 'uiu'} className={h2h === 'uiu' ? 'on' : ''} onClick={() => setH2h('uiu')} data-testid="h2h-uiu">Use-It-Up Week</button>
+      </div>
+      {h2h === 'cookoff' ? <CookOffCard /> : <UseItUpCard />}
 
       <section className="card stack" style={{ gap: 10 }} aria-label="Add a friend">
         <div><span className="eyebrow">Your friend code</span>
@@ -126,7 +130,6 @@ export default function Friends() {
       </section>
 
       <h2 style={{ fontSize: 22, marginTop: 4 }}>Plates</h2>
-      <span className="desc" style={{ marginTop: -8 }}>Add a friend to see what they cook.</span>
 
       {feed === null ? <p className="muted">Loading plates…</p> : feed.length === 0 ? (
         <div className="empty"><b>No plates yet</b>{f?.friends?.length ? 'When your friends share a plate, it shows up here.' : ''}</div>

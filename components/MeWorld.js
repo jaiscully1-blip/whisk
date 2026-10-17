@@ -172,7 +172,6 @@ export function KitchenShop({ world, setWorld, onGetCoins }) {
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
         <h2 style={{ fontSize: 22, margin: 0 }}>Kitchen shop</h2>
         <span className="row" data-tour="coins" style={{ gap: 6, flexWrap: 'nowrap' }}>
-          <span className="row" style={{ gap: 4, fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 18 }}><Coin size={20} />{fmt(profile?.coins)}</span>
           <button className="btn sm" onClick={onGetCoins} style={{ background: 'var(--gold)', color: '#23301F', boxShadow: '0 3px 0 #B8862A' }}><Coin size={16} />Get coins</button>
         </span>
       </div>

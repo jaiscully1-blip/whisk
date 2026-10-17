@@ -167,7 +167,7 @@ export default function Pantry() {
 
   return (
     <div className="stack">
-      <div className="page-title"><h1>{tab === 'pantry' ? 'Pantry' : tab === 'list' ? 'Shopping list' : 'Kitchen'}</h1></div>
+      <div className="page-title"><h1>Pantry</h1></div>
       <div className="row tabrow" role="tablist">
         <button className={`btn sm ${tab === 'pantry' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'pantry'} onClick={() => setTab('pantry')}>Pantry {items ? `(${items.length})` : ''}</button>
         <button className={`btn sm ${tab === 'list' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'list'} onClick={() => setTab('list')}>Shopping list {list ? `(${list.length})` : ''}</button>
@@ -176,7 +176,7 @@ export default function Pantry() {
 
       {tab === 'kitchen' ? <KitchenTab items={items} /> : tab === 'pantry' ? (
         <>
-          <div className="grid2">
+          <div className="grid2 scanrow">
             <button data-tour="scan" data-tip="receipt" className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('receipt')}><Icon name="receipt" size={22} />Scan receipt</button>
             <button className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} data-tip="barcode" onClick={() => setScan('barcode')}><Icon name="barcode" size={22} />Scan barcode</button>
           </div>
@@ -195,10 +195,9 @@ export default function Pantry() {
               <div style={{ minWidth: 0 }}><label className="lbl" htmlFor="p-exp">Expires</label><div className="date-wrap"><input id="p-exp" className={`input ${form.expires_on ? '' : 'empty'}`} type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} />{!form.expires_on && <span className="date-hint" aria-hidden="true">Pick a date</span>}</div>{form.expires_on && <button type="button" className="date-reset" onClick={() => setForm({ ...form, expires_on: '' })} aria-label="Reset the expiry date">Reset</button>}</div>
             </div>
             <button data-tour="add" data-tip="add" className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
-            <span className="desc">Frozen food gets a defrost reminder.</span>
           </form>
 
-          <div className="row">
+          <div className="row catrow">
             {['All', ...CATEGORIES].map((c) => <button key={c} className={`chip`} style={{ border: 0, background: filter === c ? 'var(--fg)' : 'var(--track)', color: filter === c ? 'var(--bg)' : 'var(--fg)' }} onClick={() => setFilter(c)}>{c}</button>)}
           </div>
           <KitchenFloat items={items} filter={filter} />

@@ -305,17 +305,25 @@ await step('home', async () => {
   await page.getByRole('heading', { name: 'Discover a Dish' }).waitFor();
   check('home shows Discover a Dish', true);
   // time chips + the Use it up switch (replaced the price tags and difficulty knob)
-  check('time chips (15 min, 30 min, 1 hr+) and the Use it up switch; no price tags or knob', (await page.locator('.df-time').count()) === 3 && (await page.getByTestId('use-it-up-toggle').count()) === 1 && (await page.locator('.df-tag, .df-knob, .chip.price, .chip.heat').count()) === 0);
+  check('one line: a time slider with a clock and the Use it up switch; no price tags or knob', (await page.getByTestId('time-slider').count()) === 1 && (await page.getByTestId('use-it-up-toggle').count()) === 1 && (await page.locator('.df-tag, .df-knob, .chip.price').count()) === 0);
+  const ty = async (sel) => (await page.locator(sel).boundingBox()).y;
+  check('time and Use it up sit on the same line', Math.abs((await ty('.df-time')) - (await ty('[data-testid=use-it-up-toggle]'))) < 4);
+  check('shuffle is not inside the title box', (await page.locator('.page-title [data-testid=shuffle], .page-title .title-link').count()) === 0);
   await page.locator('.rcard').first().waitFor();
-  const mins = async () => (await page.locator('.rcard .src').allInnerTexts()).map((t) => Number((t.match(/(\d+) min/) || [])[1]));
-  await page.locator('.df-time', { hasText: '15 min' }).click(); await page.waitForTimeout(300);
+  check('a floating shuffle button is there', await page.getByTestId('shuffle').isVisible());
+  const mins = async () => (await page.locator('.rcard .src').allTextContents()).map((t) => Number((t.match(/(\d+) min/) || [])[1]));
+  const slide = async (i) => { await page.getByTestId('time-slider').evaluate((el, v) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); }, String(i)); await page.waitForTimeout(300); };
+  await slide(0);
   let ms = await mins();
-  check('15 min shows only dishes of 15 minutes or less', ms.length > 0 && ms.every((m) => m <= 15), ms.join(','));
-  await page.locator('.df-time', { hasText: '1 hr+' }).click(); await page.waitForTimeout(300);
+  check('slide to 15 min: only dishes of 15 minutes or less', (await page.getByTestId('time-val').innerText()) === '15 min' && ms.length > 0 && ms.every((m) => m <= 15), ms.join(','));
+  await slide(3);
   ms = await mins();
-  check('1 hr+ shows only dishes of an hour or more', ms.length > 0 && ms.every((m) => m >= 60), ms.join(','));
-  await page.locator('.df-time', { hasText: '1 hr+' }).click(); await page.waitForTimeout(300);
-  check('tapping the chip again clears it', (await page.locator('.df-time.on').count()) === 0);
+  check('slide to 1 hr: nothing longer than an hour', (await page.getByTestId('time-val').innerText()) === '1 hr' && ms.length > 0 && ms.every((m) => m <= 60), ms.join(','));
+  await slide(5);
+  check('slide all the way: any time', (await page.getByTestId('time-val').innerText()) === 'Any' && (await page.locator('.df-time.on').count()) === 0);
+  const hb = await page.locator('header .hud-in').boundingBox(), gb = await page.getByTestId('hud-settings').boundingBox();
+  check('top bar: streak, coins and settings fit inside the bar', gb.x + gb.width <= hb.x + hb.width + 1);
+  check('the app cannot be pinch-zoomed', /maximum-scale=1/.test(await page.locator('meta[name=viewport]').getAttribute('content')));
   const sw = page.getByTestId('use-it-up-toggle');
   await sw.click(); await page.waitForTimeout(300);
   const soonOnly = (await page.locator('.rcard').count()) === 0 ? (await page.getByText('Nothing to use up').count()) === 1 : (await page.locator('.rcard').count()) === (await page.locator('.rcard .chip.soon').count());
@@ -330,7 +338,7 @@ await step('home', async () => {
   check('almost-ready recipes link to their source site', /^https:\/\//.test(await page.locator('.src a').first().getAttribute('href')));
   check('home: just a "Full recipe" link (no "From"), no recipe count, no "items away" on the cards', (await page.locator('.src', { hasText: /^From/ }).count()) === 0 && (await page.locator('.src a', { hasText: 'Full recipe' }).count()) > 0 && !/\d+ recipes?$/.test(await page.locator('.page-title').first().innerText()) && (await page.locator('main .card .eyebrow', { hasText: /away/ }).count()) === 0);
   check('home no longer groups by "1 item away / 2 items away"', (await page.locator('.away-h', { hasText: /away/ }).count()) === 0 && (await page.getByText(/\d+ items? away/).count()) === 0);
-  const homeTitles = async () => page.locator('main .rcard h2').allInnerTexts();
+  const homeTitles = async () => page.locator('main .rcard h2').allTextContents();
   const t1 = (await homeTitles()).slice(0, 6).join('|');
   let differs = false; for (let i = 0; i < 4 && !differs; i++) { await nav('Pantry'); await nav('Home'); await page.locator('main .rcard h2').first().waitFor(); differs = (await homeTitles()).slice(0, 6).join('|') !== t1; }
   check('opening Home again brings a new random mix of recipes', differs);

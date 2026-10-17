@@ -7,7 +7,7 @@ export const metadata = {
   icons: { icon: '/icon.svg', apple: '/apple-touch-icon.png' },
   appleWebApp: { capable: true, title: 'Yoke', statusBarStyle: 'default' }
 };
-export const viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#F7F8F1' };
+export const viewport = { width: 'device-width', initialScale: 1, maximumScale: 1, userScalable: false, viewportFit: 'cover', themeColor: '#F7F8F1' };
 
 export default async function RootLayout({ children }) {
   // Reading headers makes every page render per request, which lets Next apply the CSP nonce.

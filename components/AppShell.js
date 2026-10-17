@@ -39,11 +39,29 @@ export function deviceLabel() {
   return `${os} · ${br}`;
 }
 
+// Top-bar coins: full number up to 9,999, then 12.5k / 1.2M so the bar never crowds.
+const short = (n) => { n = Number(n || 0); return n < 10000 ? fmt(n) : n < 1e6 ? `${(Math.floor(n / 100) / 10).toString()}k` : `${(Math.floor(n / 1e5) / 10).toString()}M`; };
+
 export default function AppShell({ initialProfile, initialLoadout, email, account = { anon: true, providers: [] }, children }) {
   const supabase = supabaseBrowser();
   const pathname = usePathname();
   const [pendingTab, setPendingTab] = useState(null);
   useEffect(() => { setPendingTab(null); }, [pathname]);
+  // No zooming the whole app: iOS Safari ignores user-scalable=no, so stop its pinch gestures and ctrl+wheel /
+  // ctrl +/- here (double-tap zoom is off in CSS). No touchmove listener, so scrolling stays smooth. Text size is in Settings.
+  useEffect(() => {
+    const stop = (e) => e.preventDefault();
+    const wheel = (e) => { if (e.ctrlKey) e.preventDefault(); };
+    const keys = (e) => { if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '0'].includes(e.key)) e.preventDefault(); };
+    document.addEventListener('gesturestart', stop, { passive: false });
+    document.addEventListener('gesturechange', stop, { passive: false });
+    window.addEventListener('wheel', wheel, { passive: false });
+    window.addEventListener('keydown', keys);
+    return () => {
+      document.removeEventListener('gesturestart', stop); document.removeEventListener('gesturechange', stop);
+      window.removeEventListener('wheel', wheel); window.removeEventListener('keydown', keys);
+    };
+  }, []);
   // keep Yoke's static files on the phone (see public/sw.js) so it opens fast on weak wifi or cell data
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -321,7 +339,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
             <div className={`pills ${helloOn ? 'away' : ''}`}>
               <RunningTimer />
               <span className="pill" data-tip="streak" title={profile?.vacation_since ? 'Vacation mode: your streak is paused' : 'Cooking streak'}>{profile?.vacation_since ? <Icon name="plane" size={16} /> : <Flame />}{profile?.streak_days || 0}d</span>
-              <Link href="/me#shop" prefetch className="pill" data-tip="coins" title="Coins" style={{ textDecoration: 'none' }}><Coin />{fmt(profile?.coins)}</Link>
+              <Link href="/me#shop" prefetch className="pill" data-tip="coins" title={`${fmt(profile?.coins)} coins`} style={{ textDecoration: 'none' }}><Coin />{short(profile?.coins)}</Link>
               <Link href="/me" prefetch className="pill gear" title={t('Settings')} aria-label={t('Settings')} data-testid="hud-settings" onClick={(e) => { if ((pathname || '').startsWith('/me')) { e.preventDefault(); window.dispatchEvent(new Event('yoke-settings')); } else { try { sessionStorage.setItem('yoke-settings', '1'); } catch {} } }}><Icon name="gear" size={18} /></Link>
             </div>
           </div>

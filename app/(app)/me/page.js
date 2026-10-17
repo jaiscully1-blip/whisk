@@ -16,6 +16,7 @@ import NeverShowSheet from '@/components/NeverShowSheet';
 import BackupSheet from '@/components/BackupSheet';
 import { makeBackup, parseBackup, restoreBackup } from '@/lib/backupFile';
 import NotifySettings from '@/components/NotifySettings';
+import CalorieGoal from '@/components/CalorieGoal';
 import ShareSwitch from '@/components/ShareSwitch';
 import DeleteDataSheet from '@/components/DeleteDataSheet';
 import RecipeSheet from '@/components/RecipeSheet';
@@ -182,6 +183,7 @@ export default function Me() {
         <button className="row setbtn" onClick={() => setNever(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
           <Icon name="shield" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Never show me')}</span><span className="desc">{(profile?.never_show || []).length ? `${profile.never_show.length} hidden` : 'Allergies, dislikes'}</span><Icon name="chevron" />
         </button>
+        <CalorieGoal />
         <NotifySettings />
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
           <Icon name="plane" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Vacation mode')}</span>

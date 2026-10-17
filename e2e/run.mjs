@@ -636,6 +636,19 @@ await step('cooking history', async () => {
   await shot('09-history');
   await page.getByRole('link', { name: 'Me', exact: true }).first().click(); await page.locator('.pcard').waitFor();
 });
+await step('calorie goal', async () => {
+  await openSettings();
+  await page.getByTestId('cal-on').waitFor({ timeout: 8000 });
+  await page.getByTestId('cal-on').click();
+  await page.getByTestId('cal-goal').waitFor();
+  check('setting a goal starts at 2000', (await page.getByTestId('cal-goal').innerText()) === '2000');
+  await page.getByRole('button', { name: 'Raise goal' }).click();
+  await page.waitForFunction(() => document.querySelector('[data-testid=cal-goal]')?.textContent === '2100');
+  check('the goal moves by 100', true);
+  check('the ring shows today’s total', /^\d+$/.test(await page.getByTestId('cal-today').textContent()));
+  check('the notification lead-time picker is there', (await page.locator('#n-days').count()) >= 0);
+  await shot('09b-calories');
+});
 await step('languages', async () => {
   await nav('Me');
   await page.getByTestId('hud-settings').click(); await page.getByTestId('settings-page').waitFor();

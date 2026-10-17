@@ -1463,6 +1463,30 @@ const dueE = (await as(null, () => db.query(`select public.push_due('cron-secret
 check('with 3 days ahead the message names them and when', dueE.length === 1 && dueE[0].title === 'Yogurt and Spinach go off within 3 days', JSON.stringify(dueE));
 await expectFail('players cannot set someone else’s lead time', null, `select public.set_expiry_days(2)`);
 }
+// ================= 0040: daily calorie goal =================
+try { const f = fs.readFileSync('./supabase/migrations/0040_calorie_goal.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0040 runs (twice)', true); }
+catch (e) { check('0040 runs (twice)', false, e.message); }
+{
+const K1 = '5f000000-0000-0000-0000-00000000005f', K2 = '5f000000-0000-0000-0000-0000000000f2';
+await db.exec(`insert into auth.users (id, email) values ('${K1}', null), ('${K2}', null)`);
+await db.exec(`update profiles set time_zone = 'UTC' where id in ('${K1}','${K2}')`);
+await expectFail('claiming without a goal fails', K1, `select public.claim_calorie_reward()`);
+await expectFail('goal must be 1200 to 4000', K1, `select public.set_calorie_goal(500)`);
+await as(K1, () => db.query(`select public.set_calorie_goal(2000)`));
+await db.exec(`insert into meals (user_id, title, photo_path, calories) values ('${K1}', 'Soup', '${K1}/a.jpg', 600)`);
+await expectFail('too low a day cannot claim', K1, `select public.claim_calorie_reward()`);
+await db.exec(`insert into meals (user_id, title, photo_path, calories) values ('${K1}', 'Pasta', '${K1}/b.jpg', 1200)`);
+const g1 = (await as(K1, () => db.query(`select public.get_calories() r`))).rows[0].r;
+check('today adds up and the week has 7 days', g1.today === 1800 && g1.goal === 2000 && g1.claimed === false && g1.days.length === 7, JSON.stringify(g1));
+const c0 = (await db.query(`select coins from profiles where id = '${K1}'`)).rows[0].coins;
+await as(K1, () => db.query(`select public.claim_calorie_reward()`));
+check('claiming gives 300 coins', (await db.query(`select coins from profiles where id = '${K1}'`)).rows[0].coins === c0 + 300);
+await expectFail('only once a day', K1, `select public.claim_calorie_reward()`);
+await as(K2, () => db.query(`select public.set_calorie_goal(1500)`));
+await db.exec(`insert into meals (user_id, title, photo_path, calories) values ('${K2}', 'Feast', '${K2}/a.jpg', 2400)`);
+await expectFail('going far over does not claim', K2, `select public.claim_calorie_reward()`);
+await expectFail('claims table is closed to players', K1, `select * from calorie_claims`);
+}
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_chat_bg', 'buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

@@ -36,6 +36,12 @@ export default function NotifySettings() {
       await setHour(profile?.notify_hour ?? 17, true);
     } catch { say('Couldn’t turn on notifications in this browser.'); } finally { setBusy(false); }
   }
+  async function setDays(d) {
+    const { error } = await supabase.rpc('set_expiry_days', { p_days: d });
+    if (error) { say('Couldn’t save that.'); return; }
+    setProfile((p) => ({ ...p, expiry_days: d }));
+    say(d === 0 ? 'Warning on the day it expires' : `Warning ${d} day${d === 1 ? '' : 's'} before`);
+  }
   async function setHour(h, first = false) {
     const { error } = await supabase.rpc('set_notify_hour', { p_hour: h });
     if (error) { say('Couldn’t save that.'); return; }
@@ -51,6 +57,14 @@ export default function NotifySettings() {
         <div className="row" style={{ width: '100%', flexWrap: 'nowrap', gap: 8, marginTop: 6 }}>
           <label htmlFor="n-hour" className="desc" style={{ flex: 1 }}>At most one a day, around</label>
           <select id="n-hour" className="input" style={{ width: 110, minHeight: 38 }} value={profile.notify_hour} onChange={(e) => setHour(Number(e.target.value))}>{HOURS.map(([h, l]) => <option key={h} value={h}>{l}</option>)}</select>
+        </div>
+      )}
+      {on && env === 'ok' && 'expiry_days' in (profile || {}) && (
+        <div className="row" style={{ width: '100%', flexWrap: 'nowrap', gap: 8 }}>
+          <label htmlFor="n-days" className="desc" style={{ flex: 1 }}>Warn me about food going off</label>
+          <select id="n-days" data-testid="expiry-days" className="input" style={{ width: 150, minHeight: 38 }} value={profile.expiry_days ?? 1} onChange={(e) => setDays(Number(e.target.value))}>
+            <option value={0}>The day it expires</option><option value={1}>1 day before</option><option value={2}>2 days before</option><option value={3}>3 days before</option>
+          </select>
         </div>
       )}
       <span className="desc" style={{ width: '100%' }}>

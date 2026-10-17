@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
+import { postGame } from '@/lib/chatGame';
 
 // Friends → Cook Off: start a game (pick the time) or join a friend's with their code.
 const TIMES = [15, 30, 45, 60];
-export default function CookOffCard() {
+export default function CookOffCard({ groupId = null }) {
   const { supabase, say } = useWhisk();
   const router = useRouter();
   const [mins, setMins] = useState(30);
@@ -17,7 +18,8 @@ export default function CookOffCard() {
   async function make() {
     setBusy('make'); const { data, error } = await supabase.rpc('create_cookoff', { p_minutes: mins }); setBusy('');
     if (error) return fail(error);
-    fetch('/api/push/cookoff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: data.code }) }).catch(() => {});   // tell friends who turned notifications on
+    if (groupId) { const r = await postGame(supabase, groupId, 'cookoff', data.code); if (r.error) say('Your game is ready, but it didn’t post to the chat.'); }   // the card in the chat has a Join button
+    else fetch('/api/push/cookoff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: data.code }) }).catch(() => {});   // tell friends who turned notifications on
     router.push(`/compete/cookoff?code=${data.code}`);
   }
   async function join(e) {

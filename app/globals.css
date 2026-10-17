@@ -1365,3 +1365,13 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .chat-big { z-index: 90; align-items: center; background: rgba(0, 0, 0, .92); }
 .chat-big img { max-width: 100%; max-height: 100dvh; object-fit: contain; }
 .chat-full .scrim { z-index: 80; }
+.chat-oi.gm { background: var(--accent); color: var(--btn-ink, #1d2a12); }
+.chat-plus { max-height: 62dvh; overflow-y: auto; }
+.chat-bubble.game { cursor: default; gap: 8px; min-width: 220px; padding: 12px 14px; align-items: start; justify-items: start; }
+.chat-game-head { display: flex; align-items: center; gap: 10px; width: 100%; }
+.chat-game-head b { flex: 1; font-family: var(--f-display); font-size: 18px; }
+.chat-game-head .chat-oi { width: 32px; height: 32px; }
+.chat-more { border: 0; background: none; color: inherit; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; opacity: .7; }
+.chat-game-sub { font-size: 14px; opacity: .8; }
+.chat-row.mine .chat-bubble.game { background: var(--card); color: var(--fg); box-shadow: 0 0 0 2px var(--accent) inset; }
+.game-sheet { max-height: 90dvh; }

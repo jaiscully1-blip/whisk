@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useWhisk } from './AppShell';
 import Icon, { Coin, Flame } from './Icon';
+import { postGame } from '@/lib/chatGame';
 
 // Guess the Cook: a friend's shared plate with the name hidden. Guess who cooked it. Five a day, coins for right guesses.
 // The server picks the plate, checks the guess and pays; this card only asks and shows.
@@ -9,7 +10,7 @@ const COLORS = ['#FF6B57', '#8B5CF6', '#1CB0F6', '#58B030', '#FF9600', '#FF4D7E'
 const color = (s) => COLORS[[...String(s)].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
 const errText = (e) => String(e?.message || 'Something went wrong').replace(/^\w/, (x) => x.toUpperCase());
 
-export default function GuessCook() {
+export default function GuessCook({ groupId = null }) {
   const { supabase, say, refreshProfile } = useWhisk();
   const [round, setRound] = useState(null);
   const [board, setBoard] = useState(null);
@@ -41,6 +42,10 @@ export default function GuessCook() {
     try { navigator.vibrate?.(data.correct ? [20, 40, 20] : 40); } catch {}
     setReveal({ ...data, guessed: o.name, title: round.plate.title });
     if (data.coins > 0) refreshProfile();
+  }
+  async function share() {
+    setBusy(true); const r = await postGame(supabase, groupId, 'guess'); setBusy(false);
+    say(r.error ? 'Couldn’t post that.' : 'Score posted to the chat');
   }
   async function next() { setBusy(true); await load(); setReveal(null); setBusy(false); }
 
@@ -92,6 +97,7 @@ export default function GuessCook() {
         <div className="gtc-reveal done" data-testid="gtc-done">
           <b>{round.perfect ? 'Five out of five. You know your friends.' : `${round.correct} out of 5 today.`}</b>
           <span className="desc">New plates tomorrow.</span>
+          {groupId && <button type="button" className="btn ghost wide" onClick={share} disabled={busy} data-testid="gtc-share">Post my score to the chat</button>}
         </div>
       )}
 

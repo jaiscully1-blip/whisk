@@ -1,14 +1,56 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
 import { isPhoto, uploadTo } from '@/lib/photo';
 import { color, stamp, EMOJI } from '@/lib/social';
+import { postGame } from '@/lib/chatGame';
+import CookOffCard from './CookOffCard';
+import UseItUpCard, { uiuError } from './UseItUpCard';
+import GuessCook from './GuessCook';
 
 // One group chat, full screen, like a text thread: bubbles, photos, emoji. Refreshes every few seconds while it is open
 // (no live connection, so it costs nothing to run). Report, mute a person, mute the group's notifications.
 const REASONS = [['spam', 'It’s spam'], ['rude', 'It’s rude or upsetting'], ['unsafe', 'It’s unsafe'], ['other', 'Something else']];
 const GAP = 30 * 60 * 1000;
+
+const GAMES = { cookoff: ['Cook Off', 'cook'], uiu: ['Use-It-Up Week', 'timer'], guess: ['Guess the Cook', 'dart'] };
+
+// A game in the chat: who started it, what state it is in, and a button to join, open or play.
+function GameCard({ m, onMore, onPlay }) {
+  const { supabase, say } = useWhisk();
+  const router = useRouter();
+  const [title, icon] = GAMES[m.kind];
+  const st = m.game?.status;
+  let sub = '', act = null;
+  if (m.kind === 'cookoff') {
+    sub = `${m.meta.minutes} min${st === 'lobby' ? ` · ${m.game.n} joined` : ''}`;
+    act = st === 'lobby' ? (m.mine ? 'Open' : 'Join') : m.mine && ['cooking', 'voting', 'done'].includes(st) ? 'Open' : null;
+  } else if (m.kind === 'uiu') {
+    sub = m.meta.mode === 'same' ? 'Same ingredients' : 'Your own lists';
+    act = st === 'open' ? (m.mine ? 'Open' : 'Join') : m.mine && ['live', 'done'].includes(st) ? 'Open' : null;
+  } else sub = m.meta.played ? `${m.meta.right} of ${m.meta.played} right today` : 'Who cooked the plate?';
+  const note = m.kind === 'guess' ? '' : act ? '' : st === 'done' ? 'Finished' : st === 'cancelled' ? 'Closed' : 'Already started';
+  async function go() {
+    if (m.kind === 'guess') { onPlay(); return; }
+    const code = m.meta.code;
+    if (!m.mine) {
+      const { error } = m.kind === 'cookoff' ? await supabase.rpc('join_cookoff', { p_code: code }) : await supabase.rpc('join_uiu', { p_code: code, p_picks: [] });
+      if (error) { say(m.kind === 'uiu' ? uiuError(error) : String(error.message || 'Couldn’t join.').replace(/^\w/, (c) => c.toUpperCase())); return; }
+    }
+    router.push(m.kind === 'cookoff' ? `/compete/cookoff?code=${code}` : `/compete/useitup?code=${code}`);
+  }
+  return (
+    <div className="chat-bubble game" data-testid={`chat-game-${m.kind}`}>
+      <div className="chat-game-head"><span className="chat-oi gm"><Icon name={icon} size={18} /></span><b>{title}</b>
+        <button type="button" className="chat-more" onClick={onMore} aria-label="Message options"><Icon name="more" size={18} stroke={4} /></button></div>
+      <span className="chat-game-sub">{sub}</span>
+      {m.kind === 'guess' ? <button type="button" className="btn sm" onClick={go} data-testid="chat-game-go">Play</button>
+        : act ? <button type="button" className="btn sm" onClick={go} data-testid="chat-game-go">{act}</button> : <span className="chat-game-sub">{note}</span>}
+    </div>
+  );
+}
 
 export default function ChatView({ id, onClose, onChanged }) {
   const { supabase, say, profile } = useWhisk();
@@ -21,6 +63,7 @@ export default function ChatView({ id, onClose, onChanged }) {
   const [people, setPeople] = useState(false);
   const [plus, setPlus] = useState(false);
   const [emoji, setEmoji] = useState(false);
+  const [game, setGame] = useState(null);         // a game sheet: 'cookoff' | 'uiu' | 'guess'
   const [viewer, setViewer] = useState(null);       // a photo opened big
   const [friends, setFriends] = useState(null);
   const listRef = useRef(null);
@@ -52,6 +95,9 @@ export default function ChatView({ id, onClose, onChanged }) {
     return () => clearInterval(t);
   }, [supabase, id, d, load]);
 
+  // game cards change as people join and play: look again every 20 seconds
+  const hasGame = (d?.messages || []).some((m) => m.game);
+  useEffect(() => { if (!hasGame) return undefined; const t = setInterval(() => { if (!document.hidden) load(); }, 20000); return () => clearInterval(t); }, [hasGame, load]);
   useEffect(() => { const el = listRef.current; if (el && stick.current) el.scrollTop = el.scrollHeight; }, [d?.messages?.length]);
   const onScroll = () => { const el = listRef.current; if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; };
 
@@ -133,12 +179,12 @@ export default function ChatView({ id, onClose, onChanged }) {
             <div key={m.id} className={`chat-row ${m.mine ? 'mine' : ''} ${first ? 'first' : ''}`}>
               {gap && <div className="chat-stamp">{stamp(m.at)}</div>}
               {!m.mine && first && <span className="chat-name" style={{ color: color(m.name) }}>{m.name}</span>}
-              <button type="button" className={`chat-bubble ${m.kind}`} onClick={() => setMenu(m)} aria-label={`${m.mine ? 'Your' : `${m.name}’s`} message. Tap for options`}>
+              {m.game !== undefined && GAMES[m.kind] ? <GameCard m={m} onMore={() => setMenu(m)} onPlay={() => setGame('guess')} /> : <button type="button" className={`chat-bubble ${m.kind}`} onClick={() => setMenu(m)} aria-label={`${m.mine ? 'Your' : `${m.name}’s`} message. Tap for options`}>
                 {m.kind === 'photo' && (urls[m.photo]
                   ? <img src={urls[m.photo]} alt="Photo in the chat" loading="lazy" decoding="async" onClick={(e) => { e.stopPropagation(); setViewer(urls[m.photo]); }} />
                   : <span className="chat-ph">Photo…</span>)}
                 {m.body && <span className="chat-text">{m.body}</span>}
-              </button>
+              </button>}
             </div>
           );
         })}
@@ -150,6 +196,9 @@ export default function ChatView({ id, onClose, onChanged }) {
             <label className="chat-opt" role="menuitem"><span className="chat-oi cam"><Icon name="camera" size={22} /></span>Camera<input type="file" accept="image/*" capture="environment" hidden onChange={(e) => { sendPhoto(e.target.files?.[0]); e.target.value = ''; }} /></label>
             <label className="chat-opt" role="menuitem"><span className="chat-oi pho"><Icon name="photo" size={22} /></span>Photos<input type="file" accept="image/*" hidden data-testid="chat-photo" onChange={(e) => { sendPhoto(e.target.files?.[0]); e.target.value = ''; }} /></label>
             <button type="button" className="chat-opt" role="menuitem" onClick={() => { setPlus(false); setEmoji(true); }}><span className="chat-oi emo"><Icon name="smile" size={22} /></span>Emoji</button>
+            <button type="button" className="chat-opt" role="menuitem" onClick={() => { setPlus(false); setGame('cookoff'); }} data-testid="plus-cookoff"><span className="chat-oi gm"><Icon name="cook" size={22} /></span>Cook Off</button>
+            <button type="button" className="chat-opt" role="menuitem" onClick={() => { setPlus(false); setGame('uiu'); }} data-testid="plus-uiu"><span className="chat-oi gm"><Icon name="timer" size={22} /></span>Use-It-Up Week</button>
+            <button type="button" className="chat-opt" role="menuitem" onClick={() => { setPlus(false); setGame('guess'); }} data-testid="plus-guess"><span className="chat-oi gm"><Icon name="dart" size={22} /></span>Guess the Cook</button>
           </div>
         )}
         {emoji && (
@@ -205,6 +254,19 @@ export default function ChatView({ id, onClose, onChanged }) {
             </>}
             <button className="btn ghost wide" style={{ color: 'var(--bad)' }} onClick={leave}>Leave group</button>
             <button className="btn wide" onClick={() => setPeople(false)}>Done</button>
+          </div>
+        </div>
+      )}
+      {game && (
+        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) { setGame(null); load(); } }}>
+          <div className="sheet stack game-sheet" role="dialog" aria-modal="true" aria-label={GAMES[game][0]} data-testid="chat-game-sheet">
+            <div className="row" style={{ justifyContent: 'flex-end' }}><button type="button" className="btn ghost sm" onClick={() => { setGame(null); load(); }} aria-label="Close"><Icon name="x" /></button></div>
+            {game === 'cookoff' && <CookOffCard groupId={id} />}
+            {game === 'uiu' && <UseItUpCard groupId={id} />}
+            {game === 'guess' && <>
+              <GuessCook groupId={id} />
+              <button type="button" className="btn ghost wide" data-testid="chat-guess-invite" onClick={async () => { const r = await postGame(supabase, id, 'guess'); say(r.error ? 'Couldn’t post that.' : 'Posted. Friends can play from the chat.'); setGame(null); load(); }}>Invite the chat to play</button>
+            </>}
           </div>
         </div>
       )}

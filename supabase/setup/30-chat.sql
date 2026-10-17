@@ -1,7 +1,8 @@
 -- 0037: Friends group chat. Safe to run more than once. Run after 0036.
 --  • A group is a named chat of friends (up to 25). Anyone can start one and add their own friends. Only the group's
 --    maker can remove people; anyone can leave.
---  • Messages are text or a photo (kind 'text' / 'photo'; game messages come in the next step via `meta`).
+--  • Messages are text, a photo, or a game card: a Cook Off or Use-It-Up invite (with Join), or Guess the Cook ('cookoff' / 'uiu' / 'guess').
+--    Game cards are made by send_chat_game, which checks the game is really yours; the card's details come from the database, not the phone.
 --  • Safety: report a message (it vanishes for you right away, and for everyone after 2 different reporters; admins can
 --    see reports), mute a person (their messages are hidden for you), mute a group's notifications.
 --  • Photos live in their own private bucket, 'chat-photos', and only the group's members can open them.
@@ -35,10 +36,10 @@ create table if not exists public.chat_messages (
   hidden_at timestamptz,
   pushed_at timestamptz,
   created_at timestamptz not null default now(),
-  constraint chat_messages_kind_ck check (kind in ('text', 'photo')),
+  constraint chat_messages_kind_ck check (kind in ('text', 'photo', 'cookoff', 'uiu', 'guess')),
   constraint chat_messages_body_ck check (body is null or char_length(body) <= 500),
   constraint chat_messages_photo_ck check (photo_path is null or char_length(photo_path) <= 200),
-  constraint chat_messages_shape_ck check ((kind = 'text' and body is not null and btrim(body) <> '') or (kind = 'photo' and photo_path is not null))
+  constraint chat_messages_shape_ck check ((kind = 'text' and body is not null and btrim(body) <> '') or (kind = 'photo' and photo_path is not null) or (kind in ('cookoff', 'uiu', 'guess') and meta is not null))
 );
 create index if not exists chat_messages_group_idx on public.chat_messages (group_id, created_at desc);
 create index if not exists chat_messages_photo_idx on public.chat_messages (photo_path) where photo_path is not null;
@@ -172,6 +173,46 @@ begin
   return jsonb_build_object('id', m.id, 'at', m.created_at);
 end $$;
 
+-- post a game card into a group. Cook Off / Use-It-Up: pass the code of a game you are hosting that is still open. Guess the Cook: no code; it shows today's score if you have played.
+create or replace function public.send_chat_game(p_group uuid, p_kind text, p_code text default null) returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare uid uuid := auth.uid(); meta jsonb; m chat_messages%rowtype; g cookoff_games%rowtype; u uiu_matches%rowtype; pl int; rt int;
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  if not _in_chat(p_group, uid) then raise exception 'not in that group'; end if;
+  if p_kind not in ('cookoff', 'uiu', 'guess') then raise exception 'unknown game'; end if;
+  if (select count(*) from chat_messages where sender = uid and kind in ('cookoff', 'uiu', 'guess') and created_at > now() - interval '1 hour') >= 10 then raise exception 'that is plenty of game invites for now'; end if;
+  if p_kind = 'cookoff' then
+    select * into g from cookoff_games where code = upper(btrim(coalesce(p_code, ''))) and host = uid and status = 'lobby' and created_at > now() - interval '6 hours';
+    if not found then raise exception 'start a Cook Off first'; end if;
+    meta := jsonb_build_object('code', g.code, 'minutes', g.minutes);
+  elsif p_kind = 'uiu' then
+    select * into u from uiu_matches where code = upper(btrim(coalesce(p_code, ''))) and host = uid and status = 'open' and created_at > now() - interval '48 hours';
+    if not found then raise exception 'start a Use-It-Up Week first'; end if;
+    meta := jsonb_build_object('code', u.code, 'mode', u.mode);
+  else
+    select count(*), count(*) filter (where correct) into pl, rt from cook_guesses where user_id = uid and day = _user_today(uid);
+    meta := case when pl > 0 then jsonb_build_object('played', pl, 'right', rt) else '{}'::jsonb end;
+  end if;
+  insert into chat_messages (group_id, sender, kind, meta) values (p_group, uid, p_kind, meta) returning * into m;
+  update chat_groups set last_at = m.created_at where id = p_group;
+  update chat_members set last_read_at = m.created_at where group_id = p_group and user_id = uid;
+  return jsonb_build_object('id', m.id, 'at', m.created_at);
+end $$;
+
+-- how a game card looks right now (so a finished game stops saying Join)
+create or replace function public._chat_game_state(p_kind text, p_meta jsonb) returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare st text; n int;
+begin
+  if p_kind = 'cookoff' then
+    select g.status, (select count(*) from cookoff_players p where p.game_id = g.id)::int into st, n from cookoff_games g where g.code = p_meta ->> 'code';
+    if st = 'lobby' and exists (select 1 from cookoff_games g where g.code = p_meta ->> 'code' and g.created_at < now() - interval '6 hours') then st := 'cancelled'; end if;
+  elsif p_kind = 'uiu' then
+    select m.status, case when m.guest is null then 1 else 2 end into st, n from uiu_matches m where m.code = p_meta ->> 'code';
+    if st = 'open' and exists (select 1 from uiu_matches m where m.code = p_meta ->> 'code' and m.created_at < now() - interval '48 hours') then st := 'cancelled'; end if;
+  else return null; end if;
+  return jsonb_build_object('status', coalesce(st, 'cancelled'), 'n', coalesce(n, 0));
+end $$;
+
 create or replace function public.delete_chat_message(p_msg uuid) returns void language plpgsql security definer set search_path = public, pg_temp as $$
 declare uid uuid := auth.uid();
 begin
@@ -201,7 +242,7 @@ begin
       'unread', (select count(*) from chat_messages m where m.group_id = g.id and m.sender <> uid and m.created_at > me.last_read_at and m.hidden_at is null
                    and not exists (select 1 from chat_mutes cm where cm.user_id = uid and cm.muted_id = m.sender)
                    and not exists (select 1 from chat_reports r where r.message_id = m.id and r.reporter = uid)),
-      'last', (select jsonb_build_object('kind', m.kind, 'body', left(coalesce(m.body, ''), 80), 'name', case when m.sender = uid then 'You' else _chat_name(m.sender) end, 'at', m.created_at)
+      'last', (select jsonb_build_object('kind', m.kind, 'body', left(coalesce(m.body, case m.kind when 'cookoff' then 'Cook Off' when 'uiu' then 'Use-It-Up Week' when 'guess' then 'Guess the Cook' end, ''), 80), 'name', case when m.sender = uid then 'You' else _chat_name(m.sender) end, 'at', m.created_at)
                  from chat_messages m where m.group_id = g.id and m.hidden_at is null
                    and (m.sender = uid or (not exists (select 1 from chat_mutes cm where cm.user_id = uid and cm.muted_id = m.sender)
                    and not exists (select 1 from chat_reports r where r.message_id = m.id and r.reporter = uid)))
@@ -217,13 +258,13 @@ begin
   if not _in_chat(p_group, uid) then raise exception 'not in that group'; end if;
   select * into g from chat_groups where id = p_group;
   if p_after is not null then
-    select coalesce(jsonb_agg(jsonb_build_object('id', id, 'mine', sender = uid, 'name', _chat_name(sender), 'code', _my_code(sender), 'kind', kind, 'body', body, 'photo', photo_path, 'meta', meta, 'at', created_at) order by created_at), '[]'::jsonb)
+    select coalesce(jsonb_agg(jsonb_build_object('id', id, 'mine', sender = uid, 'name', _chat_name(sender), 'code', _my_code(sender), 'kind', kind, 'body', body, 'photo', photo_path, 'meta', meta, 'game', _chat_game_state(kind, meta), 'at', created_at) order by created_at), '[]'::jsonb)
       into msgs from (select * from chat_messages m where m.group_id = p_group and m.hidden_at is null and m.created_at > p_after
         and (m.sender = uid or (not exists (select 1 from chat_mutes cm where cm.user_id = uid and cm.muted_id = m.sender)
           and not exists (select 1 from chat_reports r where r.message_id = m.id and r.reporter = uid)))
         order by m.created_at limit 100) z;
   else
-    select coalesce(jsonb_agg(jsonb_build_object('id', id, 'mine', sender = uid, 'name', _chat_name(sender), 'code', _my_code(sender), 'kind', kind, 'body', body, 'photo', photo_path, 'meta', meta, 'at', created_at) order by created_at), '[]'::jsonb)
+    select coalesce(jsonb_agg(jsonb_build_object('id', id, 'mine', sender = uid, 'name', _chat_name(sender), 'code', _my_code(sender), 'kind', kind, 'body', body, 'photo', photo_path, 'meta', meta, 'game', _chat_game_state(kind, meta), 'at', created_at) order by created_at), '[]'::jsonb)
       into msgs from (select * from chat_messages m where m.group_id = p_group and m.hidden_at is null and (p_before is null or m.created_at < p_before)
         and (m.sender = uid or (not exists (select 1 from chat_mutes cm where cm.user_id = uid and cm.muted_id = m.sender)
           and not exists (select 1 from chat_reports r where r.message_id = m.id and r.reporter = uid)))
@@ -249,7 +290,8 @@ begin
   update chat_messages set pushed_at = now() where id = m.id;
   select name into gname from chat_groups where id = m.group_id;
   who := _chat_name(m.sender);
-  txt := case when m.kind = 'photo' then who || ' sent a photo' else who || ': ' || left(coalesce(m.body, ''), 90) end;
+  txt := case m.kind when 'photo' then who || ' sent a photo' when 'cookoff' then who || ' started a Cook Off. Tap to join.' when 'uiu' then who || ' started Use-It-Up Week. Tap to join.'
+    when 'guess' then who || ' wants you to Guess the Cook' else who || ': ' || left(coalesce(m.body, ''), 90) end;
   with due as (
     update chat_members cm set last_push_at = now()
     from profiles pr
@@ -299,12 +341,12 @@ drop policy if exists chat_photos_select on storage.objects;
 create policy chat_photos_select on storage.objects for select to authenticated using (bucket_id = 'chat-photos' and public._chat_photo_visible(name));
 
 revoke execute on function public.create_chat(text, text[]), public.add_to_chat(uuid, text), public.leave_chat(uuid), public.remove_from_chat(uuid, text), public.set_chat_muted(uuid, boolean),
-  public.set_chat_user_muted(text, boolean), public.send_chat(uuid, text, text, text), public.delete_chat_message(uuid), public.report_chat_message(uuid, text), public.get_chats(),
+  public.set_chat_user_muted(text, boolean), public.send_chat(uuid, text, text, text), public.send_chat_game(uuid, text, text), public.delete_chat_message(uuid), public.report_chat_message(uuid, text), public.get_chats(),
   public.get_chat(uuid, timestamptz, timestamptz), public.admin_chat_reports(), public.admin_set_chat_hidden(uuid, boolean) from public, anon;
 grant execute on function public.create_chat(text, text[]), public.add_to_chat(uuid, text), public.leave_chat(uuid), public.remove_from_chat(uuid, text), public.set_chat_muted(uuid, boolean),
-  public.set_chat_user_muted(text, boolean), public.send_chat(uuid, text, text, text), public.delete_chat_message(uuid), public.report_chat_message(uuid, text), public.get_chats(),
+  public.set_chat_user_muted(text, boolean), public.send_chat(uuid, text, text, text), public.send_chat_game(uuid, text, text), public.delete_chat_message(uuid), public.report_chat_message(uuid, text), public.get_chats(),
   public.get_chat(uuid, timestamptz, timestamptz), public.admin_chat_reports(), public.admin_set_chat_hidden(uuid, boolean) to authenticated;
 revoke execute on function public.push_chat(text, uuid, uuid) from public;
 grant execute on function public.push_chat(text, uuid, uuid) to anon, authenticated;   -- the secret is the lock, like push_cookoff
-revoke execute on function public._in_chat(uuid, uuid), public._chat_name(uuid) from public, anon, authenticated;
+revoke execute on function public._in_chat(uuid, uuid), public._chat_name(uuid), public._chat_game_state(text, jsonb) from public, anon, authenticated;
 grant execute on function public._chat_photo_visible(text) to authenticated;

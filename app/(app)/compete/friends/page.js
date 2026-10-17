@@ -7,13 +7,10 @@ import { fetchChats, fetchFriends } from '@/components/tabData';
 import Icon from '@/components/Icon';
 import ChatList from '@/components/ChatList';
 import ChatView from '@/components/ChatView';
-import CookOffCard from '@/components/CookOffCard';
-import UseItUpCard from '@/components/UseItUpCard';
-import GuessCook from '@/components/GuessCook';
 import { color } from '@/lib/social';
 
-// Friends: your code (small), friend requests, your group chats, and the games. Everything here is private to
-// the people you add: nothing is public.
+// Friends: your code (small), friend requests and your group chats. The games (Cook Off, Use-It-Up Week, Guess the
+// Cook) are played from inside a chat. Everything here is private to the people you add: nothing is public.
 export default function Friends() {
   const { supabase, say } = useWhisk();
   const [f0, , reloadFriends] = useCached('friends', () => fetchFriends(supabase));
@@ -23,7 +20,6 @@ export default function Friends() {
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState(null);       // the chat that's open
-  const [h2h, setH2h] = useState('cookoff');   // Cook Off and Use-It-Up Week share one spot: both are "start or join a game with a code"
 
   // a notification opens its chat: /compete/friends?chat=<id>
   useEffect(() => { try { const c = new URLSearchParams(window.location.search).get('chat'); if (/^[0-9a-f-]{36}$/i.test(c || '')) setOpen(c); } catch {} }, []);
@@ -77,13 +73,6 @@ export default function Friends() {
       )}
 
       <ChatList chats={chats === undefined ? null : chats} friends={f?.friends || []} onOpen={setOpen} onMade={reloadChats} />
-
-      <GuessCook />
-      <div className="seg" role="tablist" aria-label="Head to head">
-        <button type="button" role="tab" aria-selected={h2h === 'cookoff'} className={h2h === 'cookoff' ? 'on' : ''} onClick={() => setH2h('cookoff')} data-testid="h2h-cookoff">Cook Off</button>
-        <button type="button" role="tab" aria-selected={h2h === 'uiu'} className={h2h === 'uiu' ? 'on' : ''} onClick={() => setH2h('uiu')} data-testid="h2h-uiu">Use-It-Up Week</button>
-      </div>
-      {h2h === 'cookoff' ? <CookOffCard /> : <UseItUpCard />}
 
       {f?.friends?.length > 0 && (
         <details className="card fr-list">

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
 import { usePantry } from './usePantry';
+import { postGame } from '@/lib/chatGame';
 
 // Use-It-Up Week: two friends race to rescue food that's about to expire. Start one (and get a 6-character code), or join
 // a friend's with their code. The rules and the scoring run on the server.
@@ -32,7 +33,7 @@ function Picker({ picks, setPicks }) {
   );
 }
 
-export default function UseItUpCard() {
+export default function UseItUpCard({ groupId = null }) {
   const { supabase, say } = useWhisk();
   const router = useRouter();
   const [open, setOpen] = useState(null);   // null | 'start' | 'join'
@@ -49,6 +50,7 @@ export default function UseItUpCard() {
     setBusy('create');
     const { data, error } = await supabase.rpc('create_uiu', { p_mode: mode, p_picks: mode === 'same' ? picks : [] }); setBusy('');
     if (error) return fail(error);
+    if (groupId) { const r = await postGame(supabase, groupId, 'uiu', data); if (r.error) say('Your challenge is ready, but it didn’t post to the chat.'); }
     router.push(`/compete/useitup?code=${data}`);
   }
   async function look(e) {

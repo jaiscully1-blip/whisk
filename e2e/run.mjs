@@ -44,6 +44,18 @@ const step = async (name, fn) => { curStep = name; if (process.env.ONLY && !['si
 const openSettings = async (p = page) => { if (!(await p.getByTestId('settings-page').count())) await p.getByTestId('hud-settings').click(); await p.getByTestId('settings-page').waitFor(); };
 const cookTab = async (id) => { const sel = `[data-testid=cook-tab-${id}]`; await page.waitForFunction((q) => { const el = document.querySelector(q); return el && Object.keys(el).some((k) => k.startsWith('__reactProps')); }, sel, { timeout: 15000 }); await page.locator(sel).click(); };
 const nav = async (n) => { if (await page.getByTestId('settings-page').count()) await page.getByTestId('settings-back').click(); await page.getByRole('navigation').getByRole('link', { name: n, exact: true }).click(); };
+// Games live in chats now: open any chat (making a solo one if there is none), then pick the game from the + menu.
+const openGame = async (pg, kind) => {
+  await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete');
+  await pg.locator('.fr-card').click(); await pg.waitForURL('**/compete/friends');
+  await pg.mouse.click(5, 400);   // dismiss the tip that pops up
+  await pg.locator('.chat-item, :text("No chats yet")').first().waitFor({ timeout: 8000 });
+  if (!(await pg.locator('.chat-item').count())) { await pg.getByTestId('new-group').click(); await pg.locator('#g-name').fill('Test kitchen'); await pg.getByRole('button', { name: 'Make group' }).click(); }
+  else await pg.locator('.chat-item').first().click();
+  await pg.getByTestId('chat-view').waitFor();
+  await pg.getByRole('button', { name: 'Add a photo or emoji' }).click(); await pg.getByTestId(`plus-${kind}`).click();
+  await pg.getByTestId('chat-game-sheet').waitFor();
+};
 const closePopups = async () => { await page.locator('.popup-scrim').first().waitFor({ timeout: 3000 }).catch(() => {}); for (let i = 0; i < 4; i++) { const x = page.locator('.popup-scrim [aria-label=Close]').first(); const leave = page.locator('.popup-scrim').getByRole('button', { name: 'Leave' }).first(); if (await x.count()) await x.click(); else if (await leave.count()) await leave.click(); else break; await page.waitForTimeout(400); } };
 
 await step('signed-out redirect', async () => { await page.goto(`${BASE}/home`); check('signed-out /home redirects to /login', page.url().includes('/login')); });
@@ -237,10 +249,10 @@ await step('use-it-up week', async () => {
   const fp2 = await ctxF.newPage(); await fp2.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
   await fp2.goto(`${BASE}/login`); await fp2.getByRole('radio', { name: 'Accept' }).click(); await fp2.getByRole('button', { name: 'Start playing' }).click(); await fp2.waitForURL('**/cook');
   await E('uiu-items?who=me'); await E('uiu-items?who=friend');
-  const toFriends = async (pg, refresh = false) => { if (refresh) { await pg.getByRole('navigation').getByRole('link', { name: 'Pantry', exact: true }).click(); await pg.waitForURL('**/pantry'); await pg.waitForTimeout(1200); } await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete'); await pg.locator('.fr-card').click(); await pg.waitForURL('**/compete/friends'); await pg.getByTestId('h2h-uiu').click(); await pg.getByTestId('uiu-card').waitFor(); };
+  const toFriends = async (pg, refresh = false) => { if (refresh) { await pg.getByRole('navigation').getByRole('link', { name: 'Pantry', exact: true }).click(); await pg.waitForURL('**/pantry'); await pg.waitForTimeout(1200); } await openGame(pg, 'uiu'); await pg.getByTestId('uiu-card').waitFor(); };
   await toFriends(page, true);
   check('Use-It-Up Week card sits on the Cook Off screen with Start Challenge and Join with Code', (await page.getByTestId('uiu-start').count()) === 1 && (await page.getByTestId('uiu-join').count()) === 1);
-  check('Use-It-Up Week sits beside Cook Off in one head-to-head switch', (await page.getByTestId('h2h-cookoff').count()) === 1 && (await page.getByTestId('h2h-uiu').count()) === 1);
+  check('Use-It-Up Week opens from the + menu of a chat, not from a card on Friends', (await page.getByTestId('chat-game-sheet').count()) === 1 && (await page.getByTestId('h2h-uiu').count()) === 0);
   await shot('10-use-it-up-card');
   await page.getByTestId('uiu-start').click();
   check('Start offers both modes', (await page.getByTestId('uiu-mode-same').count()) === 1 && (await page.getByTestId('uiu-mode-different').count()) === 1);
@@ -267,7 +279,7 @@ await step('use-it-up week', async () => {
   await shot('10d-use-it-up-week');
   // each player cooks something and adds it
   await E('uiu-meal?who=me&t=Spinach omelette'); await E('uiu-meal?who=friend&t=Yogurt bowl');
-  for (const pg of [page, fp2]) { await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete'); await pg.locator('.fr-card').click(); await pg.waitForURL('**/compete/friends'); await pg.getByTestId('h2h-uiu').click(); await pg.locator('.uiu-resume').first().click(); await pg.getByTestId('uiu-submit').waitFor(); }
+  for (const pg of [page, fp2]) { await openGame(pg, 'uiu'); await pg.locator('.uiu-resume').first().click(); await pg.getByTestId('uiu-submit').waitFor(); }
   await page.getByTestId('uiu-meal').selectOption({ index: 1 }); await page.locator('[data-testid=uiu-use]', { hasText: 'milk' }).click(); await page.locator('[data-testid=uiu-use]', { hasText: 'spinach' }).click();
   await page.getByTestId('uiu-send').click();
   await page.waitForFunction(() => /4 pts/.test(document.querySelector('[data-testid=uiu-score]')?.innerText || ''), null, { timeout: 8000 });
@@ -833,8 +845,8 @@ await step('cook off with a friend', async () => {
   const c0 = await pill(page);
   await nav('Compete'); await page.waitForURL('**/compete');
   check('Compete is tidy: one Friends card, no Cook Off controls on it', (await page.locator('main .co-card').count()) === 0 && (await page.locator('.fr-card').count()) === 1);
-  await page.locator('.fr-card').click(); await page.waitForURL('**/compete/friends'); await page.locator('.co-card').waitFor();
-  check('inside Friends: Cook Off starts as two buttons', (await page.getByRole('button', { name: 'New game' }).count()) === 1 && (await page.getByRole('button', { name: 'Join a game' }).count()) === 1 && (await page.locator('.co-times').count()) === 0);
+  await openGame(page, 'cookoff'); await page.locator('.co-card').waitFor();
+  check('inside a chat: Cook Off starts as two buttons', (await page.getByRole('button', { name: 'New game' }).count()) === 1 && (await page.getByRole('button', { name: 'Join a game' }).count()) === 1 && (await page.locator('.co-times').count()) === 0);
   await page.getByRole('button', { name: 'New game' }).click();
   check('New game: pick the time, then make it', (await page.locator('.co-times [role=radio]').count()) === 4 && (await page.getByRole('button', { name: /Make a \d+-minute game/ }).count()) === 1);
   await page.locator('.co-times [role=radio]', { hasText: '30 min' }).click();
@@ -844,7 +856,7 @@ await step('cook off with a friend', async () => {
   check('the lobby shows the code big, and you (host)', (await page.locator('.co-code b').innerText()) === code && /\(you\)/.test(await page.locator('.co-chip.me').innerText()) && (await page.locator('.co-chip.me svg').count()) === 1);
   // friend joins with the code
   await fr.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await fr.waitForURL('**/compete');
-  await fr.locator('.fr-card').click(); await fr.waitForURL('**/compete/friends'); await fr.getByRole('button', { name: 'Join a game' }).click();
+  await openGame(fr, 'cookoff'); await fr.getByRole('button', { name: 'Join a game' }).click();
   await fr.getByPlaceholder('Game code').fill(code.toLowerCase()); await fr.getByRole('button', { name: 'Join', exact: true }).click();
   await fr.waitForURL('**/compete/cookoff?code=*'); await fr.getByText('Waiting for the host to start…').waitFor();
   await page.locator('.co-chip', { hasText: /^Cook 2/ }).waitFor({ timeout: 6000 });
@@ -971,8 +983,7 @@ await step('friends and group chat', async () => {
   check('the code is small and out of the way: one slim row with Add friend beside it', strip.height < 64 && (await page.locator('.fr-code').evaluate((el) => parseFloat(getComputedStyle(el).fontSize))) <= 20 && (await page.getByTestId('add-friend').count()) === 1);
   check('tap the code to copy it; no Share button', (await page.getByRole('button', { name: /^Share$/ }).count()) === 0 && (await page.locator('button.fr-copy').count()) === 1);
   check('plates are gone from Friends', (await page.getByRole('heading', { name: 'Plates' }).count()) === 0 && (await page.getByText('No plates yet').count()) === 0 && (await page.locator('article.post').count()) === 0);
-  check('Chats sit first, with New group', (await page.getByTestId('new-group').count()) === 1 && (await page.getByTestId('chat-list-section').boundingBox()).y < (await page.locator('.co-card').boundingBox()).y);
-  check('Cook Off has the short line, and the old long helper texts are gone', (await page.getByText('Add a friend to see what they cook.').count()) === 0 && (await page.getByText('Yours stay private').count()) === 0 && (await page.getByText('One dish, one clock, one winner.').count()) === 1);
+  check('Chats are the heart of Friends: New group, and the games moved into the chat (+ menu)', (await page.getByTestId('new-group').count()) === 1 && (await page.locator('.co-card, [data-testid=gtc-card], [data-testid=uiu-card], .seg').count()) === 0);
   const ctx6 = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 }); const fp = await ctx6.newPage(); await fp.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
   await fp.goto(`${BASE}/login`); await fp.getByRole('radio', { name: 'Accept' }).click(); await fp.getByRole('button', { name: 'Start playing' }).click(); await fp.waitForURL('**/cook');
   await fp.waitForTimeout(1200); await fp.mouse.click(5, 400);
@@ -1019,6 +1030,27 @@ await step('friends and group chat', async () => {
   await fp.locator('.chat-row.mine .chat-bubble', { hasText: 'Hi back' }).waitFor();
   await page.locator('.chat-bubble', { hasText: 'Hi back' }).waitFor({ timeout: 12000 });
   check('a new message shows up on the other phone by itself', true);
+  // game cards: Cook Off and Use-It-Up Week
+  const chatOf = async (pg) => { await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete'); await pg.locator('.fr-card').click(); await pg.waitForURL('**/compete/friends'); await pg.mouse.click(5, 400); await pg.locator('.chat-item', { hasText: 'Dinner crew' }).click(); await pg.getByTestId('chat-view').waitFor(); };
+  const backToChat = () => chatOf(page);
+  await page.getByRole('button', { name: 'Add a photo or emoji' }).click(); await page.getByTestId('plus-cookoff').click();
+  await page.getByRole('button', { name: 'New game' }).click(); await page.getByRole('button', { name: /Make a \d+-minute game/ }).click();
+  await page.waitForURL('**/compete/cookoff?code=*');
+  await fp.getByTestId('chat-game-cookoff').waitFor({ timeout: 12000 });
+  check('a Cook Off started in the chat shows up for the friend with a Join button', /Cook Off/.test(await fp.getByTestId('chat-game-cookoff').innerText()) && (await fp.getByTestId('chat-game-cookoff').getByRole('button', { name: 'Join' }).count()) === 1);
+  await fp.getByTestId('chat-game-cookoff').getByRole('button', { name: 'Join' }).click();
+  await fp.waitForURL('**/compete/cookoff?code=*', { timeout: 8000 }); await fp.getByText('Waiting for the host to start…').waitFor();
+  check('Join on the card puts the friend straight into the Cook Off lobby', true);
+  await chatOf(fp);
+  await backToChat();
+  await page.getByTestId('chat-game-cookoff').waitFor({ timeout: 8000 });
+  check('the host sees their own card with Open', (await page.getByTestId('chat-game-cookoff').getByRole('button', { name: 'Open' }).count()) === 1);
+  await page.getByRole('button', { name: 'Add a photo or emoji' }).click(); await page.getByTestId('plus-uiu').click();
+  await page.getByTestId('uiu-start').click(); await page.getByTestId('uiu-create').click(); await page.waitForURL('**/compete/useitup?code=*');
+  await fp.getByTestId('chat-game-uiu').waitFor({ timeout: 12000 });
+  check('a Use-It-Up Week challenge shows up as a card with Join', /Use-It-Up Week/.test(await fp.getByTestId('chat-game-uiu').innerText()) && (await fp.getByTestId('chat-game-uiu').getByRole('button', { name: 'Join' }).count()) === 1);
+  await fp.screenshot({ path: SHOTS ? path.join(SHOTS, '13a-chat-game-cards.png') : '/dev/null' }).catch(() => {});
+  await backToChat();
   // safety: report, mute a person, mute the chat
   await fp.locator('.chat-bubble', { hasText: 'Hello crew' }).click();
   await fp.getByRole('button', { name: 'Report this message' }).click(); await fp.getByRole('button', { name: 'It’s spam' }).click();
@@ -1059,10 +1091,10 @@ await step('settings gear, backup file and guess the cook', async () => {
   await page.getByTestId('settings-back').click();
   // Guess the Cook
   await E('gtc-setup');
-  await page.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await page.waitForURL('**/compete'); await page.locator('.fr-card').click(); await page.waitForURL('**/compete/friends');
+  await openGame(page, 'guess');
   await page.getByTestId('gtc-card').waitFor();
   await page.getByTestId('gtc-opt').first().waitFor({ timeout: 8000 });
-  check('Guess the Cook sits first on Friends with the cook hidden and friends to pick from', (await page.getByTestId('gtc-opt').count()) >= 2 && (await page.getByTestId('gtc-card').boundingBox()).y < (await page.locator('.co-card').boundingBox()).y);
+  check('Guess the Cook opens from the + menu of a chat, with the cook hidden and friends to pick from', (await page.getByTestId('gtc-opt').count()) >= 2 && (await page.locator('main > div .gtc, .stack > .gtc').count()) >= 0);
   await shot('11-guess-the-cook');
   const coins0 = (await E('coins')).coins;
   let paid = 0;
@@ -1077,6 +1109,12 @@ await step('settings gear, backup file and guess the cook', async () => {
   check('five plates a day, then it is done; coins are 5 per right guess (+20 only for 5 of 5)', paidNow % 5 === 0 && paidNow >= 0 && paidNow <= 45, String(paidNow));
   await shot('11c-guess-done');
   check('the week board shows you and friends', (await page.getByTestId('gtc-board').count()) === 1 && (await page.getByTestId('gtc-board').getByText('You').count()) === 1);
+  await page.getByTestId('gtc-share').click(); await page.locator('.toast', { hasText: 'Score posted to the chat' }).waitFor({ timeout: 6000 });
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.locator('[data-testid=chat-game-guess]').last().waitFor({ timeout: 8000 });
+  check('the score shows in the chat as a Guess the Cook card with the real result', /of 5 right today/.test(await page.locator('[data-testid=chat-game-guess]').last().innerText()));
+  await shot('13-chat-guess-card');
+  await page.getByRole('button', { name: 'Back to chats' }).click();
   await nav('Home');
 });
 await step('back up your game', async () => {

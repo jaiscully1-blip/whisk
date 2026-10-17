@@ -913,6 +913,8 @@ check('the older Feta and Baste ids keep working', (await db.query(`select count
 // ================= 0032: cooking level + learn quiz =================
 try { const f = fs.readFileSync('./supabase/migrations/0032_learn_quiz.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0032 runs (twice)', true); }
 catch (e) { check('0032 runs (twice)', false, e.message); }
+try { const f = fs.readFileSync('./supabase/migrations/0033_learn_hourly.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0033 runs (twice)', true); }
+catch (e) { check('0033 runs (twice)', false, e.message); }
 const LQ = '1a1a1a1a-1a1a-1a1a-1a1a-1a1a1a1a1a1a', LR = '2b2b2b2b-2b2b-2b2b-2b2b-2b2b2b2b2b2b';
 await db.exec(`insert into auth.users (id, email) values ('${LQ}', 'lq@x.com'), ('${LR}', 'lr@x.com')`);
 check('the question bank is loaded', (await db.query(`select count(*)::int n from lesson_questions`)).rows[0].n >= 60);
@@ -938,7 +940,13 @@ check('the first quiz starts a learning streak of 1', sub1.streak === 1 && sub1.
 check('after answering you see the right answers and why', sub1.results.length === 3 && sub1.results.every((r, i) => r.answer === right1[i] && r.why.length > 10));
 await expectFail('a quiz cannot be answered twice (no double pay)', LQ, `select public.quiz_submit('${qs1.attempt}', array[${right1.join(',')}])`);
 check('coins did not move on the repeat attempt', (await coinsOf(LQ)) === lqCoins0 + 100);
-const qs2 = (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r;
+const unlockQ = (u = LQ) => db.exec(`update profiles set learn_next = null where id = '${u}'`);
+await expectFail('the next quiz is locked for an hour after finishing one', LQ, `select public.quiz_start()`);
+const nxt = (await db.query(`select extract(epoch from (learn_next - now())) s from profiles where id = '${LQ}'`)).rows[0].s;
+check('the lock lasts about an hour', nxt > 3500 && nxt <= 3600, `${nxt}`);
+check('the result says when the next quiz unlocks', !!sub1.next);
+await db.exec(`update profiles set learn_next = now() - interval '1 second' where id = '${LQ}'`);
+const qs2 = (await unlockQ(), (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r);
 check('the next quiz is a new one', qs2.attempt !== qs1.attempt);
 const wrong2 = (await rightFor(qs2.questions.map((q) => q.id))).map((a, i) => (i === 0 ? (a + 1) % 4 : a));
 const sub2 = (await as(LQ, () => db.query(`select public.quiz_submit('${qs2.attempt}', array[${wrong2.join(',')}]) r`))).rows[0].r;
@@ -947,7 +955,7 @@ check('a second quiz the same day keeps the streak at 1', sub2.streak === 1);
 // pay cap: 5 paying quizzes a day
 let paidTotal = 100, lastSub = null;
 for (let k = 0; k < 6; k++) {
-  const q = (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r;
+  const q = (await unlockQ(), (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r);
   const r = await rightFor(q.questions.map((x) => x.id));
   lastSub = (await as(LQ, () => db.query(`select public.quiz_submit('${q.attempt}', array[${r.join(',')}]) r`))).rows[0].r;
   paidTotal += lastSub.coins;
@@ -955,11 +963,11 @@ for (let k = 0; k < 6; k++) {
 check('at most 5 perfect quizzes a day pay out (500 coins)', paidTotal === 500 && lastSub.coins === 0 && (await coinsOf(LQ)) === lqCoins0 + 500, `${paidTotal}`);
 // streak: yesterday continues, a gap resets
 await db.exec(`update profiles set learn_last = (select _user_today('${LQ}') - 1), learn_streak = 4, learn_best = 4 where id = '${LQ}'`);
-const q3 = (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r;
+const q3 = (await unlockQ(), (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r);
 const s3 = (await as(LQ, () => db.query(`select public.quiz_submit('${q3.attempt}', array[0,0,0]) r`))).rows[0].r;
 check('answering the day after continues the streak', s3.streak === 5 && s3.best === 5, JSON.stringify(s3));
 await db.exec(`update profiles set learn_last = (select _user_today('${LQ}') - 3) where id = '${LQ}'`);
-const q4 = (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r;
+const q4 = (await unlockQ(), (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r);
 const s4 = (await as(LQ, () => db.query(`select public.quiz_submit('${q4.attempt}', array[0,0,0]) r`))).rows[0].r;
 check('missing days resets the streak but keeps the best', s4.streak === 1 && s4.best === 5, JSON.stringify(s4));
 await expectFail('players cannot write their own streak or level directly', LQ, `update profiles set learn_streak = 99 where id = '${LQ}'`);

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useWhisk } from './AppShell';
 import Icon, { Coin } from './Icon';
 import { learnState } from '@/lib/learn/levels';
+import useCountdown, { mmss } from './useCountdown';
 
 // Learn: a 3-question quiz. Answers stay on the server until you submit, so there is nothing to peek at.
 // 3 out of 3 pays 100 coins (up to 5 paying quizzes a day); any finished quiz keeps your learning streak going.
@@ -15,12 +16,14 @@ export default function LearnSheet({ onClose }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const st = learnState(profile);
+  const [nextAt, setNextAt] = useState(null);   // set the moment a quiz is finished, so the countdown starts without waiting for a reload
+  const left = useCountdown(nextAt || profile?.learn_next);
 
   async function start() {
     setBusy(true); setErr(''); setRes(null); setI(0); setPicks([]);
     const { data, error } = await supabase.rpc('quiz_start');
     setBusy(false);
-    if (error) { setErr(error.message.includes('level') ? 'Learning is turned off for your level. You can change it in Me.' : 'Couldn’t load a quiz. Try again.'); return; }
+    if (error) { setErr(error.message.includes('cooldown') ? 'Your next quiz isn’t ready yet.' : error.message.includes('level') ? 'Learning is turned off for your level. You can change it in Me.' : 'Couldn’t load a quiz. Try again.'); return; }
     setQuiz(data);
   }
   async function submit(all) {
@@ -28,7 +31,7 @@ export default function LearnSheet({ onClose }) {
     const { data, error } = await supabase.rpc('quiz_submit', { p_attempt: quiz.attempt, p_picks: all });
     setBusy(false);
     if (error) { setErr('Couldn’t check your answers. Try again.'); return; }
-    setRes(data); refreshProfile(); bump();
+    setRes(data); setNextAt(data.next); refreshProfile(); bump();
   }
   function pick(k) {
     const all = [...picks]; all[i] = k; setPicks(all);
@@ -57,7 +60,10 @@ export default function LearnSheet({ onClose }) {
               <b>Daily quiz</b>
               <span className="muted" style={{ fontSize: 14 }}>3 quick questions about cooking and kitchen safety. Get all 3 right for <b>100 coins</b>.</span>
             </div>
-            <button type="button" className="btn wide" onClick={start} disabled={busy} data-testid="quiz-start">{busy ? 'Loading…' : 'Start quiz'}</button>
+            {left > 0
+              ? <button type="button" className="btn wide" disabled data-testid="quiz-wait">Next quiz in {mmss(left)}</button>
+              : <button type="button" className="btn wide" onClick={start} disabled={busy} data-testid="quiz-start">{busy ? 'Loading…' : 'Start quiz'}</button>}
+            <span className="muted" style={{ fontSize: 13, textAlign: 'center' }}>One quiz every hour.</span>
           </>
         )}
 
@@ -102,7 +108,7 @@ export default function LearnSheet({ onClose }) {
             </div>
             <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
               <button type="button" className="btn ghost" style={{ flex: 1 }} onClick={onClose}>Done</button>
-              <button type="button" className="btn" style={{ flex: 1 }} onClick={start} disabled={busy} data-testid="quiz-again">Another quiz</button>
+              <button type="button" className="btn" style={{ flex: 1 }} disabled data-testid="quiz-wait">{left > 0 ? `Next quiz in ${mmss(left)}` : 'Next quiz ready'}</button>
             </div>
           </>
         )}

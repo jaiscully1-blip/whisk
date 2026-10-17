@@ -144,11 +144,18 @@ await step('learn quiz', async () => {
   check('the coins really arrived', (await coinsNow()) === c0 + 100);
   check('the result shows why each answer is right and a streak', (await page.locator('.quiz-rev').count()) === 3 && /1-day learning streak/.test(await page.getByTestId('quiz-result').innerText()));
   await shot('08-quiz-result');
-  await play(2, 'quiz-again');
+  check('after a quiz, the next one shows a countdown from about an hour', /Next quiz in (59|60):\d\d/.test(await page.getByTestId('quiz-wait').innerText()));
+  await page.locator('[data-testid=learn-sheet] [aria-label=Close]').click(); await page.getByTestId('learn-sheet').waitFor({ state: 'detached' });
+  check('the Learn button shows the countdown too', /Next quiz in \d+:\d\d/.test(await page.getByTestId('learn-btn').innerText()));
+  await page.getByTestId('learn-btn').click();
+  check('the quiz cannot be started during the hour', (await page.getByTestId('quiz-start').count()) === 0 && await page.getByTestId('quiz-wait').isDisabled());
+  await page.locator('[data-testid=learn-sheet] [aria-label=Close]').click();
+  await fetch('http://localhost:54321/__e2e/unlock-quiz'); await page.reload(); await page.getByTestId('learn-btn').waitFor();
+  await page.getByTestId('learn-btn').click(); await play(2);
   check('2 out of 3 pays nothing and marks the miss', /2 \/ 3/.test(await page.getByTestId('quiz-result').innerText()) && (await page.locator('.quiz-rev.no').count()) === 1 && (await coinsNow()) === c0 + 100);
   await page.locator('.learn-sheet-close, [data-testid=learn-sheet] [aria-label=Close]').first().click();
   await page.getByTestId('learn-sheet').waitFor({ state: 'detached' });
-  check('the Learn button shows the streak', /1-day streak/.test(await page.getByTestId('learn-btn').innerText()));
+  check('the Learn button keeps counting down after the second quiz', /Next quiz in/.test(await page.getByTestId('learn-btn').innerText()));
   // Me: change level. Expert hides Learn; Novice brings it back.
   await nav('Me');
   check('Me shows your cooking level', /Beginner/.test(await page.getByTestId('level-row').innerText()));

@@ -23,14 +23,15 @@ function Hourglass({ f }) {
   );
 }
 
-// Use it up: a rescue ring around a fridge.
+// Use it up: a fridge wearing a life tube (back half of the ring behind it, front half in front).
+const BACK = 'M4.5 18.5A11.5 4.6 0 0 1 27.5 18.5', FRONT = 'M4.5 18.5A11.5 4.6 0 0 0 27.5 18.5';
 function RescueFridge() {
   return (
-    <svg className="df-ring" viewBox="0 0 32 32" width="22" height="22" aria-hidden="true">
-      <circle cx="16" cy="16" r="11.5" className="df-ring-w" />
-      <circle cx="16" cy="16" r="11.5" className="df-ring-r" strokeDasharray="9.03 9.03" transform="rotate(-22.5 16 16)" />
-      <rect x="12" y="9.5" width="8" height="13" rx="1.5" className="df-fridge" />
-      <path d="M12 14.4h8M13.8 11v1.8M13.8 16.4v2.6" className="df-fridge-ink" />
+    <svg className="df-ring" viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
+      <path d={BACK} className="df-ring-o" /><path d={BACK} className="df-ring-w" /><path d={BACK} className="df-ring-r" strokeDasharray="5.4 5.4" />
+      <rect x="10" y="2.5" width="12" height="25.5" rx="2.4" className="df-fridge" />
+      <path d="M10 11h12M13 5.5v3M13 13.5v3.5M12 28v1.5M20 28v1.5" className="df-fridge-ink" />
+      <path d={FRONT} className="df-ring-o" /><path d={FRONT} className="df-ring-w" /><path d={FRONT} className="df-ring-r" strokeDasharray="5.4 5.4" strokeDashoffset="2.7" />
     </svg>
   );
 }

@@ -1065,6 +1065,24 @@ await step('friends and group chat', async () => {
   if (await fp.getByTestId('chat-people').count()) await fp.getByTestId('chat-people').getByRole('button', { name: 'Done' }).click();
   await fp.getByTestId('chat-bell').click(); await fp.locator('.toast', { hasText: 'Notifications off for this chat' }).waitFor();
   check('notifications can be turned off for a chat', (await fp.getByTestId('chat-bell').getAttribute('aria-pressed')) === 'true');
+  // chat backgrounds: bought with coins, seen only by you
+  const coinsFp = async () => Number((await fp.getByTestId('chat-bgs').innerText()).match(/You have (\d+) coins/)[1]);
+  await fp.getByTestId('chat-bgbtn').click(); await fp.getByTestId('chat-bgs').waitFor(); await fp.getByTestId('bg-tiles').waitFor();
+  check('the background picker lists the looks with prices', (await fp.locator('.bg-tile').count()) === 7 && (await fp.getByTestId('bg-tiles').innerText()).includes('300'));
+  const c0 = await coinsFp();
+  await fp.getByTestId('bg-tiles').click();
+  if (c0 < 300) {
+    await fp.locator('.toast', { hasText: 'Not enough coins' }).waitFor();
+    check('a background you cannot afford is refused', !(await fp.getByTestId('chat-view').getAttribute('data-bg')));
+  } else {
+    await fp.waitForFunction(() => document.querySelector('[data-testid="chat-view"]')?.dataset.bg === 'tiles');
+    check('buying a background takes its coins and puts it on', (await coinsFp()) === c0 - 300);
+    await fp.getByTestId('bg-plain').click(); await fp.waitForFunction(() => !document.querySelector('[data-testid="chat-view"]')?.dataset.bg);
+    await fp.getByTestId('bg-tiles').click(); await fp.waitForFunction(() => document.querySelector('[data-testid="chat-view"]')?.dataset.bg === 'tiles');
+    check('an owned background switches back on for free', (await coinsFp()) === c0 - 300);
+    if (SHOTS) { await fp.getByTestId('chat-bgs').getByRole('button', { name: 'Done' }).click(); await fp.screenshot({ path: path.join(SHOTS, '12c-chat-background.png') }); await fp.getByTestId('chat-bgbtn').click(); await fp.getByTestId('chat-bgs').waitFor(); }
+  }
+  await fp.getByTestId('chat-bgs').getByRole('button', { name: 'Done' }).click();
   await fp.getByRole('button', { name: 'Back to chats' }).click();
   check('the chat list shows the muted bell', (await fp.locator('.chat-item', { hasText: 'Dinner crew' }).locator('svg').count()) >= 1);
   await page.getByRole('button', { name: 'Back to chats' }).click();

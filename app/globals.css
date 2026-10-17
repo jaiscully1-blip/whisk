@@ -1375,3 +1375,21 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .chat-game-sub { font-size: 14px; opacity: .8; }
 .chat-row.mine .chat-bubble.game { background: var(--card); color: var(--fg); box-shadow: 0 0 0 2px var(--accent) inset; }
 .game-sheet { max-height: 90dvh; }
+
+/* chat backgrounds: patterns drawn in CSS, no images to load */
+.chat-full[data-bg="tiles"] { --chat-bg: #f4efe6; background-image: linear-gradient(#d9cfbd 1px, transparent 1px), linear-gradient(90deg, #d9cfbd 1px, transparent 1px); background-size: 36px 36px; }
+.chat-full[data-bg="gingham"] { --chat-bg: #fbe9e7; background-image: linear-gradient(90deg, rgba(220, 70, 70, .22) 50%, transparent 50%), linear-gradient(rgba(220, 70, 70, .22) 50%, transparent 50%); background-size: 40px 40px; }
+.chat-full[data-bg="herbs"] { --chat-bg: #e3f1dc; background-image: radial-gradient(ellipse 9px 4px at 12px 12px, #7fb46a 98%, transparent), radial-gradient(ellipse 9px 4px at 34px 30px, #9ccc84 98%, transparent); background-size: 46px 46px; }
+.chat-full[data-bg="sunset"] { --chat-bg: #ff9966; background-image: linear-gradient(180deg, #ffd27a 0%, #ff9966 45%, #c0508a 100%); }
+.chat-full[data-bg="ocean"] { --chat-bg: #7cc4e8; background-image: linear-gradient(180deg, #bfe8f7 0%, #5aa9d6 60%, #2a6fa6 100%); }
+.chat-full[data-bg="night"] { --chat-bg: #14122b; background-image: radial-gradient(circle at 20% 30%, #fff 0 1px, transparent 2px), radial-gradient(circle at 70% 60%, #ffe9a8 0 1.5px, transparent 2.5px), radial-gradient(circle at 45% 85%, #fff 0 1px, transparent 2px); background-size: 90px 90px, 130px 130px, 70px 70px; }
+.chat-full[data-bg] .chat-list { background: transparent; }
+.bg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.bg-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; border: 2px solid var(--line); border-radius: 14px; background: var(--card); color: var(--fg); font: inherit; cursor: pointer; }
+.bg-tile.on { border-color: var(--accent, #f5b301); }
+.bg-tile small { color: var(--muted, #888); font-weight: 700; }
+.bg-tile .bg-prev { position: static; inset: auto; width: 100%; height: 64px; border-radius: 10px; display: block; border: 1px solid var(--line); background-color: var(--chat-bg, var(--bg)); z-index: auto; }
+.chat-full[data-bg="tiles"], .chat-full[data-bg="gingham"], .chat-full[data-bg="herbs"], .chat-full[data-bg="sunset"], .chat-full[data-bg="ocean"] { --fg: #231f1a; --muted: #5d564d; --card: #ffffff; --line: rgba(0, 0, 0, .14); color: var(--fg); }
+.bg-tile .bg-prev { --fg: #231f1a; }
+.chat-full[data-bg="tiles"] .chat-compose input, .chat-full[data-bg="gingham"] .chat-compose input, .chat-full[data-bg="herbs"] .chat-compose input, .chat-full[data-bg="sunset"] .chat-compose input, .chat-full[data-bg="ocean"] .chat-compose input,
+.chat-full[data-bg="tiles"] .chat-compose textarea, .chat-full[data-bg="gingham"] .chat-compose textarea, .chat-full[data-bg="herbs"] .chat-compose textarea, .chat-full[data-bg="sunset"] .chat-compose textarea, .chat-full[data-bg="ocean"] .chat-compose textarea { background: #f3f0ea; color: #231f1a; border-color: rgba(0, 0, 0, .14); }

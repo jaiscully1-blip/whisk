@@ -53,7 +53,7 @@ function GameCard({ m, onMore, onPlay }) {
 }
 
 export default function ChatView({ id, onClose, onChanged }) {
-  const { supabase, say, profile } = useWhisk();
+  const { supabase, say, profile, refreshProfile } = useWhisk();
   const [d, setD] = useState(null);                 // { group, members, messages, more }
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -66,6 +66,8 @@ export default function ChatView({ id, onClose, onChanged }) {
   const [game, setGame] = useState(null);         // a game sheet: 'cookoff' | 'uiu' | 'guess'
   const [viewer, setViewer] = useState(null);       // a photo opened big
   const [friends, setFriends] = useState(null);
+  const [looks, setLooks] = useState(null);         // background shop: null = closed, [] = loading
+  const [buyingBg, setBuyingBg] = useState(false);
   const listRef = useRef(null);
   const lastAt = useRef(null);
   const stick = useRef(true);                       // keep the view at the newest message unless you scrolled up
@@ -157,16 +159,40 @@ export default function ChatView({ id, onClose, onChanged }) {
   }
 
   const msgs = d?.messages || [];
+  async function openLooks() {
+    setLooks([]);
+    const { data, error } = await supabase.rpc('get_chat_bgs');
+    if (error) { setLooks(null); say('Couldn’t open the backgrounds'); return; }
+    setLooks(data || []);
+  }
+  async function pickLook(b) {
+    if (buyingBg) return;
+    const next = b?.id ?? null;
+    if (b && !b.owned) {
+      setBuyingBg(true);
+      const { error } = await supabase.rpc('buy_chat_bg', { p_bg: b.id });
+      if (error) { setBuyingBg(false); say(/enough/i.test(error.message) ? 'Not enough coins yet' : 'Couldn’t buy that'); return; }
+      refreshProfile?.();
+      setLooks((l) => (l || []).map((x) => (x.id === b.id ? { ...x, owned: true } : x)));
+    }
+    const { error: e2 } = await supabase.rpc('set_chat_bg', { p_group: id, p_bg: next });
+    setBuyingBg(false);
+    if (e2) { say('Couldn’t change the background'); return; }
+    setD((x) => ({ ...x, group: { ...x.group, bg: next } }));
+    say(next ? `${b.name} is on` : 'Back to the plain colour');
+  }
+
   const memberIds = new Set((d?.members || []).map((m) => m.code));
   const addable = (friends || []).filter((f) => !memberIds.has(f.code));
 
   return (
-    <div className="chat-full" role="dialog" aria-modal="true" aria-label={d?.group?.name || 'Chat'} data-testid="chat-view">
+    <div className="chat-full" data-bg={d?.group?.bg || undefined} role="dialog" aria-modal="true" aria-label={d?.group?.name || 'Chat'} data-testid="chat-view">
       <header className="chat-top">
         <button type="button" className="chat-ico" onClick={onClose} aria-label="Back to chats"><Icon name="back" size={22} /></button>
         <button type="button" className="chat-title" onClick={openPeople} aria-label={`${d?.group?.name || 'Chat'}: see who is in this group`}>
           <b>{d?.group?.name || '…'}</b><small>{d ? `${d.members.length} ${d.members.length === 1 ? 'person' : 'people'}` : ''}</small>
         </button>
+        <button type="button" className="chat-ico" onClick={openLooks} disabled={!d} aria-label="Chat background" data-testid="chat-bgbtn"><Icon name="palette" size={22} /></button>
         <button type="button" className={`chat-ico ${d?.group?.muted ? 'off' : ''}`} onClick={toggleBell} disabled={!d} aria-pressed={!!d?.group?.muted} aria-label={d?.group?.muted ? 'Turn notifications on for this chat' : 'Turn notifications off for this chat'} data-testid="chat-bell"><Icon name={d?.group?.muted ? 'bellx' : 'bell'} size={22} /></button>
       </header>
 
@@ -233,6 +259,23 @@ export default function ChatView({ id, onClose, onChanged }) {
             <span className="desc">It disappears for you right away. Yoke checks reported messages.</span>
             {REASONS.map(([k, l]) => <button key={k} className="btn ghost wide" onClick={() => report(reporting, k)}>{l}</button>)}
             <button className="btn wide" onClick={() => { setReporting(null); setMenu(null); }}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {looks && (
+        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setLooks(null); }}>
+          <div className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label="Chat background" data-testid="chat-bgs">
+            <h2 style={{ fontSize: 24 }}>Background</h2>
+            <p className="desc">Only you see it. It never changes any game. You have {profile?.coins ?? 0} coins.</p>
+            <div className="bg-grid">
+              <button type="button" className={`bg-tile ${!d?.group?.bg ? 'on' : ''}`} onClick={() => pickLook(null)} aria-pressed={!d?.group?.bg} data-testid="bg-plain"><span className="bg-prev" /><b>Plain</b><small>Free</small></button>
+              {looks.map((b) => (
+                <button key={b.id} type="button" className={`bg-tile ${d?.group?.bg === b.id ? 'on' : ''}`} onClick={() => pickLook(b)} disabled={buyingBg} aria-pressed={d?.group?.bg === b.id} data-testid={`bg-${b.id}`}>
+                  <span className="chat-full bg-prev" data-bg={b.id} /><b>{b.name}</b><small>{b.owned ? (d?.group?.bg === b.id ? 'In use' : 'Yours') : `${b.price} coins`}</small>
+                </button>
+              ))}
+            </div>
+            <button className="btn wide" onClick={() => setLooks(null)}>Done</button>
           </div>
         </div>
       )}

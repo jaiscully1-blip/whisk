@@ -6,6 +6,7 @@
 --  • Safety: report a message (it vanishes for you right away, and for everyone after 2 different reporters; admins can
 --    see reports), mute a person (their messages are hidden for you), mute a group's notifications.
 --  • Photos live in their own private bucket, 'chat-photos', and only the group's members can open them.
+--  • Chat backgrounds: a small shop of looks for your own view of a chat, paid for with coins. Cosmetic only: they change nothing in any game.
 -- Everything goes through the functions below; the tables can't be read or written directly.
 
 create table if not exists public.chat_groups (
@@ -272,7 +273,7 @@ begin
   end if;
   if p_after is null and p_before is null then update chat_members set last_read_at = now() where group_id = p_group and user_id = uid; end if;
   return jsonb_build_object(
-    'group', jsonb_build_object('id', g.id, 'name', g.name, 'mine', g.owner = uid, 'muted', (select muted from chat_members where group_id = p_group and user_id = uid)),
+    'group', jsonb_build_object('id', g.id, 'name', g.name, 'mine', g.owner = uid, 'muted', (select muted from chat_members where group_id = p_group and user_id = uid), 'bg', (select bg from chat_members where group_id = p_group and user_id = uid)),
     'members', coalesce((select jsonb_agg(jsonb_build_object('code', _my_code(cm.user_id), 'name', _chat_name(cm.user_id), 'me', cm.user_id = uid, 'owner', cm.user_id = g.owner,
         'muted', exists (select 1 from chat_mutes mu where mu.user_id = uid and mu.muted_id = cm.user_id), 'friend', cm.user_id = uid or _are_friends(uid, cm.user_id)) order by cm.joined_at)
       from chat_members cm where cm.group_id = p_group), '[]'::jsonb),
@@ -302,6 +303,61 @@ begin
   select array_agg(user_id) into ids from due;
   return coalesce((select jsonb_agg(jsonb_build_object('title', gname, 'body', txt, 'url', '/compete/friends?chat=' || m.group_id, 'endpoint', s.endpoint, 'p256dh', s.p256dh, 'auth', s.auth))
     from push_subs s where s.user_id = any(coalesce(ids, '{}'))), '[]'::jsonb);
+end $$;
+
+-- ---------- chat backgrounds: only a look, bought with coins, chosen per chat and seen only by you ----------
+create table if not exists public.chat_bg_catalog (
+  id text primary key check (id ~ '^[a-z0-9-]{2,24}$'),
+  name text not null,
+  price int not null check (price > 0),
+  sort int not null default 0
+);
+insert into public.chat_bg_catalog (id, name, price, sort) values
+  ('tiles', 'Kitchen tiles', 300, 1), ('gingham', 'Picnic gingham', 300, 2), ('herbs', 'Herb garden', 400, 3),
+  ('sunset', 'Sunset', 500, 4), ('ocean', 'Ocean', 500, 5), ('night', 'Night market', 800, 6)
+on conflict (id) do update set name = excluded.name, price = excluded.price, sort = excluded.sort;
+create table if not exists public.chat_bg_owned (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  bg text not null references public.chat_bg_catalog (id) on delete cascade,
+  bought_at timestamptz not null default now(),
+  primary key (user_id, bg)
+);
+alter table public.chat_members add column if not exists bg text references public.chat_bg_catalog (id) on delete set null;
+alter table public.chat_bg_catalog enable row level security;
+alter table public.chat_bg_owned enable row level security;
+revoke all on public.chat_bg_catalog, public.chat_bg_owned from anon, authenticated;
+
+create or replace function public.get_chat_bgs() returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name, 'price', c.price, 'owned', exists (select 1 from chat_bg_owned o where o.user_id = uid and o.bg = c.id)) order by c.sort)
+    from chat_bg_catalog c), '[]'::jsonb);
+end $$;
+
+create or replace function public.buy_chat_bg(p_bg text) returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare uid uuid := auth.uid(); c chat_bg_catalog%rowtype; bal int;
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  select * into c from chat_bg_catalog where id = p_bg;
+  if not found then raise exception 'background not found'; end if;
+  if exists (select 1 from chat_bg_owned where user_id = uid and bg = c.id) then raise exception 'already owned'; end if;
+  select coins into bal from profiles where id = uid for update;
+  if bal < c.price then raise exception 'not enough coins'; end if;
+  update profiles set coins = coins - c.price where id = uid;
+  insert into chat_bg_owned (user_id, bg) values (uid, c.id);
+  return jsonb_build_object('coins', bal - c.price, 'bg', c.id);
+end $$;
+
+-- pick the look of one chat for yourself (null = the plain app colour); it has to be one you own
+create or replace function public.set_chat_bg(p_group uuid, p_bg text) returns text language plpgsql security definer set search_path = public, pg_temp as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  if not _in_chat(p_group, uid) then raise exception 'not in that group'; end if;
+  if p_bg is not null and not exists (select 1 from chat_bg_owned where user_id = uid and bg = p_bg) then raise exception 'buy that background first'; end if;
+  update chat_members set bg = p_bg where group_id = p_group and user_id = uid;
+  return p_bg;
 end $$;
 
 -- ---------- admins: reported messages ----------
@@ -342,10 +398,12 @@ create policy chat_photos_select on storage.objects for select to authenticated 
 
 revoke execute on function public.create_chat(text, text[]), public.add_to_chat(uuid, text), public.leave_chat(uuid), public.remove_from_chat(uuid, text), public.set_chat_muted(uuid, boolean),
   public.set_chat_user_muted(text, boolean), public.send_chat(uuid, text, text, text), public.send_chat_game(uuid, text, text), public.delete_chat_message(uuid), public.report_chat_message(uuid, text), public.get_chats(),
-  public.get_chat(uuid, timestamptz, timestamptz), public.admin_chat_reports(), public.admin_set_chat_hidden(uuid, boolean) from public, anon;
+  public.get_chat(uuid, timestamptz, timestamptz), public.admin_chat_reports(), public.admin_set_chat_hidden(uuid, boolean),
+  public.get_chat_bgs(), public.buy_chat_bg(text), public.set_chat_bg(uuid, text) from public, anon;
 grant execute on function public.create_chat(text, text[]), public.add_to_chat(uuid, text), public.leave_chat(uuid), public.remove_from_chat(uuid, text), public.set_chat_muted(uuid, boolean),
   public.set_chat_user_muted(text, boolean), public.send_chat(uuid, text, text, text), public.send_chat_game(uuid, text, text), public.delete_chat_message(uuid), public.report_chat_message(uuid, text), public.get_chats(),
-  public.get_chat(uuid, timestamptz, timestamptz), public.admin_chat_reports(), public.admin_set_chat_hidden(uuid, boolean) to authenticated;
+  public.get_chat(uuid, timestamptz, timestamptz), public.admin_chat_reports(), public.admin_set_chat_hidden(uuid, boolean),
+  public.get_chat_bgs(), public.buy_chat_bg(text), public.set_chat_bg(uuid, text) to authenticated;
 revoke execute on function public.push_chat(text, uuid, uuid) from public;
 grant execute on function public.push_chat(text, uuid, uuid) to anon, authenticated;   -- the secret is the lock, like push_cookoff
 revoke execute on function public._in_chat(uuid, uuid), public._chat_name(uuid), public._chat_game_state(text, jsonb) from public, anon, authenticated;

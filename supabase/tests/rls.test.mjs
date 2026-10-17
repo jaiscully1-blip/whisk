@@ -1365,10 +1365,27 @@ check('a game invite buzzes the group with a Join message', pj.length >= 1 && /U
 const gg = (await cq(CA, `select public.create_chat('Full', '{}') g`)).rows[0].g;
 for (let i = 0; i < 24; i++) { const u = `d4d4d4d4-0000-4000-8000-0000000001${String(i).padStart(2, '0')}`; await db.exec(`insert into auth.users (id, email) values ('${u}', 'z${i}@x.com')`); await frd(CA, u); await db.exec(`insert into chat_members (group_id, user_id) values ('${gg}', '${u}')`); }
 await expectFail('a group holds at most 25 people', CA, `select public.add_to_chat('${gg}', '${cB}')`);
+// backgrounds
+const bgs = (await cq(CA, `select public.get_chat_bgs() r`)).rows[0].r;
+check('the background shop lists looks with prices', bgs.length === 6 && bgs.every((b) => b.price > 0 && b.owned === false));
+await expectFail('players cannot read the background tables', CA, `select * from chat_bg_owned`);
+await db.exec(`update profiles set coins = 350 where id = '${CA}'`);
+await expectFail('a background cannot be set before buying it', CA, `select public.set_chat_bg('${GG}', 'tiles')`);
+await expectFail('an unknown background is refused', CA, `select public.buy_chat_bg('nope')`);
+await expectFail('a background costs real coins', CA, `select public.buy_chat_bg('night')`);
+const bought = (await cq(CA, `select public.buy_chat_bg('tiles') r`)).rows[0].r;
+check('buying a background takes its price in coins', bought.coins === 50 && (await db.query(`select coins from profiles where id = '${CA}'`)).rows[0].coins === 50);
+await expectFail('a background is bought only once', CA, `select public.buy_chat_bg('tiles')`);
+await cq(CA, `select public.set_chat_bg('${GG}', 'tiles')`);
+check('the chosen background comes back with the chat', (await cq(CA, `select public.get_chat('${GG}', null, null) r`)).rows[0].r.group.bg === 'tiles');
+check('a background is only your own view', (await cq(CB, `select public.get_chat('${GG}', null, null) r`)).rows[0].r.group.bg === null);
+await expectFail('someone outside the group cannot set a background', CD, `select public.set_chat_bg('${GG}', 'tiles')`);
+await cq(CA, `select public.set_chat_bg('${GG}', null)`);
+check('the plain colour can be chosen again', (await cq(CA, `select public.get_chat('${GG}', null, null) r`)).rows[0].r.group.bg === null);
 }
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
-check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));
+check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_chat_bg', 'buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));
 const slots = (await db.query(`select array_agg(distinct slot order by slot) s from items`)).rows[0].s;
 check('everything in the shop is something to wear', slots.every((x) => ['top', 'hat', 'glasses', 'shoes', 'acc'].includes(x)), JSON.stringify(slots));
 

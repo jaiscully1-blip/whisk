@@ -390,6 +390,76 @@ begin
   return p_bg;
 end $$;
 
+-- ---------- a shared shopping list for the group (households, flatmates, a dinner crew) ----------
+create table if not exists public.chat_list (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.chat_groups (id) on delete cascade,
+  name text not null check (char_length(btrim(name)) between 1 and 60),
+  added_by uuid references auth.users (id) on delete set null,
+  done boolean not null default false,
+  done_by uuid references auth.users (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists chat_list_group_idx on public.chat_list (group_id, created_at);
+alter table public.chat_list enable row level security;
+revoke all on public.chat_list from anon, authenticated;
+
+create or replace function public.get_chat_list(p_group uuid) returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  if not _in_chat(p_group, uid) then raise exception 'not in that group'; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object('id', id, 'name', name, 'by', case when added_by = uid then 'You' else _chat_name(added_by) end, 'done', done,
+    'done_by', case when done_by is null then null when done_by = uid then 'You' else _chat_name(done_by) end) order by done, created_at) from chat_list where group_id = p_group), '[]'::jsonb);
+end $$;
+
+-- add things to the group's list; anything already on it (not yet ticked) is skipped. Returns how many were new.
+create or replace function public.add_chat_list(p_group uuid, p_names text[]) returns int language plpgsql security definer set search_path = public, pg_temp as $$
+declare uid uuid := auth.uid(); n text; added int := 0; have int;
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  if not _in_chat(p_group, uid) then raise exception 'not in that group'; end if;
+  select count(*) into have from chat_list where group_id = p_group;
+  foreach n in array coalesce(p_names, '{}') loop
+    n := left(btrim(coalesce(n, '')), 60);
+    if n = '' then continue; end if;
+    if have + added >= 100 then raise exception 'the list is full (100 things)'; end if;
+    if exists (select 1 from chat_list where group_id = p_group and not done and lower(name) = lower(n)) then continue; end if;
+    insert into chat_list (group_id, name, added_by) values (p_group, n, uid);
+    added := added + 1;
+  end loop;
+  return added;
+end $$;
+
+create or replace function public.set_chat_list_done(p_item uuid, p_done boolean) returns void language plpgsql security definer set search_path = public, pg_temp as $$
+declare uid uuid := auth.uid(); g uuid;
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  select group_id into g from chat_list where id = p_item;
+  if g is null or not _in_chat(g, uid) then raise exception 'not found'; end if;
+  update chat_list set done = p_done, done_by = case when p_done then uid else null end where id = p_item;
+end $$;
+
+create or replace function public.remove_chat_list(p_item uuid) returns void language plpgsql security definer set search_path = public, pg_temp as $$
+declare uid uuid := auth.uid(); g uuid;
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  select group_id into g from chat_list where id = p_item;
+  if g is null or not _in_chat(g, uid) then raise exception 'not found'; end if;
+  delete from chat_list where id = p_item;
+end $$;
+
+-- clear everything that has been ticked off
+create or replace function public.clear_chat_list_done(p_group uuid) returns int language plpgsql security definer set search_path = public, pg_temp as $$
+declare uid uuid := auth.uid(); n int;
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  if not _in_chat(p_group, uid) then raise exception 'not in that group'; end if;
+  delete from chat_list where group_id = p_group and done;
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
 -- ---------- admins: reported messages ----------
 create or replace function public.admin_chat_reports() returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 begin
@@ -430,12 +500,14 @@ revoke execute on function public.create_chat(text, text[]), public.add_to_chat(
   public.set_chat_user_muted(text, boolean), public.send_chat(uuid, text, text, text), public.send_chat_game(uuid, text, text), public.delete_chat_message(uuid), public.report_chat_message(uuid, text), public.get_chats(),
   public.get_chat(uuid, timestamptz, timestamptz), public.admin_chat_reports(), public.admin_set_chat_hidden(uuid, boolean),
   public.get_chat_bgs(), public.buy_chat_bg(text), public.set_chat_bg(uuid, text),
-  public.send_chat_video(uuid, text, text, text[], text[]) from public, anon;
+  public.send_chat_video(uuid, text, text, text[], text[]),
+  public.get_chat_list(uuid), public.add_chat_list(uuid, text[]), public.set_chat_list_done(uuid, boolean), public.remove_chat_list(uuid), public.clear_chat_list_done(uuid) from public, anon;
 grant execute on function public.create_chat(text, text[]), public.add_to_chat(uuid, text), public.leave_chat(uuid), public.remove_from_chat(uuid, text), public.set_chat_muted(uuid, boolean),
   public.set_chat_user_muted(text, boolean), public.send_chat(uuid, text, text, text), public.send_chat_game(uuid, text, text), public.delete_chat_message(uuid), public.report_chat_message(uuid, text), public.get_chats(),
   public.get_chat(uuid, timestamptz, timestamptz), public.admin_chat_reports(), public.admin_set_chat_hidden(uuid, boolean),
   public.get_chat_bgs(), public.buy_chat_bg(text), public.set_chat_bg(uuid, text),
-  public.send_chat_video(uuid, text, text, text[], text[]) to authenticated;
+  public.send_chat_video(uuid, text, text, text[], text[]),
+  public.get_chat_list(uuid), public.add_chat_list(uuid, text[]), public.set_chat_list_done(uuid, boolean), public.remove_chat_list(uuid), public.clear_chat_list_done(uuid) to authenticated;
 revoke execute on function public.push_chat(text, uuid, uuid) from public;
 grant execute on function public.push_chat(text, uuid, uuid) to anon, authenticated;   -- the secret is the lock, like push_cookoff
 revoke execute on function public._in_chat(uuid, uuid), public._chat_name(uuid), public._chat_game_state(text, jsonb) from public, anon, authenticated;

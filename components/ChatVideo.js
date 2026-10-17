@@ -19,12 +19,17 @@ export function VideoCard({ m, onWatch, onMore }) {
 }
 
 // watch the video inside the app, with the ingredients and steps next to it
-export function VideoSheet({ m, onClose }) {
+export function VideoSheet({ m, group, onGroupList, onClose }) {
   const { supabase, say } = useWhisk();
   const v = m.meta || {}; const src = embedSrc(v); const link = openSrc(v);
   const [busy, setBusy] = useState(false);
   async function addAll() {
     setBusy(true); const n = await addToShoppingList(supabase, v.ingredients || []); setBusy(false); say(listMsg(n));
+  }
+  async function addGroup() {
+    setBusy(true); const { data, error } = await supabase.rpc('add_chat_list', { p_group: group, p_names: v.ingredients || [] }); setBusy(false);
+    if (error) { say('Couldn’t add to the group list'); return; }
+    onGroupList?.(); say(data ? `Added ${data} to the group list` : 'Already on the group list');
   }
   return (
     <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -36,6 +41,7 @@ export function VideoSheet({ m, onClose }) {
           <span className="eyebrow">Ingredients</span>
           <ul className="vid-list" data-testid="vid-ingredients">{v.ingredients.map((x, i) => <li key={i}>{x}</li>)}</ul>
           <button type="button" className="btn ghost wide" onClick={addAll} disabled={busy} data-testid="vid-add-list"><Icon name="bag" size={18} />Add all to my shopping list</button>
+          {group && <button type="button" className="btn ghost wide" onClick={addGroup} disabled={busy} data-testid="vid-add-group"><Icon name="users" size={18} />Add all to the group list</button>}
         </>}
         {(v.steps || []).length > 0 && <>
           <span className="eyebrow">Steps</span>

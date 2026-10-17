@@ -1405,3 +1405,12 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .vid-frame.youtube { height: min(62dvh, 560px); }
 .vid-list { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
 .chat-oi.vid { background: #e5484d; color: #fff; }
+
+/* the group's shared shopping list */
+.gl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.gl-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.gl-list li.done .gl-name b { text-decoration: line-through; opacity: .55; }
+.gl-name { flex: 1; min-width: 0; display: grid; }
+.gl-name small { color: var(--muted, #888); }
+.gl-tick { width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--line); background: none; color: var(--btn-ink, #1d2a12); display: grid; place-items: center; cursor: pointer; flex: none; }
+.gl-list li.done .gl-tick { background: var(--accent); border-color: var(--accent); }

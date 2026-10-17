@@ -1379,6 +1379,22 @@ await expectFail('a look-alike address is refused', CA, `select public.send_chat
 await expectFail('a plain http link is refused', CA, `select public.send_chat_video('${GG}', 'http://www.tiktok.com/@a/video/123456789')`);
 await expectFail('someone outside the group cannot share a video', CD, `select public.send_chat_video('${GG}', 'https://youtu.be/dQw4w9WgXcQ')`);
 check('a shared video shows in the chat list preview', (await cq(CA, `select public.get_chats() r`)).rows[0].r.some((c) => c.last && c.last.kind === 'video'));
+// shared shopping list
+await expectFail('players cannot read the shared list table', CA, `select * from chat_list`);
+check('adding to the group list counts only new things', (await cq(CA, `select public.add_chat_list('${GG}', array['Milk', 'eggs', '  ', 'milk']) r`)).rows[0].r === 2);
+check('adding something already there is skipped', (await cq(CB, `select public.add_chat_list('${GG}', array['EGGS', 'Rice']) r`)).rows[0].r === 1);
+const gl = (await cq(CB, `select public.get_chat_list('${GG}') r`)).rows[0].r;
+check('the list shows who added each thing', gl.length === 3 && gl.find((x) => x.name === 'Milk').by === 'You' === false && gl.find((x) => x.name === 'Rice').by === 'You');
+await expectFail('someone outside the group cannot see the list', CD, `select public.get_chat_list('${GG}')`);
+await expectFail('someone outside the group cannot add to it', CD, `select public.add_chat_list('${GG}', array['x'])`);
+await cq(CB, `select public.set_chat_list_done('${gl.find((x) => x.name === 'Milk').id}', true)`);
+const gl2 = (await cq(CA, `select public.get_chat_list('${GG}') r`)).rows[0].r;
+check('a ticked thing drops to the bottom and says who got it', gl2[gl2.length - 1].name === 'Milk' && gl2[gl2.length - 1].done && gl2[gl2.length - 1].done_by !== 'You');
+await expectFail('someone outside the group cannot tick things off', CD, `select public.set_chat_list_done('${gl.find((x) => x.name === 'Rice').id}', true)`);
+check('clearing removes only the ticked things', (await cq(CA, `select public.clear_chat_list_done('${GG}') r`)).rows[0].r === 1 && (await cq(CA, `select public.get_chat_list('${GG}') r`)).rows[0].r.length === 2);
+await cq(CA, `select public.remove_chat_list('${gl.find((x) => x.name === 'Rice').id}')`);
+check('any member can remove a thing', (await cq(CA, `select public.get_chat_list('${GG}') r`)).rows[0].r.length === 1);
+await expectFail('the list holds at most 100 things', CA, `select public.add_chat_list('${GG}', (select array_agg('item' || i) from generate_series(1, 101) i))`);
 // backgrounds
 const bgs = (await cq(CA, `select public.get_chat_bgs() r`)).rows[0].r;
 check('the background shop lists looks with prices', bgs.length === 6 && bgs.every((b) => b.price > 0 && b.owned === false));

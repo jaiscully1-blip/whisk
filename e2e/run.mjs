@@ -1107,6 +1107,20 @@ await step('friends and group chat', async () => {
   await page.getByTestId('video-share').waitFor();
   check('a pasted link opens the share sheet with the link filled in', (await page.locator('#vid-url').inputValue()) === 'https://youtu.be/dQw4w9WgXcQ');
   await page.getByTestId('video-share').getByRole('button', { name: 'Cancel' }).click();
+  // shared shopping list
+  await fp.getByTestId('chat-listbtn').click(); await fp.locator('#gl-add').fill('oat milk, lemons'); await fp.getByTestId('gl-add-btn').click();
+  await fp.locator('[data-testid="gl-items"] li').nth(1).waitFor();
+  await page.getByTestId('chat-listbtn').click();
+  await page.locator('[data-testid="gl-items"] li').nth(1).waitFor({ timeout: 8000 });
+  check('a friend sees what was added to the group list and who added it', (await page.getByTestId('gl-items').innerText()).includes('oat milk') && (await page.getByTestId('gl-items').innerText()).includes('Added by Chef'));
+  await page.getByRole('checkbox', { name: /oat milk/ }).click();
+  await page.locator('[data-testid="gl-items"] li.done').waitFor();
+  check('ticking a thing off moves it down', (await page.locator('[data-testid="gl-items"] li').last().innerText()).includes('oat milk'));
+  await page.getByTestId('gl-copy').click(); await page.locator('.toast', { hasText: /Added 1|Already/ }).waitFor();
+  await page.getByTestId('gl-clear').click(); await page.locator('[data-testid="gl-items"] li.done').waitFor({ state: 'detached' });
+  check('clearing removes the ticked things', (await page.locator('[data-testid="gl-items"] li').count()) === 1);
+  await page.getByTestId('chat-shoplist').getByRole('button', { name: 'Done' }).click();
+  await fp.getByTestId('chat-shoplist').getByRole('button', { name: 'Done' }).click();
   await fp.getByRole('button', { name: 'Back to chats' }).click();
   check('the chat list shows the muted bell', (await fp.locator('.chat-item', { hasText: 'Dinner crew' }).locator('svg').count()) >= 1);
   await page.getByRole('button', { name: 'Back to chats' }).click();

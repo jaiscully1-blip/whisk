@@ -10,6 +10,7 @@ import CookOffCard from './CookOffCard';
 import UseItUpCard, { uiuError } from './UseItUpCard';
 import GuessCook from './GuessCook';
 import { VideoCard, VideoSheet, VideoShare } from './ChatVideo';
+import ChatShopList from './ChatShopList';
 import { parseVideo } from '@/lib/video';
 
 // One group chat, full screen, like a text thread: bubbles, photos, emoji. Refreshes every few seconds while it is open
@@ -71,6 +72,7 @@ export default function ChatView({ id, onClose, onChanged }) {
   const [looks, setLooks] = useState(null);         // background shop: null = closed, [] = loading
   const [buyingBg, setBuyingBg] = useState(false);
   const [vidShare, setVidShare] = useState(null);   // null = closed, string = the link to start with
+  const [shopList, setShopList] = useState(false);
   const [vidWatch, setVidWatch] = useState(null);   // a video message being watched
   const listRef = useRef(null);
   const lastAt = useRef(null);
@@ -104,7 +106,7 @@ export default function ChatView({ id, onClose, onChanged }) {
     let ch = null;
     try {
       ch = supabase.channel(`chat:${id}`, { config: { broadcast: { self: false } } });
-      ch.on('broadcast', { event: 'ping' }, () => { check(); }).subscribe((st) => { live.current = st === 'SUBSCRIBED'; });
+      ch.on('broadcast', { event: 'ping' }, () => { check(); window.dispatchEvent(new Event('yoke:chat-ping')); }).subscribe((st) => { live.current = st === 'SUBSCRIBED'; });
       chan.current = ch;
     } catch { live.current = false; }
     return () => { live.current = false; chan.current = null; try { if (ch) supabase.removeChannel(ch); } catch {} };
@@ -217,6 +219,7 @@ export default function ChatView({ id, onClose, onChanged }) {
         <button type="button" className="chat-title" onClick={openPeople} aria-label={`${d?.group?.name || 'Chat'}: see who is in this group`}>
           <b>{d?.group?.name || '…'}</b><small>{d ? `${d.members.length} ${d.members.length === 1 ? 'person' : 'people'}` : ''}</small>
         </button>
+        <button type="button" className="chat-ico" onClick={() => setShopList(true)} disabled={!d} aria-label="Group shopping list" data-testid="chat-listbtn"><Icon name="bag" size={22} /></button>
         <button type="button" className="chat-ico" onClick={openLooks} disabled={!d} aria-label="Chat background" data-testid="chat-bgbtn"><Icon name="palette" size={22} /></button>
         <button type="button" className={`chat-ico ${d?.group?.muted ? 'off' : ''}`} onClick={toggleBell} disabled={!d} aria-pressed={!!d?.group?.muted} aria-label={d?.group?.muted ? 'Turn notifications on for this chat' : 'Turn notifications off for this chat'} data-testid="chat-bell"><Icon name={d?.group?.muted ? 'bellx' : 'bell'} size={22} /></button>
       </header>
@@ -289,7 +292,8 @@ export default function ChatView({ id, onClose, onChanged }) {
         </div>
       )}
       {vidShare !== null && <VideoShare initialUrl={vidShare} onSend={sendVideo} onClose={() => setVidShare(null)} />}
-      {vidWatch && <VideoSheet m={vidWatch} onClose={() => setVidWatch(null)} />}
+      {vidWatch && <VideoSheet m={vidWatch} group={id} onGroupList={ping} onClose={() => setVidWatch(null)} />}
+      {shopList && <ChatShopList group={id} onClose={() => setShopList(false)} onChanged={ping} />}
       {looks && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setLooks(null); }}>
           <div className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label="Chat background" data-testid="chat-bgs">

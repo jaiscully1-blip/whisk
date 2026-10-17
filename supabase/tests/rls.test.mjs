@@ -910,6 +910,62 @@ check('the expiry notification says Yoke, not Feta, Baste or Whisk', pdDef3.incl
 check('App Store ids named for Yoke map to the same packs', (await db.query(`select pack_id from coin_pack_products where product_id = 'yoke.coins1000'`)).rows[0]?.pack_id === 'coins-1000');
 check('the older Feta and Baste ids keep working', (await db.query(`select count(*)::int n from coin_pack_products where product_id in ('feta.coins3000', 'baste.coins3000')`)).rows[0].n === 2);
 
+// ================= 0032: cooking level + learn quiz =================
+try { const f = fs.readFileSync('./supabase/migrations/0032_learn_quiz.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0032 runs (twice)', true); }
+catch (e) { check('0032 runs (twice)', false, e.message); }
+const LQ = '1a1a1a1a-1a1a-1a1a-1a1a-1a1a1a1a1a1a', LR = '2b2b2b2b-2b2b-2b2b-2b2b-2b2b2b2b2b2b';
+await db.exec(`insert into auth.users (id, email) values ('${LQ}', 'lq@x.com'), ('${LR}', 'lr@x.com')`);
+check('the question bank is loaded', (await db.query(`select count(*)::int n from lesson_questions`)).rows[0].n >= 60);
+await expectFail('players cannot read the answers table', LQ, `select * from lesson_questions limit 1`);
+await expectFail('a quiz needs a level first', LQ, `select public.quiz_start()`);
+await expectFail('a made-up level is refused', LQ, `select public.set_skill_level('wizard')`);
+await as(LQ, () => db.query(`select public.set_skill_level('expert')`));
+await expectFail('learning is off for Expert', LQ, `select public.quiz_start()`);
+await as(LQ, () => db.query(`select public.set_skill_level('novice')`));
+const qs1 = (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r;
+check('a quiz is 3 questions with no answers in them', qs1.questions.length === 3 && qs1.questions.every((q) => q.answer === undefined && q.why === undefined && q.options.length === 4), JSON.stringify(qs1).slice(0, 200));
+const qs1b = (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r;
+check('starting again resumes the same unfinished quiz', qs1b.attempt === qs1.attempt && JSON.stringify(qs1b.questions.map((q) => q.id)) === JSON.stringify(qs1.questions.map((q) => q.id)));
+const rightFor = async (ids) => Promise.all(ids.map(async (id) => (await db.query(`select answer from lesson_questions where id = ${id}`)).rows[0].answer));
+const right1 = await rightFor(qs1.questions.map((q) => q.id));
+await expectFail('someone else cannot answer my quiz', LR, `select public.quiz_submit('${qs1.attempt}', array[0,0,0])`);
+await expectFail('all three answers are required', LQ, `select public.quiz_submit('${qs1.attempt}', array[0,0])`);
+await expectFail('an answer outside A-D is refused', LQ, `select public.quiz_submit('${qs1.attempt}', array[0,0,7])`);
+const lqCoins0 = await coinsOf(LQ);
+const sub1 = (await as(LQ, () => db.query(`select public.quiz_submit('${qs1.attempt}', array[${right1.join(',')}]) r`))).rows[0].r;
+check('3 out of 3 pays 100 coins', sub1.correct === 3 && sub1.perfect === true && sub1.coins === 100 && (await coinsOf(LQ)) === lqCoins0 + 100, JSON.stringify(sub1));
+check('the first quiz starts a learning streak of 1', sub1.streak === 1 && sub1.best === 1);
+check('after answering you see the right answers and why', sub1.results.length === 3 && sub1.results.every((r, i) => r.answer === right1[i] && r.why.length > 10));
+await expectFail('a quiz cannot be answered twice (no double pay)', LQ, `select public.quiz_submit('${qs1.attempt}', array[${right1.join(',')}])`);
+check('coins did not move on the repeat attempt', (await coinsOf(LQ)) === lqCoins0 + 100);
+const qs2 = (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r;
+check('the next quiz is a new one', qs2.attempt !== qs1.attempt);
+const wrong2 = (await rightFor(qs2.questions.map((q) => q.id))).map((a, i) => (i === 0 ? (a + 1) % 4 : a));
+const sub2 = (await as(LQ, () => db.query(`select public.quiz_submit('${qs2.attempt}', array[${wrong2.join(',')}]) r`))).rows[0].r;
+check('2 out of 3 pays nothing', sub2.correct === 2 && sub2.coins === 0 && (await coinsOf(LQ)) === lqCoins0 + 100, JSON.stringify(sub2));
+check('a second quiz the same day keeps the streak at 1', sub2.streak === 1);
+// pay cap: 5 paying quizzes a day
+let paidTotal = 100, lastSub = null;
+for (let k = 0; k < 6; k++) {
+  const q = (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r;
+  const r = await rightFor(q.questions.map((x) => x.id));
+  lastSub = (await as(LQ, () => db.query(`select public.quiz_submit('${q.attempt}', array[${r.join(',')}]) r`))).rows[0].r;
+  paidTotal += lastSub.coins;
+}
+check('at most 5 perfect quizzes a day pay out (500 coins)', paidTotal === 500 && lastSub.coins === 0 && (await coinsOf(LQ)) === lqCoins0 + 500, `${paidTotal}`);
+// streak: yesterday continues, a gap resets
+await db.exec(`update profiles set learn_last = (select _user_today('${LQ}') - 1), learn_streak = 4, learn_best = 4 where id = '${LQ}'`);
+const q3 = (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r;
+const s3 = (await as(LQ, () => db.query(`select public.quiz_submit('${q3.attempt}', array[0,0,0]) r`))).rows[0].r;
+check('answering the day after continues the streak', s3.streak === 5 && s3.best === 5, JSON.stringify(s3));
+await db.exec(`update profiles set learn_last = (select _user_today('${LQ}') - 3) where id = '${LQ}'`);
+const q4 = (await as(LQ, () => db.query(`select public.quiz_start() r`))).rows[0].r;
+const s4 = (await as(LQ, () => db.query(`select public.quiz_submit('${q4.attempt}', array[0,0,0]) r`))).rows[0].r;
+check('missing days resets the streak but keeps the best', s4.streak === 1 && s4.best === 5, JSON.stringify(s4));
+await expectFail('players cannot write their own streak or level directly', LQ, `update profiles set learn_streak = 99 where id = '${LQ}'`);
+await expectFail('players cannot write quiz rows directly', LQ, `insert into quiz_attempts (user_id, qids, day) values ('${LQ}', array[1,2,3], current_date)`);
+check('players only see their own attempts', (await as(LR, () => db.query(`select count(*)::int n from quiz_attempts`))).rows[0].n === 0);
+
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

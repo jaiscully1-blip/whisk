@@ -10,6 +10,7 @@ import { usePantry, useSaved } from '@/components/usePantry';
 const PAGE = 12;
 import { canon, checkRecipe, usesSoon } from '@/lib/recipes/match';
 import WeekGoal from '@/components/WeekGoal';
+import LearnEntry from '@/components/LearnEntry';
 import BackupNudge from '@/components/BackupNudge';
 import MyYouTubers from '@/components/MyYouTubers';
 import DishSearch from '@/components/DishSearch';
@@ -66,6 +67,7 @@ export default function Cook() {
   return (
     <div className="stack">
       <div className="page-title"><h1>Cook</h1><WeekGoal /></div>
+      <LearnEntry />
       <BackupNudge />
       <div className="card stack">
         <div className="grid2">

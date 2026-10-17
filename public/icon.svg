@@ -34,7 +34,7 @@
   <path d="M112 134 Q128 122 144 134 Q128 154 112 134 Z" fill="#FF9A2E" stroke="#2A2433" stroke-width="4" stroke-linejoin="round"/>
   <path d="M116 136 Q128 142 140 136" stroke="#2A2433" stroke-width="2.5" fill="none" stroke-linecap="round"/>
   <!-- chef hat: the band wraps the head (curved), the puffs sit on top -->
-  <g transform="translate(0 2) translate(128 92) scale(.86) rotate(-6) translate(-128 -92)">
+  <g transform="translate(0 -2) translate(128 92) scale(1.12 .9) rotate(-3) translate(-128 -92)">
     <g stroke="#2A2433" stroke-width="5" stroke-linejoin="round" fill="#FFFFFF">
       <circle cx="94" cy="44" r="21"/><circle cx="162" cy="44" r="21"/><circle cx="128" cy="30" r="27"/>
     </g>

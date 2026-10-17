@@ -1264,3 +1264,18 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .swap-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .swap-opt .muted { font-size: 13px; }
 .swap-note { font-size: 12px; color: var(--muted); }
+
+.popup-chick { width: 170px; height: 170px; border-radius: 38px; display: block; margin-bottom: 4px; animation: chick-pop .5s cubic-bezier(.3,1.6,.5,1) both; }
+@keyframes chick-pop { from { transform: scale(.6) rotate(-6deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .popup-chick { animation: none; } }
+
+/* ---------- learn: level picker, quiz ---------- */
+.lv-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; border: 2px solid transparent; color: var(--fg); width: 100%; }
+.lv-opt[aria-pressed="true"], .quiz-opt[aria-pressed="true"] { border-color: var(--accent); background: var(--fresh-soft); }
+.quiz-opt { text-align: left; border: 2px solid transparent; color: var(--fg); font-weight: 700; width: 100%; }
+.learn-btn { width: 100%; flex-wrap: nowrap; gap: 10px; align-items: center; color: var(--fg); text-align: left; margin: 0 0 12px; padding: 12px 16px; }
+.quiz-bar { height: 8px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.quiz-bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .25s ease; }
+.quiz-score.perfect { background: var(--gold-soft); }
+.quiz-rev.ok { border-left: 5px solid var(--fresh); }
+.quiz-rev.no { border-left: 5px solid var(--bad); }

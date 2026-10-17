@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useWhisk, useDraft } from '@/components/AppShell';
 import Icon from '@/components/Icon';
 import GetCoinsSheet from '@/components/GetCoinsSheet';
+import LevelPicker from '@/components/LevelPicker';
+import { levelLabel, learns } from '@/lib/learn/levels';
 import DailyQuest from '@/components/DailyQuest';
 import { TIPS } from '@/lib/tips';
 import { ProfileCard, MyKitchen, KitchenShop, CountryChallenges } from '@/components/MeWorld';
@@ -30,6 +32,7 @@ export default function Me() {
   const meals = medata?.meals || EMPTY_LIST, history = medata?.history || EMPTY_LIST;
   const [world, , setWorld] = useWorld();
   const [getCoins, setGetCoins] = useState(false);
+  const [levelOpen, setLevelOpen] = useState(false);
   const [howTo, setHowTo] = useState(false);
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -141,6 +144,11 @@ export default function Me() {
           <output style={{ minWidth: 28, textAlign: 'center', fontWeight: 800 }}>{goal}</output>
           <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="More meals" onClick={() => saveSetting({ weekly_goal: Math.min(14, goal + 1) }, `Goal: ${Math.min(14, goal + 1)} meals a week`)}>+</button>
         </div>
+        {profile?.skill_level !== undefined && (
+          <button className="row setbtn" data-testid="level-row" onClick={() => setLevelOpen(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
+            <Icon name="learn" /><span style={{ flex: 1, fontWeight: 700 }}>Cooking level</span><span className="desc">{levelLabel(profile.skill_level) || 'Not set'}{learns(profile.skill_level) ? ' · Learn on' : ''}</span><Icon name="chevron" />
+          </button>
+        )}
         <button className="row setbtn" onClick={() => setNever(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
           <Icon name="shield" /><span style={{ flex: 1, fontWeight: 700 }}>Never show me</span><span className="desc">{(profile?.never_show || []).length ? `${profile.never_show.length} hidden` : 'Allergies, dislikes'}</span><Icon name="chevron" />
         </button>
@@ -197,6 +205,7 @@ export default function Me() {
           </div>
         </div>
       )}
+      {levelOpen && <LevelPicker current={profile?.skill_level} onPick={async (id) => { setLevelOpen(false); setProfile({ ...profile, skill_level: id }); const { error } = await supabase.rpc('set_skill_level', { p_level: id }); say(error ? 'Couldn’t save your level.' : (learns(id) ? 'Level saved. Learn is on in the Cook tab' : 'Level saved')); }} onLater={() => setLevelOpen(false)} />}
       {getCoins && <GetCoinsSheet onClose={() => setGetCoins(false)} />}
     </div>
   );

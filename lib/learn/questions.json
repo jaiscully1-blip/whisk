@@ -1,0 +1,808 @@
+[
+ {
+  "id": 1,
+  "q": "What internal temperature makes cooked chicken safe to eat?",
+  "options": [
+   "145°F (63°C)",
+   "155°F (68°C)",
+   "165°F (74°C)",
+   "175°F (79°C)"
+  ],
+  "answer": 2,
+  "why": "165°F (74°C) in the thickest part kills the bacteria that cause food poisoning. Use a thermometer, not colour.",
+  "tier": 1
+ },
+ {
+  "id": 2,
+  "q": "What is the safe internal temperature for ground beef?",
+  "options": [
+   "145°F (63°C)",
+   "160°F (71°C)",
+   "130°F (54°C)",
+   "180°F (82°C)"
+  ],
+  "answer": 1,
+  "why": "Grinding mixes surface bacteria all the way through, so ground meat needs 160°F (71°C).",
+  "tier": 1
+ },
+ {
+  "id": 3,
+  "q": "Whole cuts of beef or pork, like steaks and chops, are safe at what temperature, followed by a short rest?",
+  "options": [
+   "120°F (49°C) for 1 minute",
+   "145°F (63°C) with a 3 minute rest",
+   "165°F (74°C) with no rest",
+   "135°F (57°C) with a 10 minute rest"
+  ],
+  "answer": 1,
+  "why": "145°F (63°C), then rest 3 minutes. The rest finishes the job and keeps the juices in.",
+  "tier": 1
+ },
+ {
+  "id": 4,
+  "q": "Fish is cooked through at what internal temperature?",
+  "options": [
+   "110°F (43°C)",
+   "125°F (52°C)",
+   "145°F (63°C)",
+   "190°F (88°C)"
+  ],
+  "answer": 2,
+  "why": "145°F (63°C), when the flesh turns opaque and flakes easily.",
+  "tier": 1
+ },
+ {
+  "id": 5,
+  "q": "Bacteria grow fastest between which temperatures, called the danger zone?",
+  "options": [
+   "0°F to 32°F",
+   "40°F to 140°F",
+   "150°F to 200°F",
+   "212°F and above"
+  ],
+  "answer": 1,
+  "why": "Between 40°F (4°C) and 140°F (60°C) bacteria multiply quickly. Keep cold food cold and hot food hot.",
+  "tier": 1
+ },
+ {
+  "id": 6,
+  "q": "How soon should cooked food go in the fridge?",
+  "options": [
+   "Within 2 hours",
+   "Within 6 hours",
+   "Once it is fully cold",
+   "By the next morning"
+  ],
+  "answer": 0,
+  "why": "Within 2 hours (1 hour if it is hotter than 90°F outside). After that, bacteria have had too long to grow.",
+  "tier": 1
+ },
+ {
+  "id": 7,
+  "q": "How long do cooked leftovers keep in the fridge?",
+  "options": [
+   "1 day",
+   "3 to 4 days",
+   "1 week",
+   "2 weeks"
+  ],
+  "answer": 1,
+  "why": "3 to 4 days. After that, throw them out, even if they look and smell fine.",
+  "tier": 1
+ },
+ {
+  "id": 8,
+  "q": "Should you rinse raw chicken before cooking it?",
+  "options": [
+   "Yes, to wash off germs",
+   "Yes, but only with soap",
+   "No, it spreads germs around the sink",
+   "Only if it smells"
+  ],
+  "answer": 2,
+  "why": "Rinsing splashes raw-chicken bacteria onto the sink and counters. Cooking to 165°F is what makes it safe.",
+  "tier": 1
+ },
+ {
+  "id": 9,
+  "q": "What is the best way to avoid cross-contamination?",
+  "options": [
+   "Use the same board and wash it once at the end",
+   "Use separate boards (or wash well) for raw meat and ready-to-eat food",
+   "Rinse the knife with cold water",
+   "Cut meat last, always"
+  ],
+  "answer": 1,
+  "why": "Raw meat juices can carry bacteria. Keep a separate board, or wash the board, knife and your hands before touching anything that won't be cooked.",
+  "tier": 1
+ },
+ {
+  "id": 10,
+  "q": "How long should you wash your hands with soap before cooking?",
+  "options": [
+   "5 seconds",
+   "10 seconds",
+   "At least 20 seconds",
+   "2 minutes"
+  ],
+  "answer": 2,
+  "why": "At least 20 seconds, about two rounds of the happy birthday song, then dry them on a clean towel.",
+  "tier": 1
+ },
+ {
+  "id": 11,
+  "q": "What is the safest way to thaw frozen meat?",
+  "options": [
+   "On the counter overnight",
+   "In the fridge",
+   "In a bowl of hot water",
+   "Under a warm lamp"
+  ],
+  "answer": 1,
+  "why": "The fridge keeps it out of the danger zone. Cold running water or the microwave also work if you cook it right away.",
+  "tier": 1
+ },
+ {
+  "id": 12,
+  "q": "What temperature should your fridge be at or below?",
+  "options": [
+   "32°F (0°C)",
+   "40°F (4°C)",
+   "50°F (10°C)",
+   "60°F (16°C)"
+  ],
+  "answer": 1,
+  "why": "40°F (4°C) or colder slows bacteria. The freezer should be 0°F (-18°C).",
+  "tier": 1
+ },
+ {
+  "id": 13,
+  "q": "Why is a sharp knife safer than a dull one?",
+  "options": [
+   "It cuts faster so you finish sooner",
+   "It needs less force, so it is less likely to slip",
+   "It makes smaller pieces",
+   "It is lighter"
+  ],
+  "answer": 1,
+  "why": "A dull knife needs more force and skids off the food. A sharp one goes where you point it.",
+  "tier": 1
+ },
+ {
+  "id": 14,
+  "q": "What is the \"claw grip\" for the hand holding the food?",
+  "options": [
+   "Fingers curled under, knuckles guide the blade",
+   "Fingers flat on top of the food",
+   "Thumb and pinky only",
+   "Holding the food in the air"
+  ],
+  "answer": 0,
+  "why": "Curling your fingertips under keeps them out of the way while your knuckles guide the side of the blade.",
+  "tier": 1
+ },
+ {
+  "id": 15,
+  "q": "Which knife cuts a ripe tomato cleanly without squashing it?",
+  "options": [
+   "A butter knife",
+   "A serrated (bread) knife or very sharp knife",
+   "A rolling pin",
+   "A dull chef's knife"
+  ],
+  "answer": 1,
+  "why": "A serrated knife saws through the tough skin without pressing the soft inside.",
+  "tier": 1
+ },
+ {
+  "id": 16,
+  "q": "Which cut is the smallest?",
+  "options": [
+   "Chop",
+   "Dice",
+   "Mince",
+   "Slice"
+  ],
+  "answer": 2,
+  "why": "Mincing makes tiny pieces, usually for garlic, ginger and herbs.",
+  "tier": 1
+ },
+ {
+  "id": 17,
+  "q": "What does \"julienne\" mean?",
+  "options": [
+   "Thin matchstick strips",
+   "Round slices",
+   "Big chunks",
+   "Mashed pieces"
+  ],
+  "answer": 0,
+  "why": "Julienne cuts are thin, even matchsticks, about the size of a match.",
+  "tier": 1
+ },
+ {
+  "id": 18,
+  "q": "What does \"sauté\" mean?",
+  "options": [
+   "Cook slowly in lots of water",
+   "Cook quickly in a little fat over fairly high heat",
+   "Bake covered",
+   "Freeze first"
+  ],
+  "answer": 1,
+  "why": "Sauté means quick cooking in a small amount of fat, moving the food around in the pan.",
+  "tier": 1
+ },
+ {
+  "id": 19,
+  "q": "What does it mean to \"sear\" meat?",
+  "options": [
+   "Boil it briefly",
+   "Brown the surface over high heat",
+   "Cook it in the microwave",
+   "Marinate it overnight"
+  ],
+  "answer": 1,
+  "why": "Searing browns the outside over high heat, which builds a lot of flavor.",
+  "tier": 1
+ },
+ {
+  "id": 20,
+  "q": "What does a simmer look like?",
+  "options": [
+   "No movement at all",
+   "Small bubbles rising gently",
+   "Big rolling bubbles and lots of steam",
+   "Spitting oil"
+  ],
+  "answer": 1,
+  "why": "A simmer has small, gentle bubbles. A boil is large and rolling.",
+  "tier": 1
+ },
+ {
+  "id": 21,
+  "q": "What is blanching?",
+  "options": [
+   "Frying in oil",
+   "Boiling briefly, then cooling in ice water",
+   "Roasting until white",
+   "Soaking in vinegar"
+  ],
+  "answer": 1,
+  "why": "Blanching quickly cooks vegetables and the ice bath stops the cooking, keeping them bright and crisp.",
+  "tier": 1
+ },
+ {
+  "id": 22,
+  "q": "What does \"deglaze\" mean?",
+  "options": [
+   "Add liquid to loosen the browned bits stuck to the pan",
+   "Take the glaze off a cake",
+   "Wash the pan with soap",
+   "Turn the heat off"
+  ],
+  "answer": 0,
+  "why": "Browned bits in the pan are flavor. A splash of broth, wine or water dissolves them into your sauce.",
+  "tier": 1
+ },
+ {
+  "id": 23,
+  "q": "What does \"fold\" mean when baking?",
+  "options": [
+   "Beat hard until smooth",
+   "Gently combine so you keep the air in",
+   "Stir in circles for a minute",
+   "Pour in slowly"
+  ],
+  "answer": 1,
+  "why": "Folding uses a spatula to lift and turn the mixture gently so it stays light and airy.",
+  "tier": 1
+ },
+ {
+  "id": 24,
+  "q": "Why let cooked meat rest before cutting?",
+  "options": [
+   "So it cools to a safe temperature",
+   "So the juices settle back into the meat",
+   "So it cooks faster",
+   "So the fat hardens"
+  ],
+  "answer": 1,
+  "why": "Cutting right away lets the juices run out. A few minutes' rest keeps the meat moist.",
+  "tier": 1
+ },
+ {
+  "id": 25,
+  "q": "Why should you not overcrowd the pan?",
+  "options": [
+   "It uses more oil",
+   "Food steams instead of browning",
+   "The pan will break",
+   "It takes longer to clean"
+  ],
+  "answer": 1,
+  "why": "Too much food releases too much steam. Cook in batches so the food can brown.",
+  "tier": 1
+ },
+ {
+  "id": 26,
+  "q": "Why preheat the pan before adding food?",
+  "options": [
+   "It makes the pan clean",
+   "Food sears and is less likely to stick",
+   "It saves oil",
+   "It is only needed for baking"
+  ],
+  "answer": 1,
+  "why": "A hot pan browns food right away. Cold food in a cold pan tends to stick and turn grey.",
+  "tier": 1
+ },
+ {
+  "id": 27,
+  "q": "Why salt the pasta water?",
+  "options": [
+   "It makes water boil faster",
+   "It seasons the pasta as it cooks",
+   "It stops the pasta sticking",
+   "It cleans the pasta"
+  ],
+  "answer": 1,
+  "why": "Salted water seasons the pasta from the inside. It should taste like mild sea water.",
+  "tier": 1
+ },
+ {
+  "id": 28,
+  "q": "What does \"al dente\" mean?",
+  "options": [
+   "Soft and mushy",
+   "Firm to the bite",
+   "Cooked in a dental plan",
+   "Cold"
+  ],
+  "answer": 1,
+  "why": "Al dente is Italian for \"to the tooth\": cooked through but still a little firm.",
+  "tier": 1
+ },
+ {
+  "id": 29,
+  "q": "What does baking soda need in a recipe to work?",
+  "options": [
+   "An acid such as buttermilk, yogurt or lemon",
+   "Salt",
+   "Cold water",
+   "Sugar"
+  ],
+  "answer": 0,
+  "why": "Baking soda reacts with acid to make bubbles. Baking powder already includes its own acid.",
+  "tier": 1
+ },
+ {
+  "id": 30,
+  "q": "What is the best way to measure flour with cups?",
+  "options": [
+   "Scoop it straight from the bag and press",
+   "Spoon it into the cup and level the top",
+   "Shake it in",
+   "Measure it wet"
+  ],
+  "answer": 1,
+  "why": "Scooping packs the flour and you end up with too much. Spoon it in and level it, or better, weigh it.",
+  "tier": 1
+ },
+ {
+  "id": 31,
+  "q": "How many teaspoons are in a tablespoon?",
+  "options": [
+   "2",
+   "3",
+   "4",
+   "6"
+  ],
+  "answer": 1,
+  "why": "1 tablespoon = 3 teaspoons.",
+  "tier": 2
+ },
+ {
+  "id": 32,
+  "q": "How many tablespoons are in a cup?",
+  "options": [
+   "8",
+   "12",
+   "16",
+   "24"
+  ],
+  "answer": 2,
+  "why": "1 cup = 16 tablespoons (and 8 fluid ounces).",
+  "tier": 2
+ },
+ {
+  "id": 33,
+  "q": "What is \"mise en place\"?",
+  "options": [
+   "A French sauce",
+   "Having everything prepped and in place before you start cooking",
+   "A kind of knife",
+   "A cooking time"
+  ],
+  "answer": 1,
+  "why": "It means \"everything in its place\": chop, measure and set out before the heat goes on, so nothing burns while you hunt for the salt.",
+  "tier": 2
+ },
+ {
+  "id": 34,
+  "q": "How can you tell oil is hot enough to cook with?",
+  "options": [
+   "It turns white",
+   "It shimmers and flows easily in the pan",
+   "It is cold to the touch",
+   "It smells like butter"
+  ],
+  "answer": 1,
+  "why": "Hot oil shimmers and spreads easily. If it is smoking, it is too hot: turn it down.",
+  "tier": 2
+ },
+ {
+  "id": 35,
+  "q": "A pan of oil catches fire. What should you do?",
+  "options": [
+   "Pour water on it",
+   "Cover it with a lid and turn off the heat",
+   "Carry it outside",
+   "Fan the flames"
+  ],
+  "answer": 1,
+  "why": "Smother it with a lid or baking sheet and turn off the heat. Water makes a grease fire explode.",
+  "tier": 2
+ },
+ {
+  "id": 36,
+  "q": "What should never go in the microwave?",
+  "options": [
+   "A ceramic bowl",
+   "A glass dish",
+   "Metal foil or a metal pan",
+   "A paper towel"
+  ],
+  "answer": 2,
+  "why": "Metal can spark and damage the microwave. Use microwave-safe glass or ceramic.",
+  "tier": 2
+ },
+ {
+  "id": 37,
+  "q": "Which way should pot handles point while cooking?",
+  "options": [
+   "Over the front of the stove",
+   "Inward, not hanging out",
+   "Toward the hottest burner",
+   "It does not matter"
+  ],
+  "answer": 1,
+  "why": "Turning handles inward keeps you from bumping a pot and pulling it off the stove.",
+  "tier": 2
+ },
+ {
+  "id": 38,
+  "q": "How should you care for a cast iron pan?",
+  "options": [
+   "Soak it overnight in soapy water",
+   "Wash it, dry it right away and wipe on a thin layer of oil",
+   "Put it in the dishwasher",
+   "Scrub it with bleach"
+  ],
+  "answer": 1,
+  "why": "Dry it fully and wipe on a little oil. Soaking and the dishwasher cause rust.",
+  "tier": 2
+ },
+ {
+  "id": 39,
+  "q": "What should you avoid using on a nonstick pan?",
+  "options": [
+   "Wooden spoons",
+   "Silicone spatulas",
+   "Metal utensils",
+   "Plastic tongs rated for heat"
+  ],
+  "answer": 2,
+  "why": "Metal scratches the coating. Use wood, silicone or heat-safe plastic.",
+  "tier": 2
+ },
+ {
+  "id": 40,
+  "q": "How can you test if an egg is fresh?",
+  "options": [
+   "It floats in water",
+   "It sinks and lies flat in water",
+   "It spins on the counter",
+   "It smells sweet"
+  ],
+  "answer": 1,
+  "why": "Fresh eggs sink and lie flat. As air builds inside, older eggs stand up or float.",
+  "tier": 2
+ },
+ {
+  "id": 41,
+  "q": "Why put hard-boiled eggs in ice water?",
+  "options": [
+   "It stops the cooking and makes them easier to peel",
+   "It makes them taste sweeter",
+   "It cooks them further",
+   "It keeps the shell from cracking later"
+  ],
+  "answer": 0,
+  "why": "The ice bath stops the cooking so the yolk does not turn green, and the egg shrinks slightly from the shell.",
+  "tier": 2
+ },
+ {
+  "id": 42,
+  "q": "Why rinse white rice before cooking?",
+  "options": [
+   "To add flavor",
+   "To wash off extra surface starch so it is less sticky",
+   "To make it cook faster",
+   "To make it whiter"
+  ],
+  "answer": 1,
+  "why": "Rinsing removes loose starch, which gives you fluffier, separate grains.",
+  "tier": 2
+ },
+ {
+  "id": 43,
+  "q": "Where should ripe tomatoes be stored for the best flavor?",
+  "options": [
+   "In the freezer",
+   "On the counter",
+   "In the fridge door",
+   "In a sealed bag"
+  ],
+  "answer": 1,
+  "why": "The fridge dulls their flavor and makes them mealy. Keep ripe tomatoes on the counter and use them within a few days.",
+  "tier": 2
+ },
+ {
+  "id": 44,
+  "q": "Where do potatoes keep best?",
+  "options": [
+   "In the fridge",
+   "In a cool, dark, dry place",
+   "On a sunny windowsill",
+   "In water"
+  ],
+  "answer": 1,
+  "why": "Light turns potatoes green and the fridge turns their starch to sugar. Keep them cool, dark and dry.",
+  "tier": 2
+ },
+ {
+  "id": 45,
+  "q": "Which gas from ripe bananas makes other fruit ripen faster?",
+  "options": [
+   "Oxygen",
+   "Ethylene",
+   "Helium",
+   "Carbon dioxide"
+  ],
+  "answer": 1,
+  "why": "Ethylene speeds ripening. Keep bananas away from fruit you want to last.",
+  "tier": 2
+ },
+ {
+  "id": 46,
+  "q": "Which has the highest smoke point, so it is best for very hot cooking?",
+  "options": [
+   "Butter",
+   "Extra virgin olive oil",
+   "Refined avocado oil",
+   "Unrefined flaxseed oil"
+  ],
+  "answer": 2,
+  "why": "Refined avocado oil handles very high heat (around 500°F). Butter and flaxseed oil burn much sooner.",
+  "tier": 2
+ },
+ {
+  "id": 47,
+  "q": "Where should you marinate raw chicken?",
+  "options": [
+   "On the counter",
+   "In the fridge",
+   "In the sun",
+   "Anywhere that is warm"
+  ],
+  "answer": 1,
+  "why": "Marinate in the fridge so the chicken stays out of the danger zone.",
+  "tier": 2
+ },
+ {
+  "id": 48,
+  "q": "A marinade had raw meat in it. How can you use it as a sauce?",
+  "options": [
+   "Pour it straight on the food",
+   "Boil it for a few minutes first",
+   "Add a pinch of salt",
+   "It is always safe"
+  ],
+  "answer": 1,
+  "why": "Raw-meat juices carry bacteria. Bring the marinade to a full boil first, or set aside a separate portion before marinating.",
+  "tier": 2
+ },
+ {
+  "id": 49,
+  "q": "Where should you put the thermometer to check meat?",
+  "options": [
+   "In the fat",
+   "Touching the bone",
+   "In the thickest part, away from bone",
+   "In the pan"
+  ],
+  "answer": 2,
+  "why": "The thickest part is the last to cook. Bone and fat read differently.",
+  "tier": 2
+ },
+ {
+  "id": 50,
+  "q": "What is carryover cooking?",
+  "options": [
+   "Cooking in a to-go container",
+   "Food keeps cooking from its own heat after you take it off the heat",
+   "Cooking with a lid on",
+   "Cooking two things at once"
+  ],
+  "answer": 1,
+  "why": "A roast or steak can rise 5 to 10°F after it comes off the heat, so pull it a little early.",
+  "tier": 2
+ },
+ {
+  "id": 51,
+  "q": "A basic roux is made from what?",
+  "options": [
+   "Equal parts fat and flour",
+   "Water and salt",
+   "Eggs and milk",
+   "Sugar and butter"
+  ],
+  "answer": 0,
+  "why": "A roux is fat and flour cooked together, then used to thicken sauces and gravies.",
+  "tier": 2
+ },
+ {
+  "id": 52,
+  "q": "A squeeze of lemon juice or a splash of vinegar at the end of a dish does what?",
+  "options": [
+   "Makes it sour",
+   "Brightens and balances the flavors",
+   "Cooks it further",
+   "Thickens it"
+  ],
+  "answer": 1,
+  "why": "A little acid wakes up flavors, especially in rich or heavy dishes.",
+  "tier": 2
+ },
+ {
+  "id": 53,
+  "q": "Why add a pinch of salt to sweet baking?",
+  "options": [
+   "To make it salty",
+   "To bring out the sweetness and flavor",
+   "To make it rise",
+   "To keep it from burning"
+  ],
+  "answer": 1,
+  "why": "Salt sharpens flavor and balances sweetness, so cookies taste more like cookies.",
+  "tier": 2
+ },
+ {
+  "id": 54,
+  "q": "When zesting a lemon, which part do you want?",
+  "options": [
+   "The white pith",
+   "The colored outer peel only",
+   "The whole peel",
+   "The seeds"
+  ],
+  "answer": 1,
+  "why": "The colored peel holds the fragrant oil. The white pith underneath is bitter.",
+  "tier": 2
+ },
+ {
+  "id": 55,
+  "q": "Why add garlic later or cook it on lower heat?",
+  "options": [
+   "It burns quickly and turns bitter",
+   "It needs time to freeze",
+   "It only works cold",
+   "It disappears"
+  ],
+  "answer": 0,
+  "why": "Minced garlic browns in under a minute and burnt garlic tastes bitter. Add it near the end or keep the heat moderate.",
+  "tier": 2
+ },
+ {
+  "id": 56,
+  "q": "Why save a cup of starchy pasta water?",
+  "options": [
+   "To wash the pot",
+   "To help the sauce cling and become silky",
+   "To cook the next batch",
+   "To cool the pasta"
+  ],
+  "answer": 1,
+  "why": "The starch in the water thickens and binds the sauce so it coats the pasta.",
+  "tier": 2
+ },
+ {
+  "id": 57,
+  "q": "How long can raw chicken stay in the fridge before cooking or freezing?",
+  "options": [
+   "1 to 2 days",
+   "1 week",
+   "10 days",
+   "2 weeks"
+  ],
+  "answer": 0,
+  "why": "Cook or freeze raw chicken within 1 to 2 days of buying it.",
+  "tier": 2
+ },
+ {
+  "id": 58,
+  "q": "Why does cutting onions make your eyes water?",
+  "options": [
+   "They release an irritating gas when the cells break",
+   "They are old",
+   "The knife is dull",
+   "It is the smell of the oil"
+  ],
+  "answer": 0,
+  "why": "Cutting breaks cells and sets off a reaction that makes a gas that stings your eyes. A sharp knife breaks fewer cells.",
+  "tier": 2
+ },
+ {
+  "id": 59,
+  "q": "How should you cool a big pot of soup before storing it?",
+  "options": [
+   "Leave it on the stove overnight",
+   "Split it into shallow containers so it cools quickly",
+   "Put the whole hot pot in the fridge",
+   "Add ice cubes only"
+  ],
+  "answer": 1,
+  "why": "Shallow containers cool fast, so the soup spends less time in the danger zone.",
+  "tier": 2
+ },
+ {
+  "id": 60,
+  "q": "Which is the best way to slice a round vegetable such as an onion or potato safely?",
+  "options": [
+   "Hold it in the air and cut toward your hand",
+   "Cut a flat side first so it sits steady on the board",
+   "Press it against your chest",
+   "Cut it in your hand"
+  ],
+  "answer": 1,
+  "why": "A flat side gives you a stable base so the food cannot roll while you cut.",
+  "tier": 2
+ },
+ {
+  "id": 61,
+  "q": "A damp towel under the cutting board does what?",
+  "options": [
+   "Cleans the board",
+   "Keeps it from sliding",
+   "Makes the knife sharper",
+   "Cools the food"
+  ],
+  "answer": 1,
+  "why": "A damp towel or non-slip mat grips the counter so the board stays put.",
+  "tier": 2
+ },
+ {
+  "id": 62,
+  "q": "Why should you taste as you cook?",
+  "options": [
+   "To check and adjust seasoning",
+   "To check whether the pan is hot",
+   "To test the oven",
+   "To burn off germs"
+  ],
+  "answer": 0,
+  "why": "Tasting along the way lets you add salt, acid or spice a little at a time instead of fixing it at the end.",
+  "tier": 2
+ }
+]

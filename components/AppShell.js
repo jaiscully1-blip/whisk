@@ -9,12 +9,12 @@ import ShareSwitch from './ShareSwitch';
 import { allowed } from '@/lib/recipes/never';
 import { loadProfile } from '@/lib/profile';
 import { warmCache } from './tabData';
+import LevelPicker from './LevelPicker';
 import Tips from './Tips';
 import CookieConsent, { CONSENT_KEY, LOGIN_CHOICE_KEY, deviceTimeZone } from './CookieConsent';
 import { startActivity, setPage as trackPage } from '@/lib/activity';
 import { timerApi } from '@/lib/timers';
 import Icon, { Coin, Flame } from './Icon';
-import WhiskStage, { outfitFrom } from './WhiskStage';
 import { fmt, levelFor } from '@/lib/game';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 import { countryArt } from '@/lib/world/flair';
@@ -88,6 +88,19 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
     setWelcome(true); setProfile((p) => ({ ...p, onboarded_at: p.onboarded_at || new Date().toISOString() }));
     supabase.rpc('set_onboarded', { p_done: true });
   }, [privacyOpen, profile?.id, profile?.onboarded_at]); // eslint-disable-line react-hooks/exhaustive-deps
+  // First open: ask how well they cook (Beginner ... Expert). "Maybe later" asks again tomorrow; Me always has the setting.
+  const [levelAsk, setLevelAsk] = useState(false);
+  useEffect(() => {
+    if (privacyOpen || !profile?.id || !profile.onboarded_at || profile.skill_level !== null) { setLevelAsk(false); return; }   // undefined = the SQL isn't run yet
+    let later = ''; try { later = localStorage.getItem('whisk-level-later') || ''; } catch {}
+    if (later !== new Date().toDateString()) setLevelAsk(true);
+  }, [privacyOpen, profile?.id, profile?.onboarded_at, profile?.skill_level]);
+  const pickLevel = async (id) => {
+    setLevelAsk(false); setProfile((p) => ({ ...p, skill_level: id }));
+    const { error } = await supabase.rpc('set_skill_level', { p_level: id });
+    if (error) say('Couldn’t save your level. Try again from Me.');
+  };
+  const levelLater = () => { setLevelAsk(false); try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} };
   // Started Yoke from a friend's invite link: use their code once (the server checks it's a new game).
   useEffect(() => {
     if (!profile?.id) return;
@@ -276,7 +289,6 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   const shownRecipes = useMemo(() => (recipes && neverKey ? recipes.filter((r) => allowed(r, profile.never_show)) : recipes), [recipes, neverKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const value = useMemo(() => ({ profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, recipes: shownRecipes, allRecipes: recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump }),
     [profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, shownRecipes, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump]);
-  const outfit = outfitFrom(loadout);
 
   return (
     <Ctx.Provider value={value}>
@@ -306,6 +318,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
           </div>
         </nav>
         {!privacyOpen && profile?.id && <Tips key={tipsKey} seen={ui.tips} onSeen={tipSeen} welcome={welcome} />}
+        {levelAsk && !privacyOpen && <LevelPicker first current={null} onPick={pickLevel} onLater={levelLater} />}
         {privacyOpen && consentChecked && <CookieConsent initial={consent} onSave={savePrivacy} onClose={() => setPrivacyOpen(false)} />}
         {kind && !privacyOpen && (
           <div className="popup-scrim" role="presentation" onClick={(e) => { if (kind !== 'cooked' && e.target === e.currentTarget) closePopup(); }}>
@@ -313,7 +326,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
               {kind !== 'cooked' && <button className="x" type="button" aria-label="Close" onClick={closePopup}><Icon name="x" /></button>}
               {kind === 'country'
                 ? <svg className="country-badge" viewBox="0 0 200 200" width="190" height="190" aria-hidden="true"><defs><clipPath id="cb-clip"><circle cx="100" cy="100" r="94" /></clipPath></defs><g clipPath="url(#cb-clip)" dangerouslySetInnerHTML={{ __html: countryArt(popup.country) }} /><circle cx="100" cy="100" r="94" fill="none" stroke="#E0A93B" strokeWidth="8" /><circle cx="100" cy="100" r="98" fill="none" stroke="#3B2C24" strokeWidth="2.4" /></svg>
-                : <WhiskStage pose={kind === 'cooked' ? 'cooked' : 'default'} outfit={outfit} interactive={false} height={kind === 'cooked' ? 250 : 300} zoom={1.15} label={`Yoke: ${title}`} />}
+                : <img className="popup-chick" src="/icon.svg" alt="Yoke" width="170" height="170" />}
               <h2>{title}</h2>
               {kind === 'cooked' && (
                 <>

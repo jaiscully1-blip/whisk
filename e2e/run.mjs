@@ -62,6 +62,13 @@ await step('log in', async () => {
   await page.locator('.hud-hello.on').waitFor({ timeout: 6000 }).catch(() => {});
   check('the greeting shows in the top bar', /Welcome to Yoke/.test(await page.locator('.hud-hello').innerText()));
   await shot('00b-welcome-tip');
+  // First open: Yoke asks how well you cook. Beginner turns the Learn button on.
+  await page.getByTestId('level-picker').waitFor({ timeout: 6000 });
+  check('first open asks your cooking level (6 choices)', (await page.locator('[data-testid=level-picker] .lv-opt').count()) === 6 && /Advanced beginner/.test(await page.getByTestId('level-picker').innerText()) && /Expert/.test(await page.getByTestId('level-picker').innerText()));
+  await shot('00d-level-picker');
+  check('no Learn button before you choose', (await page.getByTestId('learn-btn').count()) === 0);
+  await page.locator('.lv-opt', { hasText: 'Beginner' }).first().click();
+  await page.getByTestId('level-picker').waitFor({ state: 'detached', timeout: 4000 });
   await page.locator('.nav a[href="/pantry"]').click(); await page.waitForURL('**/pantry');
   await page.locator('.tip-card', { hasText: 'Pantry' }).waitFor({ timeout: 4000 });
   check('tapping a new tab still opens it, and Chef explains it', page.url().includes('/pantry') && /real kitchen/.test(await page.locator('.tip-card').innerText()));
@@ -106,6 +113,50 @@ await step('log in', async () => {
   await page.locator('.globe-hit').waitFor({ timeout: 6000 });
   check('the dart lands on a country and names it (no exclamation mark)', !/!/.test(await page.locator('.globe-hit b').first().innerText()) && (await page.locator('.globe-hit b').first().innerText()).length > 2 && (await page.locator('.globe-hit').getByRole('button', { name: 'Cook it' }).count()) === 1);
   await shot('00c-me-globe');
+  await nav('Home');
+});
+await step('learn quiz', async () => {
+  await page.locator('.nav a[href="/cook"]').click(); await page.waitForURL('**/cook');
+  await page.getByTestId('learn-btn').waitFor({ timeout: 6000 });
+  check('Beginner turns on the Learn button on Cook', (await page.getByTestId('learn-btn').count()) === 1);
+  await shot('06-learn-button');
+  check('the quiz is not shown until Learn is pressed', (await page.getByTestId('learn-sheet').count()) === 0);
+  await page.getByTestId('learn-btn').click();
+  await page.getByTestId('learn-sheet').waitFor();
+  check('Learn says 100 coins for 3 out of 3', /100 coins/.test(await page.getByTestId('learn-sheet').innerText()));
+  const coinsNow = async () => (await (await fetch('http://localhost:54321/__e2e/coins')).json()).coins;
+  const c0 = await coinsNow();
+  const play = async (rightCount, trigger = 'quiz-start') => {
+    const [resp] = await Promise.all([page.waitForResponse((r) => /rpc\/quiz_start/.test(r.url())), page.getByTestId(trigger).click()]);
+    const attempt = (await resp.json()).attempt;
+    const ans = await (await fetch('http://localhost:54321/__e2e/quiz-answers?attempt=' + attempt)).json();
+    for (let k = 0; k < 3; k++) {
+      await page.getByTestId('quiz-q').waitFor();
+      if (k === 0) { check('a quiz shows one question at a time with 4 answers', (await page.locator('[data-testid^=quiz-opt-]').count()) === 4 && (await page.getByTestId('quiz-next').isDisabled())); await shot('07-quiz-question'); }
+      const pick = k < rightCount ? ans[k] : (ans[k] + 1) % 4;
+      await page.getByTestId(`quiz-opt-${pick}`).click(); await page.getByTestId('quiz-next').click();
+    }
+    await page.getByTestId('quiz-result').waitFor();
+  };
+  await play(3);
+  check('3 out of 3 shows the score and +100 coins', /3 \/ 3/.test(await page.getByTestId('quiz-result').innerText()) && /\+100 coins/.test(await page.getByTestId('quiz-result').innerText()));
+  check('the coins really arrived', (await coinsNow()) === c0 + 100);
+  check('the result shows why each answer is right and a streak', (await page.locator('.quiz-rev').count()) === 3 && /1-day learning streak/.test(await page.getByTestId('quiz-result').innerText()));
+  await shot('08-quiz-result');
+  await play(2, 'quiz-again');
+  check('2 out of 3 pays nothing and marks the miss', /2 \/ 3/.test(await page.getByTestId('quiz-result').innerText()) && (await page.locator('.quiz-rev.no').count()) === 1 && (await coinsNow()) === c0 + 100);
+  await page.locator('.learn-sheet-close, [data-testid=learn-sheet] [aria-label=Close]').first().click();
+  await page.getByTestId('learn-sheet').waitFor({ state: 'detached' });
+  check('the Learn button shows the streak', /1-day streak/.test(await page.getByTestId('learn-btn').innerText()));
+  // Me: change level. Expert hides Learn; Novice brings it back.
+  await nav('Me');
+  check('Me shows your cooking level', /Beginner/.test(await page.getByTestId('level-row').innerText()));
+  await page.getByTestId('level-row').click(); await page.locator('.lv-opt', { hasText: 'Expert' }).click();
+  await page.locator('.nav a[href="/cook"]').click(); await page.waitForURL('**/cook'); await page.waitForTimeout(500);
+  check('Expert hides Learn', (await page.getByTestId('learn-btn').count()) === 0);
+  await nav('Me'); await page.getByTestId('level-row').click(); await page.locator('.lv-opt', { hasText: 'Novice' }).click();
+  await page.locator('.nav a[href="/cook"]').click(); await page.waitForURL('**/cook'); await page.waitForTimeout(500);
+  check('Novice shows Learn again', (await page.getByTestId('learn-btn').count()) === 1);
   await nav('Home');
 });
 await step('home', async () => {
@@ -615,7 +666,7 @@ await step('cook off with a friend', async () => {
   await page.locator('[role=dialog][aria-label="Get coins"] button[aria-label="Close"]').click();
   // a friend starts Yoke from the invite link on their own phone
   const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: 'America/New_York' });
-  const fr = await ctx2.newPage();
+  const fr = await ctx2.newPage(); await fr.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
   await fr.goto(`${BASE}/login?ref=${myCode}`); await fr.getByRole('radio', { name: 'Accept' }).click(); await fr.getByRole('button', { name: 'Start playing' }).click();
   await fr.waitForURL('**/cook'); const invToast = await fr.locator('.toast', { hasText: /Invited by/ }).waitFor({ timeout: 10000 }).then(() => fr.locator('.toast').innerText(), () => '');
   check('the friend’s game picks up the invite from the link', /Invited by (?!a friend)/.test(invToast), invToast);
@@ -644,7 +695,7 @@ await step('cook off with a friend', async () => {
   // a judge: someone new opens the "Invite judges" link, starts Yoke, lands in the game just to vote
   check('the lobby has "Invite judges to vote"', (await page.getByRole('button', { name: 'Invite judges to vote' }).count()) === 1);
   const ctx3 = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: 'America/New_York' });
-  const jd = await ctx3.newPage();
+  const jd = await ctx3.newPage(); await jd.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
   await jd.goto(`${BASE}/vote/${code}`); await jd.waitForURL('**/login?vote=*');
   check('a judge link sends someone new to the start screen with an invite note', /invited to judge a Cook Off/.test(await jd.locator('.judge-note').innerText()));
   await jd.getByRole('radio', { name: 'Accept' }).click(); await jd.getByRole('button', { name: 'Start playing' }).click();
@@ -734,7 +785,7 @@ await step('share the shopping list', async () => {
   const url = await link.inputValue();
   check('Share list makes a secret link', /\/list\/[a-f0-9]{32}$/.test(url));
   await page.getByRole('dialog', { name: 'Share your list' }).getByRole('button', { name: 'Close' }).click();
-  const ctx4 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const sh = await ctx4.newPage();
+  const ctx4 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const sh = await ctx4.newPage(); await sh.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
   const resp = await sh.goto(url);
   check('the link opens with no account, is never cached, and leaks no referrer', /no-store/.test(resp.headers()['cache-control'] || '') && resp.headers()['referrer-policy'] === 'no-referrer');
   await sh.locator('.sl-item', { hasText: 'Basil' }).waitFor();
@@ -759,7 +810,7 @@ await step('friends and the plate feed', async () => {
   check('Friends shows your 6-letter code', /^[A-HJ-NP-Z2-9]{6}$/.test(myCode), myCode);
   check('no Share button: tap the code to copy it; no text in the add box', (await page.getByRole('button', { name: /^Share$/ }).count()) === 0 && (await page.locator('button.fr-copy').count()) === 1 && !(await page.locator('#fr-code').getAttribute('placeholder')));
   check('"Add a friend to see what they cook." sits under Plates; Cook Off has the new line', (await page.getByText('Add a friend to see what they cook.').count()) === 1 && (await page.getByText('Yours stay private').count()) === 0 && (await page.getByText('The clock is ticking. The competition is heating up. And one winning dish.').count()) === 1);
-  const ctx6 = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 }); const fp = await ctx6.newPage();
+  const ctx6 = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 }); const fp = await ctx6.newPage(); await fp.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
   await fp.goto(`${BASE}/login`); await fp.getByRole('radio', { name: 'Accept' }).click(); await fp.getByRole('button', { name: 'Start playing' }).click(); await fp.waitForURL('**/cook');
   await fp.waitForTimeout(1200); await fp.mouse.click(5, 400);
   await fp.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await fp.waitForURL('**/compete');
@@ -814,7 +865,7 @@ await step('back up your game', async () => {
   check('Later hides it', (await page.locator('.backup-nudge').count()) === 0);
 });
 await step('get my game back', async () => {
-  const ctx7 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const rp = await ctx7.newPage();
+  const ctx7 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const rp = await ctx7.newPage(); await rp.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
   await rp.goto(`${BASE}/login`);
   await rp.getByRole('button', { name: /Get it back/ }).click();
   const gb = rp.getByRole('dialog', { name: 'Get my game back' });
@@ -993,7 +1044,7 @@ await step('scanners', async () => {
   await shot('32-after-scans');
 });
 await step('delete my data', async () => {
-  const ctx5 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const dp = await ctx5.newPage();
+  const ctx5 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const dp = await ctx5.newPage(); await dp.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
   await dp.goto(`${BASE}/login`); await dp.getByRole('radio', { name: 'Accept' }).click(); await dp.getByRole('button', { name: 'Start playing' }).click(); await dp.waitForURL('**/cook');
   await dp.waitForTimeout(1500); await dp.mouse.click(5, 400);
   await dp.getByRole('navigation').getByRole('link', { name: 'Me', exact: true }).click(); await dp.waitForURL('**/me');

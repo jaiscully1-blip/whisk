@@ -1413,6 +1413,28 @@ await expectFail('someone outside the group cannot set a background', CD, `selec
 await cq(CA, `select public.set_chat_bg('${GG}', null)`);
 check('the plain colour can be chosen again', (await cq(CA, `select public.get_chat('${GG}', null, null) r`)).rows[0].r.group.bg === null);
 }
+// ================= 0038: game size cap, tidy-up, admin counts =================
+try { const f = fs.readFileSync('./supabase/migrations/0038_game_limits_cleanup.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0038 runs (twice)', true); }
+catch (e) { check('0038 runs (twice)', false, e.message); }
+{
+await db.exec(`update profiles set is_admin = true where id = '${X}'`);
+await db.exec(`insert into cookoff_games (code, host, minutes) values ('CAPTS2', '${X}', 30)`);
+await db.exec(`insert into cookoff_players (game_id, user_id, seat, name) select id, '${X}', 1, 'Ana' from cookoff_games where code = 'CAPTS2'`);
+await db.exec(`insert into cookoff_players (game_id, user_id, seat, name) select id, '${Z}', 2, 'Zed' from cookoff_games where code = 'CAPTS2'`);
+check('the Cook Off size cap starts at 8', (await as(X, () => db.query(`select public.admin_now() r`))).rows[0].r.cookoff_max === 8);
+await expectFail('players cannot change the size cap', Y, `select public.admin_set_setting('cookoff_max_players', 50)`);
+await expectFail('the size cap has to be sensible', X, `select public.admin_set_setting('cookoff_max_players', 1)`);
+await as(X, () => db.query(`select public.admin_set_setting('cookoff_max_players', 2)`));
+await expectFail('a full game turns the next player away', Y, `select public.join_cookoff('CAPTS2')`);
+await as(X, () => db.query(`select public.admin_set_setting('cookoff_max_players', 3)`));
+await as(Y, () => db.query(`select public.join_cookoff('CAPTS2')`));
+check('raising the cap lets the next player in', (await db.query(`select count(*)::int n from cookoff_players p join cookoff_games g on g.id = p.game_id where g.code = 'CAPTS2'`)).rows[0].n === 3);
+await expectFail('players cannot read the admin counts', Y, `select public.admin_now()`);
+await expectFail('players cannot run the tidy-up', Y, `select public.cleanup_old_games()`);
+await db.exec(`update cookoff_games set created_at = now() - interval '31 days' where code = 'CAPTS2'`);
+const cl2 = (await db.query(`select public.cleanup_old_games() r`)).rows[0].r;
+check('the tidy-up deletes games over 30 days old with their players', cl2.cookoff >= 1 && (await db.query(`select count(*)::int n from cookoff_games where code = 'CAPTS2'`)).rows[0].n === 0);
+}
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_chat_bg', 'buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

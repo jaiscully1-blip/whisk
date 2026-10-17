@@ -3,6 +3,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useWhisk } from '@/components/AppShell';
+import { useLive } from '@/lib/live';
 import Icon, { Coin } from '@/components/Icon';
 import { uiuError } from '@/components/UseItUpCard';
 
@@ -32,7 +33,9 @@ function Match() {
     if (error) { setErr(uiuError(error)); return; }
     off.current = new Date(data.now).getTime() - Date.now(); setG(data); setErr('');
   }, [supabase, code]);
-  useEffect(() => { load(); const t = setInterval(load, 6000); return () => clearInterval(t); }, [load]);
+  const { ping, live } = useLive(supabase, code ? `game:${code}` : null, () => { load(); });
+  useEffect(() => { load(); const t = setInterval(load, live ? 20000 : 6000); return () => clearInterval(t); }, [load, live]);
+  useEffect(() => { if (live && g) ping(); }, [live, !!g]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const t = setInterval(() => setTick((n) => n + 1), 250); return () => clearInterval(t); }, []);
   const now = Date.now() + off.current; void tick;
   const started = g?.started_at ? new Date(g.started_at).getTime() : 0, ends = g?.ends_at ? new Date(g.ends_at).getTime() : 0;
@@ -52,16 +55,17 @@ function Match() {
     if (error) { say(uiuError(error)); return; }
     setUsed([]); setMealId('');
     if (data.check_these?.length) setNote(`Check ${data.check_these.join(', ')}: past its use-by date, so it didn’t score. Please check it before eating.`);
-    say(`Rescued ${data.items_scored} ${data.items_scored === 1 ? 'item' : 'items'}`); load();
+    say(`Rescued ${data.items_scored} ${data.items_scored === 1 ? 'item' : 'items'}`); load(); ping();
   }
   async function finish() {
     if (!window.confirm('Finish now? You can’t add more dishes after this.')) return;
-    const { error } = await supabase.rpc('finish_uiu', { p_code: code }); if (error) { say(uiuError(error)); return; } load();
+    const { error } = await supabase.rpc('finish_uiu', { p_code: code }); if (error) { say(uiuError(error)); return; } load(); ping();
   }
-  async function cancel() { await supabase.rpc('cancel_uiu', { p_code: code }); router.push('/compete/friends'); }
+  async function cancel() { await supabase.rpc('cancel_uiu', { p_code: code }); ping(); router.push('/compete/friends'); }
   async function rematch() {
     if (g.rematch_code) { await joinRematch(g.rematch_code); return; }
     const { data, error } = await supabase.rpc('rematch_uiu', { p_code: code }); if (error) { say(uiuError(error)); return; }
+    ping();
     router.push(`/compete/useitup?code=${data}`);
   }
   async function joinRematch(c) {

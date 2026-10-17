@@ -11,6 +11,7 @@ import UseItUpCard, { uiuError } from './UseItUpCard';
 import GuessCook from './GuessCook';
 import { VideoCard, VideoSheet, VideoShare } from './ChatVideo';
 import ChatShopList from './ChatShopList';
+import OfflineNote from './OfflineNote';
 import { parseVideo } from '@/lib/video';
 
 // One group chat, full screen, like a text thread: bubbles, photos, emoji. Refreshes every few seconds while it is open
@@ -224,6 +225,7 @@ export default function ChatView({ id, onClose, onChanged }) {
         <button type="button" className={`chat-ico ${d?.group?.muted ? 'off' : ''}`} onClick={toggleBell} disabled={!d} aria-pressed={!!d?.group?.muted} aria-label={d?.group?.muted ? 'Turn notifications on for this chat' : 'Turn notifications off for this chat'} data-testid="chat-bell"><Icon name={d?.group?.muted ? 'bellx' : 'bell'} size={22} /></button>
       </header>
 
+      <OfflineNote />
       <div className="chat-list" ref={listRef} onScroll={onScroll} data-testid="chat-list">
         {d === null ? <p className="muted" style={{ textAlign: 'center' }}>Opening…</p> : msgs.length === 0 ? <p className="chat-empty">No messages yet. Say hi.</p> : msgs.map((m, i) => {
           const prev = msgs[i - 1];

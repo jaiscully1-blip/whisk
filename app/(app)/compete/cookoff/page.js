@@ -3,6 +3,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useWhisk } from '@/components/AppShell';
+import { useLive } from '@/lib/live';
 import Icon, { Coin } from '@/components/Icon';
 import Scene from '@/components/Scene';
 import CookWheel from '@/components/CookWheel';
@@ -47,13 +48,15 @@ function CookOff() {
     if (error) { setErr(errText(error)); return null; }
     off.current = new Date(data.now).getTime() - Date.now(); setG(data); setErr(''); return data;
   }, [supabase, code, asJudge, asCook]);
+  const { ping, live } = useLive(supabase, code ? `game:${code}` : null, () => { load(); });
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (live && g) ping(); }, [live, !!g]); // eslint-disable-line react-hooks/exhaustive-deps   (tell the room you are here once you are in)
   // Ask the server what's happening: often in the lobby and while voting, less while cooking.
   useEffect(() => {
     if (!g || g.status === 'done' || g.status === 'cancelled') return undefined;
-    const t = setInterval(() => { if (!document.hidden) load(); }, g.status === 'cooking' ? 5000 : 2000);
+    const t = setInterval(() => { if (!document.hidden) load(); }, live ? 15000 : g.status === 'cooking' ? 5000 : 2000);
     return () => clearInterval(t);
-  }, [g?.status, load]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [g?.status, load, live]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const local = (iso) => (iso ? new Date(iso).getTime() - off.current : 0);
   const [now, setNow] = useState(Date.now());
@@ -113,6 +116,7 @@ function CookOff() {
     setBusy(false);
     if (error) { say(errText(error)); return null; }
     if (data && data.players) { off.current = new Date(data.now).getTime() - Date.now(); setG(data); }
+    ping();
     return data;
   }
   async function submitPhoto(e) {
@@ -123,7 +127,7 @@ function CookOff() {
       const path = await uploadPlate(supabase, profile.id, f);
       const { data, error } = await supabase.rpc('submit_cookoff', { p_code: code, p_photo_path: path });
       if (error) throw error;
-      setG(data); say('Plate in! Wait for the others…');
+      setG(data); ping(); say('Plate in! Wait for the others…');
       supabase.rpc('log_meal', { p_recipe_id: me.recipe_id, p_photo_path: path }).then(() => refreshProfile());   // it counts as a cooked meal too (+100 XP, 500 coins)
     } catch (x) { say(errText(x)); } finally { setBusy(false); }
   }

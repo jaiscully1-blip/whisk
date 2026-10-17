@@ -1414,3 +1414,5 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .gl-name small { color: var(--muted, #888); }
 .gl-tick { width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--line); background: none; color: var(--btn-ink, #1d2a12); display: grid; place-items: center; cursor: pointer; flex: none; }
 .gl-list li.done .gl-tick { background: var(--accent); border-color: var(--accent); }
+
+.offline-note { margin: 0; padding: 8px 14px; background: var(--bad-soft, #3a1d1d); color: var(--bad, #ff8a80); font-weight: 800; font-size: 14px; text-align: center; }

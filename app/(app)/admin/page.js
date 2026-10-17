@@ -38,15 +38,19 @@ export default function Admin() {
   const [live, setLive] = useState(true);
   const [reports, setReports] = useState([]);   // reported plates (friends feed)
   const [chatReports, setChatReports] = useState([]);   // reported chat messages
+  const [now, setNow] = useState(null);   // what is happening right now
+  const [capEdit, setCapEdit] = useState('');
   const [thumbs, setThumbs] = useState({});
   const loadReports = useCallback(async () => {
     const { data, error } = await supabase.rpc('admin_reports'); if (error) return;
     setReports(data || []);
+    const nw = await supabase.rpc('admin_now'); if (!nw.error) setNow(nw.data);
     const cr = await supabase.rpc('admin_chat_reports'); setChatReports(cr.error ? [] : cr.data || []);
     const paths = (data || []).map((r) => r.photo).filter(Boolean);
     if (paths.length) { const { data: s } = await supabase.storage.from('meal-photos').createSignedUrls(paths, 3600); setThumbs(Object.fromEntries((s || []).filter((x) => x.signedUrl).map((x) => [x.path, x.signedUrl]))); }
   }, [supabase]);
   useEffect(() => { if (ov) loadReports(); }, [ov ? 1 : 0, loadReports]); // eslint-disable-line react-hooks/exhaustive-deps   (admins only: after the overview loads)
+  async function saveCap() { const n = Number(capEdit); const { error } = await supabase.rpc('admin_set_setting', { p_key: 'cookoff_max_players', p_value: n }); if (!error) { setCapEdit(''); loadReports(); } }
   async function setChatHidden(r, hidden) { await supabase.rpc('admin_set_chat_hidden', { p_msg: r.msg, p_hidden: hidden }); loadReports(); }
   async function setHidden(r, hidden) { await supabase.rpc('admin_set_hidden', { p_meal: r.meal, p_hidden: hidden }); loadReports(); }
 
@@ -90,6 +94,24 @@ export default function Admin() {
                 <td>{r.hidden ? <button className="btn ghost sm" onClick={() => setHidden(r, false)}>Put back</button> : <button className="btn sm" onClick={() => setHidden(r, true)}>Hide</button>}</td>
               </tr>
             ))}</tbody></table>
+        </section>
+      )}
+      {now && (
+        <section className="adm-card" data-testid="adm-now">
+          <h3>Right now</h3>
+          <table><tbody>
+            <tr><td>Cook Off lobbies waiting</td><td className="num">{fmt(now.cookoff_lobbies)}</td></tr>
+            <tr><td>Cook Offs being cooked or judged</td><td className="num">{fmt(now.cookoff_active)}</td></tr>
+            <tr><td>Use-It-Up weeks waiting / running</td><td className="num">{fmt(now.uiu_open)} / {fmt(now.uiu_live)}</td></tr>
+            <tr><td>Chat groups / messages in 24 hours</td><td className="num">{fmt(now.chat_groups)} / {fmt(now.chat_messages_24h)}</td></tr>
+            <tr><td>New players in 24 hours</td><td className="num">{fmt(now.players_24h)}</td></tr>
+            <tr><td>Cook Off size limit</td><td className="num">{fmt(now.cookoff_max)}</td></tr>
+          </tbody></table>
+          <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+            <input className="chat-in" style={{ flex: 1 }} inputMode="numeric" aria-label="New Cook Off size limit (2 to 50)" placeholder="New size limit (2 to 50)" value={capEdit} onChange={(e) => setCapEdit(e.target.value.replace(/\D/g, '').slice(0, 2))} />
+            <button className="btn sm" onClick={saveCap} disabled={!capEdit}>Save</button>
+          </div>
+          <p className="desc">Live connections open right now are only shown in the Supabase dashboard (Reports, Realtime). Free plan allows 200 at once, Pro 500.</p>
         </section>
       )}
       {chatReports.length > 0 && (

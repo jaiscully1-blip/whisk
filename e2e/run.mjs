@@ -919,6 +919,8 @@ await step('activity backend', async () => {
   await fetch('http://localhost:54321/__e2e/make-admin');
   await page.reload(); await page.getByRole('heading', { name: 'Backend' }).waitFor({ timeout: 8000 });
   check('admins see the backend dashboard', (await page.locator('.adm-tiles .adm-card').count()) === 5);
+  await page.getByTestId('adm-now').waitFor({ timeout: 8000 });
+  check('admins see what is happening right now, with the Cook Off size limit', /Cook Off size limit\s*8/.test((await page.getByTestId('adm-now').innerText()).replace(/\n/g, ' ')));
   check('dashboard lists top searches and the activity feed', (await page.getByRole('cell', { name: 'albanian food' }).count()) >= 1 && (await page.locator('.adm td').count()) > 10);
   await shot('08-backend');
 });
@@ -1121,6 +1123,10 @@ await step('friends and group chat', async () => {
   check('clearing removes the ticked things', (await page.locator('[data-testid="gl-items"] li').count()) === 1);
   await page.getByTestId('chat-shoplist').getByRole('button', { name: 'Done' }).click();
   await fp.getByTestId('chat-shoplist').getByRole('button', { name: 'Done' }).click();
+  // offline notice
+  await fp.context().setOffline(true); await fp.getByTestId('offline-note').waitFor({ timeout: 5000 });
+  check('going offline shows a clear message', /offline/i.test(await fp.getByTestId('offline-note').innerText()));
+  await fp.context().setOffline(false); await fp.getByTestId('offline-note').waitFor({ state: 'detached', timeout: 5000 });
   await fp.getByRole('button', { name: 'Back to chats' }).click();
   check('the chat list shows the muted bell', (await fp.locator('.chat-item', { hasText: 'Dinner crew' }).locator('svg').count()) >= 1);
   await page.getByRole('button', { name: 'Back to chats' }).click();
@@ -1405,7 +1411,7 @@ await step('no-store', async () => { const r = await page.request.get(`${BASE}/h
 
 const csp = problems.filter((p) => /Content Security Policy|Refused to/.test(p));
 check('no CSP violations', csp.length === 0, csp.slice(0, 3).join(' | '));
-const other = problems.filter((p) => !csp.includes(p) && !/rpc\/admin_(overview|events)/.test(p) && !/object\/sign\/meal-photos\/c3c3c3c3/.test(p));   // the backend refusing a non-admin is expected
+const other = problems.filter((p) => !csp.includes(p) && !/rpc\/admin_(overview|events|now)/.test(p) && !/object\/sign\/meal-photos\/c3c3c3c3/.test(p));   // the backend refusing a non-admin is expected
 check('no page errors or failed requests', other.length === 0, other.slice(0, 5).join(' | '));
 await browser.close();
 const failed = results.filter((r) => r[0] === 'FAIL').length;

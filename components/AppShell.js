@@ -15,6 +15,7 @@ import CookieConsent, { CONSENT_KEY, LOGIN_CHOICE_KEY, deviceTimeZone } from './
 import { startActivity, setPage as trackPage } from '@/lib/activity';
 import { timerApi } from '@/lib/timers';
 import Icon, { Coin, Flame } from './Icon';
+import OfflineNote from './OfflineNote';
 import { fmt, levelFor } from '@/lib/game';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 import { countryArt } from '@/lib/world/flair';
@@ -308,7 +309,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
             </div>
           </div>
         </header>
-        <PullToRefresh onRefresh={pullRefresh}><main key={refreshKey} className="wrap" style={ui.textScale && ui.textScale !== 1 ? { zoom: ui.textScale } : undefined}>{children}</main></PullToRefresh>
+        <PullToRefresh onRefresh={pullRefresh}><main key={refreshKey} className="wrap" style={ui.textScale && ui.textScale !== 1 ? { zoom: ui.textScale } : undefined}>{/^\/compete\/(cookoff|useitup)/.test(pathname || '') && <OfflineNote />}{children}</main></PullToRefresh>
         <nav className="nav" aria-label="Main">
           <div className="nav-in">
             {NAV.map(([href, label, icon]) => (

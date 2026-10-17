@@ -684,6 +684,14 @@ await step('reload keeps everything', async () => {
 });
 await step('free dish search', async () => {
   await nav('Cook');
+  if (await page.locator('.saved-list').count()) {
+    await page.locator('.saved-list').first().click();
+    check('one tap puts a saved recipe on the shopping list', await page.locator('.toast', { hasText: /Added \d+ to your shopping list|Already on your list/ }).first().waitFor({ timeout: 5000 }).then(() => true, () => false));
+    if (await page.getByTestId('saved-list-all').count()) {
+      await page.getByTestId('saved-list-all').click();
+      check('add all saved recipes in one tap', await page.locator('.toast', { hasText: /Added \d+ to your shopping list|Already on your list/ }).last().waitFor({ timeout: 5000 }).then(() => true, () => false));
+    }
+  } else check('one tap list (no saved recipes yet)', true);
   if (await page.locator('.saved-x').count()) {
     const before = await page.locator('.saved-x').count();
     await page.locator('.saved-x').first().click(); await page.locator('.toast', { hasText: 'Removed' }).waitFor({ timeout: 5000 });

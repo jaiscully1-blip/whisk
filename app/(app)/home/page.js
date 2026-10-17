@@ -7,11 +7,11 @@ import RecipeSheet from '@/components/RecipeSheet';
 import ThawBanner from '@/components/ThawBanner';
 import Icon from '@/components/Icon';
 import { usePantry, useSaved } from '@/components/usePantry';
+import { addToShoppingList, listMsg } from '@/lib/shoplist';
 import { checkRecipe, thawState, usesSoon, shoppingNeeds, canon } from '@/lib/recipes/match';
 import Postcard from '@/components/Postcard';
 import DishFilters from '@/components/DishFilters';
 import { priceTier, levelOf, costPerServing, PRICE_TIERS, LEVELS } from '@/lib/recipes/cost';
-import { guessCategory } from '@/lib/game';
 
 const PAGE = 10;
 const SHOW = 3;   // missing ingredients shown on a card; the recipe lists them all
@@ -47,13 +47,7 @@ export default function Home() {
   }, [almost, shown]);
   const frozen = (pantry || []).filter((p) => { const t = thawState(p); return t && t.state !== 'thawed'; });
 
-  async function addToList(r, missing) {
-    const { data: list } = await supabase.from('shopping_items').select('name');
-    const have = new Set((list || []).map((l) => l.name.toLowerCase()));
-    const add = missing.filter((m) => !have.has(m.toLowerCase()));
-    if (add.length) await supabase.from('shopping_items').insert(add.map((m) => ({ name: m.slice(0, 60), category: guessCategory(m) })));
-    say(add.length ? `Added ${add.length} to your shopping list` : 'Already on your list');
-  }
+  async function addToList(r, missing) { say(listMsg(await addToShoppingList(supabase, missing))); }
 
   return (
     <div className="stack" style={{ paddingTop: 16 }}>

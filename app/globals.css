@@ -1332,3 +1332,4 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .saved-card.rcard .rcard-art { height: 116px; }
 .saved-card.rcard .rcard-body { margin-top: 70px; }
 .cook-ask .btn { padding-inline: 10px; font-size: 15px; white-space: nowrap; }
+.saved-card .saved-list { margin: 0 0 12px 0; background: var(--card); }

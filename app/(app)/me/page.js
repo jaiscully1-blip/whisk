@@ -136,7 +136,7 @@ export default function Me() {
 
       {meals.length > 0 && (
         <>
-          <h2 style={{ fontSize: 22 }}>Plate journal</h2>
+          <div className="row" style={{ justifyContent: 'space-between' }}><h2 style={{ fontSize: 22 }}>Plate journal</h2><Link className="btn ghost sm" href="/me/history" data-testid="see-history">Cooking history</Link></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))', gap: 8 }}>
             {meals.map((m) => (
               <figure key={m.id} style={{ margin: 0, position: 'relative' }}>

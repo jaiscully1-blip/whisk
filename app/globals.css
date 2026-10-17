@@ -1416,3 +1416,14 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .gl-list li.done .gl-tick { background: var(--accent); border-color: var(--accent); }
 
 .offline-note { margin: 0; padding: 8px 14px; background: var(--bad-soft, #3a1d1d); color: var(--bad, #ff8a80); font-weight: 800; font-size: 14px; text-align: center; }
+
+/* cooking history */
+.hist-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.hist-stats > div { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 2px; }
+.hist-stats b { font-size: 22px; }
+.hist-stats span { color: var(--muted, #888); font-size: 13px; font-weight: 700; }
+.hist-row { display: flex; align-items: center; gap: 12px; padding: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.hist-row img, .hist-ph { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex: none; background: var(--bg); }
+.hist-main { flex: 1; min-width: 0; display: grid; }
+.hist-main b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 560px) { .hist-stats { grid-template-columns: repeat(4, 1fr); } }

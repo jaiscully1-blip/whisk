@@ -621,6 +621,21 @@ await step('me', async () => {
   check('last device is remembered in the background (not shown)', (await page.getByText('Last played on').count()) === 0);
   await shot('05-me');
 });
+await step('cooking history', async () => {
+  await nav('Me');
+  await page.getByTestId('see-history').waitFor({ timeout: 8000 });
+  await page.getByTestId('see-history').click(); await page.getByTestId('history-page').waitFor();
+  await page.getByTestId('history-row').first().waitFor({ timeout: 8000 });
+  const n = await page.getByTestId('history-row').count();
+  check('the history lists the meals you logged, newest first', n >= 1);
+  check('numbers on top: meals cooked, this month, days, favourite cuisine', /meals? cooked/.test(await page.getByTestId('history-stats').innerText()) && Number((await page.getByTestId('history-stats').locator('b').first().innerText()).replace(/\D/g, '')) >= n);
+  await page.locator('#hist-q').fill('zzzz-nothing');
+  check('searching narrows the list', (await page.getByTestId('history-row').count()) === 0);
+  await page.locator('#hist-q').fill('');
+  check('clearing the search brings it back', (await page.getByTestId('history-row').count()) === n);
+  await shot('09-history');
+  await page.getByRole('link', { name: 'Me', exact: true }).first().click(); await page.locator('.pcard').waitFor();
+});
 await step('compete layout', async () => {
   await nav('Compete'); await page.locator('.globe').waitFor();
   check('Cuisine bingo is gone from Compete (the globe leads, after the friends card)', (await page.getByText('Cuisine bingo').count()) === 0 && (await page.locator('main .bingo').count()) === 0);

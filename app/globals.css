@@ -1537,8 +1537,8 @@ body { -webkit-tap-highlight-color: transparent; overscroll-behavior-x: none; }
 .plat { width: 52px; height: 52px; border-radius: 16px; border: 2px solid var(--tile-edge); box-shadow: 0 3px 0 var(--tile-edge); display: grid; place-items: center; color: #fff; opacity: .55; }
 .plat.youtube { background: #E62117; } .plat.tiktok { background: #111; } .plat.instagram { background: radial-gradient(circle at 30% 110%, #FDCB52 0%, #FD5949 40%, #D6249F 65%, #285AEB 100%); }
 .plat.on { opacity: 1; border-color: var(--accent); box-shadow: 0 3px 0 var(--btn-shadow); }
-.meal-pick { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 2px 6px; margin: 0 -2px; }
-.meal-pick::-webkit-scrollbar { display: none; }
+.meal-pick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 8px; padding: 2px 0 6px; }
+.meal-pick .meal-tile { width: auto; min-width: 0; min-height: 74px; }
 
 .dish-ico:has(.flagimg) { width: auto; height: auto; align-self: center; background: #fff; padding: 3px; border-radius: 9px; box-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .dish-ico .flagimg { border-radius: 6px; box-shadow: none; display: block; }

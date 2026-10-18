@@ -668,16 +668,11 @@ await step('calorie goal', async () => {
   check('the notification lead-time picker is there', (await page.locator('#n-days').count()) >= 0);
   await shot('09b-calories');
 });
-await step('streak milestones', async () => {
+await step('streak shown as days only', async () => {
   await nav('Me');
-  await page.getByTestId('streak-card').waitFor({ timeout: 8000 });
-  const txt = await page.getByTestId('streak-card').innerText();
-  check('the streak card shows days and freezes', /Streak: \d+ day/.test(txt) && /freeze/.test(txt), txt.slice(0, 80));
-  check('all six milestones are listed', (await page.locator('[data-testid^=ms-]').count()) === 6);
-  const ready = page.locator('[data-testid^=ms-]:not([disabled])').first();
-  if (await ready.count()) { await ready.click(); await page.waitForFunction(() => /done/.test(document.querySelector('[data-testid=streak-card]').innerText)); check('claiming a ready milestone marks it done', true); }
-  else check('no milestone ready yet, none claimable', true);
-  await shot('09c-streak');
+  await page.getByTestId('learn-btn').waitFor({ timeout: 8000 });
+  check('the Me page has no streak milestone card', (await page.getByTestId('streak-card').count()) === 0);
+  check('the streak shows as days in the top bar', /\d+d/.test(await page.locator('.hud').first().innerText()));
 });
 await step('languages', async () => {
   await nav('Me');

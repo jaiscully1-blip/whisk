@@ -38,6 +38,7 @@ export default function WeekGoal() {
   }
   return (
     <div className="weekgoal" role="status" aria-label={`${n} of ${goal} meals this week`}>
+      <span>{left ? <b>{left} more meal{left === 1 ? '' : 's'} this week</b> : <b>Bento full! Goal hit</b>}{left ? null : meals.length > 0 && saved > 0 ? <small>~${fmt(saved)} saved vs takeout</small> : null}{left > 0 && meals.length > 0 && saved > 0 && <small>~${fmt(saved)} saved vs takeout</small>}</span>
       <svg width="84" height="56" viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
         <rect x="1.5" y="1.5" width={W - 3} height={H - 3} rx="9" fill="rgba(255,255,255,.14)" stroke="#fff" strokeWidth="3" />
         {cells.map(([x, y, w, h], i) => (
@@ -48,7 +49,6 @@ export default function WeekGoal() {
           </g>
         ))}
       </svg>
-      <span><b>{left ? `${n} of ${goal} boxes packed` : 'Bento full! Goal hit'}</b>{left ? <small>{left} more meal{left === 1 ? '' : 's'} this week</small> : meals.length > 0 && saved > 0 ? <small>~${fmt(saved)} saved vs takeout</small> : null}{left > 0 && meals.length > 0 && saved > 0 && <small>~${fmt(saved)} saved vs takeout</small>}</span>
     </div>
   );
 }

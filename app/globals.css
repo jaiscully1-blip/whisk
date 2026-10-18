@@ -532,7 +532,7 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .title-link svg { filter: drop-shadow(0 2px 0 var(--tab-d)); }
 .title-link:active { transform: scale(.94); }
 /* weekly goal in the Cook banner */
-.weekgoal { display: flex; align-items: center; gap: 8px; color: #fff; min-width: 0; }
+.weekgoal { display: flex; align-items: center; justify-content: flex-end; gap: 10px; text-align: right; color: #fff; min-width: 0; }
 .weekgoal svg { flex: none; }
 .weekgoal text { font: 700 11px var(--f-display); fill: #fff; }
 .weekgoal > span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
@@ -1532,3 +1532,5 @@ body { -webkit-tap-highlight-color: transparent; overscroll-behavior-x: none; }
 .plat.on { opacity: 1; border-color: var(--accent); box-shadow: 0 3px 0 var(--btn-shadow); }
 .meal-pick { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 2px 6px; margin: 0 -2px; }
 .meal-pick::-webkit-scrollbar { display: none; }
+
+.dish-ico:has(.flagimg) { background: transparent; }

@@ -73,7 +73,7 @@ export default function Cook() {
       <section className="cook-search" aria-label="Find something to cook">
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); setHand(null); setAsked(true); if (!dish.trim()) { setUi({ cookMode: 'pantry', cookDish: '' }); return; } setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>{t('Dish')}</label>
-          <input id="o-dish" data-tip="search" className="input" type="search" enterKeyHint="search" autoComplete="off" placeholder={t('Search your kitchen')} aria-label={t('Search your kitchen')} maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
+          <input id="o-dish" data-tip="search" className="input" type="search" enterKeyHint="search" autoComplete="off" aria-label={t('Search your kitchen')} maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
           <button data-tip="make" className="btn cs-go" type="submit" aria-label={t('Search dishes')}><Icon name="search" size={18} />{t('Search')}</button>
         </form>
         <div className="cs-pills">

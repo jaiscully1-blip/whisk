@@ -49,7 +49,7 @@ export default function DishSearch({ q, pantry }) {
   return (
     <section className="stack" style={{ gap: 8 }} aria-live="polite">
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
-        <span className="eyebrow row" style={{ gap: 6 }}>{c && <img className="flagimg" src={`/flags/${c[0].toLowerCase()}.svg`} alt="" width="21" height="16" />}{c ? `Dishes from ${c[1]}` : `Results for “${q}”`}</span>
+        <span className="eyebrow row" style={{ gap: 6 }}>{c ? `Dishes from ${c[1]}` : `Results for “${q}”`}</span>
         {res && <span className="desc">{list.length} found</span>}
       </div>
       {list.slice(0, shown).map((d, i) => <DishCard key={d.name + i} d={d} have={have} country={res?.country} />)}

@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useWhisk } from './AppShell';
 import Icon, { Coin } from './Icon';
-import { useKitchens } from './usePantry';
+import { useKitchens, usePantry } from './usePantry';
 import KitchenStage from './kitchen/KitchenStage';
 import { usePlace } from './kitchen/KitchenPanels';
 import * as K from '@/lib/kitchen/models';
@@ -56,6 +56,13 @@ export function MyKitchen({ shop = false }) {
   const champ = useChampion(supabase);
   const shown = kitchens?.find((k) => k.is_display) || null;
   const pieces = useMemo(() => (shown ? K.cleanPieces(shown.pieces) : []), [shown]);
+  // the food you've put away shows on the same shelves as in the Pantry
+  const [pantry] = usePantry();
+  const spot = useMemo(() => {
+    const { at } = K.spotsOf(pieces, (pantry || []).filter((i) => i.status !== 'out'));
+    const m = {}; for (const [key, list] of Object.entries(at)) m[key] = { items: list };
+    return m;
+  }, [pieces, pantry]);
   if (kitchens === null) return <div className="card" style={{ height: 300 }} aria-busy="true" />;
   // the kitchen's own name, or where it is (e.g. "Riverwalk Apartment") until you name it
   const title = shown && shown.name && shown.name !== 'My kitchen' ? shown.name : place.key === 'dorm' ? 'My Kitchen' : place.name;
@@ -85,7 +92,7 @@ export function MyKitchen({ shop = false }) {
           </span>
         </div>
       )}
-      <KitchenStage mode="view" place={place.key} pieces={pieces} title={title} height={420} scale={0.9} />
+      <KitchenStage mode="view" place={place.key} pieces={pieces} title={title} spot={spot} height={420} scale={0.9} />
       {champ?.me && <span className="plaque" data-testid="champ-plaque"><Crown me size={18} />#1 Cook of the week · {fmt(champ.xp)} XP</span>}
       {!shown && <span className="desc" style={{ textAlign: 'center' }}>{place.key === 'dorm' ? 'Your dorm. Cook a meal to move into your first apartment, then build your kitchen.' : 'Build your kitchen, then everything you buy goes in it.'}</span>}
     </section>

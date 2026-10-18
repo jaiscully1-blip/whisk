@@ -370,6 +370,15 @@ await step('pantry draft is remembered', async () => {
   check('half-typed item survives a reload', (await page.inputValue('#p-name')) === 'Frozen pork chops');
   await page.click('text=Add to pantry');
   await page.getByText('frozen meat, remember to defrost').waitFor();
+  // the Fresh / Frozen / Canned picker
+  await page.getByTestId('kind-canned').click();
+  check('Canned shows its aisle note', /Canned & jarred/.test(await page.getByTestId('kind-note').innerText()));
+  await page.fill('#p-name', 'Black beans'); await page.getByTestId('kind-canned').evaluate((el) => el.closest('form').requestSubmit());
+  await page.getByText('Added Black beans').waitFor();
+  check('the picker goes back to Fresh after adding', await page.getByTestId('kind-fresh').getAttribute('aria-checked') === 'true');
+  await page.getByTestId('kind-frozen').click(); await page.fill('#p-name', 'Turkey cutlets'); await page.getByTestId('kind-frozen').evaluate((el) => el.closest('form').requestSubmit());
+  await page.getByText('frozen meat, remember to defrost').first().waitFor();
+  check('Frozen from the picker makes frozen meat without typing "frozen"', true);
   check('frozen meat is detected from the name (auto category)', true);
   await page.getByRole('button', { name: /Frozen meat · tap to start thawing/ }).first().click();
   await page.getByText(/is thawing in the fridge/).waitFor();

@@ -1584,3 +1584,19 @@ a.card.chat-item { text-decoration: none; }
 html, body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 img, svg, a { -webkit-touch-callout: none; -webkit-user-drag: none; }
 input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+
+/* Pantry → add form: Fresh / Frozen / Canned picker. The card takes the type's tint; text stays light on dark. */
+.addform { transition: border-color .2s, background .2s; }
+.kindbar { display: flex; gap: 4px; padding: 4px; border-radius: 16px; background: var(--bg-soft, rgba(0,0,0,.25)); }
+.kind { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 0; border: 0; border-radius: 12px; background: transparent; color: var(--fg); font: 700 14px var(--f-display); cursor: pointer; opacity: .75; }
+.kind.on { opacity: 1; box-shadow: 0 3px 0 rgba(0,0,0,.28); }
+.kind.k-fresh.on { background: #7ED957; color: #17300d; }
+.kind.k-frozen.on { background: #7fd4ff; color: #082b40; }
+.kind.k-canned.on { background: #e8b45a; color: #3b2606; }
+.addform.k-frozen { border-color: #7fd4ff; background: color-mix(in srgb, #7fd4ff 12%, var(--card)); }
+.addform.k-canned { border-color: #e8b45a; background: color-mix(in srgb, #e8b45a 12%, var(--card)); }
+.addform.k-frozen [data-tip="add"] { background: #7fd4ff; color: #082b40; box-shadow: 0 4px 0 #3b8bb3; }
+.addform.k-canned [data-tip="add"] { background: #e8b45a; color: #3b2606; box-shadow: 0 4px 0 #9a6f23; }
+.kindnote { border-radius: 12px; padding: 8px 10px; font: 700 13px var(--f-display); }
+.addform.k-frozen .kindnote { background: rgba(127,212,255,.18); color: var(--fg); }
+.addform.k-canned .kindnote { background: rgba(232,180,90,.2); color: var(--fg); }

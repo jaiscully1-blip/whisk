@@ -1,4 +1,5 @@
 'use client';
+import { mealArt } from '@/lib/art/meals';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DietTags from '@/components/DietTags';
 import { DIET_ORDER, DIET_CLASS, fitsDiet } from '@/lib/recipes/diet';
@@ -91,7 +92,7 @@ export default function Cook() {
         </div>
         <div className="meal-pick" role="radiogroup" aria-label={t('Meal')}>
           {[{ id: '', label: t('Any meal'), icon: 'utensils' }, ...MEALS].map((m) => (
-            <button key={m.id || 'any'} type="button" role="radio" aria-checked={meal === m.id} className={`meal-tile ${meal === m.id ? 'on' : ''}`} data-testid={`meal-${m.id || 'any'}`} onClick={() => setUi({ cookMeal: m.id })}><Icon name={m.icon} size={32} />{m.label}</button>
+            <button key={m.id || 'any'} type="button" role="radio" aria-checked={meal === m.id} className={`meal-tile ${meal === m.id ? 'on' : ''}`} data-testid={`meal-${m.id || 'any'}`} onClick={() => setUi({ cookMeal: m.id })}><svg viewBox="0 0 48 48" width="36" height="36" aria-hidden="true" dangerouslySetInnerHTML={{ __html: mealArt(m.id) }} />{m.label}</button>
           ))}
         </div>
       </div>

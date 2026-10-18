@@ -677,6 +677,14 @@ await step('streak shown as days only', async () => {
   check('the Me page has no streak milestone card', (await page.getByTestId('streak-card').count()) === 0);
   check('the streak shows as days in the top bar', /\d+d/.test(await page.locator('.hud').first().innerText()));
 });
+await step('backup in settings', async () => {
+  await nav('Me'); await openSettings();
+  check('Settings has a Back up your game row', (await page.getByTestId('set-backup').count()) === 1);
+  await page.getByTestId('set-backup').click();
+  check('it opens the backup sheet', await page.getByRole('dialog', { name: 'Back up your game' }).waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.getByRole('dialog', { name: 'Back up your game' }).getByRole('button', { name: 'Close' }).click();
+  await page.getByTestId('settings-back').click().catch(() => {});
+});
 await step('languages', async () => {
   await nav('Me');
   await page.getByTestId('hud-settings').click(); await page.getByTestId('settings-page').waitFor();
@@ -1330,7 +1338,7 @@ await step('back up your game', async () => {
   await nav('Me'); await page.waitForURL('**/me');
   await page.reload(); await page.waitForTimeout(1000); await closePopups();
   await openSettings();
-  check('Me no longer has Back up your game or backup files', (await page.getByRole('button', { name: 'Back up your game' }).count()) === 0 && (await page.getByTestId('backup-file').count()) === 0 && (await page.getByTestId('restore-file').count()) === 0);
+  check('Settings has Back up your game, but no backup files', (await page.getByRole('button', { name: 'Back up your game' }).count()) === 1 && (await page.getByTestId('backup-file').count()) === 0 && (await page.getByTestId('restore-file').count()) === 0);
   await nav('Cook'); await page.waitForURL('**/cook'); await page.waitForTimeout(800); await closePopups();
   check('Cook shows no Back up card, even from day 3', (await page.locator('.backup-nudge').count()) === 0);
   await openKitchen('shop');

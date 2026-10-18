@@ -30,6 +30,7 @@ const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
 
 export default function Me() {
   const { account, supabase, profile, setProfile, refreshProfile, say, ui, setUi, openPrivacy, replayTour, dataVersion, allRecipes, bump, t, lang, setLang } = useWhisk();
+  const [backupSet, setBackupSet] = useState(false);   // the same backup sheet, opened from Settings
   const [backupAsk, setBackupAsk] = useState(false);   // after a name change: offer to back the game up (one time: it never shows again once backed up)
   const router = useRouter();
   const [medata] = useCached('me', () => fetchMe(supabase), [dataVersion]);   // remembered between tabs (lib/cache.js)
@@ -195,6 +196,16 @@ export default function Me() {
           <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Bigger text" disabled={scaleAt === TEXT_SCALES.length - 1} onClick={() => setUi({ textScale: TEXT_SCALES[Math.min(TEXT_SCALES.length - 1, scaleAt + 1)] })}>+</button>
         </div>
         <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="snow" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Streak freezes')}</span><b>{profile?.streak_freezes ?? 1}</b><span className="desc" style={{ width: '100%' }}>Miss one day and a freeze keeps your streak. You get one each week; it doesn’t stack. Out of freezes? Cook twice the next day and your streak comes back, free.</span></div>
+        {account?.anon ? (
+          <button className="row setbtn" data-testid="set-backup" onClick={() => setBackupSet(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
+            <Icon name="shield" /><span style={{ flex: 1, fontWeight: 700 }}>Back up your game</span><span className="desc">Not backed up</span><Icon name="chevron" />
+          </button>
+        ) : (
+          <div className="row" data-testid="set-backed-up" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }}>
+            <Icon name="shield" /><span style={{ flex: 1, fontWeight: 700 }}>Game backed up</span><Icon name="check" />
+          </div>
+        )}
+        {backupSet && account?.anon && <BackupSheet supabase={supabase} onClose={() => setBackupSet(false)} />}
         <button className="row setbtn" onClick={openPrivacy} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
           <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Cookies & privacy')}</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />
         </button>

@@ -549,9 +549,9 @@ await step('cook', async () => {
   check('what you marked out after cooking shows Out and is already on the list', /Out/.test(await usedCard.locator('.stock').innerText()) && (await usedCard.locator('.reup-on').count()) === 1, usedName);
   await page.fill('#p-name', 'Reup test oats'); await page.click('text=Add to pantry'); await page.waitForTimeout(900);
   const oats = page.locator('main .card', { hasText: 'Reup test oats' }).first(), meter = oats.locator('.stock');
-  const jar = async (row) => row.locator('.stock .sb-apple, .stock .sb-milk, .stock .sb-leaf, .stock .sb-bread').count();
-  check('a new item is Full: four things in the bag, no Reup button', (await meter.innerText()).trim() === 'Full' && (await jar(oats)) === 4 && (await oats.locator('.reup').count()) === 0);
-  await meter.click(); check('tap: Full → Good (three things in the bag)', (await meter.innerText()).trim() === 'Good' && (await jar(oats)) === 3);
+  const jar = async (row) => ({ 1: 4, 0.7: 3, 0.3: 1, 0: 0 })[Number(await row.locator('.stock .pkg-art').getAttribute('data-fill'))];
+  check('a new item is Full: its package drawn full (oats: a bag), no Reup button', (await oats.locator('.pkg-art').getAttribute('data-shape')) === 'bag' && (await meter.innerText()).trim() === 'Full' && (await jar(oats)) === 4 && (await oats.locator('.reup').count()) === 0);
+  await meter.click(); check('tap: Full → Good (package 70% full)', (await meter.innerText()).trim() === 'Good' && (await jar(oats)) === 3);
   await meter.click(); check('tap: Good → Low (1 bar) and Reup appears', (await meter.innerText()).trim() === 'Low' && (await jar(oats)) === 1 && (await oats.locator('.reup').count()) === 1);
   await shot('04-stock-levels');
   await oats.locator('.reup').click(); await oats.locator('.reup-on').waitFor();

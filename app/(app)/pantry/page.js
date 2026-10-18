@@ -233,7 +233,7 @@ export default function Pantry() {
                       {needsReup(i.status) && (onList.has(i.name.toLowerCase())
                         ? <span className="chip reup-on" aria-label={`${i.name} is on your list`}><Icon name="check" size={14} />On list</span>
                         : <button type="button" className="chip reup" onClick={() => reup(i)} aria-label={`Reup ${i.name}: add to shopping list`}>Reup</button>)}
-                      <StockMeter status={i.status} name={i.name} onClick={() => cycle(i)} />
+                      <StockMeter status={i.status} name={i.name} aisle={i.category} onClick={() => cycle(i)} />
                       <button className={`btn ghost sm star ${isQuick(i.name) ? 'on' : ''}`} style={{ border: 0, width: 36, padding: 0 }} onClick={() => toggleQuick(i)} aria-pressed={isQuick(i.name)} aria-label={isQuick(i.name) ? `Take ${i.name} out of Quick add` : `Put ${i.name} in Quick add`}><Icon name="star" size={18} /></button>
                       <button className="btn ghost sm" style={{ border: 0, width: 36, padding: 0 }} onClick={() => remove(i)} aria-label={`Remove ${i.name}`}><Icon name="trash" size={18} /></button>
                     </div>

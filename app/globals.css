@@ -1533,4 +1533,5 @@ body { -webkit-tap-highlight-color: transparent; overscroll-behavior-x: none; }
 .meal-pick { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 2px 6px; margin: 0 -2px; }
 .meal-pick::-webkit-scrollbar { display: none; }
 
-.dish-ico:has(.flagimg) { background: transparent; }
+.dish-ico:has(.flagimg) { width: auto; height: auto; align-self: center; background: #fff; padding: 3px; border-radius: 9px; box-shadow: 0 2px 0 rgba(0,0,0,.35); }
+.dish-ico .flagimg { border-radius: 6px; box-shadow: none; display: block; }

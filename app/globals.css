@@ -1632,3 +1632,4 @@ input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-sele
 
 /* real 3D grocery sprites: a faint light rim keeps their dark outline readable on the dark theme */
 img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); object-fit: contain; }
+.kthing-up img[src^="/food3d/"] { filter: none; }

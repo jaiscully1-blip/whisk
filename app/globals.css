@@ -532,12 +532,12 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .title-link svg { filter: drop-shadow(0 2px 0 var(--tab-d)); }
 .title-link:active { transform: scale(.94); }
 /* weekly goal in the Cook banner */
-.weekgoal { display: flex; align-items: center; justify-content: flex-end; gap: 10px; text-align: right; color: #fff; min-width: 0; }
+.weekgoal { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; text-align: right; color: #fff; min-width: 0; }
 .weekgoal svg { flex: none; }
 .weekgoal text { font: 700 11px var(--f-display); fill: #fff; }
 .weekgoal > span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
-.weekgoal b { font-size: 14px; font-weight: 800; }
-.weekgoal small { font-size: 12px; font-weight: 700; opacity: .9; }
+.weekgoal b { font-size: 11px; font-weight: 800; letter-spacing: .01em; }
+.weekgoal small { font-size: 10px; font-weight: 700; opacity: .9; }
 .page-title:has(.weekgoal) { flex-wrap: nowrap; }
 /* diet tags and nutrition on recipes */
 .chip.diet { font-size: 12px; font-weight: 800; padding: 3px 9px; border: 0; }

@@ -27,6 +27,7 @@ export default function Cook() {
   const [saved, reloadSaved] = useSaved();
   const [shown, setShown] = useState(PAGE);
   const [yourTab, setYourTab] = useState('saved');   // Saved / My recipes / Channels share one spot
+  useEffect(() => { if (ui.cookMode === 'named' || ui.cookMode === 'raid') setYourTab('saved'); }, [ui.cookMode, ui.cookDish]);   // a search, Fridge Raid or a dish from the globe shows in Saved only
   const moreRef = useRef(null);
   const [dish, setDish] = useDraft('o-dish');
   const [hand, setHand] = useState(null);
@@ -109,6 +110,7 @@ export default function Cook() {
       <div hidden={yourTab !== 'mine'}><MyRecipes pantry={pantry} /></div>
       <div hidden={yourTab !== 'channels'}><MyYouTubers /></div>
 
+      <div className="stack" hidden={yourTab !== 'saved'}>
       {hand && mode === 'raid' && (
         <div className="stack" style={{ gap: 8 }}><span className="eyebrow">{t('Ingredients')}</span>
           <div className="grid2">{hand.map((c, i) => <div key={c} className="card" style={{ textAlign: 'center', fontWeight: 800, background: 'var(--pop-soft)', transform: `rotate(${[-3, 2, -1, 3][i % 4]}deg)` }}>{c}</div>)}</div>
@@ -133,7 +135,7 @@ export default function Cook() {
       ) : asked && <div className="empty"><b>{t('Nothing fits yet')}</b>{mode === 'named' ? 'None of Yoke’s recipes match that dish and your pantry.' : 'Add a few more staples to your pantry and check back.'}</div>)}
 
       {mode === 'named' && ui.cookDish && <DishSearch q={ui.cookDish} pantry={pantry} />}
-
+      </div>
 
       {open && <RecipeSheet recipe={open} pantry={pantry || []} saved={saved?.get(open.id)} onClose={() => setOpen(null)} onChanged={() => { reload(); reloadSaved(); }} />}
     </div>

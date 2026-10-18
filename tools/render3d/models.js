@@ -25,9 +25,11 @@ function noiseBump(T, fx = .015, fy = .03) {
   g.putImageData(im, 0, 0); const t = new T.CanvasTexture(c); t.wrapS = T.RepeatWrapping; return t;
 }
 function mat(T, map, o = {}) {
-  return new T.MeshPhysicalMaterial({ map, bumpMap: o.bump ? noiseBump(T, o.bumpF || .015, o.bumpF2 || .03) : null, bumpScale: o.bumpScale ?? .05, roughness: o.rough ?? .4, metalness: 0, clearcoat: o.coat ?? .4, clearcoatRoughness: o.coatRough ?? .3, color: o.color || 0xffffff, side: o.side || T.FrontSide });
+  return new T.MeshPhysicalMaterial({ map, bumpMap: o.bump ? noiseBump(T, o.bumpF || .015, o.bumpF2 || .03) : null, bumpScale: o.bumpScale ?? .05, roughness: o.rough ?? .4, metalness: 0, clearcoat: o.coat ?? .4, clearcoatRoughness: o.coatRough ?? .3, color: o.color ? lin(T, o.color) : 0xffffff, side: o.side || T.FrontSide });
 }
-const plain = (T, c, o = {}) => new T.MeshStandardMaterial({ color: c, roughness: o.rough ?? .7, side: o.side || T.FrontSide });
+const lin = (T, c) => new T.Color(c).convertSRGBToLinear();
+export { lin };
+const plain = (T, c, o = {}) => new T.MeshStandardMaterial({ color: lin(T, c), roughness: o.rough ?? .7, side: o.side || T.FrontSide });
 
 // A body of revolution: f(yn, th) = radius factor (0..1.x), cav(phi, th) pulls the poles in/out. yn = cos(phi): +1 top … -1 bottom.
 function solid(T, o) {
@@ -141,7 +143,7 @@ export const MODELS = {
   broccoli(T) {
     const G = new T.Group(); const sm = plain(T, 0x7fb04f, { rough: .65 }); add(T, G, new T.CylinderGeometry(1.1, 1.6, 6, 14), sm, { pos: [0, -2.4, 0] });
     for (let i = 0; i < 4; i++) { const a = i / 4 * 6.28 + .5; add(T, G, new T.CylinderGeometry(.35, .6, 3.2, 8), sm, { pos: [Math.cos(a) * 1.3, 1.1, Math.sin(a) * 1.3], rot: [Math.sin(a) * .55, 0, -Math.cos(a) * .55] }); }
-    const fm = (k) => new T.MeshStandardMaterial({ color: new T.Color().setHSL(.33, .5, .12 + k * .05), roughness: .72 });
+    const fm = (k) => new T.MeshStandardMaterial({ color: new T.Color().setHSL(.33, .5, .16 + k * .06), roughness: .72 });
     for (let i = 0; i < 80; i++) { const a = hash(i, 1, 3) * 6.28, e = Math.acos(1 - hash(i, 2, 3) * .85), R = 3.6; const r = .55 + hash(i, 4, 3) * .5; add(T, G, new T.SphereGeometry(r, 12, 10), fm(hash(i, 5, 3)), { pos: [Math.sin(e) * Math.cos(a) * R * 1.2, 2.6 + Math.cos(e) * R * .8, Math.sin(e) * Math.sin(a) * R * 1.2] }); }
     G.rotation.y = .6; return { g: G, dims: [10, 11, 10] };
   },

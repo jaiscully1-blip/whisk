@@ -1,7 +1,9 @@
 <html><body style="margin:0;background:transparent"><canvas id="c" width="1024" height="1024"></canvas>
 <script src="three.min.js"></script>
 <script type="module">
-import { MODELS, INK } from './models.js';
+import { MODELS as M1, INK } from './models.js';
+import { MODELS2 } from './models2.js';
+const MODELS = Object.assign({}, M1, MODELS2);
 const T = THREE;
 const renderer = new T.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, alpha: true, preserveDrawingBuffer: true });
 renderer.setSize(1024, 1024); renderer.outputEncoding = T.sRGBEncoding; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;

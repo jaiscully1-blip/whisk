@@ -14,10 +14,6 @@ import { nextLevel, needsReup } from '@/lib/stock';
 
 // The shopping list follows a walk through the store: fresh stuff first, frozen last so it stays cold.
 const AISLES = ['Produce', 'Proteins', 'Dairy & Eggs', 'Carbs & Grains', 'Canned & Jarred', 'Sauces & Oils', 'Spices & Seasonings', 'Baking', 'Frozen', 'Other'];
-// Deletes wait a few seconds so Undo can take them back. Kept outside the page so leaving the page still deletes.
-const pending = new Map();
-const later = (key, fn) => { clearTimeout(pending.get(key)); pending.set(key, setTimeout(() => { pending.delete(key); fn(); }, 5200)); };
-const cancel = (key) => { clearTimeout(pending.get(key)); pending.delete(key); };
 
 export default function Pantry() {
   const { supabase, say, refreshProfile, ui, setUi, t } = useWhisk();
@@ -107,15 +103,26 @@ export default function Pantry() {
     const { error } = await supabase.from('pantry_items').update({ thaw_started_at: at }).eq('id', item.id);
     say(error ? 'Couldn’t update that item.' : `${item.name} is thawing in the fridge · ready in about ${THAW_HOURS} hours`);
   }
-  function remove(item) {
+  // Deleted straight away (so it is really gone); Undo puts the same row back.
+  async function remove(item) {
     setItems((x) => x.filter((i) => i.id !== item.id));
-    later('p' + item.id, () => supabase.from('pantry_items').delete().eq('id', item.id));
-    say(`Removed ${item.name}`, { label: 'Undo', run: () => { cancel('p' + item.id); setItems((x) => [...x.filter((i) => i.id !== item.id), item].sort((a, b) => a.name.localeCompare(b.name))); } });
+    const { error } = await supabase.from('pantry_items').delete().eq('id', item.id);
+    if (error) { setItems((x) => [...x.filter((i) => i.id !== item.id), item].sort((a, b) => a.name.localeCompare(b.name))); say('Couldn’t remove that, try again.'); return; }
+    say(`Removed ${item.name}`, { label: 'Undo', run: async () => {
+      setItems((x) => [...x.filter((i) => i.id !== item.id), item].sort((a, b) => a.name.localeCompare(b.name)));
+      const { error: e2 } = await supabase.from('pantry_items').insert(item);
+      if (e2) { setItems((x) => x.filter((i) => i.id !== item.id)); say('Couldn’t bring that back.'); }
+    } });
   }
-  function removeFromList(it) {
+  async function removeFromList(it) {
     setList((l) => l.filter((x) => x.id !== it.id));
-    later('s' + it.id, () => supabase.from('shopping_items').delete().eq('id', it.id));
-    say(`Removed ${it.name}`, { label: 'Undo', run: () => { cancel('s' + it.id); setList((l) => [...l.filter((x) => x.id !== it.id), it]); } });
+    const { error } = await supabase.from('shopping_items').delete().eq('id', it.id);
+    if (error) { setList((l) => [...l.filter((x) => x.id !== it.id), it]); say('Couldn’t remove that, try again.'); return; }
+    say(`Removed ${it.name}`, { label: 'Undo', run: async () => {
+      setList((l) => [...l.filter((x) => x.id !== it.id), it]);
+      const { error: e2 } = await supabase.from('shopping_items').insert(it);
+      if (e2) { setList((l) => l.filter((x) => x.id !== it.id)); say('Couldn’t bring that back.'); }
+    } });
   }
   // Quick add: the staples you pick (★ on an item). One tap puts it back in the pantry, stocked.
   const quick = ui.quickAdd || [];
@@ -199,8 +206,9 @@ export default function Pantry() {
           </form>
 
           <div className="row catrow">
-            {['All', ...CATEGORIES].map((c) => <button key={c} className={`chip`} style={{ border: 0, background: filter === c ? 'var(--fg)' : 'var(--track)', color: filter === c ? 'var(--bg)' : 'var(--fg)' }} onClick={() => setFilter(c)}>{c}</button>)}
+            {['All', ...CATEGORIES].map((c) => <button key={c} className={`chip`} style={{ border: 0, background: filter === c ? 'var(--fg)' : 'var(--track)', color: filter === c ? 'var(--bg)' : 'var(--fg)' }} onClick={() => { setFilter(c); setTimeout(() => { const el = document.getElementById('pantry-items'); if (el) { const y = el.getBoundingClientRect().top + window.scrollY - 70; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } }, 60); }}>{c}</button>)}
           </div>
+          <div id="pantry-items" style={{ height: 0 }} />
 
           {items === null ? <p className="muted">{t('Loading your pantry…')}</p> : items.length === 0 ? (
             <div className="empty"><b>{t('Your pantry is empty')}</b></div>

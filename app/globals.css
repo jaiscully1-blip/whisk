@@ -1483,3 +1483,7 @@ body { -webkit-tap-highlight-color: transparent; overscroll-behavior-x: none; }
 .date-wrap .date-hint { left: auto; right: 14px; display: grid; place-items: center; }
 .date-wrap, .date-wrap input.input { height: 46px; }
 .date-wrap input[type="date"]::-webkit-date-and-time-value { min-height: 0; margin: 0; }
+.kitchen-btn { width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border-radius: 50%; text-decoration: none; }
+.kitchen-btn svg { width: 22px; height: 26px; }
+.chip.ice.drip { gap: 6px; }
+.exp-chip.ghost { background: transparent; color: var(--muted); font-weight: 700; padding-left: 0; border: 0; box-shadow: none; }

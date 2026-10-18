@@ -175,7 +175,7 @@ export default function Pantry() {
   return (
     <div className="stack">
       <div className="page-title"><h1>{t('Pantry')}</h1>
-        <Link href="/pantry/kitchen" prefetch className="title-link kitchen-btn" data-testid="kitchen-btn" data-tip="kitchen"><FridgeIcon />{t('Kitchen')}</Link>
+        <Link href="/pantry/kitchen" prefetch className="title-link kitchen-btn" data-testid="kitchen-btn" data-tip="kitchen" aria-label={t('Kitchen')}><FridgeIcon /></Link>
       </div>
       <div className="row tabrow" role="tablist">
         <button className={`btn sm ${tab === 'pantry' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'pantry'} onClick={() => setTab('pantry')}>Pantry {items ? `(${items.length})` : ''}</button>
@@ -222,9 +222,9 @@ export default function Pantry() {
                     <div className="row" style={{ flexWrap: 'nowrap' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <b style={{ textDecoration: i.status === 'out' ? 'line-through' : 'none' }}>{i.name}</b>{i.quantity && <span className="muted"> · {i.quantity}</span>}
-                        {(() => { const t = thawState(i); if (!t) return null; return <div style={{ marginTop: 4 }}>{t.state === 'frozen' ? <button className="chip ice" onClick={() => startThaw(i)}><Icon name="snow" size={14} />Frozen meat · tap to start thawing</button> : t.state === 'thawing' ? <span className="chip ice"><Icon name="snow" size={14} />Thawing · ~{t.hoursLeft} h left</span> : <span className="chip have">Thawed · cook within 1–2 days</span>}</div>; })()}
+                        {(() => { const t = thawState(i); if (!t) return null; return <div style={{ marginTop: 4 }}>{t.state === 'frozen' ? <button className="chip ice" onClick={() => startThaw(i)}><Icon name="snow" size={14} />Frozen meat · tap to start thawing</button> : t.state === 'thawing' ? <span className="chip ice"><Icon name="snow" size={14} />Thawing · ~{t.hoursLeft} h left</span> : <span className="chip ice drip"><Drip />Thawed · use by {useBy(i)}</span>}</div>; })()}
                         <div className="row exp-row">
-                          <label className="chip exp-chip">{i.expires_on ? `Expires ${new Date(i.expires_on + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Add expiry'}
+                          <label className={`chip exp-chip ${i.expires_on ? '' : 'ghost'}`}>{i.expires_on ? `Expires ${new Date(i.expires_on + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : '+ expiry'}
                             <input type="date" value={i.expires_on || ''} onChange={(e) => setExpiry(i, e.target.value)} aria-label={`${i.name} expiry date`} /></label>
                           {i.expires_on && <button type="button" className="chip exp-reset" onClick={() => setExpiry(i, null)} aria-label={`Reset ${i.name} expiry`}>Reset</button>}
                         </div>
@@ -290,6 +290,12 @@ function BarcodeArt() {
       <path d="M2 16h28" stroke="#EF5350" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
+}
+function Drip() { return <svg width="12" height="14" viewBox="0 0 14 16" aria-hidden="true"><path d="M7 1C7 1 2 7 2 10a5 5 0 0 0 10 0C12 7 7 1 7 1z" fill="currentColor" /></svg>; }
+// Fully thawed + 2 days in the fridge, as a real day ("Mon"); if that has passed: "today".
+function useBy(i) {
+  const end = new Date(i.thaw_started_at).getTime() + (THAW_HOURS + 48) * 3600e3;
+  return end <= Date.now() ? 'today' : new Date(end).toLocaleDateString(undefined, { weekday: 'short' });
 }
 function FridgeIcon() {
   return (

@@ -1629,3 +1629,6 @@ input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-sele
 /* Level 100 kitchen: a shining gold frame */
 .mykitchen.gold { border: 3px solid #e0a800; border-radius: 22px; padding: 10px; box-shadow: 0 0 0 3px #fff2a8, 0 0 24px rgba(255, 214, 90, .8); }
 .plaque { justify-self: center; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(120deg, #ffe36b, #c98f00 55%, #ffe36b); color: #2b1d00; border: 2px solid #7a5600; border-radius: 8px; padding: 5px 12px; font: 800 13px var(--f-body, Nunito); }
+
+/* real 3D grocery sprites: a faint light rim keeps their dark outline readable on the dark theme */
+img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); object-fit: contain; }

@@ -1,0 +1,36 @@
+<html><body style="margin:0;background:transparent"><canvas id="c" width="1024" height="1024"></canvas>
+<script src="three.min.js"></script>
+<script type="module">
+import { MODELS, INK } from './models.js';
+const T = THREE;
+const renderer = new T.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setSize(1024, 1024); renderer.outputEncoding = T.sRGBEncoding; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+const ink = new T.Color(INK).convertSRGBToLinear();
+function outline(root, th) {
+  const meshes = []; root.traverse((m) => { if (m.isMesh && m.material.side !== T.DoubleSide && m.geometry.attributes.normal) meshes.push(m); });
+  for (const m of meshes) { const g = m.geometry.clone(); const p = g.attributes.position, n = g.attributes.normal; for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + n.getX(i) * th, p.getY(i) + n.getY(i) * th, p.getZ(i) + n.getZ(i) * th);
+    m.add(new T.Mesh(g, new T.MeshBasicMaterial({ color: ink.clone(), side: T.BackSide }))); }
+}
+window.names = Object.keys(MODELS);
+window.renderItem = (name, size = 384) => {
+  const { g, dims } = MODELS[name](T); const scene = new T.Scene(); scene.add(g); g.updateMatrixWorld(true);
+  const box = new T.Box3().setFromObject(g); const ctr = box.getCenter(new T.Vector3()); const sph = box.getBoundingSphere(new T.Sphere()); const R = sph.radius;
+  outline(g, Math.max(...dims) * .0085);
+  const ground = new T.Mesh(new T.PlaneGeometry(R * 8, R * 8), new T.ShadowMaterial({ opacity: .22 })); ground.rotation.x = -Math.PI / 2; ground.position.set(ctr.x, box.min.y - .01, ctr.z); ground.receiveShadow = true; scene.add(ground);
+  scene.add(new T.HemisphereLight(0xfff4e6, 0x8a7560, .6));
+  const key = new T.DirectionalLight(0xfff1de, 1.9); key.position.set(ctr.x - R * .9, ctr.y + R * 1.8, ctr.z + R * 1.6); key.target.position.copy(ctr); scene.add(key, key.target); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.radius = 9; const s = R * 1.6; Object.assign(key.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: .1, far: R * 8 }); key.shadow.camera.updateProjectionMatrix(); key.shadow.bias = -.0004;
+  const rim = new T.DirectionalLight(0xcfe3ff, .9); rim.position.set(ctr.x + R * 1.4, ctr.y + R * .7, ctr.z - R * 1.4); scene.add(rim);
+  const fill = new T.DirectionalLight(0xffe2c8, .5); fill.position.set(ctr.x + R * 1.2, ctr.y + R * .5, ctr.z + R * 1.8); scene.add(fill);
+  const cam = new T.PerspectiveCamera(22, 1, .1, R * 40); const d = R / Math.sin(22 / 2 * Math.PI / 180) * 1.02; const dir = new T.Vector3(.17, .4, 1).normalize();
+  cam.position.copy(ctr).addScaledVector(dir, d); cam.lookAt(ctr);
+  renderer.setClearColor(0, 0); renderer.render(scene, cam);
+  const out = document.createElement('canvas'); out.width = 1024; out.height = 1024; const x = out.getContext('2d'); x.drawImage(renderer.domElement, 0, 0);
+  const im = x.getImageData(0, 0, 1024, 1024).data; let x0 = 1024, y0 = 1024, x1 = 0, y1 = 0;
+  for (let y = 0; y < 1024; y++) for (let xx = 0; xx < 1024; xx++) if (im[(y * 1024 + xx) * 4 + 3] > 24) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, side = Math.max(w, h) * 1.08, f = document.createElement('canvas'); f.width = f.height = size; const fx = f.getContext('2d');
+  fx.drawImage(out, x0 - (side - w) / 2, y0 - (side - h) / 2 - side * .01, side, side, 0, 0, size, size);
+  scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); return f.toDataURL('image/png');
+};
+window.ready = true;
+</script></body></html>

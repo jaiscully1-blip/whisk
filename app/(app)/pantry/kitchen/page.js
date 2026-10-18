@@ -6,6 +6,7 @@ import { useWhisk } from '@/components/AppShell';
 import Icon from '@/components/Icon';
 import { usePantry, useKitchens, useWorld } from '@/components/usePantry';
 import { MyKitchen, KitchenShop } from '@/components/MeWorld';
+import BackupNudge from '@/components/BackupNudge';
 import GetCoinsSheet from '@/components/GetCoinsSheet';
 import KitchenStage from '@/components/kitchen/KitchenStage';
 import { Sticker, useShownKitchen, usePlace } from '@/components/kitchen/KitchenPanels';
@@ -216,7 +217,7 @@ function Hub() {
           <MyKitchen />
           <p className="desc" style={{ margin: 0 }}>Edit opens the designer: move cupboards, change colours, add things. The kitchen shown here is the one you show your friends.</p>
         </div>
-      ) : <div data-tip="closet"><KitchenShop world={world} setWorld={setWorld} onGetCoins={() => setGetCoins(true)} /></div>}
+      ) : <div className="stack" data-tip="closet"><BackupNudge /><KitchenShop world={world} setWorld={setWorld} onGetCoins={() => setGetCoins(true)} /></div>}
       {getCoins && <GetCoinsSheet onClose={() => setGetCoins(false)} />}
     </div>
   );

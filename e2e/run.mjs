@@ -187,6 +187,16 @@ await step('learn quiz', async () => {
   check('Novice shows Learn again', (await page.getByTestId('learn-btn').count()) === 1);
   await nav('Home');
 });
+await step('backup card in the shop', async () => {
+  await nav('Pantry'); await page.getByTestId('kitchen-btn').click(); await page.waitForURL('**/pantry/kitchen');
+  await page.getByTestId('kt-shop').click();
+  check('the Shop shows "Back up your game" until the game is backed up', (await page.getByRole('region', { name: 'Back up your game' }).count()) === 1);
+  check('the card has no dismiss button', (await page.getByRole('region', { name: 'Back up your game' }).getByRole('button', { name: 'Later' }).count()) === 0);
+  await page.getByRole('region', { name: 'Back up your game' }).getByRole('button', { name: 'Back up' }).click();
+  await page.getByText(/Apple|Google|email/i).first().waitFor({ timeout: 5000 });
+  check('Back up opens the backup sheet', true);
+  await page.keyboard.press('Escape'); await page.reload(); await page.waitForTimeout(800); await closePopups(); await nav('Home');
+});
 await step('recipe import', async () => {
   await nav('Cook'); await page.waitForURL('**/cook');
   await cookTab('mine');

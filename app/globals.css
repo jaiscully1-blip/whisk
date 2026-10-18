@@ -1290,8 +1290,6 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .catrow .chip { flex: none; white-space: nowrap; }
 .scanrow { gap: 8px; }
 .scanrow .card { padding: 10px 12px; gap: 8px; font-size: 15px; }
-.backup-nudge { padding: 8px 12px; gap: 8px; }
-.backup-nudge .desc { display: none; }
 .seg { display: flex; gap: 4px; padding: 4px; border-radius: 99px; background: var(--track); }
 .seg button { flex: 1; border: 0; border-radius: 99px; padding: 8px 10px; background: transparent; color: var(--muted); font: inherit; font-weight: 800; min-height: 40px; white-space: nowrap; }
 .seg button.on { background: var(--card); color: var(--fg); box-shadow: 0 2px 0 var(--tile-edge); }

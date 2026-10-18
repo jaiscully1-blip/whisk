@@ -38,11 +38,13 @@ export async function POST(req) {
 
   // Yoke links use the Supabase user id as the RevenueCat App User ID; anonymous RevenueCat ids are skipped.
   const user = [e.app_user_id, e.original_app_user_id, ...(Array.isArray(e.aliases) ? e.aliases : [])].find((x) => typeof x === 'string' && UUID.test(x));
-  const product = typeof e.product_id === 'string' ? e.product_id : '';
+  const rawProduct = typeof e.product_id === 'string' ? e.product_id : '';
+  // RevenueCat's web products are named with underscores (coins_099); Yoke's packs use hyphens (coins-099)
+  const product = /^(coins|streak)_/.test(rawProduct) ? rawProduct.replace(/_/g, '-') : rawProduct;
   if (!user || !/^[A-Za-z0-9._-]{1,100}$/.test(product)) { console.error('revenuecat purchase without a Yoke player', txn); return ok({ ignored: 'no player' }); }
 
   let real;
-  try { real = await findPurchase(user, product, txn); } catch (err) { console.error('revenuecat check', err?.message); return NextResponse.json({ error: 'retry' }, { status: 502 }); }
+  try { real = await findPurchase(user, rawProduct, txn); } catch (err) { console.error('revenuecat check', err?.message); return NextResponse.json({ error: 'retry' }, { status: 502 }); }
   if (!real) { console.error('revenuecat purchase not confirmed', txn); return NextResponse.json({ error: 'not confirmed' }, { status: 409 }); }
 
   if (product === 'streak-revive' || product === 'yoke.streakrevive') {   // a Streak Revive ($0.99): grants one revive token

@@ -752,7 +752,7 @@ await step('buy coins with Apple Pay (RevenueCat)', async () => {
   await page.waitForURL('**/rcpay/**', { timeout: 15000 });
   check('pack opens the RevenueCat checkout page (Apple Pay)', /Apple Pay/.test(await page.locator('h1').innerText()));
   const op = (await (await fetch('http://localhost:54321/__e2e/rc-opened')).json()).at(-1);
-  check('checkout link carries this player and the $0.99 pack', /^[0-9a-f-]{36}$/.test(op.user) && op.pkg === 'coins-099' && op.token === 'e2etoken', JSON.stringify(op));
+  check('checkout link carries this player and the $0.99 pack', /^[0-9a-f-]{36}$/.test(op.user) && op.pkg === 'coins_099' && op.token === 'e2etoken', JSON.stringify(op));
   const AUTH = 'Bearer e2e-rc-webhook-secret-0123456789';
   const hook = async (event, auth = AUTH) => (await fetch(`${BASE}/api/coins/revenuecat`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(auth ? { Authorization: auth } : {}) }, body: JSON.stringify({ api_version: '1.0', event }) })).status;
   const ev = { id: 'evt1', type: 'NON_RENEWING_PURCHASE', app_user_id: op.user, original_app_user_id: op.user, aliases: [op.user], product_id: 'coins-099', transaction_id: 'txn_e2e_1', store: 'RC_BILLING', environment: 'PRODUCTION', price: 0.99, currency: 'USD' };

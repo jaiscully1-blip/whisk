@@ -24,6 +24,16 @@ export default function AuthForm() {
     try { const c = JSON.parse(localStorage.getItem(LOGIN_CHOICE_KEY) || 'null'); if (c && typeof c.usage === 'boolean') setChoice(c.usage ? 'accept' : 'decline'); } catch {}
   }, []);
 
+  // Lost the sign-in cookie but this phone still has the spare copy? Quietly get the same game back instead of starting a new one.
+  useEffect(() => {
+    let rt = null; try { rt = localStorage.getItem('yoke-rs'); if (/[?&]deleted=1/.test(window.location.search)) { localStorage.removeItem('yoke-rs'); rt = null; } } catch {}
+    if (!rt) return;
+    supabaseBrowser().auth.refreshSession({ refresh_token: rt }).then(({ data, error: e }) => {
+      if (e || !data?.session) { try { localStorage.removeItem('yoke-rs'); } catch {} return; }
+      router.replace('/cook'); router.refresh();
+    }).catch(() => {});
+  }, [router]);
+
   function pick(c) {
     setChoice(c); setError('');
     try { localStorage.setItem(LOGIN_CHOICE_KEY, JSON.stringify({ usage: c === 'accept', at: new Date().toISOString() })); } catch {}

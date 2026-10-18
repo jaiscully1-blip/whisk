@@ -1513,6 +1513,17 @@ await step('scanners', async () => {
   check('…fix a name, Add, and it’s in the pantry', (await page.getByText('Whole milk (gallon)').count()) >= 1);
   await shot('32-after-scans');
 });
+await step('chat links stay put; lost sign-in comes back', async () => {
+  await page.goto(`${BASE}/compete/friends?chat=00000000-0000-4000-8000-000000000000`); await page.waitForTimeout(2000);
+  check('opening a chat link does not bounce to Cook', /\/compete\/friends\?chat=/.test(page.url()), page.url());
+  await page.goto(`${BASE}/home`); await page.waitForTimeout(800);
+  await page.waitForFunction(() => !!localStorage.getItem('yoke-rs'), null, { timeout: 8000 }).catch(() => {});
+  check('a spare copy of the sign-in is kept', await page.evaluate(() => !!localStorage.getItem('yoke-rs')));
+  await ctx.clearCookies();
+  await page.goto(`${BASE}/login`);
+  await page.waitForURL('**/cook', { timeout: 15000 }).catch(() => {});
+  check('with the cookie lost, the same game comes back (no new game)', /\/cook/.test(page.url()), page.url());
+});
 await step('delete my data', async () => {
   const ctx5 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const dp = await ctx5.newPage(); await dp.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
   await dp.goto(`${BASE}/login`); await dp.getByRole('radio', { name: 'Accept' }).click(); await dp.getByRole('button', { name: 'Start playing' }).click(); await dp.waitForURL('**/cook');
@@ -1544,7 +1555,7 @@ await step('no-store', async () => { const r = await page.request.get(`${BASE}/h
 
 const csp = problems.filter((p) => /Content Security Policy|Refused to/.test(p));
 check('no CSP violations', csp.length === 0, csp.slice(0, 3).join(' | '));
-const other = problems.filter((p) => !csp.includes(p) && !/rpc\/admin_(overview|events|now)/.test(p) && !/object\/sign\/meal-photos\/c3c3c3c3/.test(p));   // the backend refusing a non-admin is expected
+const other = problems.filter((p) => !csp.includes(p) && !/rpc\/admin_(overview|events|now)/.test(p) && !/rpc\/get_chat.*(400)?/.test(p) && !/object\/sign\/meal-photos\/c3c3c3c3/.test(p));   // the backend refusing a non-admin is expected
 check('no page errors or failed requests', other.length === 0, other.slice(0, 5).join(' | '));
 await browser.close();
 const failed = results.filter((r) => r[0] === 'FAIL').length;

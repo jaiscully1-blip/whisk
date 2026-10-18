@@ -1360,21 +1360,44 @@ await step('back up your game', async () => {
   const bk = page.getByRole('dialog', { name: 'Back up your game' });
   await bk.getByRole('button', { name: 'Continue with Google' }).waitFor();
   check('before paying: only the switched-on ways show (Google + email here, no Apple)', (await bk.getByRole('button', { name: 'Continue with Apple' }).count()) === 0 && (await bk.locator('#bk-email').count()) === 1);
-  await bk.locator('#bk-email').fill('chef@example.com'); await bk.getByRole('button', { name: 'Email me a link' }).click();
-  await bk.getByText('Check your email').waitFor();
+  // an email that already has a game: offer to log in instead
+  await bk.locator('#bk-email').fill('taken@example.com'); await bk.locator('#bk-pw').fill('somepassword1'); await bk.getByTestId('bk-submit').click();
+  check('an email that already has a game offers to log in instead', await bk.getByTestId('bk-taken').waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await bk.getByTestId('bk-login-instead').click();
+  check('…and switches the sheet to Log in', await page.getByRole('dialog', { name: 'Log in' }).waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.getByRole('dialog', { name: 'Log in' }).getByRole('button', { name: /Back to backing up/ }).click();
+  const bk2 = page.getByRole('dialog', { name: 'Back up your game' });
+  await bk2.locator('#bk-email').fill('chef@example.com'); await bk2.locator('#bk-pw').fill('chefpass123'); await bk2.getByTestId('bk-submit').click();
+  await bk2.waitFor({ state: 'detached', timeout: 8000 });
   const bks = await (await fetch('http://localhost:54321/__e2e/backups')).json();
-  check('back up by email: the game gets that email (a confirm link is sent)', bks.backups.some((b) => b.email === 'chef@example.com'));
-  await bk.getByRole('button', { name: 'OK' }).click(); await page.keyboard.press('Escape').catch(() => {}); await page.reload(); await page.waitForTimeout(1000); await closePopups();
+  check('back up with email + password: the game gets that email (nothing to verify)', bks.backups.some((b) => b.email === 'chef@example.com'));
+  await page.reload(); await page.waitForTimeout(1000); await closePopups();
 });
-await step('get my game back', async () => {
+await step('create account and log in', async () => {
   const ctx7 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const rp = await ctx7.newPage(); await rp.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
   await rp.goto(`${BASE}/login`);
-  await rp.getByRole('button', { name: /Get it back/ }).click();
-  const gb = rp.getByRole('dialog', { name: 'Get my game back' });
-  await gb.locator('#bk-email').fill('chef@example.com'); await gb.getByRole('button', { name: 'Email me a link' }).click();
-  await gb.getByText('Check your email').waitFor();
-  check('on a new phone: get a backed-up game back by email (no new game made)', (await (await fetch('http://localhost:54321/__e2e/backups')).json()).otps.includes('chef@example.com'));
+  check('the start screen has no "Get my game back" link', (await rp.getByText(/Get it back|Get my game back/).count()) === 0);
+  check('Create account waits for Accept or Decline', await rp.getByTestId('auth-signup').isDisabled() && !(await rp.getByTestId('auth-login').isDisabled()));
+  await rp.getByRole('radio', { name: 'Accept' }).click();
+  await rp.getByTestId('auth-signup').click();
+  const su = rp.getByRole('dialog', { name: 'Create account' });
+  await su.locator('#bk-email').fill('newchef@example.com'); await su.locator('#bk-pw').fill('short'); await su.getByTestId('bk-submit').click();
+  check('a short password is refused', /at least 8/.test(await su.innerText()));
+  await su.locator('#bk-pw').fill('newchefpass1'); await su.getByTestId('bk-submit').click();
+  await rp.waitForURL('**/cook', { timeout: 15000 });
+  check('Create account starts a new game and goes to Cook', /\/cook/.test(rp.url()));
   await ctx7.close();
+  // log in on another phone with the email from the backup
+  const ctx8 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const lp = await ctx8.newPage(); await lp.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
+  await lp.goto(`${BASE}/login`);
+  await lp.getByTestId('auth-login').click();
+  const li = lp.getByRole('dialog', { name: 'Log in' });
+  await li.locator('#bk-email').fill('chef@example.com'); await li.locator('#bk-pw').fill('wrongpassword'); await li.getByTestId('bk-submit').click();
+  check('a wrong password says so', /don’t match/.test(await li.innerText()));
+  await li.locator('#bk-pw').fill('chefpass123'); await li.getByTestId('bk-submit').click();
+  await lp.waitForURL('**/cook', { timeout: 15000 });
+  check('Log in opens the game that email belongs to', /\/cook/.test(lp.url()));
+  await ctx8.close();
 });
 await step('notifications', async () => {
   await nav('Me'); await page.waitForURL('**/me'); await openSettings();
@@ -1579,7 +1602,7 @@ await step('no-store', async () => { const r = await page.request.get(`${BASE}/h
 
 const csp = problems.filter((p) => /Content Security Policy|Refused to/.test(p));
 check('no CSP violations', csp.length === 0, csp.slice(0, 3).join(' | '));
-const other = problems.filter((p) => !csp.includes(p) && !/rpc\/admin_(overview|events|now)/.test(p) && !/rpc\/get_chat.*(400)?/.test(p) && !/object\/sign\/meal-photos\/c3c3c3c3/.test(p));   // the backend refusing a non-admin is expected
+const other = problems.filter((p) => !csp.includes(p) && !/rpc\/admin_(overview|events|now)/.test(p) && !/rpc\/get_chat.*(400)?/.test(p) && !/422 PUT .*auth\/v1\/user/.test(p) && !/object\/sign\/meal-photos\/c3c3c3c3/.test(p));   // the backend refusing a non-admin is expected
 check('no page errors or failed requests', other.length === 0, other.slice(0, 5).join(' | '));
 await browser.close();
 const failed = results.filter((r) => r[0] === 'FAIL').length;

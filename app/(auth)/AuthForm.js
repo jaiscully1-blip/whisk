@@ -13,7 +13,7 @@ export default function AuthForm() {
   const router = useRouter();
   const [choice, setChoice] = useState(null);   // 'accept' | 'decline'
   const [busy, setBusy] = useState(false);
-  const [restoring, setRestoring] = useState(false);   // "Get my game back" (a game backed up on another phone)
+  const [sheet, setSheet] = useState('');   // '' | 'signup' | 'login': the email + password sheet
   const [error, setError] = useState('');
   const [judge, setJudge] = useState('');
   const [deleted, setDeleted] = useState(false);   // just deleted their data (Me → Delete my data)   // came from a "come vote in my Cook Off" link
@@ -58,7 +58,7 @@ export default function AuthForm() {
           <h2 id="dc-h">Before you start</h2>
           <p>While you play, Yoke records what you do in the app: what you tap, what you pick and what you search. It helps us make the game better.</p>
           <p>We don’t record anything else you type, and we never sell it. You can change this any time in <b>Me → Settings → Cookies &amp; privacy</b>.</p>
-          <p className="dc-device"><b>Your game saves on this device only.</b> There’s no account, so it can’t move to another phone or browser. Deleting the app or clearing this browser’s data erases it, coins included.</p>
+          <p className="dc-device"><b>Playing as a guest saves your game on this device only.</b> Deleting the app or clearing this browser’s data erases it, coins included. Create an account (or add an email later in Settings) and your game works on any phone.</p>
           <div className="dc-btns" role="radiogroup" aria-label="Accept or decline: Yoke records what you do, and your game saves on this device only">
             <button type="button" role="radio" aria-checked={choice === 'accept'} className={`dc-btn ${choice === 'accept' ? 'on' : ''}`} onClick={() => pick('accept')}>Accept</button>
             <button type="button" role="radio" aria-checked={choice === 'decline'} className={`dc-btn ${choice === 'decline' ? 'on' : ''}`} onClick={() => pick('decline')}>Decline</button>
@@ -67,11 +67,14 @@ export default function AuthForm() {
         </section>
 
         <button className="btn wide startbtn" type="button" onClick={start} disabled={!choice || busy}>{busy ? 'Setting up your kitchen…' : 'Start playing'}</button>
-        <button type="button" className="linkbtn restore-link" onClick={() => setRestoring(true)}>Backed up a game before? Get it back</button>
-        {restoring && <BackupSheet supabase={supabaseBrowser()} mode="restore" onClose={() => setRestoring(false)} />}
+        <div className="row" style={{ gap: 8, flexWrap: 'nowrap', width: '100%' }}>
+          <button type="button" className="btn ghost" style={{ flex: 1 }} data-testid="auth-signup" onClick={() => setSheet('signup')} disabled={!choice || busy}>Create account</button>
+          <button type="button" className="btn ghost" style={{ flex: 1 }} data-testid="auth-login" onClick={() => setSheet('login')} disabled={busy}>Log in</button>
+        </div>
+        {sheet && <BackupSheet supabase={supabaseBrowser()} mode={sheet} onClose={() => setSheet('')} />}
         {!choice && <p className="desc" style={{ margin: 0 }}>Pick Accept or Decline first.</p>}
         {error && <p className="err" role="alert" style={{ margin: 0 }}>{error}</p>}
-        <p className="desc" style={{ margin: 0 }}>No account, no email, no password.</p>
+        <p className="desc" style={{ margin: 0 }}>Guests need no account. An email and password are only for keeping your game safe.</p>
       </div>
     </main>
   );

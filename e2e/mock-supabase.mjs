@@ -237,6 +237,7 @@ async function storage(req, res, uid, path, buf) {
 export const anthropicCalls = [];
 const wikiCalls = [], ytCalls = [];
 const backups = [], otps = [];
+const accounts = new Map([[E2E_USER.email, { id: E2E_USER.id, password: E2E_USER.password }], ['taken@example.com', { id: 'e2e00000-0000-4000-8000-0000000000aa', password: 'takenpass1' }]]);   // email → { id, password } (email + password accounts)
 function fakeRecipe(title, cuisine, fromPantry) {
   return { title, cuisine, summary: `A quick ${cuisine.toLowerCase()} dinner.`, prep_minutes: 10, cook_minutes: 20, servings: 2, technique: 2, prep_level: 2, precision: 2, equipment: ['stove'],
     ingredients: [{ item: fromPantry[0] || 'Eggs', amount: '2', from_pantry: true }, { item: 'Fresh basil', amount: '1 handful', from_pantry: false }],
@@ -272,15 +273,25 @@ const server = http.createServer(async (req, res) => {
     if (path === '/auth/v1/token') {
       const b = json() || {};
       if (url.searchParams.get('grant_type') === 'password') {
-        if (b.email !== E2E_USER.email || b.password !== E2E_USER.password) return send(res, 400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' });
-        const s = session(E2E_USER.id); refreshes.set(s.refresh_token, E2E_USER.id); return send(res, 200, s);
+        const acc = accounts.get(String(b.email || '').toLowerCase());
+        if (!acc || acc.password !== b.password) return send(res, 400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' });
+        const s = session(acc.id); refreshes.set(s.refresh_token, acc.id); return send(res, 200, s);
       }
       if (url.searchParams.get('grant_type') === 'refresh_token') { const who = refreshes.get(b.refresh_token) || E2E_USER.id; const s = session(who); refreshes.set(s.refresh_token, who); if (who !== E2E_USER.id) s.user = { ...s.user, email: '', is_anonymous: true }; return send(res, 200, s); }
       return send(res, 400, { msg: 'unsupported grant' });
     }
     if (path === '/auth/v1/signup' && req.method === 'POST') {
       // "Start playing": Supabase anonymous sign-in (no email, no password). The test player is the anonymous user here.
-      const b = json() || {}; if (b.email || b.password) return send(res, 422, { code: 422, error_code: 'email_provider_disabled', msg: 'Email signups are disabled' });
+      const b = json() || {};
+      if (b.email || b.password) {
+        // "Create account": a brand-new game with an email + password (nothing to verify)
+        const em = String(b.email || '').toLowerCase();
+        if (accounts.has(em)) return send(res, 422, { code: 422, error_code: 'user_already_exists', msg: 'User already registered' });
+        const who = randomUUID(); await db.exec(`insert into auth.users (id, email) values ('${who}', '${em.replace(/'/g, "''")}')`);
+        await db.exec(`insert into public.pantry_items (user_id, name, category) values ${START.map(([n, c]) => `('${who}', '${n.replace(/'/g, "''")}', '${c}')`).join(', ')}`);
+        accounts.set(em, { id: who, password: b.password });
+        const s = session(who); refreshes.set(s.refresh_token, who); return send(res, 200, s);
+      }
       anonSignups++;
       // The first "Start playing" is the main test player; any later one (a friend's phone) is a brand-new player with the same starter pantry.
       let who = E2E_USER.id;
@@ -294,7 +305,7 @@ const server = http.createServer(async (req, res) => {
     // public auth settings: which sign-in ways are switched on (the app shows only those backup buttons)
     if (path === '/auth/v1/settings') return send(res, 200, { external: { anonymous_users: true, email: true, google: true, apple: false }, disable_signup: false });
     // back up by email (anonymous user adds an email): Supabase sends a confirm link; the mock records it
-    if (path === '/auth/v1/user' && req.method === 'PUT') { const uid = uidFrom(req); if (!uid) return send(res, 401, {}); const b = json(); backups.push({ uid, email: b.email }); return send(res, 200, { ...userObj(uid), new_email: b.email }); }
+    if (path === '/auth/v1/user' && req.method === 'PUT') { const uid = uidFrom(req); if (!uid) return send(res, 401, {}); const b = json() || {}; const em = String(b.email || '').toLowerCase(); const acc = accounts.get(em); if (acc && acc.id !== uid) return send(res, 422, { code: 422, error_code: 'email_exists', msg: 'A user with this email address has already been registered' }); accounts.set(em, { id: uid, password: b.password }); backups.push({ uid, email: em, confirmed: true }); return send(res, 200, userObj(uid)); }
     if (path === '/auth/v1/otp' && req.method === 'POST') { const b = json(); otps.push(b.email); return send(res, 200, {}); }
     if (path === '/__e2e/backups') return send(res, 200, { backups, otps });
     if (path === '/__e2e/backed-up') { const on = url.searchParams.get('on') === '1'; for (let i = backups.length - 1; i >= 0; i--) if (backups[i].e2eTemp) backups.splice(i, 1); if (on) backups.push({ uid: E2E_USER.id, email: E2E_USER.email, confirmed: true, e2eTemp: true }); return send(res, 200, { ok: true }); }

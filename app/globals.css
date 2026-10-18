@@ -959,8 +959,8 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .k3.placed.at-void .k3-floor { box-shadow: 0 0 0 8px rgba(255,255,255,.06), 0 0 40px rgba(140,170,255,.25); }
 /* the globe (components/Globe.js) */
 .globe { display: grid; gap: 10px; }
-.globe-box { position: relative; border-radius: 26px; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(120% 90% at 50% 30%, var(--card) 0%, var(--stage) 75%); touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
-.globe-svg { display: block; width: 100%; max-width: 420px; margin: 0 auto; aspect-ratio: 360 / 430; touch-action: none; user-select: none; -webkit-user-select: none; outline: none; }
+.globe-box { position: relative; border-radius: 26px; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(120% 90% at 50% 30%, var(--card) 0%, var(--stage) 75%); touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
+.globe-svg { display: block; width: 100%; max-width: 420px; margin: 0 auto; aspect-ratio: 360 / 430; touch-action: pan-y; user-select: none; -webkit-user-select: none; outline: none; }
 .globe-svg:active { cursor: grabbing; }
 .globe-svg:focus-visible { box-shadow: inset 0 0 0 3px var(--accent); border-radius: 26px; }
 .globe-zoom { position: absolute; right: 10px; top: 10px; display: grid; gap: 6px; }
@@ -1535,3 +1535,31 @@ body { -webkit-tap-highlight-color: transparent; overscroll-behavior-x: none; }
 
 .dish-ico:has(.flagimg) { width: auto; height: auto; align-self: center; background: #fff; padding: 3px; border-radius: 9px; box-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .dish-ico .flagimg { border-radius: 6px; box-shadow: none; display: block; }
+
+/* ---- Compete: party hub (Start a party, your parties), chats on the page, the party globe ---- */
+.party-card { border-radius: 20px; padding: 14px; background: linear-gradient(135deg, #FF6B4A, #FFB347); color: #2a0f05; border: 2px solid var(--tile-edge); box-shadow: 0 4px 0 var(--tile-edge); display: grid; gap: 10px; }
+.pc-top b { display: block; font: 700 22px var(--f-display); }
+.pc-top small { font-size: 13px; font-weight: 800; }
+.pc-row { display: flex; align-items: center; gap: 10px; }
+.pc-avs { display: flex; gap: 6px; flex: 1; min-width: 0; }
+.pc-av { position: relative; border: 2px solid #2a0f05; }
+.pc-av.on::after { content: ''; position: absolute; right: -3px; bottom: -3px; width: 11px; height: 11px; border-radius: 50%; background: #7ED957; border: 2px solid #2a0f05; }
+.post-av.sm.pc-av.on::after { width: 8px; height: 8px; right: -3px; bottom: -3px; border-width: 1.5px; }
+.pc-go { display: inline-flex; align-items: center; gap: 4px; background: #2a0f05; color: #FFD166; border: 0; border-radius: 12px; padding: 9px 14px; font: 800 14px var(--f-body); text-decoration: none; cursor: pointer; flex: none; box-shadow: 0 3px 0 rgba(0,0,0,.35); }
+.pc-go:active { transform: translateY(2px); box-shadow: none; }
+.pc-parties { display: flex; gap: 6px; flex-wrap: wrap; }
+.pc-party { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.55); color: #2a0f05; border-radius: 99px; padding: 6px 12px; font-weight: 800; font-size: 13px; text-decoration: none; }
+.pc-party small { background: #2a0f05; color: #fff; border-radius: 99px; padding: 0 7px; font-size: 11px; }
+.see-all { font-size: 12px; font-weight: 800; color: var(--accent); text-decoration: none; }
+.chat-peek { padding: 4px 4px; display: grid; }
+.chat-peek .chat-item { text-decoration: none; padding: 10px; border-bottom: 1px solid var(--line); }
+.chat-peek .chat-item:last-child { border-bottom: 0; }
+a.card.chat-item { text-decoration: none; }
+.party-title { align-items: center; }
+.party-title > span { display: grid; gap: 2px; min-width: 0; }
+.party-board { padding: 10px 12px; }
+.pb-row { display: flex; align-items: center; gap: 10px; }
+.pb-rank { width: 18px; text-align: center; font: 700 16px var(--f-display); color: var(--muted); }
+.pb-n { color: #1d1a1a; font-weight: 900; font-size: 12px; border-radius: 99px; padding: 3px 10px; white-space: nowrap; }
+.pb-country { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
+.pb-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--tile-edge); flex: none; }

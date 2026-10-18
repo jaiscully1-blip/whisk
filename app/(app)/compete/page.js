@@ -13,7 +13,7 @@ import { fmt } from '@/lib/game';
 import { ServingsX, IngredientList, StepList } from '@/components/RecipeSteps';
 import { cultureStyle } from '@/lib/culture';
 import Scene from '@/components/Scene';
-import FriendsCard from '@/components/FriendsCard';
+import { PartyCard, ChatsPeek } from '@/components/PartyHub';
 import WorldGlobe from '@/components/WorldGlobe';
 
 const TIER = { 1: ['Small', 'var(--fresh-soft)', 'var(--fresh)'], 2: ['Medium', 'var(--warn-soft)', 'var(--warn)'], 3: ['Big', 'var(--pop-soft)', 'var(--bad)'] };
@@ -57,10 +57,6 @@ export default function Compete() {
   return (
     <div className="stack">
       <div className="page-title"><h1>{t('Compete')}</h1><span className="muted">Resets in {resetIn}</span></div>
-      <FriendsCard />
-
-      <WorldGlobe />
-
       <h2 data-tour="challenges" data-tip="challenges" style={{ fontSize: 22 }}>{t('This week’s challenges')}</h2>
       {challenges === null || !recipes ? <p className="muted">{t('Loading…')}</p> : challenges.length === 0 ? (
         <div className="empty"><b>{t('No challenges yet')}</b></div>
@@ -104,6 +100,10 @@ export default function Compete() {
           </div>
         );
       })}
+
+      <PartyCard />
+      <ChatsPeek />
+      <WorldGlobe />
 
       {cookMode && <CookMode r={cookMode.r} factor={factors[cookMode.c.id] || 1} canFinish onFinish={() => { const f = cookMode.complete; setCookMode(null); f(); }} onClose={() => setCookMode(null)} />}
       {logging && <LogMealSheet recipe={logging.r} challenge={logging.c} onClose={() => setLogging(null)} onDone={() => { setUi({ flipped: { ...flipped, [logging.c.id]: false } }); load(); }} />}

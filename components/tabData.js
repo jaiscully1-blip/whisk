@@ -35,6 +35,6 @@ export const fetchWeek = (supabase) => supabase.from('meals').select('cooked_at'
 
 // Fill every tab's memory, one after another so it never competes with what the player is doing now.
 export async function warmCache(supabase) {
-  const jobs = [['pantry', fetchPantry], ['saved', fetchSaved], ['week', fetchWeek], ['list', fetchList], ['kitchens', fetchKitchens], ['world', fetchWorld], ['compete', fetchCompete], ['friends', fetchFriends], ['chats', fetchChats], ['me', fetchMe]];
+  const jobs = [['pantry', fetchPantry], ['saved', fetchSaved], ['week', fetchWeek], ['list', fetchList], ['kitchens', fetchKitchens], ['world', fetchWorld], ['compete', fetchCompete], ['friends', fetchFriends], ['chats', fetchChats], ['parties', (sb) => sb.rpc('get_parties').then(({ data, error }) => (error ? undefined : data || []))], ['me', fetchMe]];
   for (const [key, fn] of jobs) { try { await load(key, () => fn(supabase), 10000); } catch {} }
 }

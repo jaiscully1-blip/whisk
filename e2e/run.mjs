@@ -49,7 +49,7 @@ const openKitchen = async (tab = 'food') => { await nav('Pantry'); const tip = a
 // Games live in chats now: open any chat (making a solo one if there is none), then pick the game from the + menu.
 const openGame = async (pg, kind) => {
   await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete');
-  await pg.locator('.fr-card').click(); await pg.waitForURL('**/compete/friends');
+  await pg.getByTestId('see-all-chats').click(); await pg.waitForURL('**/compete/friends');
   await pg.mouse.click(5, 400);   // dismiss the tip that pops up
   await pg.locator('.chat-item, :text("No chats yet")').first().waitFor({ timeout: 8000 });
   if (!(await pg.locator('.chat-item').count())) { await pg.getByTestId('new-group').click(); await pg.locator('#g-name').fill('Test kitchen'); await pg.getByRole('button', { name: 'Make group' }).click(); }
@@ -117,19 +117,23 @@ await step('log in', async () => {
   await ktab('design');
   check('what you buy goes straight into your kitchen (a starter one if you had none)', await page.locator('#my-kitchen .kthing img[alt="Knife block"]').waitFor({ timeout: 8000 }).then(() => true, () => false));
   await page.locator('.tip-ok').click().catch(() => {});
-  // the globe (on Compete): swipe left/right to spin; the dart only flies while it's spinning
+  // the globe (on Compete, at the bottom): swipe to spin; tap the globe to throw the dart
   await page.locator('.nav a[href="/compete"]').click(); await page.waitForURL('**/compete');
   await page.locator('.globe-svg path.gl-c').nth(150).waitFor({ state: 'attached', timeout: 10000 });
   check('globe shows every country, unnamed and grey', (await page.locator('.globe-svg path.gl-c').count()) >= 190 && (await page.locator('.globe-svg text').count()) === 0);
   await page.locator('.globe-svg').scrollIntoViewIfNeeded(); await page.waitForTimeout(2600);
-  check('can’t throw until it spins', await page.locator('.globe-throw').isDisabled());
+  check('no Throw button and no "it’s spinning" text: you tap the globe', (await page.locator('.globe-throw').count()) === 0 && !/spinning/i.test(await page.locator('.globe').innerText()));
   const gb = await page.locator('.globe-svg').boundingBox();
   await page.mouse.move(gb.x + 60, gb.y + gb.height * 0.42); await page.mouse.down();
   await page.mouse.move(gb.x + gb.width - 40, gb.y + gb.height * 0.42, { steps: 6 }); await page.mouse.up();
-  await page.locator('.globe-throw.ready').waitFor({ timeout: 2000 });
-  check('a swipe spins it and wakes up the dart', await page.locator('.globe-throw').isEnabled());
-  await page.locator('.globe-throw').click();
+  await page.waitForTimeout(300);
+  check('a swipe spins it and no dart flies yet', (await page.locator('.globe-hit').count()) === 0);
+  await page.mouse.click(gb.x + 30, gb.y + gb.height * 0.92);
+  await page.waitForTimeout(400);
+  check('tapping the background beside the globe does not throw', (await page.locator('.globe-hit').count()) === 0 && !/Here it comes/.test(await page.locator('.globe-hint').innerText()));
+  await page.mouse.click(gb.x + gb.width / 2, gb.y + gb.height * 0.42);
   await page.locator('.globe-hit').waitFor({ timeout: 6000 });
+  check('tapping the globe throws the dart', true);
   check('the dart lands on a country and names it (no exclamation mark)', !/!/.test(await page.locator('.globe-hit b').first().innerText()) && (await page.locator('.globe-hit b').first().innerText()).length > 2 && (await page.locator('.globe-hit').getByRole('button', { name: 'Cook it' }).count()) === 1);
   await shot('00c-me-globe');
   await nav('Home');
@@ -720,7 +724,8 @@ await step('languages', async () => {
 });
 await step('compete layout', async () => {
   await nav('Compete'); await page.locator('.globe').waitFor();
-  check('Cuisine bingo is gone from Compete (the globe leads, after the friends card)', (await page.getByText('Cuisine bingo').count()) === 0 && (await page.locator('main .bingo').count()) === 0);
+  check('Compete order: challenges, then Start a party, then chats, then the globe at the bottom', await page.evaluate(() => { const y = (q) => document.querySelector(q)?.getBoundingClientRect().top ?? -1; const a = y('main [data-tour=challenges]'), b = y('main [data-testid=party-card]'), c = y('main [data-testid=see-all-chats]'), d = y('main .globe'); return a >= 0 && a < b && b < c && c < d; }));
+  check('Cuisine bingo is gone from Compete', (await page.getByText('Cuisine bingo').count()) === 0 && (await page.locator('main .bingo').count()) === 0);
   check('cooking Mexican shows on the globe (Bronze)', await page.locator('.globe-svg path.gl-c.bronze').first().waitFor({ state: 'attached', timeout: 8000 }).then(() => true, () => false));
   const wantD = (() => { const n = new Date(); const d = (8 - n.getDay()) % 7 || 7; const mon = new Date(n.getFullYear(), n.getMonth(), n.getDate() + d); return Math.max(1, Math.ceil((mon - n) / 864e5)); })();
   check('one reset timer at the top, counting to Monday like the challenges', (await page.getByText(/^Resets in \d+d$/).count()) === 1 && (await page.getByText(`Resets in ${wantD}d`).count()) === 1);
@@ -954,7 +959,7 @@ await step('cook off with a friend', async () => {
   // host makes a game
   const c0 = await pill(page);
   await nav('Compete'); await page.waitForURL('**/compete');
-  check('Compete is tidy: one Friends card, no Cook Off controls on it', (await page.locator('main .co-card').count()) === 0 && (await page.locator('.fr-card').count()) === 1);
+  check('Compete is tidy: one party card and one way into Friends, no Cook Off controls on it', (await page.locator('main .co-card').count()) === 0 && (await page.locator('[data-testid=party-card]').count()) === 1 && (await page.locator('[data-testid=see-all-chats]').count()) === 1);
   await openGame(page, 'cookoff'); await page.locator('.co-card').waitFor();
   check('inside a chat: Cook Off starts as two buttons', (await page.getByRole('button', { name: 'New game' }).count()) === 1 && (await page.getByRole('button', { name: 'Join a game' }).count()) === 1 && (await page.locator('.co-times').count()) === 0);
   await page.getByRole('button', { name: 'New game' }).click();
@@ -1086,7 +1091,7 @@ await step('share the shopping list', async () => {
   await ctx4.close();
 });
 await step('friends and group chat', async () => {
-  const toFriends = async (pg) => { await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete'); await pg.locator('.fr-card').click(); await pg.waitForURL('**/compete/friends'); };
+  const toFriends = async (pg) => { await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete'); await pg.getByTestId('see-all-chats').click(); await pg.waitForURL('**/compete/friends'); };
   const reopen = async (pg) => { await pg.reload(); await pg.waitForURL('**/cook'); await pg.waitForTimeout(800); await pg.keyboard.press('Escape'); await toFriends(pg); };
   await toFriends(page);
   await page.locator('.fr-code').filter({ hasText: /^[A-Z2-9]{6}$/ }).waitFor();
@@ -1101,7 +1106,7 @@ await step('friends and group chat', async () => {
   await fp.goto(`${BASE}/login`); await fp.getByRole('radio', { name: 'Accept' }).click(); await fp.getByRole('button', { name: 'Start playing' }).click(); await fp.waitForURL('**/cook');
   await fp.waitForTimeout(1200); await fp.mouse.click(5, 400);
   await fp.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await fp.waitForURL('**/compete');
-  await fp.locator('.fr-card').click(); await fp.waitForURL('**/compete/friends');
+  await fp.getByTestId('see-all-chats').click(); await fp.waitForURL('**/compete/friends');
   await fp.getByText('No chats yet').waitFor({ timeout: 8000 });
   check('a new player has no chats yet', true);
   await fp.getByTestId('add-friend').click(); await fp.locator('#fr-code').fill(myCode); await fp.getByRole('button', { name: 'Add', exact: true }).click();
@@ -1144,7 +1149,7 @@ await step('friends and group chat', async () => {
   await page.locator('.chat-bubble', { hasText: 'Hi back' }).waitFor({ timeout: 12000 });
   check('a new message shows up on the other phone by itself', true);
   // game cards: Cook Off and Use-It-Up Week
-  const chatOf = async (pg) => { await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete'); await pg.locator('.fr-card').click(); await pg.waitForURL('**/compete/friends'); await pg.mouse.click(5, 400); await pg.locator('.chat-item', { hasText: 'Dinner crew' }).click(); await pg.getByTestId('chat-view').waitFor(); };
+  const chatOf = async (pg) => { await pg.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await pg.waitForURL('**/compete'); await pg.getByTestId('see-all-chats').click(); await pg.waitForURL('**/compete/friends'); await pg.mouse.click(5, 400); await pg.locator('.chat-item', { hasText: 'Dinner crew' }).click(); await pg.getByTestId('chat-view').waitFor(); };
   const backToChat = () => chatOf(page);
   await page.getByRole('button', { name: 'Add a photo or emoji' }).click(); await page.getByTestId('plus-cookoff').click();
   await page.getByRole('button', { name: 'New game' }).click(); await page.getByRole('button', { name: /Make a \d+-minute game/ }).click();
@@ -1261,6 +1266,34 @@ await step('friends and group chat', async () => {
   check('pick a default group chat (★ Default)', /Default/.test(await page.getByTestId('share-chat-default').innerText()) && !/Make default/.test(await page.getByTestId('share-chat-default').innerText()));
   await page.getByTestId('share-to-chat').click(); await page.waitForTimeout(1200);
   check('Share to group chat puts the list on the group’s list and closes the sheet', (await page.getByRole('dialog', { name: 'Share your list' }).count()) === 0);
+  // Compete: Start a party (friend online now), the shared party globe
+  await fp.reload(); await fp.waitForTimeout(1500);   // the friend's app is open: it pings "online"
+  await page.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await page.waitForURL('**/compete');
+  await page.waitForTimeout(2200); await nav('Home'); await nav('Compete'); await page.getByTestId('party-card').waitFor();
+  await page.waitForFunction(() => /online now/.test(document.querySelector('[data-testid=party-card]')?.innerText || ''), null, { timeout: 8000 }).catch(() => {});
+  check('Start a party shows who is online now', /1 friend online now/.test(await page.getByTestId('party-card').innerText()) && (await page.locator('[data-testid=party-card] .pc-av.on').count()) === 1, await page.getByTestId('party-card').innerText());
+  check('the latest chats are right on Compete', (await page.getByTestId('chat-peek-item').count()) >= 1);
+  await page.getByTestId('party-start').click();
+  await page.locator('#pt-name').fill('Globe crew');
+  await page.getByRole('dialog', { name: 'Start a party' }).locator('.fr-chip').first().click();
+  await page.getByRole('button', { name: 'Start party' }).click();
+  await page.waitForURL('**/compete/party?g=*'); await page.getByTestId('party-standings').waitFor({ timeout: 8000 });
+  check('a new party opens its globe with both of you in the standings', (await page.locator('.pb-row').count()) === 2 && /Party globe/.test(await page.locator('.page-title').innerText()));
+  await fetch('http://localhost:54321/__e2e/seed-meals?country=PE&n=2');
+  await page.getByRole('link', { name: 'Compete', exact: true }).first().click(); await page.waitForURL('**/compete'); await page.getByTestId('party-link').first().click(); await page.waitForURL('**/compete/party?g=*'); await page.getByTestId('party-standings').waitFor({ timeout: 10000 });
+  const peru = page.locator('[data-testid=party-country]', { hasText: 'Peru' });
+  await peru.waitFor({ timeout: 8000 });
+  check('cooking from Peru colours Peru yours on the party globe', /Yours/.test(await peru.innerText()) && (await page.locator('.globe-svg path.gl-c.party[data-iso=PE]').count()) === 1);
+  check('the standings count your countries', /You[\s\S]*\d+ countr/.test(await page.getByTestId('party-standings').innerText()) && Number((await page.locator('.pb-row', { hasText: 'You' }).locator('.pb-n').innerText()).match(/\d+/)[0]) === (await page.locator('[data-testid=party-country]').count()));
+  await shot('12-party-globe');
+  await page.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await page.waitForURL('**/compete');
+  await page.getByTestId('party-link').first().waitFor({ timeout: 8000 });
+  check('your party is listed on the party card', /Globe crew/.test(await page.getByTestId('party-card').innerText()));
+  await page.getByTestId('party-link').first().click(); await page.waitForURL('**/compete/party?g=*');
+  await page.getByTestId('party-chat').click(); await page.waitForURL('**/compete/friends?chat=*');
+  await page.locator('.chat-title b', { hasText: 'Globe crew' }).waitFor({ timeout: 8000 }).catch(() => {});
+  check('Party chat opens the party’s group chat', (await page.locator('.chat-title b').innerText()) === 'Globe crew', await page.locator('.chat-title').innerText());
+  await page.getByRole('button', { name: 'Back to chats' }).click();
   await ctx6.close();
 });
 await step('settings gear and guess the cook', async () => {

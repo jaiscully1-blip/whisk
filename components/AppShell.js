@@ -284,6 +284,12 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
     const id = typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(go, { timeout: 5000 }) : setTimeout(go, 3000);
     return () => { if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(id); else clearTimeout(id); };
   }, []);
+  // "Online now" for friends: a tiny ping every 2 minutes while the app is open and on screen.
+  useEffect(() => {
+    const go = () => { if (!document.hidden) supabase.rpc('ping').then(() => {}, () => {}); };
+    go(); const t = setInterval(go, 120000); document.addEventListener('visibilitychange', go);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', go); };
+  }, [supabase]);
   // Activity log follows the "Help improve Yoke" choice.
   useEffect(() => { startActivity(supabase, !!consent?.usage, deviceLabel()); }, [consent, supabase]);
   useEffect(() => { trackPage(pathname); }, [pathname, consent]);

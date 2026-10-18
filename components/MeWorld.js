@@ -97,7 +97,7 @@ export function MyKitchen({ shop = false }) {
 const KINDS = [['kitchen', 'Kitchen'], ['dog', 'Dogs'], ['cat', 'Cats'], ['pet', 'Pets'], ['place', 'Places'], ['paper', 'Cards & art'], ['cool', 'Cool magnets'], ['finish', 'Finishes'], ['country', 'From your countries']];
 const SECTION = { city: 'place', postcard: 'place', art: 'paper', drawing: 'paper', test: 'paper', report: 'paper', wedding: 'paper', xmas: 'paper' };
 const sectionOf = (it) => (it.country ? 'country' : it.kind === 'magnet' ? (SECTION[MAGNETS[it.id]?.group] || MAGNETS[it.id]?.group || 'cool') : it.kind === 'finish' ? 'finish' : 'kitchen');
-const FIN_SAMPLE = { fin_terrazzo: ['terrazzo', 'top'], fin_lacquer: ['lacquer', 'cabinet'], fin_copper: ['copper', 'appliance'], fin_goldmarble: ['goldmarble', 'top'] };
+const FIN_SAMPLE = { fin_terrazzo: ['terrazzo', 'top'], fin_lacquer: ['lacquer', 'cabinet'], fin_copper: ['copper', 'appliance'], fin_goldmarble: ['goldmarble', 'top'], fin_soapstone: ['soapstone', 'top'], fin_travertine: ['travertine', 'top'], fin_slate: ['slate', 'top'], fin_quartzite: ['quartzite', 'top'], fin_lava: ['lava', 'top'], fin_onyx: ['onyx', 'top'], fin_cane: ['cane', 'cabinet'], fin_reeded: ['reeded', 'cabinet'], fin_zebrano: ['zebrano', 'cabinet'], fin_frosted: ['frosted', 'cabinet'], fin_pewter: ['pewter', 'appliance'], fin_enamel: ['enamel', 'appliance'] };
 function ItemPic({ it, size = 64 }) {
   if (it.kind === 'magnet') return <img src={magnetUrl(it.id)} alt="" width={size} height={size} draggable={false} />;
   if (it.kind === 'finish') {

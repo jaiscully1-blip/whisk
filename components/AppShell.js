@@ -22,6 +22,7 @@ import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 import { countryArt } from '@/lib/world/flair';
 import { ITEMS, itemUrl } from '@/lib/art/items';
 import LevelUp from './LevelUp';
+import StreakSheet from './StreakSheet';
 
 const Ctx = createContext(null);
 export const useWhisk = () => useContext(Ctx);
@@ -412,6 +413,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
         )}
         {toast && (typeof toast === 'string' ? <div className="toast" role="status">{toast}</div>
           : <div className="toast act" role="status"><span>{toast.msg}</span><button type="button" onClick={() => { const run = toast.action.run; setToast(''); run(); }}><Icon name="undo" size={16} />{toast.action.label}</button></div>)}
+        {profile?.id && !popup && !privacyOpen && !levelUp && <StreakSheet />}
         {levelUp && !popup && !privacyOpen && <LevelUp level={levelUp} onClose={() => setLevelUp(null)} />}
       </div>
     </Ctx.Provider>

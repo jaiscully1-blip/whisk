@@ -6,7 +6,7 @@ import { rcReady, purchaseLink } from '@/lib/revenuecat';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const Body = z.object({ pack: z.string().regex(/^coins-\d{1,6}$/) }).strict();
+const Body = z.object({ pack: z.string().regex(/^(coins-\d{1,6}|streak-revive)$/) }).strict();
 
 // Opens RevenueCat's checkout (Apple Pay / Google Pay / card) for a coin pack. The player's id goes in the link, so
 // the webhook knows whose game to credit; the price is set in RevenueCat, never by the browser.
@@ -19,7 +19,7 @@ export async function POST(req) {
   try { body = Body.parse(await req.json()); } catch { return NextResponse.json({ error: 'Pick a coin pack.' }, { status: 400 }); }
   if (!rcReady()) return NextResponse.json({ error: 'Buying coins isn’t set up yet.' }, { status: 503 });
 
-  const { data: pack } = await supabase.from('coin_packs').select('id').eq('id', body.pack).maybeSingle();
+  const { data: pack } = body.pack === 'streak-revive' ? { data: { id: 'streak-revive' } } : await supabase.from('coin_packs').select('id').eq('id', body.pack).maybeSingle();
   if (!pack) return NextResponse.json({ error: 'That coin pack isn’t for sale.' }, { status: 400 });
   try {
     return NextResponse.json({ url: purchaseLink(user.id, pack.id, user.email) }, { headers: { 'Cache-Control': 'no-store' } });

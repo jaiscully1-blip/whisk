@@ -630,7 +630,7 @@ await step('me', async () => {
   check('Kitchen shop opens on kitchen things with prices, no appliances', (await page.locator('.shop-grid .tile').count()) >= 20 && /\d/.test(await page.locator('.shop-grid .tile .tprice').first().innerText()) && (await page.locator('.shop [role=tab]', { hasText: 'Appliances' }).count()) === 0 && (await page.locator('.shop-grid .tile', { hasText: 'Gas range' }).count()) === 0);
   check('country things stay hidden until that country is done (no teaser text)', (await page.locator('.shop-grid .tile', { hasText: 'Molcajete' }).count()) === 0 && (await page.getByText(/Finish a country/).count()) === 0);
   await page.locator('.shop [role=tab]', { hasText: 'Finishes' }).click();
-  check('finishes: terrazzo, lacquer, copper, gold marble', (await page.locator('.shop-grid .tile').count()) === 4);
+  check('finishes: 16 in the shop (terrazzo, lacquer, copper, gold marble and 12 more)', (await page.locator('.shop-grid .tile').count()) === 16);
   await page.locator('.shop [role=tab]', { hasText: 'Dogs' }).click();
   const dogTiles = await page.locator('.shop-grid .tile').count();
   const dogPrices = new Set(await page.locator('.shop-grid .tile .tprice').allInnerTexts());
@@ -1017,7 +1017,7 @@ await step('cook off with a friend', async () => {
   await page.getByRole('link', { name: 'Back to Compete' }).click(); await page.waitForURL('**/compete');
   await page.waitForTimeout(800);
   const c1 = await pill(page);
-  check('coins: win (+1,000) + invite reward (+1,000)', c1 - c0 === 2000, `${c0} → ${c1}`);
+  check('coins: win (+1,000) + invite reward (+1,000) + 100 for a new cuisine', c1 - c0 === 2100, `${c0} → ${c1}`);
   await ctx2.close(); await ctx3.close();
 });
 await step('activity backend', async () => {
@@ -1059,7 +1059,12 @@ await step('never show me, vacation, streak repair note', async () => {
   check('vacation mode on: the streak pill shows a plane', (await page.getByRole('switch', { name: 'Vacation mode' }).getAttribute('aria-checked')) === 'true' && /paused/.test(await page.locator('header .pill[data-tip=streak]').getAttribute('title')));
   await page.getByRole('switch', { name: 'Vacation mode' }).click(); await page.waitForTimeout(600);
   check('vacation mode off again', (await page.getByRole('switch', { name: 'Vacation mode' }).getAttribute('aria-checked')) === 'false');
-  check('streak repair is explained', (await page.getByText(/Cook twice the next day and your streak comes back/).count()) === 1);
+  check('streak freeze and revive are explained', (await page.getByText(/Lose your streak and you can revive it for/).count()) === 1);
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('yoke-streak', { detail: { used_freeze: true, freezes_left: 0 } })));
+  await page.getByTestId('streak-freeze').waitFor({ timeout: 8000 });
+  check('freeze used → popup offers to buy another with coins', /Buy a freeze · 1,500/.test(await page.getByTestId('streak-freeze').innerText()));
+  await page.getByRole('button', { name: 'Not now' }).click();
+  check('…and it closes', (await page.getByTestId('streak-freeze').count()) === 0);
 });
 await step('share the shopping list', async () => {
   await nav('Pantry'); await page.getByRole('tab', { name: /Shopping list/ }).click();
@@ -1453,7 +1458,7 @@ await step('kitchen layout', async () => {
   check('swipe right → the kitchen turns right with your finger', rz(await camT()) < r0, `${r0} → ${rz(await camT())}`);
   await page.locator('.kd-tools').getByRole('button', { name: 'Paint' }).click();
   const tex = await page.locator('.kd-tex').allInnerTexts();
-  check('a freezer can’t be marble: steel, matte, gloss (and Copper from the shop, locked until bought)', tex.join('|') === 'Brushed steel|Matte|Gloss|Copper' && (await page.locator('.kd-tex.locked', { hasText: 'Copper' }).count()) === 1, tex.join('|'));
+  check('a freezer can’t be marble: steel, matte, gloss (and Copper from the shop, locked until bought)', tex.join('|') === 'Brushed steel|Matte|Gloss|Copper|Pewter|Enamel' && (await page.locator('.kd-tex.locked', { hasText: 'Copper' }).count()) === 1, tex.join('|'));
   await page.locator('.kd-tex', { hasText: 'Gloss' }).click(); await page.locator('.kd-sw[aria-label=Red]').click();
   await page.locator('.kd-sheet').getByRole('button', { name: 'Done' }).click();
   await page.locator('.kd-actions').getByRole('button', { name: 'Save' }).click(); await page.locator('.kd-actions').getByRole('button', { name: 'Saved' }).waitFor();

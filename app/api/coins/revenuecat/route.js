@@ -45,6 +45,11 @@ export async function POST(req) {
   try { real = await findPurchase(user, product, txn); } catch (err) { console.error('revenuecat check', err?.message); return NextResponse.json({ error: 'retry' }, { status: 502 }); }
   if (!real) { console.error('revenuecat purchase not confirmed', txn); return NextResponse.json({ error: 'not confirmed' }, { status: 409 }); }
 
+  if (product === 'streak-revive' || product === 'yoke.streakrevive') {   // a Streak Revive ($1.25): grants one revive token
+    const r = await db.rpc('rc_grant_revive', { p_secret: webhookSecret(), p_user: user, p_txn: txn, p_product: product, p_store: String(e.store || 'UNKNOWN'), p_sandbox: sandbox, p_usd: Number.isFinite(e.price) ? e.price : null });
+    if (r.error) { console.error('rc_grant_revive', r.error.message); return NextResponse.json({ error: 'not credited' }, { status: 500 }); }
+    return ok({ revive: !!r.data?.credited });
+  }
   const { data, error } = await db.rpc('rc_credit', {
     p_secret: webhookSecret(), p_user: user, p_txn: txn, p_product: product, p_store: String(e.store || 'UNKNOWN'),
     p_sandbox: sandbox, p_usd: Number.isFinite(e.price) ? e.price : null, p_quantity: Number.isInteger(e.quantity) ? e.quantity : 1

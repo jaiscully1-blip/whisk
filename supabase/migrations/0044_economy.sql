@@ -186,7 +186,7 @@ begin
   select * into pay from _pay(uid, 'cook', 100, 3);
   cook_xp := pay.o_xp; xp_gain := xp_gain + pay.o_xp; coin_gain := coin_gain + pay.o_coins;
   -- lucky meal: about 1 in 8 cooked meals pays 300 extra (free coins only)
-  if cook_xp > 0 and random() < 0.125 then
+  if cook_xp > 0 and random() < coalesce(nullif(current_setting('yoke.lucky', true), '')::float, 0.125) then
     update profiles set coins = coins + 300 where id = uid; coin_gain := coin_gain + 300; lucky := true;
   end if;
   if not exists (select 1 from meals m where m.user_id = uid and lower(m.cuisine) = lower(coalesce(r.cuisine, dsh.cuisine)) and m.id <> v_meal) then

@@ -521,7 +521,7 @@ await step('cook', async () => {
   await page.getByRole('heading', { name: 'Cooked it!' }).waitFor({ timeout: 15000 });
   await page.waitForTimeout(1800); if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'popup-cooked.png') });
   check('submit photo → "Cooked it!" popup', true);
-  check('the first meal of the day pays +100 XP and +400 coins (+300 if lucky)', /\+\d+ XP · \+(400|700) coins/.test(await page.locator('.toast').allInnerTexts().then((t) => t.join(' | '))), await page.locator('.toast').allInnerTexts().then((t) => t.join(' | ')));
+  check('the first meal pays +160 XP (cook 100, new cuisine 40, check-in 20) and +500 coins (400 + 100 new cuisine)', /\+160 XP · \+500 coins/.test(await page.locator('.toast').allInnerTexts().then((t) => t.join(' | '))), await page.locator('.toast').allInnerTexts().then((t) => t.join(' | ')));
   await page.click('[aria-label="Liked it"]'); await page.waitForTimeout(500);
   await page.locator('.usedup-row').first().waitFor({ timeout: 6000 });
   const usedName = (await page.locator('.usedup-row b').first().innerText()).trim();
@@ -855,7 +855,7 @@ await step('free dish search', async () => {
   await page.getByRole('heading', { name: 'Country complete!' }).waitFor({ timeout: 8000 });
   await shot('07c-country-done');
   const c1 = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
-  check('5th dish from a country: Gold popup with its art, +3,000 coins (plus 500 for cooking)', /Albania is Gold/.test(await page.locator('.popup').innerText()) && (await page.locator('.popup .country-badge').count()) === 1 && c1 - c0 === 3500, `${c0} → ${c1}`);
+  check('5th dish from a country: Gold popup with its art, +2,000 coins (plus 250 for cooking a second meal)', /Albania is Gold/.test(await page.locator('.popup').innerText()) && (await page.locator('.popup .country-badge').count()) === 1 && c1 - c0 === 2250, `${c0} → ${c1}`);
   await page.getByRole('button', { name: 'Nice!' }).click(); await page.waitForTimeout(600);
   if (await page.getByText('Level up!', { exact: false }).count()) { await page.locator('[aria-label=Close]').first().click(); await page.waitForTimeout(400); }
   // finished countries: Gold on the tier list, painted on the globe, their kitchen things in the shop
@@ -1393,7 +1393,7 @@ await step('create account and log in', async () => {
   await lp.getByTestId('auth-login').click();
   const li = lp.getByRole('dialog', { name: 'Log in' });
   await li.locator('#bk-email').fill('chef@example.com'); await li.locator('#bk-pw').fill('wrongpassword'); await li.getByTestId('bk-submit').click();
-  check('a wrong password says so', /don’t match/.test(await li.innerText()));
+  check('a wrong password says so', await li.getByText(/don’t match/).waitFor({ timeout: 6000 }).then(() => true, () => false));
   await li.locator('#bk-pw').fill('chefpass123'); await li.getByTestId('bk-submit').click();
   await lp.waitForURL('**/cook', { timeout: 15000 });
   check('Log in opens the game that email belongs to', /\/cook/.test(lp.url()));
@@ -1482,7 +1482,7 @@ await step('kitchen layout', async () => {
   const visibleSpot = (skip = 0) => page.evaluate((skip) => { let n = 0; for (const el of document.querySelectorAll('[data-spot]')) { const r = el.getBoundingClientRect(); if (r.width < 8 || r.height < 6) continue; const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); if (hit === el && r.top > 80) { if (n++ === skip) return { x: r.left + r.width / 2, y: r.top + r.height / 2, k: el.dataset.spot }; } } return null; }, skip);
   const v1 = await visibleSpot(0); await page.mouse.click(v1.x, v1.y);
   await page.locator('.pa-pop').first().waitFor();
-  check('drop it on a spot → +3 XP and one fewer to put away', /\+3 XP/.test(await page.locator('.pa-pop').first().innerText()) && (await page.locator('.pa-box').count()) === todo - 1);
+  check('drop it on a spot → +1 XP and one fewer to put away', /\+1 XP/.test(await page.locator('.pa-pop').first().innerText()) && (await page.locator('.pa-box').count()) === todo - 1);
   // drag one in too (hold and move)
   await page.evaluate(() => { document.querySelector('.putaway .k3').scrollIntoView({ block: 'start' }); document.querySelector('.pa-tray').scrollLeft = 0; }); await page.waitForTimeout(400);
   const b2 = await page.locator('.pa-box').first().boundingBox();

@@ -16,6 +16,7 @@ import { makeBackup, parseBackup, restoreBackup } from '@/lib/backupFile';
 import NotifySettings from '@/components/NotifySettings';
 import CalorieGoal from '@/components/CalorieGoal';
 import StreakCard from '@/components/StreakCard';
+import LearnEntry from '@/components/LearnEntry';
 import ShareSwitch from '@/components/ShareSwitch';
 import DeleteDataSheet from '@/components/DeleteDataSheet';
 import RecipeSheet from '@/components/RecipeSheet';
@@ -126,6 +127,7 @@ export default function Me() {
 
       <ProfileCard level={lvl} xp={profile?.xp || 0} recipes={recipesCooked} ingredients={ingredients} countries={countries.length} streak={profile?.streak_days || 0} />
       <StreakCard />
+      <LearnEntry />
 
       <DailyQuest />
 

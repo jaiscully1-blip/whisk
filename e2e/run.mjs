@@ -135,12 +135,13 @@ await step('log in', async () => {
   await nav('Home');
 });
 await step('learn quiz', async () => {
-  await page.locator('.nav a[href="/cook"]').click(); await page.waitForURL('**/cook');
+  const learnTap = async () => { await page.getByTestId('learn-btn').evaluate((el) => el.scrollIntoView({ block: 'center' })); await page.waitForTimeout(250); await page.getByTestId('learn-btn').click(); };
+  await page.locator('.nav a[href="/me"]').click(); await page.waitForURL('**/me');
   await page.getByTestId('learn-btn').waitFor({ timeout: 6000 });
-  check('Beginner turns on the Learn button on Cook', (await page.getByTestId('learn-btn').count()) === 1);
+  check('Beginner turns on the Learn card on Me', (await page.getByTestId('learn-btn').count()) === 1);
   await shot('06-learn-button');
   check('the quiz is not shown until Learn is pressed', (await page.getByTestId('learn-sheet').count()) === 0);
-  await page.getByTestId('learn-btn').click();
+  await learnTap();
   await page.getByTestId('learn-sheet').waitFor();
   check('Learn says 100 coins for 3 out of 3', /100 coins/.test(await page.getByTestId('learn-sheet').innerText()));
   const coinsNow = async () => (await (await fetch('http://localhost:54321/__e2e/coins')).json()).coins;
@@ -165,11 +166,11 @@ await step('learn quiz', async () => {
   check('after a quiz, the next one shows a countdown from about an hour', /Next quiz in (59|60):\d\d/.test(await page.getByTestId('quiz-wait').innerText()));
   await page.locator('[data-testid=learn-sheet] [aria-label=Close]').click(); await page.getByTestId('learn-sheet').waitFor({ state: 'detached' });
   check('the Learn button shows the countdown too', /Next quiz in \d+:\d\d/.test(await page.getByTestId('learn-btn').innerText()));
-  await page.getByTestId('learn-btn').click();
+  await learnTap();
   check('the quiz cannot be started during the hour', (await page.getByTestId('quiz-start').count()) === 0 && await page.getByTestId('quiz-wait').isDisabled());
   await page.locator('[data-testid=learn-sheet] [aria-label=Close]').click();
-  await fetch('http://localhost:54321/__e2e/unlock-quiz'); await page.reload(); await page.getByTestId('learn-btn').waitFor();
-  await page.getByTestId('learn-btn').click(); await play(2);
+  await fetch('http://localhost:54321/__e2e/unlock-quiz'); await page.reload(); await page.locator('.nav a[href="/me"]').click(); await page.waitForURL('**/me'); await page.getByTestId('learn-btn').waitFor();
+  await learnTap(); await play(2);
   check('2 out of 3 pays nothing and marks the miss', /2 \/ 3/.test(await page.getByTestId('quiz-result').innerText()) && (await page.locator('.quiz-rev.no').count()) === 1 && (await coinsNow()) === c0 + 100);
   await page.locator('.learn-sheet-close, [data-testid=learn-sheet] [aria-label=Close]').first().click();
   await page.getByTestId('learn-sheet').waitFor({ state: 'detached' });
@@ -179,10 +180,10 @@ await step('learn quiz', async () => {
   await openSettings();
   check('Me shows your cooking level', /Beginner/.test(await page.getByTestId('level-row').innerText()));
   await page.getByTestId('level-row').click(); await page.locator('.lv-opt', { hasText: 'Expert' }).click();
-  await nav('Cook'); await page.waitForURL('**/cook'); await page.waitForTimeout(500);
+  await nav('Me'); await page.waitForURL('**/me'); await page.waitForTimeout(500);
   check('Expert hides Learn', (await page.getByTestId('learn-btn').count()) === 0);
   await nav('Me'); await openSettings(); await page.getByTestId('level-row').click(); await page.locator('.lv-opt', { hasText: 'Novice' }).click();
-  await nav('Cook'); await page.waitForURL('**/cook'); await page.waitForTimeout(500);
+  await nav('Me'); await page.waitForURL('**/me'); await page.waitForTimeout(500);
   check('Novice shows Learn again', (await page.getByTestId('learn-btn').count()) === 1);
   await nav('Home');
 });
@@ -424,7 +425,7 @@ await step('cook', async () => {
   const nDes = await page.locator('main button.card:has(.chip.have), main button.card:has(.chip.need)').count();
   check('tapping Dessert narrows the list and ticks the tile', (await page.getByTestId('meal-dessert').getAttribute('aria-checked')) === 'true' && nDes <= nAll, `${nDes} of ${nAll}`);
   await page.getByTestId('meal-any').click(); await page.waitForTimeout(300);
-  check('Learn is the apron card with patches', (await page.getByTestId('learn-btn').count()) === 1 && (await page.locator('.la-patch').count()) === 6);
+  check('Cook no longer has Learn (it lives on Me)', (await page.getByTestId('learn-btn').count()) === 0);
   await fetch('http://localhost:54321/__e2e/expiring'); await page.reload(); await page.waitForTimeout(1500); await closePopups();
   await page.getByRole('button', { name: 'Fridge Raid', exact: true }).click();
   await page.getByText('Ingredients', { exact: true }).waitFor();

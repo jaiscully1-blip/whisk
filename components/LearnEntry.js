@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useWhisk } from './AppShell';
 import LearnSheet from './LearnSheet';
+import Icon from './Icon';
 import { learns, learnState } from '@/lib/learn/levels';
 import useCountdown, { mmss } from './useCountdown';
 
@@ -15,7 +16,7 @@ const PATCHES = [
   { at: 10, bg: '#C9B6FF', shape: 'square', art: <g fill="none" stroke="#1d1a1a" strokeWidth="2.2" strokeLinejoin="round"><path d="M8 20v-6a5 5 0 0 1 3-9 4 4 0 0 1 6 0 5 5 0 0 1 3 9v6zM8 17h12" /></g> }, // chef hat
 ];
 
-// The Learn card on the Cook tab. Only shown for Beginner, Novice and Advanced beginner. Lessons open only when it is pressed.
+// The Learn card on the Me tab. Only shown for Beginner, Novice and Advanced beginner. Lessons open only when it is pressed.
 export default function LearnEntry() {
   const { profile } = useWhisk();
   const [open, setOpen] = useState(false);
@@ -26,15 +27,19 @@ export default function LearnEntry() {
   const got = PATCHES.filter((p) => best >= p.at).length;
   return (
     <>
-      <button type="button" className="learn-apron" onClick={() => setOpen(true)} data-testid="learn-btn" data-tip="learn" aria-label={`Learn. ${got} of ${PATCHES.length} patches`}>
-        <span className="la-top">
-          <b className="la-title">Learn</b>
-          <span className="la-sub">{left > 0 ? `Next quiz in ${mmss(left)}` : st.streak ? `${st.streak}-day streak · quiz ready` : 'Quiz: win 100 coins'}</span>
+      <button type="button" className="card learn-card" onClick={() => setOpen(true)} data-testid="learn-btn" data-tip="learn" aria-label={`Learn. ${got} of ${PATCHES.length} patches`}>
+        <span className="lc-top">
+          <span className="lc-ico" aria-hidden="true"><Icon name="learn" size={24} /></span>
+          <span className="lc-txt">
+            <b className="lc-title">Learn</b>
+            <span className="lc-sub">{left > 0 ? `Next quiz in ${mmss(left)}` : st.streak ? `${st.streak}-day streak · quiz ready` : 'Quiz: win 100 coins'}</span>
+          </span>
+          <Icon name="chevron" />
         </span>
         <span className="la-patches" aria-hidden="true">
           {PATCHES.map((p) => (
             <span key={p.at} className={`la-patch ${p.shape} ${best >= p.at ? 'on' : ''}`} style={best >= p.at ? { background: p.bg } : undefined}>
-              {best >= p.at ? <svg viewBox="0 0 28 28" width="26" height="26">{p.art}</svg> : <i>{p.at}d</i>}
+              {best >= p.at ? <svg viewBox="0 0 28 28" width="24" height="24">{p.art}</svg> : <i>{p.at}d</i>}
             </span>
           ))}
         </span>

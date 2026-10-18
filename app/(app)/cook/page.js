@@ -10,7 +10,6 @@ import { usePantry, useSaved } from '@/components/usePantry';
 const PAGE = 12;
 import { canon, checkRecipe, usesSoon } from '@/lib/recipes/match';
 import WeekGoal from '@/components/WeekGoal';
-import LearnEntry from '@/components/LearnEntry';
 import { TimeSlider, RescueFridge } from '@/components/DishFilters';
 import { MEALS, fitsMeal } from '@/lib/recipes/meal';
 import MyYouTubers from '@/components/MyYouTubers';
@@ -71,7 +70,6 @@ export default function Cook() {
   return (
     <div className="stack">
       <div className="page-title"><h1>{t('Cook')}</h1><WeekGoal /></div>
-      <LearnEntry />
       <section className="cook-search" aria-label="Find something to cook">
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); setHand(null); setAsked(true); if (!dish.trim()) { setUi({ cookMode: 'pantry', cookDish: '' }); return; } setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>{t('Dish')}</label>
@@ -91,8 +89,8 @@ export default function Cook() {
           ))}
         </div>
         <div className="meal-pick" role="radiogroup" aria-label={t('Meal')}>
-          {[{ id: '', label: t('Any meal'), icon: '🍽️' }, ...MEALS].map((m) => (
-            <button key={m.id || 'any'} type="button" role="radio" aria-checked={meal === m.id} className={`meal-tile ${meal === m.id ? 'on' : ''}`} data-testid={`meal-${m.id || 'any'}`} onClick={() => setUi({ cookMeal: m.id })}><b aria-hidden="true">{m.icon}</b>{m.label}</button>
+          {[{ id: '', label: t('Any meal'), icon: 'utensils' }, ...MEALS].map((m) => (
+            <button key={m.id || 'any'} type="button" role="radio" aria-checked={meal === m.id} className={`meal-tile ${meal === m.id ? 'on' : ''}`} data-testid={`meal-${m.id || 'any'}`} onClick={() => setUi({ cookMeal: m.id })}><Icon name={m.icon} size={32} />{m.label}</button>
           ))}
         </div>
       </div>

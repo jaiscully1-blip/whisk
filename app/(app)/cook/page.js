@@ -74,19 +74,6 @@ export default function Cook() {
     <div className="stack">
       <div className="page-title"><h1>{t('Cook')}</h1><WeekGoal /></div>
       <LearnEntry />
-      <div className="card stack">
-        <TimeSlider time={time || 'any'} onTime={(v) => setUi({ cookTime: v === 'any' ? '' : v })} />
-        <div><span className="lbl" id="o-cu">{t('Cuisine')}</span><CuisineStamps cuisines={cuisines} value={cu} onChange={(c) => setUi({ cookCuisine: c })} /></div>
-        <div>
-          <span className="lbl" id="o-diet">{t('Diet')}</span>
-          <div className="diet-pick" role="radiogroup" aria-labelledby="o-diet">
-            {['', ...DIET_ORDER].map((d) => (
-              <button key={d || 'any'} type="button" role="radio" aria-checked={diet === d} className={`chip diet ${d ? DIET_CLASS[d] : 'any'} ${diet === d ? 'on' : ''}`} onClick={() => setUi({ cookDiet: d })}>{d || 'Any'}</button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       <section className="cook-search" aria-label="Find something to cook">
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); if (!dish.trim()) return; setHand(null); setAsked(true); setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>{t('Dish')}</label>
@@ -98,6 +85,16 @@ export default function Cook() {
           <button type="button" data-tip="fridge" className={`cs-pill ${mode === 'raid' ? 'on' : ''}`} data-testid="raid-btn" onClick={raid}><RescueFridge />{t('Fridge Raid')}</button>
         </div>
       </section>
+
+      <div className="cook-filters">
+        <TimeSlider time={time || 'any'} onTime={(v) => setUi({ cookTime: v === 'any' ? '' : v })} />
+        <div className="diet-pick" role="radiogroup" aria-label={t('Diet')}>
+          {['', ...DIET_ORDER].map((d) => (
+            <button key={d || 'any'} type="button" role="radio" aria-checked={diet === d} className={`chip diet ${d ? DIET_CLASS[d] : 'any'} ${diet === d ? 'on' : ''}`} onClick={() => setUi({ cookDiet: d })}>{d || t('Any diet')}</button>
+          ))}
+        </div>
+        <div><span className="eyebrow" id="o-cu">{t('Cuisine')}</span><CuisineStamps cuisines={cuisines} value={cu} onChange={(c) => setUi({ cookCuisine: c })} /></div>
+      </div>
 
       <div className="seg" role="tablist" aria-label="Your recipes">
         {[['saved', 'Saved'], ['mine', 'My recipes'], ['channels', 'Channels']].map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={yourTab === k} className={yourTab === k ? 'on' : ''} onClick={() => setYourTab(k)} data-testid={`cook-tab-${k}`}>{l}</button>)}

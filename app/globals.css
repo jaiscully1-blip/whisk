@@ -1514,3 +1514,25 @@ body { -webkit-tap-highlight-color: transparent; overscroll-behavior-x: none; }
 .cs-pill .df-ring { width: 24px; height: 24px; }
 .stamp { width: 138px; }
 .stamps { gap: 2px; padding-top: 2px; padding-bottom: 4px; }
+/* Cook layout: lighter, less boxy */
+.cook-filters { display: grid; gap: 10px; }
+.cook-filters .df-time { height: 42px; }
+.cook-filters .eyebrow { display: block; margin: 2px 2px 0; }
+.cook-search { padding: 10px; border-radius: 18px; box-shadow: none; gap: 8px; }
+.cook-search .input { min-height: 44px; }
+.cook-search .cs-go { padding-inline: 14px; }
+.cs-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.cs-pill { flex: none; padding: 6px 12px; font-size: 13px; }
+.learn-apron { grid-template-columns: auto 1fr; align-items: center; gap: 10px 12px; padding: 12px 14px; border-radius: 18px; box-shadow: none; outline-offset: -7px; }
+.learn-apron .la-top { flex-direction: column; align-items: flex-start; gap: 0; padding: 0; }
+.la-title { font-size: 22px; }
+.la-sub { font-size: 12px; max-width: 110px; line-height: 1.2; }
+.la-patches { gap: 5px; padding: 0; flex-wrap: nowrap; justify-content: flex-end; }
+.la-patch { width: 30px; height: 30px; border-width: 2px; }
+.la-patch svg { width: 20px; height: 20px; }
+.la-patch i { font-size: 9px; }
+.stamp { width: 120px; }
+.seg { margin-top: 2px; }
+.cook-filters { grid-template-columns: minmax(0, 1fr); } .cook-filters > * { min-width: 0; }
+.stamp { margin-right: -2px; opacity: .6; }
+.stamp.on { opacity: 1; }

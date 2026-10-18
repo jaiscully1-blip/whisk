@@ -39,7 +39,7 @@ export default function WeekGoal() {
   return (
     <div className="weekgoal" role="status" aria-label={`${n} of ${goal} meals this week`}>
       <svg width="84" height="56" viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
-        <rect x="1.5" y="1.5" width={W - 3} height={H - 3} rx="9" fill="rgba(43,26,5,.55)" stroke="#fff" strokeWidth="3" />
+        <rect x="1.5" y="1.5" width={W - 3} height={H - 3} rx="9" fill="rgba(255,255,255,.14)" stroke="#fff" strokeWidth="3" />
         {cells.map(([x, y, w, h], i) => (
           <g key={i} transform={`translate(${x} ${y})`}>
             {i < n

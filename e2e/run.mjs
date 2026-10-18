@@ -375,7 +375,11 @@ await step('pantry draft is remembered', async () => {
   check('Canned shows its aisle note', /Canned & jarred/.test(await page.getByTestId('kind-note').innerText()));
   await page.fill('#p-name', 'Black beans'); await page.getByTestId('kind-canned').evaluate((el) => el.closest('form').requestSubmit());
   await page.getByText('Added Black beans').waitFor();
-  check('the picker goes back to Fresh after adding', await page.getByTestId('kind-fresh').getAttribute('aria-checked') === 'true');
+  check('the picker clears after adding', (await page.locator('[data-testid^=kind-][aria-checked=true]').count()) === 0);
+  await page.getByTestId('kind-fresh').click();
+  check('Fresh has its own tint and note', (await page.locator('form.addform.k-fresh').count()) === 1 && /Fresh/.test(await page.getByTestId('kind-note').innerText()));
+  await page.getByTestId('kind-fresh').click();
+  check('tapping the picked block again puts the form back to normal', (await page.locator('form.addform.k-fresh').count()) === 0 && (await page.getByTestId('kind-note').count()) === 0);
   await page.getByTestId('kind-frozen').click(); await page.fill('#p-name', 'Turkey cutlets'); await page.getByTestId('kind-frozen').evaluate((el) => el.closest('form').requestSubmit());
   await page.getByText('frozen meat, remember to defrost').first().waitFor();
   check('Frozen from the picker makes frozen meat without typing "frozen"', true);

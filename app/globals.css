@@ -1593,10 +1593,13 @@ input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-sele
 .kind.k-fresh.on { background: #7ED957; color: #17300d; }
 .kind.k-frozen.on { background: #7fd4ff; color: #082b40; }
 .kind.k-canned.on { background: #e8b45a; color: #3b2606; }
+.addform.k-fresh { border-color: #7ED957; background: color-mix(in srgb, #7ED957 12%, var(--card)); }
 .addform.k-frozen { border-color: #7fd4ff; background: color-mix(in srgb, #7fd4ff 12%, var(--card)); }
 .addform.k-canned { border-color: #e8b45a; background: color-mix(in srgb, #e8b45a 12%, var(--card)); }
+.addform.k-fresh [data-tip="add"] { background: #7ED957; color: #17300d; box-shadow: 0 4px 0 #4a9a2a; }
 .addform.k-frozen [data-tip="add"] { background: #7fd4ff; color: #082b40; box-shadow: 0 4px 0 #3b8bb3; }
 .addform.k-canned [data-tip="add"] { background: #e8b45a; color: #3b2606; box-shadow: 0 4px 0 #9a6f23; }
 .kindnote { border-radius: 12px; padding: 8px 10px; font: 700 13px var(--f-display); }
+.addform.k-fresh .kindnote { background: rgba(126,217,87,.18); color: var(--fg); }
 .addform.k-frozen .kindnote { background: rgba(127,212,255,.18); color: var(--fg); }
 .addform.k-canned .kindnote { background: rgba(232,180,90,.2); color: var(--fg); }

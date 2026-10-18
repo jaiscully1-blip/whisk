@@ -26,7 +26,7 @@ export default function Pantry() {
   const [fQty, setFQty, clrQty] = useDraft('p-qty');
   const [fExp, setFExp, clrExp] = useDraft('p-exp');
   const [fKind, setFKind, clrKind] = useDraft('p-kind');   // '' = fresh, 'frozen', 'canned'
-  const kind = fKind === 'frozen' || fKind === 'canned' ? fKind : 'fresh';
+  const kind = ['fresh', 'frozen', 'canned'].includes(fKind) ? fKind : '';   // '' = nothing picked (not every item is fresh); tap the picked one again to un-pick
   const form = { name: fName, quantity: fQty, expires_on: fExp };
   const setForm = (next) => { const f = typeof next === 'function' ? next(form) : next; if (f.name !== fName) setFName(f.name); if (f.quantity !== fQty) setFQty(f.quantity); if (f.expires_on !== fExp) setFExp(f.expires_on); };
   const [newItem, setNewItem, clrNewItem] = useDraft('s-new');
@@ -201,7 +201,7 @@ export default function Pantry() {
           <form className={`card stack addform k-${kind}`} onSubmit={addPantry}>
             <div className="kindbar" role="radiogroup" aria-label={t('Type')}>
               {[['fresh', 'Fresh', 'leaf'], ['frozen', 'Frozen', 'snow'], ['canned', 'Canned', 'pantry']].map(([k, label, ic]) => (
-                <button key={k} type="button" role="radio" aria-checked={kind === k} className={`kind k-${k} ${kind === k ? 'on' : ''}`} data-testid={`kind-${k}`} onClick={() => setFKind(k === 'fresh' ? '' : k)}><Icon name={ic} size={16} />{label}</button>
+                <button key={k} type="button" role="radio" aria-checked={kind === k} className={`kind k-${k} ${kind === k ? 'on' : ''}`} data-testid={`kind-${k}`} onClick={() => setFKind(kind === k ? '' : k)}><Icon name={ic} size={16} />{label}</button>
               ))}
             </div>
             <div className="grid2">
@@ -209,7 +209,7 @@ export default function Pantry() {
               <div><label className="lbl" htmlFor="p-qty">{t('Amount')}</label><input id="p-qty" className="input" maxLength={30} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
               <div style={{ minWidth: 0 }}><label className="lbl" htmlFor="p-exp">{t('Expires')}</label><div className="date-wrap"><input id="p-exp" className={`input ${form.expires_on ? '' : 'empty'}`} type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} /></div>{form.expires_on && <button type="button" className="date-reset" onClick={() => setForm({ ...form, expires_on: '' })} aria-label="Reset the expiry date">Reset</button>}</div>
             </div>
-            {kind !== 'fresh' && <div className="kindnote" data-testid="kind-note">{kind === 'frozen' ? 'Goes to the Frozen aisle · frozen meat thaws first' : 'Goes to the Canned & jarred aisle'}</div>}
+            {kind && <div className="kindnote" data-testid="kind-note">{kind === 'frozen' ? 'Goes to the Frozen aisle · frozen meat thaws first' : kind === 'canned' ? 'Goes to the Canned & jarred aisle' : 'Fresh · the aisle is picked from the name'}</div>}
             <button data-tour="add" data-tip="add" className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
           </form>
 

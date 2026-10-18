@@ -1579,3 +1579,8 @@ a.card.chat-item { text-decoration: none; }
 .learn-card .lc-ico.done { background: var(--tile-edge); color: var(--fresh); box-shadow: none; }
 @keyframes lcpulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 @media (prefers-reduced-motion: reduce) { .learn-card .lc-new { animation: none; } }
+
+/* Feels like an app, not a web page: no text highlighting, no copy / look up pop-up on long-press, no image save menu. Typing boxes still work. */
+html, body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+img, svg, a { -webkit-touch-callout: none; -webkit-user-drag: none; }
+input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }

@@ -40,7 +40,7 @@ export async function POST(req) {
   const user = [e.app_user_id, e.original_app_user_id, ...(Array.isArray(e.aliases) ? e.aliases : [])].find((x) => typeof x === 'string' && UUID.test(x));
   const rawProduct = typeof e.product_id === 'string' ? e.product_id : '';
   // RevenueCat's web products are named with underscores (coins_099); Yoke's packs use hyphens (coins-099)
-  const product = /^(coins|streak)_/.test(rawProduct) ? rawProduct.replace(/_/g, '-') : rawProduct;
+  const product = /^(coins|streak)_/.test(rawProduct) ? rawProduct.replace(/_v\d+$/, '').replace(/_/g, '-') : rawProduct;   // a re-made product may end in _v2
   if (!user || !/^[A-Za-z0-9._-]{1,100}$/.test(product)) { console.error('revenuecat purchase without a Yoke player', txn); return ok({ ignored: 'no player' }); }
 
   let real;

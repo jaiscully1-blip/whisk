@@ -3,6 +3,14 @@
 --  • The amounts match the shop: 7,000 is one Epic item, 3,000 is two Commons, 15,000 is an Exotic plus a Rare.
 --  • The four old packs are switched off (kept, so old purchases and refunds still work).
 --  • RevenueCat product ids: coins-099, coins-499, coins-999, coins-1999, coins-4999 (App Store: yoke.coins099 and so on).
+-- The product mapping table is normally made by setup 20 (RevenueCat). Make it here too so this file runs on its own.
+create table if not exists public.coin_pack_products (
+  product_id text primary key check (product_id ~ '^[A-Za-z0-9._-]{1,100}$'),
+  pack_id text not null references public.coin_packs (id)
+);
+alter table public.coin_pack_products enable row level security;
+revoke all on public.coin_pack_products from anon, authenticated;
+
 insert into public.coin_packs (id, coins, usd, sort, active) values
   ('coins-099', 500, 0.99, 1, true), ('coins-499', 3000, 4.99, 2, true), ('coins-999', 7000, 9.99, 3, true),
   ('coins-1999', 15000, 19.99, 4, true), ('coins-4999', 40000, 49.99, 5, true)

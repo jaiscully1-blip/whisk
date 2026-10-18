@@ -10,7 +10,6 @@ import { usePantry, useSaved } from '@/components/usePantry';
 import { addToShoppingList, listMsg } from '@/lib/shoplist';
 import { checkRecipe, thawState, usesSoon, shoppingNeeds, canon } from '@/lib/recipes/match';
 import Postcard from '@/components/Postcard';
-import DishFilters, { timeOk } from '@/components/DishFilters';
 
 const PAGE = 10;
 const SHOW = 3;   // missing ingredients shown on a card; the recipe lists them all
@@ -20,10 +19,6 @@ const mix = (id, seed) => { let h = seed >>> 0; for (let i = 0; i < id.length; i
 // Always a fresh random mix each time it opens (Shuffle for another).
 export default function Home() {
   const { supabase, recipes, say, ui, setUiQuiet, t } = useWhisk();
-  // The filters live here (saved quietly), so moving them re-renders only this list, not the whole app.
-  const [time, setTime] = useState(ui.homeTime || 'any');
-  const [useUp, setUseUp] = useState(!!ui.homeUseUp);
-  const fTime = useDeferredValue(time), fUseUp = useDeferredValue(useUp);   // the control moves at once, the list follows
   const [pantry, reload] = usePantry();
   const [saved, reloadSaved] = useSaved();
   const [open, setOpen] = useState(null);
@@ -55,8 +50,7 @@ export default function Home() {
     const o = [...base].sort((a, b) => mix(a.r.id, seed) - mix(b.r.id, seed));
     return [...o.filter((x) => x.soon.length), ...o.filter((x) => !x.soon.length)];
   }, [base, seed]);
-  // how long you have, and "Use it up" (Discover a Dish filters): cheap
-  const almost = useMemo(() => ordered && ordered.filter(({ r, soon }) => timeOk(fTime, r.minutes) && (!fUseUp || soon.length)), [ordered, fTime, fUseUp]);
+  const almost = ordered;
   const shuffle = () => { startTransition(() => { setSeed((x) => (x + 0x9e3779b9) >>> 0); setShown(PAGE); }); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   useEffect(() => {
     const el = moreRef.current; if (!el || !almost || shown >= almost.length) return;
@@ -72,10 +66,7 @@ export default function Home() {
     <div className="stack" style={{ paddingTop: 16 }}>
       {frozen.length > 0 && <ThawBanner items={frozen} onChanged={reload} />}
       <div className="page-title" style={{ margin: '6px 0 0' }}><h1>{t('Discover a Dish')}</h1></div>
-      <DishFilters time={time} useUp={useUp} expiring={expiring} onTime={(v) => { setTime(v); setUiQuiet({ homeTime: v }); setShown(PAGE); }} onUseUp={(v) => { setUseUp(v); setUiQuiet({ homeUseUp: v }); setShown(PAGE); }} />
-      {almost === null ? <p className="muted">Checking your pantry…</p> : almost.length === 0 && (time !== 'any' || useUp) ? (
-        <div className="empty"><b>{useUp ? 'Nothing to use up' : 'No dishes match'}</b>{useUp ? 'No dish needs the food that is about to go off.' : 'Try another time.'}<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><button type="button" className="btn ghost" onClick={() => { setTime('any'); setUseUp(false); setUiQuiet({ homeTime: 'any', homeUseUp: false }); }}>Show everything</button></div></div>
-      ) : almost.length === 0 ? (
+      {almost === null ? <p className="muted">Checking your pantry…</p> : almost.length === 0 ? (
         <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">{t('Add pantry items')}</Link><Link className="btn ghost" href="/cook">{t('What can I make?')}</Link></div></div>
       ) : almost.slice(0, shown).map((x, i) => <DishCard key={x.r.id} x={x} first={i === 0} onOpen={setOpen} onAdd={addToList} t={t} />)}
       {almost && almost.length > shown && <div ref={moreRef}><button className="btn ghost wide" onClick={() => setShown((n) => n + PAGE)}>{t('Show more')}</button></div>}

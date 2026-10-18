@@ -36,26 +36,18 @@ function RescueFridge() {
   );
 }
 
-// Under "Discover a Dish", on one line: slide for how long you have, and a "Use it up" switch that keeps only dishes
-// built around food in your pantry that goes off within 3 days.
-export default function DishFilters({ time = 'any', onTime, useUp = false, onUseUp, expiring = 0 }) {
+// "How long you have": an hourglass and a slider (time is 'any' or minutes as a string).
+export function TimeSlider({ time = 'any', onTime }) {
   const i = idx(time), m = STOPS[i];
   return (
-    <section className="df" data-tip="dishfilters" aria-label="Filter dishes">
-      <label className={`df-time ${m != null ? 'on' : ''}`}>
-        <Hourglass f={i / (STOPS.length - 1)} />
-        <input type="range" min="0" max={STOPS.length - 1} step="1" value={i} data-testid="time-slider"
-          aria-label="How long you have" aria-valuetext={m == null ? 'Any time' : `Up to ${label(m)}`}
-          style={{ '--p': `${(i / (STOPS.length - 1)) * 100}%` }}
-          onChange={(e) => { const v = STOPS[Number(e.target.value)]; onTime(v == null ? 'any' : String(v)); }} />
-        <output className="df-time-val" data-testid="time-val">{m == null ? 'Any' : label(m)}</output>
-      </label>
-      <button type="button" role="switch" aria-checked={useUp} className={`df-uiu ${useUp ? 'on' : ''}`} data-testid="use-it-up-toggle" onClick={() => onUseUp(!useUp)}
-        aria-label={`Use it up${expiring ? `, ${expiring} going off soon` : ''}`}>
-        <span className="df-uiu-ico"><RescueFridge /></span>
-        <span className="df-uiu-txt">Use it up</span>
-        {expiring > 0 && <span className="df-uiu-n" aria-hidden="true">{expiring}</span>}
-      </button>
-    </section>
+    <label className={`df-time ${m != null ? 'on' : ''}`}>
+      <Hourglass f={i / (STOPS.length - 1)} />
+      <input type="range" min="0" max={STOPS.length - 1} step="1" value={i} data-testid="time-slider"
+        aria-label="How long you have" aria-valuetext={m == null ? 'Any time' : `Up to ${label(m)}`}
+        style={{ '--p': `${(i / (STOPS.length - 1)) * 100}%` }}
+        onChange={(e) => { const v = STOPS[Number(e.target.value)]; onTime(v == null ? 'any' : String(v)); }} />
+      <output className="df-time-val" data-testid="time-val">{m == null ? 'Any' : label(m)}</output>
+    </label>
   );
 }
+export { RescueFridge };

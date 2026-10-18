@@ -12,7 +12,6 @@ import { TIPS } from '@/lib/tips';
 import { ProfileCard, CountryChallenges } from '@/components/MeWorld';
 import ResetSheet from '@/components/ResetSheet';
 import NeverShowSheet from '@/components/NeverShowSheet';
-import BackupSheet from '@/components/BackupSheet';
 import { makeBackup, parseBackup, restoreBackup } from '@/lib/backupFile';
 import NotifySettings from '@/components/NotifySettings';
 import CalorieGoal from '@/components/CalorieGoal';
@@ -204,19 +203,6 @@ export default function Me() {
         </button>
         {profile?.is_admin && <Link href="/admin" className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', textDecoration: 'none', color: 'var(--fg)', flexWrap: 'nowrap' }}><Icon name="compete" /><span style={{ flex: 1, fontWeight: 700 }}>Backend dashboard</span><Icon name="chevron" /></Link>}
         <div className="stack" style={{ padding: '12px 16px', gap: 4 }}>
-          {account?.anon ? <>
-            <span className="row" style={{ gap: 8, fontWeight: 700, flexWrap: 'nowrap' }}><Icon name="me" />{t('Your game is saved on this phone')}</span>
-            <span className="desc">Deleting the app or clearing this browser’s data would start a new game. Back it up to keep it safe.</span>
-            <button className="btn sm" style={{ alignSelf: 'flex-start', marginTop: 4 }} onClick={() => setBackingUp(true)}><Icon name="shield" size={16} />{t('Back up your game')}</button>
-          </> : <>
-            <span className="row" style={{ gap: 8, fontWeight: 700, flexWrap: 'nowrap', color: 'var(--fresh)' }}><Icon name="check" />{t('Your game is backed up')}</span>
-            <span className="desc">With {(account?.providers || []).map((p) => ({ google: 'Google', apple: 'Apple', email: 'email' }[p] || p)).join(' and ') || 'email'}{account?.email ? ` (${account.email})` : ''}. On a new phone, choose “Get it back” on the start screen.</span>
-          </>}
-          <div className="row" style={{ gap: 8, marginTop: 6 }}>
-            <button type="button" className="btn ghost sm" data-testid="backup-file" onClick={downloadBackup}><Icon name="share" size={16} />{t('Save backup file')}</button>
-            <label className="btn ghost sm" style={{ cursor: 'pointer' }}>{t('Restore from file')}<input type="file" accept="application/json,.json" data-testid="restore-file" onChange={restoreFile} style={{ display: 'none' }} /></label>
-          </div>
-          <span className="desc">The file holds your pantry, shopping list, saved and own recipes. Coins and streaks come back with “Back up your game”.</span>
           <span className="desc" style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Player ID: <span className="mono" style={{ userSelect: 'all' }}>{profile?.id}</span></span>
         </div>
       </div>
@@ -227,7 +213,6 @@ export default function Me() {
       )}
       {resetting && <ResetSheet onClose={() => setResetting(false)} />}
       {never && <NeverShowSheet onClose={() => setNever(false)} />}
-      {backingUp && <BackupSheet supabase={supabase} onClose={() => setBackingUp(false)} />}
       {deleting && <DeleteDataSheet onClose={() => setDeleting(false)} />}
       {recipe && <RecipeSheet recipe={recipe} pantry={pantry || []} onClose={() => setRecipe(null)} />}
       {howTo && (

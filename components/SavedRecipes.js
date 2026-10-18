@@ -40,7 +40,7 @@ export default function SavedRecipes({ pantry, onChanged, limit = 0 }) {
             <button type="button" className="btn ghost sm saved-x" onClick={() => unsave(r)} aria-label={`Unsave ${r.title}`}><Icon name="x" size={16} /></button>
           </div>
         </div>
-      )) : <div className="empty"><b>No saved recipes here</b>Save a recipe, or rate a meal after you cook it.</div>}
+      )) : null}
       {list.length > 1 && <button type="button" className="btn ghost wide" data-testid="saved-list-all" onClick={() => toList(list.map((x) => x.r))}><Icon name="bag" size={18} />Add all {list.length} to shopping list</button>}
       {limit > 0 && !all && list.length > limit && <button type="button" className="btn ghost wide" onClick={() => setAll(true)}>Show all {list.length}</button>}
       {open && <RecipeSheet recipe={open} pantry={pantry || []} saved={saved?.get(open.id)} onClose={() => setOpen(null)} onChanged={() => { reloadSaved(); onChanged?.(); }} />}

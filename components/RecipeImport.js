@@ -73,13 +73,12 @@ export default function RecipeImport({ edit = null, onClose, onSaved }) {
 
         {phase === 'start' && (
           <>
-            <p className="muted" style={{ margin: 0 }}>Photograph a recipe card, a cookbook page or a handwritten note. Yoke reads it on your phone, and you check it before it’s saved.</p>
+            <p className="muted" style={{ margin: 0 }}>Photograph a recipe card, a cookbook page or a handwritten note.</p>
             <input ref={cam} type="file" accept="image/*" capture="environment" hidden data-testid="import-cam" onChange={(e) => { read(e.target.files); e.target.value = ''; }} />
             <input ref={pick} type="file" accept="image/*" multiple hidden data-testid="import-file" onChange={(e) => { read(e.target.files); e.target.value = ''; }} />
             <button type="button" className="btn wide" onClick={() => cam.current?.click()}><Icon name="camera" size={18} />Take a photo</button>
-            <button type="button" className="btn ghost wide" onClick={() => pick.current?.click()} data-testid="import-pick"><Icon name="plus" size={18} />Choose photos (up to 6 pages)</button>
-            <button type="button" className="btn ghost wide" onClick={() => setPhase('review')} data-testid="import-type"><Icon name="pencil" size={18} />Type it in instead</button>
-            <span className="desc">Tips: good light, page flat, text filling the picture. Printed text reads best. Neat handwriting works, but loopy cursive may need more fixing.</span>
+            <button type="button" className="btn ghost wide" onClick={() => pick.current?.click()} data-testid="import-pick"><Icon name="plus" size={18} />Choose photos</button>
+            <button type="button" className="btn ghost wide" onClick={() => setPhase('review')} data-testid="import-type"><Icon name="pencil" size={18} />Type it</button>
           </>
         )}
 

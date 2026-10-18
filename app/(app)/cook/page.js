@@ -11,7 +11,8 @@ const PAGE = 12;
 import { canon, checkRecipe, usesSoon } from '@/lib/recipes/match';
 import WeekGoal from '@/components/WeekGoal';
 import LearnEntry from '@/components/LearnEntry';
-import BackupNudge from '@/components/BackupNudge';
+import { TimeSlider, RescueFridge } from '@/components/DishFilters';
+import CuisineStamps from '@/components/CuisineStamps';
 import MyYouTubers from '@/components/MyYouTubers';
 import DishSearch from '@/components/DishSearch';
 import SavedRecipes from '@/components/SavedRecipes';
@@ -61,7 +62,10 @@ export default function Cook() {
   }, [results, shown]);
 
   function raid() {
-    const pool = [...names]; const h = [];
+    // Fridge Raid also uses things up: whatever goes off within 3 days is dealt first, the rest is random.
+    const day = (p) => (p.expires_on ? (new Date(String(p.expires_on).slice(0, 10) + 'T00:00:00') - new Date(new Date().toDateString())) / 864e5 : null);
+    const soon = inStock.filter((p) => !SKIP.includes(p.category) && day(p) != null && day(p) <= 3).sort((a, b) => day(a) - day(b)).map((p) => p.name);
+    const h = soon.slice(0, 4); const pool = names.filter((n) => !h.includes(n));
     while (h.length < 4 && pool.length) h.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
     setHand(h); setAsked(true); setUi({ cookMode: 'raid' });
   }
@@ -70,12 +74,9 @@ export default function Cook() {
     <div className="stack">
       <div className="page-title"><h1>{t('Cook')}</h1><WeekGoal /></div>
       <LearnEntry />
-      <BackupNudge />
       <div className="card stack">
-        <div className="grid2">
-          <div><label className="lbl" htmlFor="o-time">{t('Time limit')}</label><select id="o-time" className="input" value={time} onChange={(e) => setUi({ cookTime: e.target.value })}>{[['', 'Any'], ['20', '20 min'], ['30', '30 min'], ['45', '45 min'], ['60', '1 hour'], ['120', '2 hours']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
-          <div><label className="lbl" htmlFor="o-cu">{t('Cuisine')}</label><select id="o-cu" className="input" value={cu} onChange={(e) => setUi({ cookCuisine: e.target.value })}><option value="">{t('Any')}</option>{cuisines.map((c) => <option key={c}>{c}</option>)}</select></div>
-        </div>
+        <TimeSlider time={time || 'any'} onTime={(v) => setUi({ cookTime: v === 'any' ? '' : v })} />
+        <div><span className="lbl" id="o-cu">{t('Cuisine')}</span><CuisineStamps cuisines={cuisines} value={cu} onChange={(c) => setUi({ cookCuisine: c })} /></div>
         <div>
           <span className="lbl" id="o-diet">{t('Diet')}</span>
           <div className="diet-pick" role="radiogroup" aria-labelledby="o-diet">
@@ -84,25 +85,30 @@ export default function Cook() {
             ))}
           </div>
         </div>
-        <div className="grid2 cook-ask">
-        <button data-tour="make" data-tip="make" className="btn" onClick={() => { setHand(null); setAsked(true); setUi({ cookMode: 'pantry' }); }}>{t('What can I make?')}</button>
-        <button className="btn ghost" data-tip="fridge" onClick={raid}><Icon name="gift" size={18} />{t('Fridge Raid')}</button>
-        </div>
+      </div>
+
+      <section className="cook-search" aria-label="Find something to cook">
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); if (!dish.trim()) return; setHand(null); setAsked(true); setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>{t('Dish')}</label>
-          <input id="o-dish" data-tip="search" className="input" type="search" enterKeyHint="search" autoComplete="off" aria-label={t('Search a dish, food or country')} maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
-          <button className="btn" type="submit" aria-label={t('Search dishes')}><Icon name="search" size={18} />{t('Search')}</button>
+          <input id="o-dish" data-tip="search" className="input" type="search" enterKeyHint="search" autoComplete="off" placeholder={t('Search a dish, food or country')} aria-label={t('Search a dish, food or country')} maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
+          <button className="btn cs-go" type="submit" aria-label={t('Search dishes')}><Icon name="search" size={18} />{t('Search')}</button>
         </form>
-      </div>
+        <div className="cs-pills">
+          <button type="button" data-tour="make" data-tip="make" className={`cs-pill ${mode === 'pantry' ? 'on' : ''}`} data-testid="make-btn" onClick={() => { setHand(null); setAsked(true); setUi({ cookMode: 'pantry' }); }}>{t('What can I make?')}</button>
+          <button type="button" data-tip="fridge" className={`cs-pill ${mode === 'raid' ? 'on' : ''}`} data-testid="raid-btn" onClick={raid}><RescueFridge />{t('Fridge Raid')}</button>
+        </div>
+      </section>
 
       <div className="seg" role="tablist" aria-label="Your recipes">
         {[['saved', 'Saved'], ['mine', 'My recipes'], ['channels', 'Channels']].map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={yourTab === k} className={yourTab === k ? 'on' : ''} onClick={() => setYourTab(k)} data-testid={`cook-tab-${k}`}>{l}</button>)}
       </div>
       <div hidden={yourTab !== 'saved'}>
-        <section className="card stack saved-box" aria-labelledby="saved-h">
-          <h2 id="saved-h" style={{ fontSize: 20, margin: 0 }}><Icon name="star" size={18} /> Saved recipes</h2>
-          <SavedRecipes pantry={pantry} onChanged={reload} limit={4} />
-        </section>
+        {saved && saved.size === 0 ? <div className="saved-mini" data-testid="saved-mini"><Icon name="star" size={16} />Saved recipes</div> : (
+          <section className="card stack saved-box" aria-labelledby="saved-h">
+            <h2 id="saved-h" style={{ fontSize: 20, margin: 0 }}><Icon name="star" size={18} /> Saved recipes</h2>
+            <SavedRecipes pantry={pantry} onChanged={reload} limit={4} />
+          </section>
+        )}
       </div>
       <div hidden={yourTab !== 'mine'}><MyRecipes pantry={pantry} /></div>
       <div hidden={yourTab !== 'channels'}><MyYouTubers /></div>

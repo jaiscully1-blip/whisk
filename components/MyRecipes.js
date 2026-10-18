@@ -83,7 +83,7 @@ export default function MyRecipes({ pantry }) {
           <button type="button" className="mine-open" onClick={() => setOpen(r)} data-testid="mine-item"><b>{r.title}</b><span className="desc">{r.minutes ? `${r.minutes} min · ` : ''}{r.ingredients.length} ingredients</span></button>
           <Icon name="chevron" />
         </div>
-      )) : <div className="empty"><b>Nothing here yet</b>Photograph a recipe card or page, or type your own.</div>}
+      )) : null}
       {adding && <RecipeImport onClose={() => setAdding(false)} onSaved={() => { setAdding(false); reload(); }} />}
       {editing && <RecipeImport edit={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); setOpen(null); reload(); }} />}
       {open && !editing && <Viewer row={open} pantry={pantry} onClose={() => setOpen(null)} onEdit={() => setEditing(open)} onDeleted={() => { setOpen(null); reload(); }} />}

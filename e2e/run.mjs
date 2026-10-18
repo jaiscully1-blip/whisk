@@ -190,8 +190,8 @@ await step('recipe import', async () => {
   await nav('Cook'); await page.waitForURL('**/cook');
   await cookTab('mine');
   await page.getByTestId('my-recipes').waitFor();
-  await page.getByText('Nothing here yet').waitFor({ timeout: 6000 }).catch(() => {});
-  check('My recipes starts empty with an Add button', /Nothing here yet/.test(await page.getByTestId('my-recipes').innerText()));
+  await page.getByTestId('mine-add').waitFor({ timeout: 6000 });
+  check('My recipes starts empty: just the title and Add recipe, no “nothing here” text', !/Nothing here/.test(await page.getByTestId('my-recipes').innerText()) && (await page.getByTestId('mine-add').count()) === 1);
   // a clean printed recipe page, drawn in the browser, so the on-device reader has something real to read
   const dataUrl = await page.evaluate(() => {
     const c = document.createElement('canvas'); c.width = 1300; c.height = 1500; const x = c.getContext('2d');
@@ -308,33 +308,13 @@ await step('use-it-up week', async () => {
 await step('home', async () => {
   await page.getByRole('heading', { name: 'Discover a Dish' }).waitFor();
   check('home shows Discover a Dish', true);
-  // time chips + the Use it up switch (replaced the price tags and difficulty knob)
-  check('one line: a time slider with a clock and the Use it up switch; no price tags or knob', (await page.getByTestId('time-slider').count()) === 1 && (await page.getByTestId('use-it-up-toggle').count()) === 1 && (await page.locator('.df-tag, .df-knob, .chip.price').count()) === 0);
-  const ty = async (sel) => (await page.locator(sel).boundingBox()).y;
-  check('time and Use it up sit on the same line', Math.abs((await ty('.df-time')) - (await ty('[data-testid=use-it-up-toggle]'))) < 4);
+  check('the time slider and Use it up moved to Cook: Home has neither', (await page.getByTestId('time-slider').count()) === 0 && (await page.getByTestId('use-it-up-toggle').count()) === 0);
   check('shuffle is not inside the title box', (await page.locator('.page-title [data-testid=shuffle], .page-title .title-link').count()) === 0);
   await page.locator('.rcard').first().waitFor();
   check('a floating shuffle button is there', await page.getByTestId('shuffle').isVisible());
-  const mins = async () => (await page.locator('.rcard .src').allTextContents()).map((t) => Number((t.match(/(\d+) min/) || [])[1]));
-  const slide = async (i) => { await page.getByTestId('time-slider').evaluate((el, v) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); }, String(i)); await page.waitForTimeout(300); };
-  await slide(0);
-  let ms = await mins();
-  check('slide to 15 min: only dishes of 15 minutes or less', (await page.getByTestId('time-val').innerText()) === '15 min' && ms.length > 0 && ms.every((m) => m <= 15), ms.join(','));
-  await slide(3);
-  ms = await mins();
-  check('slide to 1 hr: nothing longer than an hour', (await page.getByTestId('time-val').innerText()) === '1 hr' && ms.length > 0 && ms.every((m) => m <= 60), ms.join(','));
-  await slide(5);
-  check('slide all the way: any time', (await page.getByTestId('time-val').innerText()) === 'Any' && (await page.locator('.df-time.on').count()) === 0);
   const hb = await page.locator('header .hud-in').boundingBox(), gb = await page.getByTestId('hud-settings').boundingBox();
   check('top bar: streak, coins and settings fit inside the bar', gb.x + gb.width <= hb.x + hb.width + 1);
   check('the app cannot be pinch-zoomed', /maximum-scale=1/.test(await page.locator('meta[name=viewport]').getAttribute('content')));
-  const sw = page.getByTestId('use-it-up-toggle');
-  await sw.click(); await page.waitForTimeout(300);
-  const soonOnly = (await page.locator('.rcard').count()) === 0 ? (await page.getByText('Nothing to use up').count()) === 1 : (await page.locator('.rcard').count()) === (await page.locator('.rcard .chip.soon').count());
-  check('Use it up switches on and shows only dishes that rescue expiring food', (await sw.getAttribute('aria-checked')) === 'true' && soonOnly);
-  await shot('01a-home-filters');
-  await sw.click(); await page.waitForTimeout(300);
-  check('…and off again', (await sw.getAttribute('aria-checked')) === 'false' && (await page.locator('.rcard').count()) > 0);
   check('home has no challenges or Fridge Raid', (await page.getByText('This week’s challenges').count()) === 0 && (await page.getByText('Fridge Raid').count()) === 0);
   await page.getByText('Ground beef is frozen').waitFor();
   check('home reminds you to defrost frozen ground beef', true);
@@ -429,6 +409,20 @@ await step('cook', async () => {
   check('Diet filter: Vegetarian keeps only vegetarian/vegan recipes', veg > 0 && vegTotal < total && veg === vegTagged, `${vegTotal} of ${total}`);
   await page.getByRole('radio', { name: 'Any' }).click(); await page.waitForTimeout(300);
   check('Diet filter: Any shows them all again', (await page.locator('main button.card:has(.chip.have)').count()) === n);
+  // time: hourglass slider moved here from Home
+  const slideC = async (i) => { await page.getByTestId('time-slider').evaluate((el, v) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); }, String(i)); await page.waitForTimeout(400); };
+  check('Cook has the time slider with the hourglass (Any by default)', (await page.getByTestId('time-slider').count()) === 1 && (await page.getByTestId('time-val').innerText()) === 'Any' && (await page.locator('.df-glass').count()) === 1);
+  await slideC(1);
+  const msC = (await page.locator('main button.card .chip').allTextContents()).filter((t) => /^\d+ min$/.test(t.trim())).map((t) => parseInt(t, 10));
+  check('slide to 30 min: only dishes of 30 minutes or less', (await page.getByTestId('time-val').innerText()) === '30 min' && msC.length > 0 && msC.every((m) => m <= 30), msC.join(','));
+  await slideC(5);
+  check('slide all the way: back to Any', (await page.getByTestId('time-val').innerText()) === 'Any');
+  check('Cuisine is a row of passport stamps (plus Any), with the Italian one among them', (await page.locator('.stamps .stamp').count()) > 5 && (await page.getByTestId('stamp-Italian').count()) === 1 && (await page.getByTestId('stamp-any').getAttribute('aria-checked')) === 'true');
+  await page.getByTestId('stamp-Italian').click(); await page.waitForTimeout(400);
+  const eb = (await page.locator('main button.card .eyebrow').allTextContents());
+  check('tapping the Italian stamp keeps only Italian dishes', (await page.getByTestId('stamp-Italian').getAttribute('aria-checked')) === 'true' && eb.every((t) => /^Italian/.test(t.trim())), eb.slice(0, 4).join('|'));
+  await page.getByTestId('stamp-any').click(); await page.waitForTimeout(300);
+  check('Learn is the apron card with patches', (await page.getByTestId('learn-btn').count()) === 1 && (await page.locator('.la-patch').count()) === 6);
   await page.getByRole('button', { name: 'Fridge Raid', exact: true }).click();
   await page.getByText('Ingredients', { exact: true }).waitFor();
   check('Fridge Raid says "Ingredients" and "recipes you can make right now"', (await page.getByText('your hand').count()) === 0 && (await page.getByText(/you can make right now/).count()) >= 1);
@@ -529,7 +523,7 @@ await step('cook', async () => {
   await page.click('[role=dialog] >> text=Leave');
   await page.waitForTimeout(600); await closePopups();
   await nav('Cook');
-  check('Cook: Saved recipes has its own box under search', (await page.locator('main .saved-box h2', { hasText: 'Saved recipes' }).count()) === 1 && (await page.locator('main .card', { has: page.locator('#o-dish') }).count()) === 1);
+  check('Cook: Saved recipes has its own box; search is one coloured box with What can I make? and Fridge Raid inside', (await page.locator('main .saved-box h2', { hasText: 'Saved recipes' }).count()) === 1 && (await page.locator('main .cook-search', { has: page.locator('#o-dish') }).count()) === 1);
   await page.locator('.saved-box .saved-open').first().waitFor();
   check('Saved recipes: just the recipes (no All / Liked / Disliked buttons), each with an unsave button', (await page.locator('.saved-box button.chip').count()) === 0 && (await page.locator('.saved-box .saved-open', { hasText: /Burrito Bowls/ }).count()) >= 1 && (await page.locator('.saved-box .saved-x').count()) >= 1);
   await nav('Pantry'); await page.getByTestId('kitchen-btn').waitFor();
@@ -1245,22 +1239,12 @@ await step('friends and group chat', async () => {
   check('Share to group chat puts the list on the group’s list and closes the sheet', (await page.getByRole('dialog', { name: 'Share your list' }).count()) === 0);
   await ctx6.close();
 });
-await step('settings gear, backup file and guess the cook', async () => {
+await step('settings gear and guess the cook', async () => {
   const E = (p) => fetch(`http://localhost:54321/__e2e/${p}`).then((r) => r.json());
   await nav('Home');
   check('the logo beside "yoke" is just the chick: no circle, border or background', await page.locator('.brand img').evaluate((el) => { const c = getComputedStyle(el); return c.borderTopWidth === '0px' && c.backgroundColor === 'rgba(0, 0, 0, 0)' && /chick\.svg/.test(el.getAttribute('src')); }));
   await page.getByTestId('hud-settings').click(); await page.getByTestId('settings-page').waitFor();
   check('the gear in the banner opens Settings', (await page.getByTestId('settings-page').count()) === 1);
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('backup-file').click()]);
-  const fs2 = await import('node:fs'); const dp = await dl.path(); const bj = JSON.parse(fs2.readFileSync(dp, 'utf8'));
-  check('Save backup file downloads a Yoke backup with pantry and list', bj.kind === 'yoke-backup' && Array.isArray(bj.pantry) && bj.pantry.length > 0 && Array.isArray(bj.list) && !('coins' in bj));
-  const tmp = path.join((await import('node:os')).tmpdir(), 'yoke-restore.json'); fs2.writeFileSync(tmp, JSON.stringify({ kind: 'yoke-backup', version: 1, pantry: [{ name: 'Backup test saffron', category: 'Spices & Seasonings', status: 'good' }], list: [], saved: [], mine: [] }));
-  await page.getByTestId('restore-file').setInputFiles(tmp);
-  await page.getByText(/Restored 1 pantry/).waitFor({ timeout: 6000 });
-  check('Restore from file adds what is missing and says how many', true);
-  await page.getByTestId('restore-file').setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"nope":1}') });
-  await page.getByText('That isn’t a Yoke backup file').waitFor({ timeout: 6000 });
-  check('a file that is not a Yoke backup is refused', true);
   await page.getByTestId('settings-back').click();
   // Guess the Cook
   await E('gtc-setup');
@@ -1291,24 +1275,25 @@ await step('settings gear, backup file and guess the cook', async () => {
   await nav('Home');
 });
 await step('back up your game', async () => {
+  await fetch('http://localhost:54321/__e2e/backed-up?on=0');
+  await fetch('http://localhost:54321/__e2e/play-days?n=3');
   await nav('Me'); await page.waitForURL('**/me');
+  await page.reload(); await page.waitForTimeout(1000); await closePopups();
   await openSettings();
-  check('an unsaved game says so and offers a backup', (await page.getByText('Your game is saved on this phone').count()) === 1);
-  await page.getByRole('button', { name: 'Back up your game' }).click();
+  check('Me no longer has Back up your game or backup files', (await page.getByRole('button', { name: 'Back up your game' }).count()) === 0 && (await page.getByTestId('backup-file').count()) === 0 && (await page.getByTestId('restore-file').count()) === 0);
+  await nav('Cook'); await page.waitForURL('**/cook'); await page.waitForTimeout(800); await closePopups();
+  check('Cook shows no Back up card, even from day 3', (await page.locator('.backup-nudge').count()) === 0);
+  await openKitchen('shop');
+  await page.getByRole('button', { name: 'Get coins' }).first().click();
+  await page.getByText('$2.00', { exact: true }).waitFor(); await page.getByText('$2.00', { exact: true }).click();
   const bk = page.getByRole('dialog', { name: 'Back up your game' });
   await bk.getByRole('button', { name: 'Continue with Google' }).waitFor();
-  check('only the switched-on ways show (Google + email here, no Apple)', (await bk.getByRole('button', { name: 'Continue with Apple' }).count()) === 0 && (await bk.locator('#bk-email').count()) === 1);
+  check('before paying: only the switched-on ways show (Google + email here, no Apple)', (await bk.getByRole('button', { name: 'Continue with Apple' }).count()) === 0 && (await bk.locator('#bk-email').count()) === 1);
   await bk.locator('#bk-email').fill('chef@example.com'); await bk.getByRole('button', { name: 'Email me a link' }).click();
   await bk.getByText('Check your email').waitFor();
   const bks = await (await fetch('http://localhost:54321/__e2e/backups')).json();
   check('back up by email: the game gets that email (a confirm link is sent)', bks.backups.some((b) => b.email === 'chef@example.com'));
-  await bk.getByRole('button', { name: 'OK' }).click();
-  await fetch('http://localhost:54321/__e2e/play-days?n=3');
-  await page.reload(); await page.waitForURL('**/cook'); await page.waitForTimeout(1000); await closePopups();
-  await page.locator('.backup-nudge').waitFor({ timeout: 6000 });
-  check('from day 3, Cook shows a small Back up card', true);
-  await page.locator('.backup-nudge').getByRole('button', { name: 'Later' }).click(); await page.waitForTimeout(300);
-  check('Later hides it', (await page.locator('.backup-nudge').count()) === 0);
+  await bk.getByRole('button', { name: 'OK' }).click(); await page.keyboard.press('Escape').catch(() => {}); await page.reload(); await page.waitForTimeout(1000); await closePopups();
 });
 await step('get my game back', async () => {
   const ctx7 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const rp = await ctx7.newPage(); await rp.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });

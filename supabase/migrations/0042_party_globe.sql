@@ -84,3 +84,6 @@ grant execute on function public.ping() to authenticated;
 grant execute on function public.start_party(text, text[]) to authenticated;
 grant execute on function public.get_parties() to authenticated;
 grant execute on function public.get_party_globe(uuid) to authenticated;
+
+-- tell the API about the new functions right away
+notify pgrst, 'reload schema';

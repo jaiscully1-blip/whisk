@@ -24,11 +24,9 @@ export default function LearnEntry() {
   if (!learns(profile?.skill_level)) return null;
   const st = learnState(profile);
   const ready = !(left > 0) && !st.doneToday;
-  const best = Math.max(st.best || 0, st.streak || 0);
-  const got = PATCHES.filter((p) => best >= p.at).length;
   return (
     <>
-      <button type="button" className="card learn-card" onClick={() => setOpen(true)} data-testid="learn-btn" data-tip="learn" aria-label={`Learn. ${got} of ${PATCHES.length} patches`}>
+      <button type="button" className="card learn-card" onClick={() => setOpen(true)} data-testid="learn-btn" data-tip="learn">
         <span className="lc-top">
           <span className={`lc-ico ${ready ? '' : 'done'}`} aria-hidden="true"><Icon name={ready ? 'learn' : 'check'} size={24} />{ready && <i className="lc-new" data-testid="learn-new">NEW</i>}</span>
           <span className="lc-txt">
@@ -36,13 +34,6 @@ export default function LearnEntry() {
             <span className="lc-sub">{ready ? '3 questions · about 1 minute · win 100 coins' : 'Done today · back tomorrow'}</span>
           </span>
           <Icon name="chevron" />
-        </span>
-        <span className="la-patches" aria-hidden="true">
-          {PATCHES.map((p) => (
-            <span key={p.at} className={`la-patch ${p.shape} ${best >= p.at ? 'on' : ''}`} style={best >= p.at ? { background: p.bg } : undefined}>
-              {best >= p.at ? <svg viewBox="0 0 28 28" width="24" height="24">{p.art}</svg> : <i>{p.at}d</i>}
-            </span>
-          ))}
         </span>
       </button>
       {open && <LearnSheet onClose={() => setOpen(false)} />}

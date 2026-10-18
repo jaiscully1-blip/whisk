@@ -1052,7 +1052,7 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .nav { transform: translateZ(0); will-change: transform; }
 html.kb-open .nav { display: none; }
 /* iPhone date fields: fill the column instead of spilling out of the card, and show a hint while empty */
-input[type="date"].input { -webkit-appearance: none; appearance: none; min-width: 0; width: 100%; display: block; box-sizing: border-box; text-align: left; }
+input[type="date"].input { -webkit-appearance: none; appearance: none; min-width: 0; width: 100%; display: block; box-sizing: border-box; text-align: left; height: 46px; min-height: 46px; line-height: 1.2; padding-top: 0; padding-bottom: 0; }
 input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .date-wrap { position: relative; min-width: 0; }
 .date-wrap input.empty::-webkit-datetime-edit { color: transparent; }   /* our hint replaces the browser's mm/dd/yyyy */
@@ -1481,3 +1481,5 @@ body { -webkit-tap-highlight-color: transparent; overscroll-behavior-x: none; }
 .scan-tile.receipt { border-left-color: #FF9F43; } .scan-tile.barcode { border-left-color: #4FC3F7; }
 .scan-tile:active { transform: scale(.97); }
 .date-wrap .date-hint { left: auto; right: 14px; display: grid; place-items: center; }
+.date-wrap, .date-wrap input.input { height: 46px; }
+.date-wrap input[type="date"]::-webkit-date-and-time-value { min-height: 0; margin: 0; }

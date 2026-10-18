@@ -1,8 +1,9 @@
 'use client';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import * as K from '@/lib/kitchen/models';
-import { stickerUrl } from '@/lib/art/food';
-import { itemUrl } from '@/lib/art/items';
+import { foodSolid } from '@/lib/art/food';
+import Solid from './Solid';
+import { itemSolid } from '@/lib/art/items';
 import { roomFor } from '@/lib/art/tampa';
 import Room from './Room';
 import { MAGNETS, magnetUrl } from '@/lib/art/magnets';
@@ -333,8 +334,8 @@ function Thing({ b, selected, onDown }) {
   return (
     <div className={`kthing ${selected ? 'sel' : ''}`} style={{ left: b.x * C, top: b.y * C, width: W, height: b.d * C, transform: `translateZ(${Z + 0.5}px)` }} onPointerDown={onDown} data-piece={b.id}>
       <div className="kthing-shadow" />
-      <div className="kthing-up" style={{ left: (W - VW) / 2, top: b.d * C / 2 - H, width: VW, height: H, transform: 'rotateZ(calc(var(--rz) * -1deg)) rotateX(-90deg)' }}>
-        <img src={itemUrl(m.item)} alt={m.nick} title={m.nick} draggable={false} />
+      <div className="kthing-up" style={{ left: (W - VW) / 2, top: b.d * C / 2 - H, width: VW, height: H, transform: 'rotateX(-90deg)' }}>
+        <Solid art={itemSolid(m.item)} size={VW} depth={0.5} title={m.nick} />
       </div>
     </div>
   );
@@ -380,7 +381,7 @@ function SpotBtn({ k, st, extra = '', spot, idx, onSpot, guard, room }) {
   return (
     <button type="button" data-spot={k} className={`ks ${extra} ${room ? 'deep' : ''} ${s.lit ? 'lit' : ''} ${s.on ? 'on' : ''} ${s.hov ? 'hov' : ''}`} style={st}
       aria-label={(idx.map[k] || {}).label || 'spot'} onClick={onSpot ? guard(() => onSpot(k)) : undefined}>
-      {items.length > 0 && <span className="kstks">{shown.map((it, i) => <img key={i} src={stickerUrl(it.name, it.category)} alt="" title={it.name} draggable={false} style={sizes ? { width: sizes[i], height: sizes[i] } : undefined} />)}{items.length > shown.length && <i>+{items.length - shown.length}</i>}</span>}
+      {items.length > 0 && <span className="kstks">{shown.map((it, i) => <Solid key={i} art={foodSolid(it.name, it.category)} size={sizes ? sizes[i] : 18} title={it.name} />)}{items.length > shown.length && <i>+{items.length - shown.length}</i>}</span>}
     </button>
   );
 }

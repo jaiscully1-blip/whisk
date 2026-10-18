@@ -13,7 +13,7 @@ export default function StaplesCheck({ quick, items, list, onAdd }) {
     const ex = items.find((i) => i.name.toLowerCase() === q.name.toLowerCase());
     return { ...q, level: ex ? ex.status : 'out' };
   }).filter((q) => (q.level === 'low' || q.level === 'out') && !onList.has(q.name.toLowerCase()));
-  if (!rows.length) return <p className="desc staples-ok" style={{ margin: 0 }}><Icon name="check" size={14} /> Staples check: everything you star is stocked or on your list.</p>;
+  if (!rows.length) return null;
   const add = async (r) => { setBusy(true); await onAdd(r); setBusy(false); };
   return (
     <section className="card staples" aria-label="Staples check before you shop">

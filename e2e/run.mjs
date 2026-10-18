@@ -559,7 +559,7 @@ await step('cook', async () => {
   // staples check before you shop
   const eggs = page.locator('main .card', { hasText: /^Eggs/ }).first(), eggMeter = eggs.locator('.stock');
   await page.getByRole('tab', { name: /Shopping list/ }).click();
-  check('Staples check: all starred staples stocked → one calm line, no card', (await page.locator('.staples').count()) === 0 && (await page.locator('.staples-ok').count()) === 1);
+  check('Staples check: all starred staples stocked → nothing shown', (await page.locator('.staples').count()) === 0 && (await page.locator('.staples-ok').count()) === 0);
   await page.getByRole('tab', { name: /^Pantry \(/ }).click();
   await eggMeter.click(); await eggMeter.click();
   check('Eggs (a starred staple) is Low', (await eggMeter.innerText()).trim() === 'Low');
@@ -1046,8 +1046,12 @@ await step('share the shopping list', async () => {
   await nav('Pantry'); await page.getByRole('tab', { name: /Shopping list/ }).click();
   await page.locator('#s-new').fill('Basil'); await page.locator('#s-new').press('Enter'); await page.waitForTimeout(500);
   await page.getByRole('button', { name: /Share list/ }).click();
-  const link = page.getByLabel('Share link'); await page.waitForFunction(() => /\/list\/[a-f0-9]{32}$/.test(document.querySelector('[aria-label="Share link"]')?.value || ''));
-  const url = await link.inputValue();
+  const dlg = page.getByRole('dialog', { name: 'Share your list' });
+  check('the share sheet is just the send button (no wordy text, no new-link/turn-off)', (await dlg.getByRole('button', { name: 'Send the link' }).count()) === 1 && !/Anyone with|Make a new link|Turn the link off/.test(await dlg.innerText()));
+  await page.evaluate(() => { window.__shared = null; navigator.share = async (d) => { window.__shared = d.url; }; });
+  await page.waitForTimeout(800); await dlg.getByRole('button', { name: 'Send the link' }).click();
+  await page.waitForFunction(() => /\/list\/[a-f0-9]{32}$/.test(window.__shared || ''));
+  const url = await page.evaluate(() => window.__shared);
   check('Share list makes a secret link', /\/list\/[a-f0-9]{32}$/.test(url));
   await page.getByRole('dialog', { name: 'Share your list' }).getByRole('button', { name: 'Close' }).click();
   const ctx4 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const sh = await ctx4.newPage(); await sh.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
@@ -1061,9 +1065,6 @@ await step('share the shopping list', async () => {
   await page.reload(); await page.waitForTimeout(1200); await closePopups(); await nav('Pantry'); await page.getByRole('tab', { name: /Shopping list/ }).click();
   await page.locator('.card.ticked', { hasText: 'Basil' }).waitFor({ timeout: 6000 });
   check('…and the tick shows on the owner’s list', true);
-  await page.getByRole('button', { name: /Share list/ }).click(); await page.getByRole('button', { name: 'Turn the link off' }).click(); await page.waitForTimeout(500);
-  await sh.reload(); await sh.getByText('This link is off').waitFor({ timeout: 6000 });
-  check('turning the link off stops it working', true);
   await ctx4.close();
 });
 await step('friends and group chat', async () => {
@@ -1234,6 +1235,14 @@ await step('friends and group chat', async () => {
   await page.getByTestId('chat-shoplist').getByRole('button', { name: 'Done' }).click();
   await page.getByRole('button', { name: 'Back to chats' }).click();
   check('the shared list sits in the chat list as its own two-person chat', (await page.locator('.chat-item', { hasText: '&' }).count()) >= 1);
+  // share my shopping list to a group chat, with a default chat
+  await nav('Pantry'); await page.getByRole('tab', { name: /Shopping list/ }).click();
+  if (!(await page.locator('main .card button[aria-label^="Bought "]').count())) { await page.locator('#s-new').fill('Lemons'); await page.locator('#s-new').press('Enter'); await page.waitForTimeout(500); }
+  await page.getByRole('button', { name: /Share list/ }).click(); await page.getByTestId('share-chat').waitFor({ timeout: 6000 });
+  await page.getByTestId('share-chat-default').click(); await page.waitForTimeout(300);
+  check('pick a default group chat (★ Default)', /Default/.test(await page.getByTestId('share-chat-default').innerText()) && !/Make default/.test(await page.getByTestId('share-chat-default').innerText()));
+  await page.getByTestId('share-to-chat').click(); await page.waitForTimeout(1200);
+  check('Share to group chat puts the list on the group’s list and closes the sheet', (await page.getByRole('dialog', { name: 'Share your list' }).count()) === 0);
   await ctx6.close();
 });
 await step('settings gear, backup file and guess the cook', async () => {

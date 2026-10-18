@@ -264,7 +264,6 @@ export default function Pantry() {
               ))}
             </section>
           ))}
-          {list?.length > 0 && <p className="desc" style={{ margin: 0 }}>Tap ✓ when you buy something. It goes back into your pantry as stocked.</p>}
         </>
       )}
       {sharing && <ShareListSheet onClose={() => setSharing(false)} />}

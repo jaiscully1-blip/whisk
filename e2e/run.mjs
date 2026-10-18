@@ -622,7 +622,7 @@ await step('me', async () => {
   check('profile: Level, Recipes, Ingredients, Countries, Streak (no Restaurant)', ['Level', 'Recipes', 'Ingredients', 'Countries', 'Streak'].every((k) => new RegExp(k, 'i').test(pc)) && !/Restaurant|Riverwalk Apartment/i.test(pc), pc);
   check('a progress bar to the next home, named only', /Ybor City Loft|Hyde Park Bungalow|Bayshore Condo/.test(pc) && !/Level \d+: move/.test(pc) && (await page.locator('.pcard-next .bar').count()) === 1);
   check('no pencil next to your name, no "Lv" text', (await page.locator('.namebtn svg').count()) === 0 && (await page.locator('.page-title').first().getByText(/^Lv /).count()) === 0);
-  check('Me no longer has My Kitchen or the Kitchen shop', (await page.locator('#my-kitchen, .shop-grid').count()) === 0);
+  check('Me shows the kitchen with a Shop button, but not the shop itself', (await page.locator('#my-kitchen').count()) === 1 && (await page.getByTestId('mk-shop').count()) === 1 && (await page.locator('.shop-grid').count()) === 0);
   await openKitchen('design');
   check('the kitchen stands in a cut-away room (floor slab + walls that hide on the near side), no box or wallpaper', (await page.locator('#my-kitchen .kw').count()) === 3 && (await page.locator('#my-kitchen .kwin').count()) === 1 && (await page.locator('#my-kitchen .k3-bg').count()) === 0 && (await page.locator('#my-kitchen .k3.placed').count()) === 1);
   check('the kitchen’s heading is where it is (or its name), with Edit on the same line', /Riverwalk Apartment|Ybor City Loft/.test(await page.locator('#my-kitchen .mk-title').innerText()) && Math.abs((await page.locator('#my-kitchen .mk-title').boundingBox()).y - (await page.locator('#my-kitchen .mk-bar a').boundingBox()).y) < 30);

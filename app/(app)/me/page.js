@@ -9,7 +9,7 @@ import LevelPicker from '@/components/LevelPicker';
 import { levelLabel, learns } from '@/lib/learn/levels';
 import DailyQuest from '@/components/DailyQuest';
 import { TIPS } from '@/lib/tips';
-import { ProfileCard, CountryChallenges } from '@/components/MeWorld';
+import { ProfileCard, CountryChallenges, MyKitchen } from '@/components/MeWorld';
 import ResetSheet from '@/components/ResetSheet';
 import NeverShowSheet from '@/components/NeverShowSheet';
 import { makeBackup, parseBackup, restoreBackup } from '@/lib/backupFile';
@@ -129,6 +129,7 @@ export default function Me() {
       </div>
 
       <ProfileCard level={lvl} xp={profile?.xp || 0} recipes={recipesCooked} ingredients={ingredients} countries={countries.length} streak={profile?.streak_days || 0} />
+      <MyKitchen shop />
       <LearnEntry />
 
       <DailyQuest />

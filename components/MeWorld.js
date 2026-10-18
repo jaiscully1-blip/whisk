@@ -45,7 +45,7 @@ export function ProfileCard({ level, xp, recipes, ingredients, countries, streak
 }
 
 // The kitchen on display, where you live (by level). Things you buy show up in it.
-export function MyKitchen() {
+export function MyKitchen({ shop = false }) {
   const { supabase, say } = useWhisk();
   const [kitchens, , setKitchens] = useKitchens();
   const [naming, setNaming] = useState(null);
@@ -75,7 +75,10 @@ export function MyKitchen() {
       ) : (
         <div className="mk-bar">
           <button type="button" className="mk-title" onClick={() => (shown ? setNaming(title) : say('Build your kitchen first'))} aria-label={`${title}. Tap to rename`}><h2>{title}</h2></button>
-          <Link href="/pantry/kitchen/design" className="btn ghost sm"><Icon name="pencil" size={16} />{shown ? 'Edit' : 'Build it'}</Link>
+          <span className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+            {shop && <Link href="/pantry/kitchen?tab=shop" className="btn sm" data-testid="mk-shop"><Icon name="bag" size={16} />Shop</Link>}
+            <Link href="/pantry/kitchen/design" className="btn ghost sm"><Icon name="pencil" size={16} />{shown ? 'Edit' : 'Build it'}</Link>
+          </span>
         </div>
       )}
       <KitchenStage mode="view" place={place.key} pieces={pieces} title={title} height={420} scale={0.9} />

@@ -1536,3 +1536,5 @@ body { -webkit-tap-highlight-color: transparent; overscroll-behavior-x: none; }
 .cook-filters { grid-template-columns: minmax(0, 1fr); } .cook-filters > * { min-width: 0; }
 .stamp { margin-right: -2px; opacity: .6; }
 .stamp.on { opacity: 1; }
+.card.cook-filters { gap: 12px; padding: 14px; }
+.card.cook-filters .df-time { background: var(--field, var(--track)); }

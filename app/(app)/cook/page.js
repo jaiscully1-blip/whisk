@@ -86,7 +86,7 @@ export default function Cook() {
         </div>
       </section>
 
-      <div className="cook-filters">
+      <div className="card cook-filters">
         <TimeSlider time={time || 'any'} onTime={(v) => setUi({ cookTime: v === 'any' ? '' : v })} />
         <div className="diet-pick" role="radiogroup" aria-label={t('Diet')}>
           {['', ...DIET_ORDER].map((d) => (

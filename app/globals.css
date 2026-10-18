@@ -964,7 +964,7 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .globe-svg:active { cursor: grabbing; }
 .globe-svg:focus-visible { box-shadow: inset 0 0 0 3px var(--accent); border-radius: 26px; }
 .globe-zoom { position: absolute; right: 10px; top: 10px; display: grid; gap: 6px; }
-.globe-hint { position: absolute; left: 12px; top: 12px; font-size: 12px; font-weight: 800; color: var(--muted); }
+.globe-hint { display: block; text-align: center; padding: 0 12px 12px; font-size: 13px; font-weight: 800; color: var(--muted); }
 .globe-throw { gap: 8px; }
 .globe-throw:not(.ready) { background: var(--track); color: var(--muted); box-shadow: none; }
 .globe-throw.ready { animation: gl-pulse 1.1s ease-in-out infinite; }

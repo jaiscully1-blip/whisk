@@ -14,7 +14,6 @@ import { ServingsX, IngredientList, StepList } from '@/components/RecipeSteps';
 import { cultureStyle } from '@/lib/culture';
 import Scene from '@/components/Scene';
 import { PartyCard, ChatsPeek } from '@/components/PartyHub';
-import WorldGlobe from '@/components/WorldGlobe';
 
 const TIER = { 1: ['Small', 'var(--fresh-soft)', 'var(--fresh)'], 2: ['Medium', 'var(--warn-soft)', 'var(--warn)'], 3: ['Big', 'var(--pop-soft)', 'var(--bad)'] };
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
@@ -103,7 +102,6 @@ export default function Compete() {
 
       <PartyCard />
       <ChatsPeek />
-      <WorldGlobe />
 
       {cookMode && <CookMode r={cookMode.r} factor={factors[cookMode.c.id] || 1} canFinish onFinish={() => { const f = cookMode.complete; setCookMode(null); f(); }} onClose={() => setCookMode(null)} />}
       {logging && <LogMealSheet recipe={logging.r} challenge={logging.c} onClose={() => setLogging(null)} onDone={() => { setUi({ flipped: { ...flipped, [logging.c.id]: false } }); load(); }} />}

@@ -117,25 +117,6 @@ await step('log in', async () => {
   await ktab('design');
   check('what you buy goes straight into your kitchen (a starter one if you had none)', await page.locator('#my-kitchen .kthing img[alt="Knife block"]').waitFor({ timeout: 8000 }).then(() => true, () => false));
   await page.locator('.tip-ok').click().catch(() => {});
-  // the globe (on Compete, at the bottom): swipe to spin; tap the globe to throw the dart
-  await page.locator('.nav a[href="/compete"]').click(); await page.waitForURL('**/compete');
-  await page.locator('.globe-svg path.gl-c').nth(150).waitFor({ state: 'attached', timeout: 10000 });
-  check('globe shows every country, unnamed and grey', (await page.locator('.globe-svg path.gl-c').count()) >= 190 && (await page.locator('.globe-svg text').count()) === 0);
-  await page.locator('.globe-svg').scrollIntoViewIfNeeded(); await page.waitForTimeout(2600);
-  check('no Throw button and no "it’s spinning" text: you tap the globe', (await page.locator('.globe-throw').count()) === 0 && !/spinning/i.test(await page.locator('.globe').innerText()));
-  const gb = await page.locator('.globe-svg').boundingBox();
-  await page.mouse.move(gb.x + 60, gb.y + gb.height * 0.42); await page.mouse.down();
-  await page.mouse.move(gb.x + gb.width - 40, gb.y + gb.height * 0.42, { steps: 6 }); await page.mouse.up();
-  await page.waitForTimeout(300);
-  check('a swipe spins it and no dart flies yet', (await page.locator('.globe-hit').count()) === 0);
-  await page.mouse.click(gb.x + 30, gb.y + gb.height * 0.92);
-  await page.waitForTimeout(400);
-  check('tapping the background beside the globe does not throw', (await page.locator('.globe-hit').count()) === 0 && !/Here it comes/.test(await page.locator('.globe-hint').innerText()));
-  await page.mouse.click(gb.x + gb.width / 2, gb.y + gb.height * 0.42);
-  await page.locator('.globe-hit').waitFor({ timeout: 6000 });
-  check('tapping the globe throws the dart', true);
-  check('the dart lands on a country and names it (no exclamation mark)', !/!/.test(await page.locator('.globe-hit b').first().innerText()) && (await page.locator('.globe-hit b').first().innerText()).length > 2 && (await page.locator('.globe-hit').getByRole('button', { name: 'Cook it' }).count()) === 1);
-  await shot('00c-me-globe');
   await nav('Home');
 });
 await step('learn quiz', async () => {
@@ -587,7 +568,7 @@ await step('cook', async () => {
 });
 await step('compete', async () => {
   await nav('Compete');
-  await page.locator('.globe').waitFor();
+  await page.getByTestId('party-card').waitFor();
   await page.locator('.flip .face').first().waitFor({ timeout: 15000 });
   const cards = await page.locator('.flip').count();
   check('3 challenges picked from your pantry', cards === 3, `${cards}`);
@@ -619,7 +600,7 @@ await step('me', async () => {
   await nav('Me');
   await page.locator('.pcard').waitFor();
   check('no pose buttons, no tier list, no "Your world" heading on Me', (await page.getByRole('button', { name: 'We’re so back!' }).count()) === 0 && (await page.locator('.tier-row').count()) === 0 && (await page.getByRole('heading', { name: 'Your world' }).count()) === 0);
-  check('the daily quest moved to Me (the globe is on Compete now)', (await page.locator('[data-tip="quest"]').count()) === 1 && (await page.locator('.globe').count()) === 0);
+  check('the daily quest moved to Me (the globe is in parties now)', (await page.locator('[data-tip="quest"]').count()) === 1 && (await page.locator('.globe').count()) === 0);
   check('your level title shows under your name', (await page.locator('.me-tag').innerText()).length > 3);
   const pc = await page.locator('.pcard').innerText();
   check('profile: Level, Recipes, Ingredients, Countries, Streak (no Restaurant)', ['Level', 'Recipes', 'Ingredients', 'Countries', 'Streak'].every((k) => new RegExp(k, 'i').test(pc)) && !/Restaurant|Riverwalk Apartment/i.test(pc), pc);
@@ -723,10 +704,9 @@ await step('languages', async () => {
   await page.getByTestId('settings-back').click();
 });
 await step('compete layout', async () => {
-  await nav('Compete'); await page.locator('.globe').waitFor();
-  check('Compete order: challenges, then Start a party, then chats, then the globe at the bottom', await page.evaluate(() => { const y = (q) => document.querySelector(q)?.getBoundingClientRect().top ?? -1; const a = y('main [data-tour=challenges]'), b = y('main [data-testid=party-card]'), c = y('main [data-testid=see-all-chats]'), d = y('main .globe'); return a >= 0 && a < b && b < c && c < d; }));
+  await nav('Compete'); await page.getByTestId('party-card').waitFor();
+  check('Compete order: challenges, then Start a party, then chats; no globe on the page (it lives in parties)', await page.evaluate(() => { const y = (q) => document.querySelector(q)?.getBoundingClientRect().top ?? -1; const a = y('main [data-tour=challenges]'), b = y('main [data-testid=party-card]'), c = y('main [data-testid=see-all-chats]'); return a >= 0 && a < b && b < c && !document.querySelector('main .globe'); }));
   check('Cuisine bingo is gone from Compete', (await page.getByText('Cuisine bingo').count()) === 0 && (await page.locator('main .bingo').count()) === 0);
-  check('cooking Mexican shows on the globe (Bronze)', await page.locator('.globe-svg path.gl-c.bronze').first().waitFor({ state: 'attached', timeout: 8000 }).then(() => true, () => false));
   const wantD = (() => { const n = new Date(); const d = (8 - n.getDay()) % 7 || 7; const mon = new Date(n.getFullYear(), n.getMonth(), n.getDate() + d); return Math.max(1, Math.ceil((mon - n) / 864e5)); })();
   check('one reset timer at the top, counting to Monday like the challenges', (await page.getByText(/^Resets in \d+d$/).count()) === 1 && (await page.getByText(`Resets in ${wantD}d`).count()) === 1);
   await nav('Me'); await page.locator('.pcard').waitFor();
@@ -860,10 +840,6 @@ await step('free dish search', async () => {
   if (await page.getByText('Level up!', { exact: false }).count()) { await page.locator('[aria-label=Close]').first().click(); await page.waitForTimeout(400); }
   // finished countries: Gold on the tier list, painted on the globe, their kitchen things in the shop
   await fetch('http://localhost:54321/__e2e/seed-meals?country=MX&n=5');
-  await nav('Compete'); await page.locator('.globe').waitFor();
-  await page.locator('.globe-svg .gl-gold').nth(1).waitFor({ state: 'attached', timeout: 8000 }).catch(() => {});
-  check('a Gold country is painted on the globe (its colours and food, clipped to its shape)', (await page.locator('.globe-svg .gl-gold').count()) >= 2 && (await page.locator('.globe-svg .gl-gold clipPath').count()) >= 2);
-  await page.locator('.globe').scrollIntoViewIfNeeded(); await shot('07e-globe-gold');
   await nav('Me'); await page.locator('.pcard').waitFor();
   check('country challenges show up for started countries', await page.locator('.cchal').first().waitFor({ timeout: 8000 }).then(() => true, () => false));
   await openKitchen('shop');
@@ -1286,6 +1262,24 @@ await step('friends and group chat', async () => {
   check('cooking from Peru colours Peru yours on the party globe', /Yours/.test(await peru.innerText()) && (await page.locator('.globe-svg path.gl-c.party[data-iso=PE]').count()) === 1);
   check('the standings count your countries', /You[\s\S]*\d+ countr/.test(await page.getByTestId('party-standings').innerText()) && Number((await page.locator('.pb-row', { hasText: 'You' }).locator('.pb-n').innerText()).match(/\d+/)[0]) === (await page.locator('[data-testid=party-country]').count()));
   await shot('12-party-globe');
+  await page.locator('.globe-svg path.gl-c').nth(150).waitFor({ state: 'attached', timeout: 10000 });
+  check('the party globe shows every country, unnamed', (await page.locator('.globe-svg path.gl-c').count()) >= 190 && (await page.locator('.globe-svg text').count()) === 0);
+  await page.locator('.globe-svg').scrollIntoViewIfNeeded(); await page.waitForTimeout(2600);
+  check('no Throw button and no "it’s spinning" text: you tap the globe', (await page.locator('.globe-throw').count()) === 0 && !/spinning/i.test(await page.locator('.globe').innerText()));
+  const gb = await page.locator('.globe-svg').boundingBox();
+  await page.mouse.move(gb.x + 60, gb.y + gb.height * 0.42); await page.mouse.down();
+  await page.mouse.move(gb.x + gb.width - 40, gb.y + gb.height * 0.42, { steps: 6 }); await page.mouse.up();
+  await page.waitForTimeout(300);
+  check('a swipe spins it and no dart flies yet', (await page.locator('.globe-hit').count()) === 0);
+  await page.mouse.click(gb.x + 30, gb.y + gb.height * 0.92);
+  await page.waitForTimeout(400);
+  check('tapping the background beside the globe does not throw', (await page.locator('.globe-hit').count()) === 0 && !/Here it comes/.test(await page.locator('.globe-hint').innerText()));
+  await page.mouse.click(gb.x + gb.width / 2, gb.y + gb.height * 0.42);
+  await page.locator('.globe-hit').waitFor({ timeout: 6000 });
+  check('tapping the globe throws the dart', true);
+  check('the dart lands on a country and names it (no exclamation mark)', !/!/.test(await page.locator('.globe-hit b').first().innerText()) && (await page.locator('.globe-hit b').first().innerText()).length > 2 && (await page.locator('.globe-hit').getByRole('button', { name: 'Cook it' }).count()) === 1);
+  await shot('00c-me-globe');
+  await page.reload(); await page.getByTestId('party-standings').waitFor();
   await page.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await page.waitForURL('**/compete');
   await page.getByTestId('party-link').first().waitFor({ timeout: 8000 });
   check('your party is listed on the party card', /Globe crew/.test(await page.getByTestId('party-card').innerText()));
@@ -1546,7 +1540,7 @@ await step('tabs open instantly from memory', async () => {
   await ctx.setOffline(true);
   const t0 = Date.now(); await nav('Pantry'); await page.locator('main [aria-label^="Remove "]').first().waitFor({ timeout: 3000 });
   const tp = Date.now() - t0;
-  await nav('Compete'); await page.locator('main .globe').waitFor({ timeout: 3000 });
+  await nav('Compete'); await page.getByTestId('party-card').waitFor({ timeout: 3000 });
   check('with the network off, Pantry and Compete still open with everything on them', tp < 1500, `${tp} ms`);
   await ctx.setOffline(false);
 });

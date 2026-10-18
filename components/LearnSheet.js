@@ -3,10 +3,10 @@ import { useState } from 'react';
 import { useWhisk } from './AppShell';
 import Icon, { Coin } from './Icon';
 import { learnState } from '@/lib/learn/levels';
-import useCountdown, { mmss } from './useCountdown';
+import useCountdown from './useCountdown';
 
 // Learn: a 3-question quiz. Answers stay on the server until you submit, so there is nothing to peek at.
-// 3 out of 3 pays 100 coins (up to 5 paying quizzes a day); any finished quiz keeps your learning streak going.
+// 3 out of 3 pays 100 coins (once a day); any finished quiz keeps your learning streak going.
 export default function LearnSheet({ onClose }) {
   const { supabase, profile, refreshProfile, bump } = useWhisk();
   const [quiz, setQuiz] = useState(null);       // { attempt, paid_left, questions }
@@ -61,9 +61,9 @@ export default function LearnSheet({ onClose }) {
               <span className="muted" style={{ fontSize: 14 }}>3 quick questions about cooking and kitchen safety. Get all 3 right for <b>100 coins</b>.</span>
             </div>
             {left > 0
-              ? <button type="button" className="btn wide" disabled data-testid="quiz-wait">Next quiz in {mmss(left)}</button>
+              ? <button type="button" className="btn wide" disabled data-testid="quiz-wait">Back tomorrow</button>
               : <button type="button" className="btn wide" onClick={start} disabled={busy} data-testid="quiz-start">{busy ? 'Loading…' : 'Start quiz'}</button>}
-            <span className="muted" style={{ fontSize: 13, textAlign: 'center' }}>One quiz every hour.</span>
+            <span className="muted" style={{ fontSize: 13, textAlign: 'center' }}>One quiz a day. It resets at midnight.</span>
           </>
         )}
 
@@ -108,7 +108,7 @@ export default function LearnSheet({ onClose }) {
             </div>
             <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
               <button type="button" className="btn ghost" style={{ flex: 1 }} onClick={onClose}>Done</button>
-              <button type="button" className="btn" style={{ flex: 1 }} disabled data-testid="quiz-wait">{left > 0 ? `Next quiz in ${mmss(left)}` : 'Next quiz ready'}</button>
+              <button type="button" className="btn" style={{ flex: 1 }} disabled data-testid="quiz-wait">{left > 0 ? 'Back tomorrow' : 'Next quiz ready'}</button>
             </div>
           </>
         )}

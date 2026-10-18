@@ -1572,3 +1572,10 @@ a.card.chat-item { text-decoration: none; }
 .pb-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--tile-edge); flex: none; }
 .kitchen-btn { width: 50px; height: 50px; background: #fff; color: var(--tab-d); border: 0; box-shadow: 0 3px 0 var(--tab-d); text-shadow: none; margin: 0; padding: 0; }
 .kitchen-btn svg { filter: none; }
+
+/* Learn card: a NEW dot until today's quiz is done, then a calm check */
+.learn-card .lc-ico { position: relative; }
+.learn-card .lc-new { position: absolute; top: -7px; right: -9px; background: #ff5a4e; color: #fff; font: 900 9px var(--f-body); font-style: normal; letter-spacing: .04em; padding: 2px 5px; border-radius: 99px; border: 2px solid var(--card); animation: lcpulse 1.8s ease-in-out infinite; }
+.learn-card .lc-ico.done { background: var(--tile-edge); color: var(--fresh); box-shadow: none; }
+@keyframes lcpulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { .learn-card .lc-new { animation: none; } }

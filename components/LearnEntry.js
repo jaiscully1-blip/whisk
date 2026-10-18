@@ -4,7 +4,7 @@ import { useWhisk } from './AppShell';
 import LearnSheet from './LearnSheet';
 import Icon from './Icon';
 import { learns, learnState } from '@/lib/learn/levels';
-import useCountdown, { mmss } from './useCountdown';
+import useCountdown from './useCountdown';
 
 // Apron patches: one is stitched on for each day of your best learning streak (1, 2, 3, 5, 7, 10).
 const PATCHES = [
@@ -23,16 +23,17 @@ export default function LearnEntry() {
   const left = useCountdown(profile?.learn_next);
   if (!learns(profile?.skill_level)) return null;
   const st = learnState(profile);
+  const ready = !(left > 0) && !st.doneToday;
   const best = Math.max(st.best || 0, st.streak || 0);
   const got = PATCHES.filter((p) => best >= p.at).length;
   return (
     <>
       <button type="button" className="card learn-card" onClick={() => setOpen(true)} data-testid="learn-btn" data-tip="learn" aria-label={`Learn. ${got} of ${PATCHES.length} patches`}>
         <span className="lc-top">
-          <span className="lc-ico" aria-hidden="true"><Icon name="learn" size={24} /></span>
+          <span className={`lc-ico ${ready ? '' : 'done'}`} aria-hidden="true"><Icon name={ready ? 'learn' : 'check'} size={24} />{ready && <i className="lc-new" data-testid="learn-new">NEW</i>}</span>
           <span className="lc-txt">
             <b className="lc-title">Learn</b>
-            <span className="lc-sub">{left > 0 ? `Next quiz in ${mmss(left)}` : st.streak ? `${st.streak}-day streak · quiz ready` : 'Quiz: win 100 coins'}</span>
+            <span className="lc-sub">{ready ? '3 questions · about 1 minute · win 100 coins' : 'Done today · back tomorrow'}</span>
           </span>
           <Icon name="chevron" />
         </span>

@@ -56,7 +56,7 @@ export default function Compete() {
 
   return (
     <div className="stack">
-      <div className="page-title"><h1>{t('Compete')}</h1><span className="muted">Resets in {resetIn}</span></div>
+      <div className="page-title"><h1>{t('Compete')}</h1><span className="muted pill-r">Resets in {resetIn}</span></div>
       <h2 data-tour="challenges" data-tip="challenges" style={{ fontSize: 22 }}>{t('This week’s challenges')}</h2>
       {challenges === null || !recipes ? <p className="muted">{t('Loading…')}</p> : challenges.length === 0 ? (
         <div className="empty"><b>{t('No challenges yet')}</b></div>

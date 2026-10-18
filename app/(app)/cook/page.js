@@ -70,7 +70,7 @@ export default function Cook() {
 
   return (
     <div className="stack">
-      <div className="page-title"><h1>{t('Cook')}</h1><WeekGoal /></div>
+      <div className="page-title"><WeekGoal title={t('Cook')} /></div>
       <section className="cook-search" aria-label="Find something to cook">
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); setHand(null); setAsked(true); if (!dish.trim()) { setUi({ cookMode: 'pantry', cookDish: '' }); return; } setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>{t('Dish')}</label>

@@ -65,7 +65,7 @@ export default function Home() {
   return (
     <div className="stack" style={{ paddingTop: 16 }}>
       {frozen.length > 0 && <ThawBanner items={frozen} onChanged={reload} />}
-      <div className="page-title" style={{ margin: '6px 0 0' }}><h1>{t('Discover a Dish')}</h1></div>
+      <div className="page-title" style={{ margin: '6px 0 0' }}><h1>{t('Discover a Dish')}</h1>{almost && almost.length > 1 && <button type="button" className="dice-btn" data-testid="shuffle-banner" onClick={shuffle} aria-label={t('Shuffle')}><Icon name="shuffle" size={26} /></button>}</div>
       {almost === null ? <p className="muted">Checking your pantry…</p> : almost.length === 0 ? (
         <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">{t('Add pantry items')}</Link><Link className="btn ghost" href="/cook">{t('What can I make?')}</Link></div></div>
       ) : almost.slice(0, shown).map((x, i) => <DishCard key={x.r.id} x={x} first={i === 0} onOpen={setOpen} onAdd={addToList} t={t} />)}

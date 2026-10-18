@@ -532,13 +532,20 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .title-link svg { filter: drop-shadow(0 2px 0 var(--tab-d)); }
 .title-link:active { transform: scale(.94); }
 /* weekly goal in the Cook banner */
-.weekgoal { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; text-align: right; color: #fff; min-width: 0; }
+.weekgoal { color: #fff; }
+.bt { display: grid; gap: 4px; min-width: 0; }
+.bt h1 { line-height: 1; }
+.bt-sub { font-size: 12px; font-weight: 800; color: rgba(255,255,255,.95); line-height: 1.15; }
 .weekgoal svg { flex: none; }
 .weekgoal text { font: 700 11px var(--f-display); fill: #fff; }
-.weekgoal > span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
-.weekgoal b { font-size: 11px; font-weight: 800; letter-spacing: .01em; }
-.weekgoal small { font-size: 10px; font-weight: 700; opacity: .9; }
-.page-title:has(.weekgoal) { flex-wrap: nowrap; }
+.weekgoal { width: 62px; height: 42px; flex: none; }
+/* every banner is the same height, with the title on the left and one widget on the right */
+.page-title { min-height: 84px; padding-top: 0; padding-bottom: 0; flex-wrap: nowrap; justify-content: space-between; }
+.page-title h1 { line-height: 1.05; }
+.page-title .pill-r { background: rgba(255,255,255,.22); border-radius: 99px; padding: 6px 12px; font-size: 13px; white-space: nowrap; }
+.dice-btn { width: 50px; height: 50px; border-radius: 50%; border: 0; background: #fff; color: var(--tab-d); display: grid; place-items: center; box-shadow: 0 3px 0 var(--tab-d); cursor: pointer; flex: none; }
+.dice-btn:active { transform: translateY(2px); box-shadow: none; }
+.me-title .me-tag { background: #fff; color: var(--tab-d); box-shadow: 0 2px 0 var(--tab-d); font-weight: 900; font-size: 12px; padding: 4px 11px; flex: none; }
 /* diet tags and nutrition on recipes */
 .chip.diet { font-size: 12px; font-weight: 800; padding: 3px 9px; border: 0; }
 .chip.diet.protein { background: #FFE3E0; color: #B5321F; }
@@ -1060,7 +1067,7 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .date-wrap input:focus + .date-hint { display: none; }
 .date-wrap .date-hint { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; font-size: 15px; }
 .flagimg { border-radius: 4px; box-shadow: 0 0 0 1px rgba(0,0,0,.18); object-fit: cover; flex: none; vertical-align: middle; }
-.me-title { flex-direction: column; align-items: flex-start !important; gap: 4px; }
+.me-title { flex-direction: row; justify-content: space-between; }
 .me-tag { display: inline-block; padding: 3px 10px; border-radius: 99px; background: rgba(255,255,255,.22); color: #fff; font-weight: 800; font-size: 13px; letter-spacing: .02em; }
 .saved-open { flex: 1; display: flex; text-align: left; background: none; border: 0; padding: 14px 4px 14px 16px; color: var(--fg); cursor: pointer; min-width: 0; }
 .saved-x { margin-right: 10px; border: 0; }
@@ -1563,3 +1570,5 @@ a.card.chat-item { text-decoration: none; }
 .pb-n { color: #1d1a1a; font-weight: 900; font-size: 12px; border-radius: 99px; padding: 3px 10px; white-space: nowrap; }
 .pb-country { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
 .pb-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--tile-edge); flex: none; }
+.kitchen-btn { width: 50px; height: 50px; background: #fff; color: var(--tab-d); border: 0; box-shadow: 0 3px 0 var(--tab-d); text-shadow: none; margin: 0; padding: 0; }
+.kitchen-btn svg { filter: none; }

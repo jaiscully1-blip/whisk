@@ -47,6 +47,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   const pathname = usePathname();
   const [pendingTab, setPendingTab] = useState(null);
   useEffect(() => { setPendingTab(null); }, [pathname]);
+  useEffect(() => { if (!pendingTab) return undefined; const t = setTimeout(() => setPendingTab(null), 4000); return () => clearTimeout(t); }, [pendingTab]);   // never leave a tab lit if the page doesn't change
   // No zooming the whole app: iOS Safari ignores user-scalable=no, so stop its pinch gestures and ctrl+wheel /
   // ctrl +/- here (double-tap zoom is off in CSS). No touchmove listener, so scrolling stays smooth. Text size is in Settings.
   useEffect(() => {
@@ -356,7 +357,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
             {NAV.map(([href, label, icon]) => (
               // prefetch: each tab is fetched ahead of time, so a tap switches straight away instead of waiting on the server.
               // The tab lights up the moment it's touched (pendingTab), not when the page arrives.
-              <Link key={href} href={href} prefetch data-tip={`tab-${href.slice(1)}`} onClick={() => setPendingTab(href)} aria-current={(pendingTab ? pendingTab === href : pathname.startsWith(href)) ? 'page' : undefined}><Icon name={icon} size={24} />{t(label)}</Link>
+              <Link key={href} href={href} prefetch data-tip={`tab-${href.slice(1)}`} onClick={() => { setPendingTab(href); setUiQuiet((c) => ({ scroll: { ...(c.scroll || {}), [href]: 0 } })); }} aria-current={(pendingTab ? pendingTab === href : pathname.startsWith(href)) ? 'page' : undefined}><Icon name={icon} size={24} />{t(label)}</Link>
             ))}
           </div>
         </nav>

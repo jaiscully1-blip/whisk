@@ -16,10 +16,10 @@ const FOODS = [
 ];
 
 // The weekly meals goal, in the Cook banner: a bento box that fills up, one compartment per meal.
-export default function WeekGoal() {
+export default function WeekGoal({ title }) {
   const { supabase, profile, dataVersion } = useWhisk();
   const [meals] = useCached('week', () => fetchWeek(supabase), [dataVersion]);   // remembered between tabs
-  if (!meals) return null;
+  if (!meals) return <h1>{title}</h1>;
   const goal = Math.min(7, Math.max(1, profile?.weekly_goal || 4));
   const since = weekStart();
   const n = meals.filter((m) => new Date(m.cooked_at) >= since).length;
@@ -37,9 +37,12 @@ export default function WeekGoal() {
     else for (let i = 0; i < rest; i++) cells.push([rx, pad + i * (rh + gap), rw, rh]);
   }
   return (
-    <div className="weekgoal" role="status" aria-label={`${n} of ${goal} meals this week`}>
-      <span>{left ? <b>{left} more meal{left === 1 ? '' : 's'} this week</b> : <b>Bento full! Goal hit</b>}{left ? null : meals.length > 0 && saved > 0 ? <small>~${fmt(saved)} saved vs takeout</small> : null}{left > 0 && meals.length > 0 && saved > 0 && <small>~${fmt(saved)} saved vs takeout</small>}</span>
-      <svg width="84" height="56" viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
+    <>
+      <div className="bt" role="status" aria-label={`${n} of ${goal} meals this week`}>
+        <h1>{title}</h1>
+        <small className="bt-sub">{left ? `${left} more meal${left === 1 ? '' : 's'} this week` : meals.length > 0 && saved > 0 ? `Bento full! ~$${fmt(saved)} saved vs takeout` : 'Bento full! Goal hit'}</small>
+      </div>
+      <svg className="weekgoal" width="84" height="56" viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
         <rect x="1.5" y="1.5" width={W - 3} height={H - 3} rx="9" fill="rgba(255,255,255,.14)" stroke="#fff" strokeWidth="3" />
         {cells.map(([x, y, w, h], i) => (
           <g key={i} transform={`translate(${x} ${y})`}>
@@ -49,6 +52,6 @@ export default function WeekGoal() {
           </g>
         ))}
       </svg>
-    </div>
+    </>
   );
 }

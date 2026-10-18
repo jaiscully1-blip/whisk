@@ -6,7 +6,7 @@ import { fmt } from '@/lib/game';
 
 // Streak popups.
 //  • "Freeze used": your free freeze just saved a missed day. Buy another with coins so the next miss is covered too.
-//  • "Streak lost": bring it back with a Revive ($1.25, paid through RevenueCat), which also adds a fresh freeze.
+//  • "Streak lost": bring it back with a Revive ($0.99, paid through RevenueCat), which also adds a fresh freeze.
 // Opens after a meal (event "yoke-streak") and when the app opens with a lost streak.
 export default function StreakSheet() {
   const { supabase, profile, refreshProfile, say, account } = useWhisk();
@@ -74,7 +74,7 @@ export default function StreakSheet() {
             <p className="muted" style={{ margin: '4px 0 0', textAlign: 'center' }}>Revive it and keep every day, plus a fresh 1-day streak freeze.</p>
             {view.revives > 0
               ? <button className="btn wide" style={{ marginTop: 10 }} onClick={useRevive} disabled={!!busy} autoFocus>{busy === 'use' ? 'Reviving…' : 'Use your Revive'}</button>
-              : <button className="btn wide" style={{ marginTop: 10 }} onClick={buyRevive} disabled={!!busy} autoFocus>{busy === 'buy' ? 'Opening…' : 'Revive streak · $1.25'}</button>}
+              : <button className="btn wide" style={{ marginTop: 10 }} onClick={buyRevive} disabled={!!busy} autoFocus>{busy === 'buy' ? 'Opening…' : 'Revive streak · $0.99'}</button>}
             <button className="btn ghost wide" style={{ marginTop: 6 }} onClick={close}>Start fresh</button>
           </>
         ) : (

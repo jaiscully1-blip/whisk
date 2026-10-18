@@ -47,13 +47,22 @@ export default function GetCoinsSheet({ onClose }) {
         )}
         {packs === null ? <p className="muted">Loading…</p> : (
           <div className="grid2">
-            {packs.map((p) => (
-              <button key={p.id} className="card stack" onClick={() => (anon ? setBackingUp(true) : buy(p))} disabled={!!busy} style={{ gap: 6, alignItems: 'center', textAlign: 'center', border: '2px solid var(--gold)', background: 'var(--gold-soft)', color: 'var(--fg)' }}>
-                <Coin size={34} />
-                <span style={{ fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 24 }}>{fmt(p.coins)}</span>
-                <span className="btn sm" style={{ width: '100%' }}>{busy === p.id ? 'Opening…' : `$${Number(p.usd).toFixed(2)}`}</span>
-              </button>
-            ))}
+            {packs.map((p, i) => {
+              // coins per dollar go up with every pack; show how much better than the smallest one
+              const base = packs[0] ? packs[0].coins / Number(packs[0].usd) : 0;
+              const bonus = base ? Math.round((p.coins / Number(p.usd) / base - 1) * 100) : 0;
+              const tag = p.id === 'coins-999' ? 'Popular' : p.id === 'coins-1999' ? 'Best value' : '';
+              const last = i === packs.length - 1 && packs.length % 2 === 1;
+              return (
+                <button key={p.id} className="card stack" onClick={() => (anon ? setBackingUp(true) : buy(p))} disabled={!!busy} style={{ gap: 6, alignItems: 'center', textAlign: 'center', border: `2px solid ${tag ? 'var(--accent)' : 'var(--gold)'}`, background: 'var(--gold-soft)', color: 'var(--fg)', position: 'relative', gridColumn: last ? '1 / -1' : undefined }}>
+                  {tag && <span className="chip xp" style={{ position: 'absolute', top: -10, fontSize: 12, padding: '2px 10px' }}>{tag}</span>}
+                  <Coin size={34} />
+                  <span style={{ fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 24 }}>{fmt(p.coins)}</span>
+                  <span className="muted" style={{ fontSize: 12, minHeight: 16 }}>{bonus > 0 ? `${bonus}% more per $` : ''}</span>
+                  <span className="btn sm" style={{ width: '100%' }}>{busy === p.id ? 'Opening…' : `$${Number(p.usd).toFixed(2)}`}</span>
+                </button>
+              );
+            })}
           </div>
         )}
         {error && <p className="err" role="alert">{error}</p>}

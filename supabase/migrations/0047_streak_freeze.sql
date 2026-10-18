@@ -1,7 +1,7 @@
 -- 0047: Streak freezes and Revive. Run after 0046. Safe to run more than once.
 --  • Everyone gets 1 free streak freeze (no weekly refill). It saves ONE missed day. After it is used, freezes cost 1,500 coins
 --    (you can hold up to 3), and the app pops up an offer to buy one.
---  • Lose your streak and the app offers a Revive ($1.25): brings the streak back and adds a fresh freeze.
+--  • Lose your streak and the app offers a Revive ($0.99): brings the streak back and adds a fresh freeze.
 --    The Revive is paid through RevenueCat like coin packs; the webhook grants a revive token, then the player uses it.
 --  • The old "cook twice tomorrow to repair" is replaced by Revive.
 

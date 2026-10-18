@@ -1506,6 +1506,14 @@ await db.exec(`update profiles set streak_last_date = (now() at time zone 'UTC')
 await expectFail('a broken streak cannot claim', T1, `select public.claim_streak_milestone(3)`);
 await expectFail('claims table is closed to players', T1, `select * from streak_milestones`);
 }
+// ================= 0048: coin pack ladder =================
+try { const f = fs.readFileSync('./supabase/migrations/0048_coin_pack_ladder.sql', 'utf8'); await db.exec(f); await db.exec(f); check('0048 runs (twice)', true); }
+catch (e) { check('0048 runs (twice)', false, e.message); }
+{
+const lp = (await as(D, () => db.query(`select id, coins, usd::float usd from coin_packs order by sort`))).rows;
+check('5 live packs at .99 prices, coins per dollar rising', lp.length === 5 && lp.map((r) => r.usd).join() === '0.99,4.99,9.99,19.99,49.99' && lp.map((r) => r.coins).join() === '500,3000,7000,15000,40000' && lp.every((r, i) => i === 0 || r.coins / r.usd > lp[i - 1].coins / lp[i - 1].usd), JSON.stringify(lp));
+check('new App Store ids map to the new packs and old ids still map', (await db.query(`select pack_id from coin_pack_products where product_id = 'yoke.coins999'`)).rows[0]?.pack_id === 'coins-999' && (await db.query(`select pack_id from coin_pack_products where product_id = 'coins-1000'`)).rows[0]?.pack_id === 'coins-1000');
+}
 // ================= fair play: coins only ever buy outfits =================
 const spenders = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and pg_get_functiondef(p.oid) ~* 'coins[[:space:]]*=[[:space:]]*coins[[:space:]]*-'`)).rows.map((r) => r.proname);
 check('the only things that spend coins are the shops', JSON.stringify(spenders.sort()) === JSON.stringify(['buy_chat_bg', 'buy_item', 'buy_kitchen_item']), JSON.stringify(spenders));

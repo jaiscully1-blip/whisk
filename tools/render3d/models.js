@@ -199,4 +199,4 @@ function bell(T, o) {
   add(T, G, geo, mat(T, map, { rough: .22, coat: .9, coatRough: .1 }));
   const gm = plain(T, 0x3f7f2a); add(T, G, new T.CylinderGeometry(.5, .85, 1.8, 8), gm, { pos: [.1, 5.1, 0], rot: [0, 0, .12] }); add(T, G, new T.SphereGeometry(1.1, 14, 10), gm, { pos: [0, 4.2, 0], scale: [1.2, .4, 1.2] }); G.rotation.set(0, -.4, 0); return { g: G, dims: [8.5, 9.5, 8.5] };
 }
-export { INK };
+export { INK, hash, vn, fbm, clamp, mix, mix3, hex, skin, noiseBump, mat, plain, solid, tube, add, leaf };

@@ -14,7 +14,7 @@ export default function BackupNudge() {
       <div className="card backup-nudge" role="region" aria-label="Back up your game">
         <Icon name="shield" size={26} />
         <span><b>Back up your game</b><span className="desc">So your coins, streak and kitchen are safe if you change or lose your phone.</span></span>
-        <button className="btn sm" onClick={() => setOpen(true)}>Back up</button>
+        <button className="btn sm" data-tip="backup" onClick={() => setOpen(true)}>Back up</button>
       </div>
       {open && <BackupSheet supabase={supabase} onClose={() => setOpen(false)} />}
     </>

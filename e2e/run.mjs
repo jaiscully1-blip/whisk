@@ -105,6 +105,8 @@ await step('log in', async () => {
   await page.locator('.tip-ok').click({ timeout: 2000 }).catch(() => {});
   await page.locator('.namebtn').click(); await page.locator('#nm').fill('Jai'); await page.locator('#nm').press('Enter');
   await page.waitForFunction(() => document.querySelector('.namebtn h1')?.textContent === 'Jai', null, { timeout: 6000 });
+  check('saving a name offers to back the game up', await page.getByTestId('name-backup').waitFor({ state: 'attached', timeout: 5000 }).then(() => true, () => false));
+  await page.locator('[data-testid=name-backup] [aria-label=Close]').click(); await page.getByTestId('name-backup').waitFor({ state: 'detached' });
   check('name set from the Me page', true);
   check('no Yoke dance, no closet on Me', (await page.getByRole('button', { name: 'Dance' }).count()) === 0 && (await page.locator('.slotbar').count()) === 0);
   await openKitchen('shop');
@@ -636,6 +638,7 @@ await step('me', async () => {
   await nav('Me'); await page.locator('.pcard').waitFor();
   await page.click('[aria-label^="Edit name"]'); await page.fill('#nm', 'Chef J ✨ #1'); await page.press('#nm', 'Enter');
   await page.getByRole('heading', { name: 'Chef J ✨ #1' }).waitFor();
+  await page.locator('[data-testid=name-backup] [aria-label=Close]').click().catch(() => {});
   check('name can be any characters', true);
   check('last device is remembered in the background (not shown)', (await page.getByText('Last played on').count()) === 0);
   await shot('05-me');

@@ -16,6 +16,7 @@ import { makeBackup, parseBackup, restoreBackup } from '@/lib/backupFile';
 import NotifySettings from '@/components/NotifySettings';
 import CalorieGoal from '@/components/CalorieGoal';
 import LearnEntry from '@/components/LearnEntry';
+import BackupSheet from '@/components/BackupSheet';
 import ShareSwitch from '@/components/ShareSwitch';
 import DeleteDataSheet from '@/components/DeleteDataSheet';
 import RecipeSheet from '@/components/RecipeSheet';
@@ -29,6 +30,7 @@ const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
 
 export default function Me() {
   const { account, supabase, profile, setProfile, refreshProfile, say, ui, setUi, openPrivacy, replayTour, dataVersion, allRecipes, bump, t, lang, setLang } = useWhisk();
+  const [backupAsk, setBackupAsk] = useState(false);   // after a name change: offer to back the game up (one time: it never shows again once backed up)
   const router = useRouter();
   const [medata] = useCached('me', () => fetchMe(supabase), [dataVersion]);   // remembered between tabs (lib/cache.js)
   const meals = medata?.meals || EMPTY_LIST, history = medata?.history || EMPTY_LIST;
@@ -100,11 +102,12 @@ export default function Me() {
   async function saveName(e) {
     e.preventDefault();
     const v = nameDraft.trim().slice(0, 40);
-    if (await saveSetting({ display_name: v || null }, 'Name saved')) { clearName(); setEditing(false); }
+    if (await saveSetting({ display_name: v || null }, 'Name saved')) { clearName(); setEditing(false); if (account?.anon) setBackupAsk(true); }
   }
 
   return (
     <div className="stack">
+      {backupAsk && account?.anon && <div data-testid="name-backup"><BackupSheet supabase={supabase} onClose={() => setBackupAsk(false)} /></div>}
       <div data-tour="name" className="page-title me-title" style={{ flexWrap: 'nowrap' }}>
         {editing ? (
           <form className="row" style={{ flexWrap: 'nowrap', flex: 1 }} onSubmit={saveName}>

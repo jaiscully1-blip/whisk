@@ -1197,11 +1197,13 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 
 /* stock levels: four drawn bars + the word */
 .stock { display: inline-flex; align-items: center; gap: 7px; border: 0; background: transparent; padding: 0 4px; min-height: 40px; cursor: pointer; font: inherit; color: var(--muted); }
-.stock-jar { display: block; flex: none; }
-.stock-glass { stroke: var(--muted); }
-.stock-lid { fill: var(--muted); }
-.stock-fill { fill: var(--accent); }
-.stock-warn .stock-fill { fill: var(--warn); } .stock-bad .stock-fill { fill: var(--bad); }
+.stock-bag { display: block; flex: none; overflow: visible; }
+.sb-body { fill: #c9a77a; stroke: #1d1a1a; stroke-width: 1; stroke-linejoin: round; }
+.sb-fold { stroke: #1d1a1a; stroke-width: 1; opacity: .35; fill: none; }
+.sb-handle { fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-linecap: round; }
+.sb-apple { fill: #E8463C; } .sb-milk { fill: #4FC3F7; } .sb-leaf { fill: #8fd16a; } .sb-bread { fill: #F4C26B; }
+.sb-empty { stroke: #1d1a1a; stroke-width: 1.6; stroke-linecap: round; opacity: .45; }
+.stock-warn .sb-body { fill: #d8a05a; } .stock-bad .sb-body { fill: #b08a76; }
 .stock { flex-direction: column; gap: 1px; }
 .stock-word { font-size: 11px; font-weight: 800; min-width: 34px; text-align: center; }
 .stock-fresh .stock-word { color: var(--fresh); } .stock-warn .stock-word { color: var(--warn); } .stock-bad .stock-word { color: var(--bad); }
@@ -1471,3 +1473,11 @@ body { -webkit-tap-highlight-color: transparent; overscroll-behavior-x: none; }
 .rcard { content-visibility: auto; contain-intrinsic-size: auto 420px; }
 .fab-shuffle { transition: transform .2s ease, opacity .2s ease; }
 .fab-shuffle.away { transform: translateY(16px) scale(.6); opacity: 0; pointer-events: none; }
+
+/* ===== Pantry: Kitchen button in the header, coloured scan tiles, calendar hint ===== */
+.kitchen-btn { background: rgba(255, 255, 255, .22); border: 2px solid rgba(255, 255, 255, .75); border-radius: 99px; padding: 6px 12px; margin: 0; font-size: 15px; }
+.scan-tile { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border-radius: 16px; background: var(--card); color: var(--fg); border: 1.5px solid var(--line); border-left-width: 6px; font: inherit; cursor: pointer; min-width: 0; }
+.scan-tile b { display: block; font-size: 15px; } .scan-tile small { display: block; font-size: 11px; font-weight: 600; color: var(--muted); }
+.scan-tile.receipt { border-left-color: #FF9F43; } .scan-tile.barcode { border-left-color: #4FC3F7; }
+.scan-tile:active { transform: scale(.97); }
+.date-wrap .date-hint { left: auto; right: 14px; display: grid; place-items: center; }

@@ -339,7 +339,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
             <div className={`pills ${helloOn ? 'away' : ''}`}>
               <RunningTimer />
               <span className="pill" data-tip="streak" title={profile?.vacation_since ? 'Vacation mode: your streak is paused' : 'Cooking streak'}>{profile?.vacation_since ? <Icon name="plane" size={16} /> : <Flame />}{profile?.streak_days || 0}d</span>
-              <Link href="/me#shop" prefetch className="pill" data-tip="coins" title={`${fmt(profile?.coins)} coins`} style={{ textDecoration: 'none' }}><Coin />{short(profile?.coins)}</Link>
+              <Link href="/pantry/kitchen?tab=shop" prefetch className="pill" data-tip="coins" title={`${fmt(profile?.coins)} coins`} style={{ textDecoration: 'none' }}><Coin />{short(profile?.coins)}</Link>
               <Link href="/me" prefetch className="pill gear" title={t('Settings')} aria-label={t('Settings')} data-testid="hud-settings" onClick={(e) => { if ((pathname || '').startsWith('/me')) { e.preventDefault(); window.dispatchEvent(new Event('yoke-settings')); } else { try { sessionStorage.setItem('yoke-settings', '1'); } catch {} } }}><Icon name="gear" size={18} /></Link>
             </div>
           </div>

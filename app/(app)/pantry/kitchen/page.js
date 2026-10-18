@@ -1,16 +1,19 @@
 'use client';
-import { useMemo, useRef, useState } from 'react';
+import { Suspense, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useWhisk } from '@/components/AppShell';
 import Icon from '@/components/Icon';
-import { usePantry, useKitchens } from '@/components/usePantry';
+import { usePantry, useKitchens, useWorld } from '@/components/usePantry';
+import { MyKitchen, KitchenShop } from '@/components/MeWorld';
+import GetCoinsSheet from '@/components/GetCoinsSheet';
 import KitchenStage from '@/components/kitchen/KitchenStage';
 import { Sticker, useShownKitchen, usePlace } from '@/components/kitchen/KitchenPanels';
 import * as K from '@/lib/kitchen/models';
 
 // Side mission: put your food away. Hold a food box and drop it on a lit spot in your 3D kitchen
 // (or tap a box, then tap a spot). +3 XP each, combos for quick drops, a bonus when the pantry's all put away.
-export default function PutAway() {
+function PutAway() {
   const { supabase, say, refreshProfile } = useWhisk();
   const [items, , setItems] = usePantry();
   const [, reloadKitchens, setKitchens] = useKitchens();
@@ -110,11 +113,6 @@ export default function PutAway() {
 
   return (
     <div className="stack putaway">
-      <div className="page-title">
-        <Link href="/pantry" className="title-link"><Icon name="chevron" size={20} style={{ transform: 'rotate(180deg)' }} />Pantry</Link>
-        <h1>Put it away</h1>
-      </div>
-
       {loading || items === null ? <p className="muted">Loading your kitchen…</p> : !shown ? (
         <div className="empty" style={{ display: 'grid', gap: 12, justifyItems: 'center' }}>
           <span className="kf-cube big"><Icon name="pantry" size={34} /></span>
@@ -195,3 +193,33 @@ export default function PutAway() {
     </div>
   );
 }
+
+// Everything kitchen, in one place: where your food lives, the layout, and the shop. Reached from the Kitchen button on Pantry.
+const TABS = [['food', 'Food'], ['design', 'Design'], ['shop', 'Shop']];
+function Hub() {
+  const params = useSearchParams();
+  const first = params.get('tab');
+  const [tab, setTab] = useState(TABS.some(([k]) => k === first) ? first : 'food');
+  const [world, , setWorld] = useWorld();
+  const [getCoins, setGetCoins] = useState(false);
+  return (
+    <div className="stack">
+      <div className="page-title">
+        <Link href="/pantry" className="title-link" data-testid="kitchen-back"><Icon name="chevron" size={20} style={{ transform: 'rotate(180deg)' }} />Pantry</Link>
+        <h1>Kitchen</h1>
+      </div>
+      <div className="row tabrow" role="tablist" aria-label="Kitchen">
+        {TABS.map(([k, l]) => <button key={k} type="button" role="tab" data-testid={`kt-${k}`} aria-selected={tab === k} className={`btn sm ${tab === k ? '' : 'ghost'}`} onClick={() => setTab(k)}>{l}</button>)}
+      </div>
+      {tab === 'food' ? <PutAway /> : tab === 'design' ? (
+        <div className="stack">
+          <MyKitchen />
+          <p className="desc" style={{ margin: 0 }}>Edit opens the designer: move cupboards, change colours, add things. The kitchen shown here is the one you show your friends.</p>
+        </div>
+      ) : <div data-tip="closet"><KitchenShop world={world} setWorld={setWorld} onGetCoins={() => setGetCoins(true)} /></div>}
+      {getCoins && <GetCoinsSheet onClose={() => setGetCoins(false)} />}
+    </div>
+  );
+}
+
+export default function KitchenHub() { return <Suspense fallback={<p className="muted">Loading your kitchen…</p>}><Hub /></Suspense>; }

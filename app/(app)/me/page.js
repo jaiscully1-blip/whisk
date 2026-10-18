@@ -5,12 +5,11 @@ import { fetchMe } from '@/components/tabData';
 import Link from 'next/link';
 import { useWhisk, useDraft } from '@/components/AppShell';
 import Icon from '@/components/Icon';
-import GetCoinsSheet from '@/components/GetCoinsSheet';
 import LevelPicker from '@/components/LevelPicker';
 import { levelLabel, learns } from '@/lib/learn/levels';
 import DailyQuest from '@/components/DailyQuest';
 import { TIPS } from '@/lib/tips';
-import { ProfileCard, MyKitchen, KitchenShop, CountryChallenges } from '@/components/MeWorld';
+import { ProfileCard, CountryChallenges } from '@/components/MeWorld';
 import ResetSheet from '@/components/ResetSheet';
 import NeverShowSheet from '@/components/NeverShowSheet';
 import BackupSheet from '@/components/BackupSheet';
@@ -35,7 +34,6 @@ export default function Me() {
   const [medata] = useCached('me', () => fetchMe(supabase), [dataVersion]);   // remembered between tabs (lib/cache.js)
   const meals = medata?.meals || EMPTY_LIST, history = medata?.history || EMPTY_LIST;
   const [world, , setWorld] = useWorld();
-  const [getCoins, setGetCoins] = useState(false);
   const [levelOpen, setLevelOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   async function downloadBackup() {
@@ -130,13 +128,9 @@ export default function Me() {
       <ProfileCard level={lvl} xp={profile?.xp || 0} recipes={recipesCooked} ingredients={ingredients} countries={countries.length} streak={profile?.streak_days || 0} />
       <StreakCard />
 
-      <MyKitchen />
-
       <DailyQuest />
 
       <CountryChallenges challenges={world?.challenges} onOpen={openChallenge} />
-
-      <div data-tip="closet"><KitchenShop world={world} setWorld={setWorld} onGetCoins={() => setGetCoins(true)} /></div>
 
       {meals.length > 0 && (
         <>
@@ -248,7 +242,6 @@ export default function Me() {
         </div>
       )}
       {levelOpen && <LevelPicker current={profile?.skill_level} onPick={async (id) => { setLevelOpen(false); setProfile({ ...profile, skill_level: id }); const { error } = await supabase.rpc('set_skill_level', { p_level: id }); say(error ? 'Couldn’t save your level.' : (learns(id) ? 'Level saved. Learn is on in the Cook tab' : 'Level saved')); }} onLater={() => setLevelOpen(false)} />}
-      {getCoins && <GetCoinsSheet onClose={() => setGetCoins(false)} />}
     </div>
   );
 }

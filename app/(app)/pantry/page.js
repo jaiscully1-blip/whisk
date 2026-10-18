@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useWhisk, useDraft } from '@/components/AppShell';
 import { isFrozenMeat, thawState, THAW_HOURS } from '@/lib/recipes/match';
@@ -10,7 +11,6 @@ import ShareListSheet from '@/components/ShareListSheet';
 import StockMeter from '@/components/StockMeter';
 import StaplesCheck from '@/components/StaplesCheck';
 import { nextLevel, needsReup } from '@/lib/stock';
-import { KitchenFloat, KitchenTab } from '@/components/kitchen/KitchenPanels';
 
 // The shopping list follows a walk through the store: fresh stuff first, frozen last so it stays cold.
 const AISLES = ['Produce', 'Proteins', 'Dairy & Eggs', 'Carbs & Grains', 'Canned & Jarred', 'Sauces & Oils', 'Spices & Seasonings', 'Baking', 'Frozen', 'Other'];
@@ -21,7 +21,7 @@ const cancel = (key) => { clearTimeout(pending.get(key)); pending.delete(key); }
 
 export default function Pantry() {
   const { supabase, say, refreshProfile, ui, setUi, t } = useWhisk();
-  const tab = ui.pantryTab && ui.pantryTab !== 'saved' ? ui.pantryTab : 'pantry'; const setTab = (t) => setUi({ pantryTab: t });   // saved recipes moved to Cook
+  const tab = ui.pantryTab === 'list' ? 'list' : 'pantry'; const setTab = (t) => setUi({ pantryTab: t });   // saved recipes moved to Cook
   const filter = ui.pantryFilter || 'All'; const setFilter = (f) => setUi({ pantryFilter: f });
   const [items, reloadItems, setItems] = usePantry();   // remembered between tabs (lib/cache.js)
   const [list, reloadList, setList] = useList();
@@ -167,18 +167,19 @@ export default function Pantry() {
 
   return (
     <div className="stack">
-      <div className="page-title"><h1>{t('Pantry')}</h1></div>
+      <div className="page-title"><h1>{t('Pantry')}</h1>
+        <Link href="/pantry/kitchen" prefetch className="title-link kitchen-btn" data-testid="kitchen-btn" data-tip="kitchen"><FridgeIcon />{t('Kitchen')}</Link>
+      </div>
       <div className="row tabrow" role="tablist">
         <button className={`btn sm ${tab === 'pantry' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'pantry'} onClick={() => setTab('pantry')}>Pantry {items ? `(${items.length})` : ''}</button>
         <button className={`btn sm ${tab === 'list' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'list'} onClick={() => setTab('list')}>Shopping list {list ? `(${list.length})` : ''}</button>
-        <button className={`btn sm ${tab === 'kitchen' ? '' : 'ghost'}`} role="tab" aria-selected={tab === 'kitchen'} onClick={() => setTab('kitchen')}><Icon name="pantry" size={16} />Kitchen</button>
       </div>
 
-      {tab === 'kitchen' ? <KitchenTab items={items} /> : tab === 'pantry' ? (
+      {tab === 'pantry' ? (
         <>
           <div className="grid2 scanrow">
-            <button data-tour="scan" data-tip="receipt" className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} onClick={() => setScan('receipt')}><Icon name="receipt" size={22} />{t('Scan receipt')}</button>
-            <button className="card row" style={{ justifyContent: 'center', fontWeight: 800 }} data-tip="barcode" onClick={() => setScan('barcode')}><Icon name="barcode" size={22} />{t('Scan barcode')}</button>
+            <button type="button" data-tour="scan" data-tip="receipt" className="scan-tile receipt" onClick={() => setScan('receipt')}><ReceiptArt /><span><b>{t('Scan receipt')}</b><small>{t('Add a whole shop')}</small></span></button>
+            <button type="button" className="scan-tile barcode" data-tip="barcode" onClick={() => setScan('barcode')}><BarcodeArt /><span><b>{t('Scan barcode')}</b><small>{t('Add one item')}</small></span></button>
           </div>
           {quick.length > 0 && (
             <section className="quick" aria-label={t('Quick add')}>
@@ -191,8 +192,8 @@ export default function Pantry() {
           <form className="card stack" onSubmit={addPantry}>
             <div className="grid2">
               <div style={{ gridColumn: '1 / -1' }}><label className="lbl" htmlFor="p-name">{t('Item')}</label><input id="p-name" className="input" maxLength={60} placeholder="e.g. Frozen chicken breast" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-              <div><label className="lbl" htmlFor="p-qty">{t('Amount')}</label><input id="p-qty" className="input" maxLength={30} placeholder="2 lb" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
-              <div style={{ minWidth: 0 }}><label className="lbl" htmlFor="p-exp">{t('Expires')}</label><div className="date-wrap"><input id="p-exp" className={`input ${form.expires_on ? '' : 'empty'}`} type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} />{!form.expires_on && <span className="date-hint" aria-hidden="true">Pick a date</span>}</div>{form.expires_on && <button type="button" className="date-reset" onClick={() => setForm({ ...form, expires_on: '' })} aria-label="Reset the expiry date">Reset</button>}</div>
+              <div><label className="lbl" htmlFor="p-qty">{t('Amount')}</label><input id="p-qty" className="input" maxLength={30} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
+              <div style={{ minWidth: 0 }}><label className="lbl" htmlFor="p-exp">{t('Expires')}</label><div className="date-wrap"><input id="p-exp" className={`input ${form.expires_on ? '' : 'empty'}`} type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} /></div>{form.expires_on && <button type="button" className="date-reset" onClick={() => setForm({ ...form, expires_on: '' })} aria-label="Reset the expiry date">Reset</button>}</div>
             </div>
             <button data-tour="add" data-tip="add" className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry · +5 XP</button>
           </form>
@@ -200,7 +201,6 @@ export default function Pantry() {
           <div className="row catrow">
             {['All', ...CATEGORIES].map((c) => <button key={c} className={`chip`} style={{ border: 0, background: filter === c ? 'var(--fg)' : 'var(--track)', color: filter === c ? 'var(--bg)' : 'var(--fg)' }} onClick={() => setFilter(c)}>{c}</button>)}
           </div>
-          <KitchenFloat items={items} filter={filter} />
 
           {items === null ? <p className="muted">{t('Loading your pantry…')}</p> : items.length === 0 ? (
             <div className="empty"><b>{t('Your pantry is empty')}</b></div>
@@ -262,5 +262,29 @@ export default function Pantry() {
       {sharing && <ShareListSheet onClose={() => setSharing(false)} />}
       {scan && <ScanSheet mode={scan} onAdd={addMany} onClose={() => setScan(null)} />}
     </div>
+  );
+}
+
+// Drawn pictures for the two scan tiles, and the small icons for the Kitchen button and the expiry box.
+function ReceiptArt() {
+  return (
+    <svg width="38" height="38" viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M8 3h16v26l-2.7-2-2.6 2-2.7-2-2.7 2-2.6-2L8 29z" fill="#fff8ec" stroke="#3B2C24" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M11 9h10M11 13h7M11 17h10M11 21h5" stroke="#8a817c" strokeWidth="1.5" strokeLinecap="round" /><path d="M19.5 21h2" stroke="#FF8A3D" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+function BarcodeArt() {
+  return (
+    <svg width="38" height="38" viewBox="0 0 32 32" aria-hidden="true">
+      <rect x="4" y="7" width="24" height="18" rx="3" fill="#fff" stroke="#3B2C24" strokeWidth="1.4" />
+      <path d="M8 10v12M10 10v12M13 10v12M15.5 10v12M17 10v12M20 10v12M22 10v12M24 10v12" stroke="#3B2C24" strokeWidth="1.3" />
+      <path d="M2 16h28" stroke="#EF5350" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+function FridgeIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M6 9.5h12M9 5.5v2M9 12v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
   );
 }

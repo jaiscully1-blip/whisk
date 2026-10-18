@@ -130,7 +130,7 @@ function Win({ spot, place, hour, WH }) {
 function Room({ room, place, pieces }) {
   const hour = useHour();
   const C = K.C, HU = K.HU, W = K.GW * C, D = K.GD * C, WH = Math.round(8.5 * HU), T = 14, CAP = 10;
-  const spot = windowSpot(pieces), L = daylight(hour);
+  const spot = room.nowin ? null : windowSpot(pieces), L = daylight(hour);
   const back = `url("${wallUrl(place, 'back', W, WH)}")`, side = `url("${wallUrl(place, 'plain', D, WH)}")`, sideBack = `url("${wallUrl(place, 'plain', W, WH)}")`;
   const cap = room.cap || '#F7F5F1', end = room.end || '#ECE9E3';
   // sunlight falling across the floor from the window

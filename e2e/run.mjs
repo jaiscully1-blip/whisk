@@ -470,7 +470,7 @@ await step('cook', async () => {
   check('By bowl is remembered after reload', await page.evaluate(() => localStorage.getItem('whisk-bowls')) === '1');
   check('numbered beginner steps with measured amounts', (await dlg.locator('ol.steps li').count()) >= 6 && (await dlg.locator('ol.steps .amt').count()) >= 3);
   check('steps say which bowl or pan things go in', /bowl|skillet|pot|pan|baking dish/i.test(await dlg.locator('ol.steps').innerText()));
-  check('cooking it is +100 XP and 500 coins', (await dlg.getByText('+100 XP · 500 coins when you cook it').count()) === 1);
+  check('cooking it is up to +100 XP and 400 coins', (await dlg.getByText('Up to +100 XP · 400 coins when you cook it').count()) === 1);
   check('no row of outside links at the bottom of the recipe', (await dlg.locator('.links').count()) === 0 && (await dlg.locator('a', { hasText: /^(Google|YouTube|TikTok|Reddit)$/ }).count()) === 0);
   const amt0 = await dlg.locator('ol.steps .amt').first().innerText();
   const ing0 = await dlg.locator('.ing-q').filter({ hasText: /\d/ }).first().innerText();
@@ -513,7 +513,7 @@ await step('cook', async () => {
   await cm.getByRole('button', { name: 'Leave cook mode' }).click();
   check('leaving Cook mode lets the screen sleep again', (await page.evaluate(() => window.__wl.rel)) >= 1);
   check('leaving Cook mode goes back to the recipe', (await page.locator('.cookmode').count()) === 0 && (await dlg.getByText('Recipe from').count()) === 1);
-  await page.click('[role=dialog] >> text=Save · +5 XP');
+  await page.click('[role=dialog] >> text=Save');
   await page.getByText(/Saved to your cookbook/).waitFor();
   await page.click('[role=dialog] >> text=I cooked it');
   await page.locator('[aria-label="Log a meal"] input[type=file]').setInputFiles(photo);
@@ -521,7 +521,7 @@ await step('cook', async () => {
   await page.getByRole('heading', { name: 'Cooked it!' }).waitFor({ timeout: 15000 });
   await page.waitForTimeout(1800); if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'popup-cooked.png') });
   check('submit photo → "Cooked it!" popup', true);
-  check('cooking pays +100 XP and +500 coins', await page.locator('.toast', { hasText: /\+\d+ XP · \+500 coins/ }).count().then((n) => n >= 1).catch(() => false) || /500 coins/.test(await page.locator('.toast').allInnerTexts().then((t) => t.join(' '))), await page.locator('.toast').allInnerTexts().then((t) => t.join(' | ')));
+  check('the first meal of the day pays +100 XP and +400 coins (+300 if lucky)', /\+\d+ XP · \+(400|700) coins/.test(await page.locator('.toast').allInnerTexts().then((t) => t.join(' | '))), await page.locator('.toast').allInnerTexts().then((t) => t.join(' | ')));
   await page.click('[aria-label="Liked it"]'); await page.waitForTimeout(500);
   await page.locator('.usedup-row').first().waitFor({ timeout: 6000 });
   const usedName = (await page.locator('.usedup-row b').first().innerText()).trim();
@@ -617,7 +617,7 @@ await step('me', async () => {
   await page.locator('.pcard').waitFor();
   check('no pose buttons, no tier list, no "Your world" heading on Me', (await page.getByRole('button', { name: 'We’re so back!' }).count()) === 0 && (await page.locator('.tier-row').count()) === 0 && (await page.getByRole('heading', { name: 'Your world' }).count()) === 0);
   check('the daily quest moved to Me (the globe is in parties now)', (await page.locator('[data-tip="quest"]').count()) === 1 && (await page.locator('.globe').count()) === 0);
-  check('your level title shows under your name', (await page.locator('.me-tag').innerText()).length > 3);
+  check('your level title shows under your name, in the colour of your level (no number on it)', (await page.locator('.me-tag').innerText()).length > 3 && !/\d/.test(await page.locator('.me-tag').innerText()) && /^(\d|legend)$/.test(await page.getByTestId('me-tag').getAttribute('data-tier')));
   const pc = await page.locator('.pcard').innerText();
   check('profile: Level, Recipes, Ingredients, Countries, Streak (no Restaurant)', ['Level', 'Recipes', 'Ingredients', 'Countries', 'Streak'].every((k) => new RegExp(k, 'i').test(pc)) && !/Restaurant|Riverwalk Apartment/i.test(pc), pc);
   check('a progress bar to the next home, named only', /Ybor City Loft|Hyde Park Bungalow|Bayshore Condo/.test(pc) && !/Level \d+: move/.test(pc) && (await page.locator('.pcard-next .bar').count()) === 1);

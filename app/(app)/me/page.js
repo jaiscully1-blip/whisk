@@ -23,6 +23,7 @@ import RecipeSheet from '@/components/RecipeSheet';
 import { usePantry, useWorld } from '@/components/usePantry';
 import { useRouter } from 'next/navigation';
 import { levelFor, fmt, dayNumber } from '@/lib/game';
+import Crown from '@/components/Crown';
 import { LANGS } from '@/lib/i18n';
 
 const EMPTY_LIST = [];
@@ -119,7 +120,8 @@ export default function Me() {
         ) : (
           <>
             <button className="namebtn" onClick={() => { setNameDraft(nameDraft || profile?.display_name || ''); setEditing(true); }} aria-label={`Edit name: ${name}`}><h1>{name}</h1></button>
-            <span className="me-tag">{lvl.title}</span>
+            <Crown me size={22} />
+            <span className={`me-tag t${lvl.tier}${lvl.tier !== '0' ? ' shiny' : ''}`} data-testid="me-tag" data-tier={lvl.tier}>{lvl.title}</span>
           </>
         )}
       </div>

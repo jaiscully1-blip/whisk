@@ -5,6 +5,7 @@ import { useWhisk } from '@/components/AppShell';
 import { useCached } from '@/lib/cache';
 import { fetchChats, fetchFriends } from '@/components/tabData';
 import Icon from '@/components/Icon';
+import Crown from '@/components/Crown';
 import ChatList from '@/components/ChatList';
 import ChatView from '@/components/ChatView';
 import { color, chatError } from '@/lib/social';
@@ -86,7 +87,7 @@ export default function Friends() {
           {f.friends.map((fr) => (
             <div key={fr.code} className="fr-req" style={{ marginTop: 8 }}>
               <span className="post-av" style={{ background: color(fr.name) }} aria-hidden="true">{fr.name.slice(0, 1).toUpperCase()}</span>
-              <span><b>{fr.name}</b></span>
+              <span><b>{fr.name}</b><Crown code={fr.code} /></span>
               <button className="btn ghost sm" onClick={() => sharedList(fr)} data-testid="shared-list"><Icon name="bag" size={16} />{t('Shared list')}</button>
               <button className="btn ghost sm" onClick={() => unfriend(fr)}>{t('Remove')}</button>
             </div>

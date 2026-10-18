@@ -47,7 +47,7 @@ export default function LevelUp({ level, onClose }) {
         <h2>{level.title}</h2>
         {(() => { const moved = PLACES.find((p) => p.from === level.level); return moved ? (
           <div className="lvl-move">
-            <img src={placeUrl(moved.key)} alt="" width="240" height="144" />
+            <img className={moved.key === 'riverwalk' ? 'lights-on' : ''} src={placeUrl(moved.key)} alt="" width="240" height="144" />
             <b>New kitchen: {moved.name}</b><span className="desc">{moved.where} · {moved.blurb}</span>
           </div>
         ) : null; })()}

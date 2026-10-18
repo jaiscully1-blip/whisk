@@ -13,7 +13,7 @@ import { Sticker, useShownKitchen, usePlace } from '@/components/kitchen/Kitchen
 import * as K from '@/lib/kitchen/models';
 
 // Side mission: put your food away. Hold a food box and drop it on a lit spot in your 3D kitchen
-// (or tap a box, then tap a spot). +3 XP each, combos for quick drops, a bonus when the pantry's all put away.
+// (or tap a box, then tap a spot). +1 XP each, combos for quick drops, a bonus when the pantry's all put away.
 function PutAway() {
   const { supabase, say, refreshProfile } = useWhisk();
   const [items, , setItems] = usePantry();
@@ -134,7 +134,7 @@ function PutAway() {
             {earned > 0 && <span className="chip xp">+{earned} XP</span>}
           </div>
 
-          <KitchenStage mode="view" place={home.key} pieces={pieces} title={home.key === 'void' ? 'Kitchen' : home.name} open={open} openAll={!!carrying} spot={spot} height="min(50vh, 440px)" scale={0.85}
+          <KitchenStage mode="view" place={home.key} pieces={pieces} title={home.key === 'dorm' ? 'Kitchen' : home.name} open={open} openAll={!!carrying} spot={spot} height="min(50vh, 440px)" scale={0.85}
             onToggle={(k) => setOpen((o) => ({ ...o, [k]: !o[k] }))} onSpot={onSpot} className={carrying ? 'carrying' : ''} />
 
           {picked && !carrying && (
@@ -186,7 +186,7 @@ function PutAway() {
             {Array.from({ length: 18 }, (_, i) => <i key={i} className="pa-confetti" style={{ '--i': i }} />)}
             <svg width="72" height="72" viewBox="0 0 64 64" aria-hidden="true"><path d="M20 8h24v14a12 12 0 0 1-24 0z" fill="#F6C531" stroke="#3B2C24" strokeWidth="2.4" strokeLinejoin="round" /><path d="M20 12h-8c0 8 4 12 10 12M44 12h8c0 8-4 12-10 12" fill="none" stroke="#3B2C24" strokeWidth="2.4" /><path d="M28 34h8v8h-8zM22 42h20v8H22z" fill="#E0A93B" stroke="#3B2C24" strokeWidth="2.4" strokeLinejoin="round" /><path d="M26 14q2 8 6 10" stroke="#FFF2A6" strokeWidth="3" fill="none" /></svg>
             <h2 style={{ margin: 0 }}>Kitchen stocked!</h2>
-            <p className="muted" style={{ margin: 0 }}>Everything has a home.{party.bonus ? ' +20 XP bonus' : ''}</p>
+            <p className="muted" style={{ margin: 0 }}>Everything has a home.{party.bonus ? ' +15 XP bonus' : ''}</p>
             <button type="button" className="btn wide" onClick={() => setParty(false)}>Nice</button>
           </div>
         </div>

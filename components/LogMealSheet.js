@@ -45,7 +45,7 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
       if (data.country_done) showPopup({ kind: 'country', country: data.country_done });
       say(data.repaired ? `Streak saved! ${data.streak} days · +${data.xp} XP`
         : data.repair_ready ? `Missed a day? Cook one more meal today to save your ${data.repair_ready}-day streak`
-        : `+${data.xp} XP${data.coins ? ` · +${fmt(data.coins)} coins` : ''}${data.used_freeze ? ' · streak freeze used' : ''}`);
+        : `+${data.xp} XP${data.coins ? ` · +${fmt(data.coins)} coins` : ''}${data.lucky ? ' · lucky meal, bonus coins!' : ''}${data.streak_coins ? ` · streak reward +${fmt(data.streak_coins)}` : ''}${data.used_freeze ? ' · streak freeze used' : ''}`);
     } catch (err) {
       setError(err?.message || 'Could not save that meal.');
     } finally { setBusy(false); }
@@ -58,7 +58,7 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
           <h2 style={{ fontSize: 26 }}>{challenge ? 'Finish the challenge' : 'I cooked it'}</h2>
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
         </div>
-        {challenge && <p className="ok" style={{ margin: 0 }}>Worth {fmt(challenge.coins)} coins + 100 XP</p>}
+        {challenge && <p className="ok" style={{ margin: 0 }}>Worth {fmt(challenge.coins)} coins + 50 XP</p>}
         <b style={{ fontSize: 18 }}>{recipe ? recipe.title : dish.name}</b>
         {dish && (dish.countries || []).length > 1 && (
           <div><label className="lbl" htmlFor="meal-country">Counts toward</label>

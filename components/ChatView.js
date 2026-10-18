@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
+import Crown from './Crown';
 import { isPhoto, uploadTo } from '@/lib/photo';
 import { color, stamp, EMOJI, chatError } from '@/lib/social';
 import { postGame } from '@/lib/chatGame';
@@ -234,7 +235,7 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
           return (
             <div key={m.id} className={`chat-row ${m.mine ? 'mine' : ''} ${first ? 'first' : ''}`}>
               {gap && <div className="chat-stamp">{stamp(m.at)}</div>}
-              {!m.mine && first && <span className="chat-name" style={{ color: color(m.name) }}>{m.name}</span>}
+              {!m.mine && first && <span className="chat-name" style={{ color: color(m.name) }}>{m.name}<Crown code={m.code} size={14} /></span>}
               {m.kind === 'video' ? <VideoCard m={m} onWatch={() => setVidWatch(m)} onMore={() => setMenu(m)} /> : m.game !== undefined && GAMES[m.kind] ? <GameCard m={m} onMore={() => setMenu(m)} onPlay={() => setGame('guess')} /> : <button type="button" className={`chat-bubble ${m.kind}`} onClick={() => setMenu(m)} aria-label={`${m.mine ? 'Your' : `${m.name}’s`} message. Tap for options`}>
                 {m.kind === 'photo' && (urls[m.photo]
                   ? <img src={urls[m.photo]} alt="Photo in the chat" loading="lazy" decoding="async" onClick={(e) => { e.stopPropagation(); setViewer(urls[m.photo]); }} />
@@ -320,7 +321,7 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
             {d.members.map((m) => (
               <div key={m.code} className="fr-req">
                 <span className="post-av" style={{ background: color(m.name) }} aria-hidden="true">{m.name.slice(0, 1).toUpperCase()}</span>
-                <span><b>{m.me ? 'You' : m.name}</b>{m.owner && <span className="desc"> · made the group</span>}{m.muted && <span className="desc"> · muted</span>}</span>
+                <span><b>{m.me ? 'You' : m.name}</b><Crown code={m.code} me={m.me} />{m.owner && <span className="desc"> · made the group</span>}{m.muted && <span className="desc"> · muted</span>}</span>
                 {!m.me && <button className="btn ghost sm" onClick={() => muteUser(m.code, m.name, !m.muted)}>{m.muted ? 'Unmute' : 'Mute'}</button>}
                 {!m.me && d.group.mine && <button className="btn ghost sm" onClick={() => removePerson(m)} aria-label={`Remove ${m.name}`}><Icon name="x" size={16} /></button>}
               </div>

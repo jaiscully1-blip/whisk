@@ -1603,3 +1603,29 @@ input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-sele
 .addform.k-fresh .kindnote { background: rgba(126,217,87,.18); color: var(--fg); }
 .addform.k-frozen .kindnote { background: rgba(127,212,255,.18); color: var(--fg); }
 .addform.k-canned .kindnote { background: rgba(232,180,90,.2); color: var(--fg); }
+
+/* Name-pill colour by the last digit of your level (0 = the plain white pill). Level 100 is the rainbow legend pill. */
+.me-tag.shiny { position: relative; overflow: hidden; border: 1px solid rgba(0,0,0,.18); }
+.me-tag.shiny::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 38%, rgba(255,255,255,.4) 50%, transparent 62%); background-size: 220% 100%; animation: tagshine 4s linear infinite; pointer-events: none; }
+@keyframes tagshine { from { background-position: 160% 0; } to { background-position: -60% 0; } }
+@media (prefers-reduced-motion: reduce) { .me-tag.shiny::after { animation: none; } }
+.me-title .me-tag.t1 { background: linear-gradient(120deg,#f0b27a,#c47a35 55%,#e8a869); color: #2b1708; box-shadow: 0 2px 0 #7a4a1d; }
+.me-title .me-tag.t2 { background: linear-gradient(120deg,#e9eef5 0%,#9aa7b8 28%,#f4f7fb 48%,#7d8a9c 72%,#c5cedb 100%); color: #111a26; box-shadow: 0 2px 0 #4b5666; }
+.me-title .me-tag.t3 { background: linear-gradient(120deg,#ffe36b,#e0a800 55%,#ffd84a); color: #3a2a00; box-shadow: 0 2px 0 #9a7000; }
+.me-title .me-tag.t4 { background: linear-gradient(120deg,#5df0a5,#0f9a5a 60%,#3be08f); color: #04210f; box-shadow: 0 2px 0 #0a6b3d; }
+.me-title .me-tag.t5 { background: linear-gradient(120deg,#7bb8ff,#1f5fd1 60%,#5aa4ff); color: #ffffff; box-shadow: 0 2px 0 #15409a; }
+.me-title .me-tag.t6 { background: linear-gradient(120deg,#ff7b94,#c01a3d 60%,#ff5a78); color: #ffffff; box-shadow: 0 2px 0 #7d0f27; }
+.me-title .me-tag.t7 { background: linear-gradient(120deg,#d5a8ff,#7a3fd1 60%,#c18bff); color: #ffffff; box-shadow: 0 2px 0 #52259a; }
+.me-title .me-tag.t8 { background: linear-gradient(120deg,#ffc9bb,#d9776a 60%,#ffb3a1); color: #3a1710; box-shadow: 0 2px 0 #9c4a3f; }
+.me-title .me-tag.t9 { background: linear-gradient(120deg,#5b6577,#1b2028 55%,#454e5e); color: #f2f6ff; box-shadow: 0 2px 0 #0b0e13; }
+.me-title .me-tag.tlegend { background: linear-gradient(110deg,#ffe36b,#ff8fb1,#9a7bff,#4fd1ff,#6df0a5,#ffe36b); background-size: 200% 100%; color: #1b1030; box-shadow: 0 2px 0 #6b4ea0, 0 0 14px rgba(255,214,90,.7); animation: tagrainbow 5s linear infinite; }
+@keyframes tagrainbow { to { background-position: 200% 0; } }
+@media (prefers-reduced-motion: reduce) { .me-title .me-tag.tlegend { animation: none; } }
+
+/* moving out of the dorm: the lights flick on in your first apartment */
+.lights-on { animation: lightson 1.8s ease-out both; }
+@keyframes lightson { 0%, 30% { filter: brightness(.1); } 40% { filter: brightness(.7); } 48% { filter: brightness(.2); } 62%, 100% { filter: brightness(1); } }
+@media (prefers-reduced-motion: reduce) { .lights-on { animation: none; } }
+/* Level 100 kitchen: a shining gold frame */
+.mykitchen.gold .k3 { border: 3px solid #e0a800; border-radius: 18px; box-shadow: 0 0 0 3px #fff2a8, 0 0 22px rgba(255, 214, 90, .8); }
+.plaque { justify-self: center; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(120deg, #ffe36b, #c98f00 55%, #ffe36b); color: #2b1d00; border: 2px solid #7a5600; border-radius: 8px; padding: 5px 12px; font: 800 13px var(--f-body, Nunito); }

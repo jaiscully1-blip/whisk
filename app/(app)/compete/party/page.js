@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useWhisk } from '@/components/AppShell';
 import Icon from '@/components/Icon';
+import Crown from '@/components/Crown';
 import Globe from '@/components/Globe';
 import { seatColor, partyError } from '@/components/PartyHub';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
@@ -52,7 +53,7 @@ function Party() {
             <div key={m.code} className="pb-row">
               <span className="pb-rank">{i + 1}</span>
               <span className="post-av" style={{ background: seatColor(m.seat) }} aria-hidden="true">{m.name.slice(0, 1).toUpperCase()}</span>
-              <b style={{ flex: 1, minWidth: 0 }}>{m.me ? 'You' : m.name}</b>
+              <b style={{ flex: 1, minWidth: 0 }}>{m.me ? 'You' : m.name}<Crown code={m.code} me={m.me} /></b>
               <span className="pb-n" style={{ background: seatColor(m.seat) }}>{m.countries} {m.countries === 1 ? 'country' : 'countries'}</span>
             </div>
           ))}

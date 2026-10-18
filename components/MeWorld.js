@@ -12,6 +12,8 @@ import { MAGNETS, magnetUrl } from '@/lib/art/magnets';
 import { teamColors, COUNTRY_NAME } from '@/lib/world/flair';
 import { nextPlace } from '@/lib/art/tampa';
 import { fmt, LEVELS } from '@/lib/game';
+import Crown from './Crown';
+import { useChampion } from '@/lib/champion';
 
 export const tierOf = (n, done) => (done || n >= 5 ? 'gold' : n >= 3 ? 'silver' : n >= 1 ? 'bronze' : '');
 // The country's real flag (flag-icons, MIT), drawn 4:3.
@@ -50,11 +52,13 @@ export function MyKitchen({ shop = false }) {
   const [kitchens, , setKitchens] = useKitchens();
   const [naming, setNaming] = useState(null);
   const place = usePlace();
+  const level100 = place.key === 'yacht';
+  const champ = useChampion(supabase);
   const shown = kitchens?.find((k) => k.is_display) || null;
   const pieces = useMemo(() => (shown ? K.cleanPieces(shown.pieces) : []), [shown]);
   if (kitchens === null) return <div className="card" style={{ height: 300 }} aria-busy="true" />;
   // the kitchen's own name, or where it is (e.g. "Riverwalk Apartment") until you name it
-  const title = shown && shown.name && shown.name !== 'My kitchen' ? shown.name : place.key === 'void' ? 'My Kitchen' : place.name;
+  const title = shown && shown.name && shown.name !== 'My kitchen' ? shown.name : place.key === 'dorm' ? 'My Kitchen' : place.name;
   async function rename(e) {
     e.preventDefault();
     const name = (naming || '').trim().slice(0, 40) || 'My kitchen';
@@ -65,7 +69,7 @@ export function MyKitchen({ shop = false }) {
     if (error) say('Couldn’t rename it.');
   }
   return (
-    <section className="mykitchen" id="my-kitchen" aria-label="Your kitchen" data-tip="mykitchen">
+    <section className={`mykitchen${level100 ? ' gold' : ''}`} id="my-kitchen" aria-label="Your kitchen" data-tip="mykitchen">
       {naming !== null ? (
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={rename}>
           <label htmlFor="mk-name" hidden>Kitchen name</label>
@@ -82,7 +86,8 @@ export function MyKitchen({ shop = false }) {
         </div>
       )}
       <KitchenStage mode="view" place={place.key} pieces={pieces} title={title} height={420} scale={0.9} />
-      {!shown && <span className="desc" style={{ textAlign: 'center' }}>{place.key === 'void' ? 'Nothing here yet. Cook a meal to move in, then build your kitchen.' : 'Build your kitchen, then everything you buy goes in it.'}</span>}
+      {champ?.me && <span className="plaque" data-testid="champ-plaque"><Crown me size={18} />#1 Cook of the week · {fmt(champ.xp)} XP</span>}
+      {!shown && <span className="desc" style={{ textAlign: 'center' }}>{place.key === 'dorm' ? 'Your dorm. Cook a meal to move into your first apartment, then build your kitchen.' : 'Build your kitchen, then everything you buy goes in it.'}</span>}
     </section>
   );
 }

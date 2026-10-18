@@ -31,7 +31,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
   async function save() {
     const { data, error } = await supabase.rpc('save_recipe', { p_recipe_id: r.id });
     if (error) { say('Couldn’t save that recipe.'); return; }
-    setSaved(true); refreshProfile(); onChanged?.(); say(data?.xp ? 'Saved to your cookbook · +5 XP' : 'Saved to your cookbook');
+    setSaved(true); refreshProfile(); onChanged?.(); say(data?.xp ? 'Saved to your cookbook' : 'Saved to your cookbook');
   }
   async function unsave() {
     const { error } = await supabase.from('saved_recipes').delete().eq('recipe_id', r.id);
@@ -68,7 +68,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         </div>
         <span className="src">Recipe from <a href={r.url} target="_blank" rel="noopener noreferrer">{r.source}</a>{r.video && <> · <a href={r.video} target="_blank" rel="noopener noreferrer">Watch the video</a></>}</span>
         <div className="row">
-          <span className="chip">{r.minutes} min</span><span className="chip xp">+100 XP · 500 coins when you cook it</span>
+          <span className="chip">{r.minutes} min</span><span className="chip xp">Up to +100 XP · 400 coins when you cook it</span>
           {needs.length ? <span className="chip need">{needs.length} to buy</span> : <span className="chip have">You have everything</span>}
         </div>
         {r.nutrition && (
@@ -99,7 +99,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         <StepList r={r} factor={factor} />
         <div className="row">
           {isSaved ? <button type="button" className="btn ghost" style={{ flex: '1 1 140px' }} onClick={unsave} aria-label="Saved. Tap to unsave"><Icon name="check" size={18} />Saved · Unsave</button>
-            : <button className="btn ghost" style={{ flex: '1 1 140px' }} onClick={save}>Save · +5 XP</button>}
+            : <button className="btn ghost" style={{ flex: '1 1 140px' }} onClick={save}>Save</button>}
           {c.ok && <button className="btn" style={{ flex: '1 1 160px' }} onClick={() => { if (c.frozen.length) { say(`Defrost ${c.frozen.map((p) => p.name).join(', ')} first`); return; } setLogging(true); }}>I cooked it</button>}
         </div>
       </div>

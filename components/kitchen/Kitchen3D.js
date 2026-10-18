@@ -279,7 +279,6 @@ export default function Kitchen3D({
   const face = facing(camera.rz);
   const floor = build
     ? { background: '#fff', backgroundImage: 'linear-gradient(#CFE3F7 1.5px,transparent 1.5px),linear-gradient(90deg,#CFE3F7 1.5px,transparent 1.5px)', backgroundSize: `${C}px ${C}px`, border: '3px solid #BFD8F2', borderRadius: 6, boxShadow: '0 0 0 10px rgba(207,227,247,.35)' }
-    : place === 'void' ? { background: 'radial-gradient(ellipse at 50% 50%,rgba(140,170,255,.22),rgba(140,170,255,.05))', border: '1.5px dashed rgba(170,190,255,.35)', borderRadius: 6 }
     : room ? { background: `${face.back ? 'linear-gradient(180deg,rgba(0,0,0,.2),rgba(0,0,0,0) 14%),' : ''}${face.right ? 'linear-gradient(270deg,rgba(0,0,0,.18),rgba(0,0,0,0) 11%),' : ''}${FLOORS[room.floor] || FLOORS.wood}` }
     : { background: FLOORS.wood, borderRadius: 6, boxShadow: '0 0 0 8px rgba(120,90,50,.14)' };
 
@@ -321,6 +320,10 @@ const FLOORS = {
   hex: 'radial-gradient(circle at 50% 50%,#F2EBDD 0 46%,#2E2A2A 47% 50%,rgba(0,0,0,0) 51%) 0 0/13px 13px,radial-gradient(circle at 50% 50%,#F2EBDD 0 46%,#2E2A2A 47% 50%,rgba(0,0,0,0) 51%) 6.5px 6.5px/13px 13px,#2E2A2A',
   stone: 'linear-gradient(90deg,rgba(0,0,0,.08) 1px,rgba(0,0,0,0) 1px) 0 0/52px 52px,linear-gradient(0deg,rgba(0,0,0,.08) 1px,rgba(0,0,0,0) 1px) 0 0/52px 52px,linear-gradient(135deg,#E9E5DE,#D8D2C8)',
   terracotta: 'linear-gradient(90deg,rgba(255,240,220,.5) 1.5px,rgba(0,0,0,0) 1.5px) 0 0/26px 26px,linear-gradient(0deg,rgba(255,240,220,.5) 1.5px,rgba(0,0,0,0) 1.5px) 0 0/26px 26px,linear-gradient(135deg,#C46B44,#A9552F)',
+  vinyl: 'radial-gradient(circle at 20% 30%,rgba(110,90,60,.2) 0 1px,rgba(0,0,0,0) 2px) 0 0/9px 9px,radial-gradient(circle at 60% 70%,rgba(110,90,60,.16) 0 1px,rgba(0,0,0,0) 2px) 4px 5px/11px 11px,linear-gradient(135deg,#D8C9AA,#C9B78F)',
+  marble: 'linear-gradient(115deg,rgba(140,130,165,.2) 0 1px,rgba(0,0,0,0) 1px) 0 0/70px 70px,linear-gradient(25deg,rgba(140,130,165,.16) 0 1px,rgba(0,0,0,0) 1px) 0 0/90px 90px,linear-gradient(135deg,#F3F0F7,#DAD5E4)',
+  whitewash: 'repeating-linear-gradient(90deg,rgba(120,90,50,.16) 0 1px,rgba(0,0,0,0) 1px 20px),repeating-linear-gradient(0deg,rgba(255,255,255,.18) 0 2px,rgba(0,0,0,0) 2px 8px),linear-gradient(135deg,#F2E8D6,#DCCDB2)',
+  teak: 'repeating-linear-gradient(90deg,rgba(40,22,6,.45) 0 1.5px,rgba(0,0,0,0) 1.5px 17px),repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 2px,rgba(0,0,0,0) 2px 8px),linear-gradient(135deg,#B98A55,#8E6234)',
   concrete: 'radial-gradient(circle at 30% 40%,rgba(255,255,255,.06),rgba(0,0,0,0) 40%),linear-gradient(135deg,#4A484C,#38363A)'
 };
 // A shop thing: a drawn cut-out standing on the counter (or floor), always turned to face you.

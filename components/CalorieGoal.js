@@ -4,7 +4,7 @@ import { useWhisk } from './AppShell';
 import Icon from './Icon';
 
 // Me → Daily calorie goal. Calories are the ones printed on the recipes you cooked (nothing is guessed). A ring fills
-// as the day's plates add up; land between 85% and 110% of your goal and claim 300 coins once a day. Not medical advice.
+// as the day's plates add up; log a meal and claim 100 coins once a day. Not medical advice.
 const R = 38, C = 2 * Math.PI * R;
 
 export default function CalorieGoal() {
@@ -22,7 +22,7 @@ export default function CalorieGoal() {
   const goal = profile.calorie_goal;
   const tot = d?.today || 0;
   const pct = goal ? tot / goal : 0;
-  const inRange = goal && pct >= 0.85 && pct <= 1.1;
+  const inRange = goal && tot > 0;   // log a meal today to claim
   const over = goal && pct > 1.1;
   const max = Math.max(...(d?.days || []).map((x) => x.kcal), goal || 0, 1);
 
@@ -36,7 +36,7 @@ export default function CalorieGoal() {
     setBusy(true);
     const { data, error } = await supabase.rpc('claim_calorie_reward');
     setBusy(false);
-    if (error) { say('Not yet. Land between 85% and 110% of your goal.'); return; }
+    if (error) { say('Log a meal first, then claim.'); return; }
     say(`Goal hit · +${data.coins} coins${data.xp ? ` · +${data.xp} XP` : ''}`);
     await Promise.all([load(), refreshProfile()]);
   }
@@ -65,11 +65,11 @@ export default function CalorieGoal() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <p className="desc" style={{ margin: 0 }}>
               {d?.claimed ? 'Goal reward claimed today. Nice plate work.'
-                : inRange ? 'In the zone. Claim your reward.'
+                : inRange ? 'You logged today. Claim your reward.'
                 : over ? 'Over today’s range. Tomorrow’s a fresh ring.'
-                : tot ? `${Math.max(0, goal - tot)} kcal to go. Land between ${Math.round(goal * 0.85)} and ${Math.round(goal * 1.1)}.` : 'Cook something and log it to fill the ring.'}
+                : tot ? `${tot} of ${goal} kcal so far today.` : 'Cook something and log it to fill the ring.'}
             </p>
-            {inRange && !d?.claimed && <button className="btn sm" data-testid="cal-claim" disabled={busy} style={{ marginTop: 8 }} onClick={claim}>Claim 300 coins</button>}
+            {inRange && !d?.claimed && <button className="btn sm" data-testid="cal-claim" disabled={busy} style={{ marginTop: 8 }} onClick={claim}>Claim 100 coins</button>}
             <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 28, marginTop: 8 }}>
               {(d?.days || []).map((x) => <span key={x.day} title={`${x.day}: ${x.kcal} kcal`} style={{ flex: 1, height: `${Math.max(6, (x.kcal / max) * 100)}%`, borderRadius: 3, background: x.kcal ? 'var(--accent, #f5b700)' : 'var(--line)' }} />)}
             </div>

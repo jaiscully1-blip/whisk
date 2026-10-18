@@ -12,7 +12,7 @@ import { canon, checkRecipe, usesSoon } from '@/lib/recipes/match';
 import WeekGoal from '@/components/WeekGoal';
 import LearnEntry from '@/components/LearnEntry';
 import { TimeSlider, RescueFridge } from '@/components/DishFilters';
-import CuisineStamps from '@/components/CuisineStamps';
+import { MEALS, fitsMeal } from '@/lib/recipes/meal';
 import MyYouTubers from '@/components/MyYouTubers';
 import DishSearch from '@/components/DishSearch';
 import SavedRecipes from '@/components/SavedRecipes';
@@ -23,7 +23,7 @@ const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
 
 // Only real recipes from the web, and only ones your pantry can make.
 export default function Cook() {
-  const { recipes, ui, setUi, t } = useWhisk();
+  const { recipes, ui, setUi, say, t } = useWhisk();
   const [pantry, reload] = usePantry();
   const [saved, reloadSaved] = useSaved();
   const [shown, setShown] = useState(PAGE);
@@ -33,28 +33,27 @@ export default function Cook() {
   const [hand, setHand] = useState(null);
   const [open, setOpen] = useState(null);
   const [asked, setAsked] = useState(false);   // "Nothing fits yet" only shows right after you ask, never on its own
-  const savedMode = ui.cookMode || null; const time = ui.cookTime || ''; const cu = ui.cookCuisine || ''; const diet = ui.cookDiet || '';
+  const savedMode = ui.cookMode || null; const time = ui.cookTime || ''; const meal = ui.cookMeal || ''; const diet = ui.cookDiet || '';
 
   const mode = savedMode === 'raid' && !hand ? 'pantry' : savedMode;
   const inStock = useMemo(() => (pantry || []).filter((p) => p.status !== 'out'), [pantry]);
   // No minimum: everything you can make (with swaps if needed) first, then recipes you're only 1–2 things away from.
   const checked = useMemo(() => (recipes && pantry ? recipes.map((r) => ({ r, c: checkRecipe(r, pantry) })) : []), [recipes, pantry]);
   const makeable = useMemo(() => [...checked.filter((x) => x.c.ok).sort((a, b) => a.c.subs.length - b.c.subs.length), ...checked.filter((x) => !x.c.ok && x.c.missing.length <= 2).sort((a, b) => a.c.missing.length - b.c.missing.length || a.r.key.length - b.r.key.length)], [checked]);
-  const cuisines = useMemo(() => [...new Set((recipes || []).map((r) => r.cuisine))].sort(), [recipes]);
 
   const results = useMemo(() => {
     if (!mode) return null;
-    let list = makeable.filter(({ r }) => (!+time || r.minutes <= +time) && (!cu || r.cuisine === cu) && fitsDiet(r, diet));
+    let list = makeable.filter(({ r }) => (!+time || r.minutes <= +time) && fitsMeal(r, meal) && fitsDiet(r, diet));
     if (mode === 'raid' && hand) { const hc = new Set(hand.map(canon)); list = list.map((x) => ({ ...x, hits: x.r.key.filter((k) => hc.has(canon(k))).length })).filter((x) => x.hits > 0).sort((a, b) => (a.c.ok === b.c.ok ? 0 : a.c.ok ? -1 : 1) || b.hits - a.hits); }
     if (mode === 'named') { const words = (ui.cookDish || '').toLowerCase().split(/\s+/).filter((w) => w.length > 2); list = list.filter(({ r }) => words.some((w) => `${r.title} ${r.cuisine}`.toLowerCase().includes(w.replace(/s$/, '')))); }
     // food about to go bad first (Fridge Raid keeps its own order: most of your dealt cards first)
     if (mode !== 'raid') { list = list.map((x) => ({ ...x, soon: usesSoon(x.r, pantry || []) })); list = [...list.filter((x) => x.c.ok && x.soon.length), ...list.filter((x) => x.c.ok && !x.soon.length), ...list.filter((x) => !x.c.ok)]; }
     return list;
-  }, [mode, makeable, pantry, time, cu, diet, hand, ui.cookDish]);
+  }, [mode, makeable, pantry, time, meal, diet, hand, ui.cookDish]);
 
   const names = inStock.filter((p) => !SKIP.includes(p.category)).map((p) => p.name);
   // Keep loading more as you scroll, until every recipe your pantry can make is on screen.
-  useEffect(() => { setShown(PAGE); }, [mode, time, cu, diet, hand, ui.cookDish]);
+  useEffect(() => { setShown(PAGE); }, [mode, time, meal, diet, hand, ui.cookDish]);
   useEffect(() => {
     const el = moreRef.current; if (!el || !results || shown >= results.length) return;
     const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) setShown((n) => n + PAGE); }, { rootMargin: '400px' });
@@ -62,11 +61,10 @@ export default function Cook() {
   }, [results, shown]);
 
   function raid() {
-    // Fridge Raid also uses things up: whatever goes off within 3 days is dealt first, the rest is random.
-    const day = (p) => (p.expires_on ? (new Date(String(p.expires_on).slice(0, 10) + 'T00:00:00') - new Date(new Date().toDateString())) / 864e5 : null);
-    const soon = inStock.filter((p) => !SKIP.includes(p.category) && day(p) != null && day(p) <= 3).sort((a, b) => day(a) - day(b)).map((p) => p.name);
-    const h = soon.slice(0, 4); const pool = names.filter((n) => !h.includes(n));
-    while (h.length < 4 && pool.length) h.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    // Fridge Raid: only food that goes off in the next 1–2 days (today counts), soonest first.
+    const day = (p) => (p.expires_on ? Math.round((new Date(String(p.expires_on).slice(0, 10) + 'T00:00:00') - new Date(new Date().toDateString())) / 864e5) : null);
+    const h = inStock.filter((p) => !SKIP.includes(p.category) && day(p) != null && day(p) >= 0 && day(p) <= 2).sort((a, b) => day(a) - day(b)).map((p) => p.name).slice(0, 4);
+    if (!h.length) { say('Nothing in your pantry goes off in the next 2 days.'); return; }
     setHand(h); setAsked(true); setUi({ cookMode: 'raid' });
   }
 
@@ -75,13 +73,12 @@ export default function Cook() {
       <div className="page-title"><h1>{t('Cook')}</h1><WeekGoal /></div>
       <LearnEntry />
       <section className="cook-search" aria-label="Find something to cook">
-        <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); if (!dish.trim()) return; setHand(null); setAsked(true); setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
+        <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); setHand(null); setAsked(true); if (!dish.trim()) { setUi({ cookMode: 'pantry', cookDish: '' }); return; } setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>{t('Dish')}</label>
-          <input id="o-dish" data-tip="search" className="input" type="search" enterKeyHint="search" autoComplete="off" placeholder={t('Search a dish, food or country')} aria-label={t('Search a dish, food or country')} maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
-          <button className="btn cs-go" type="submit" aria-label={t('Search dishes')}><Icon name="search" size={18} />{t('Search')}</button>
+          <input id="o-dish" data-tip="search" className="input" type="search" enterKeyHint="search" autoComplete="off" placeholder={t('Search your kitchen')} aria-label={t('Search your kitchen')} maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
+          <button data-tip="make" className="btn cs-go" type="submit" aria-label={t('Search dishes')}><Icon name="search" size={18} />{t('Search')}</button>
         </form>
         <div className="cs-pills">
-          <button type="button" data-tour="make" data-tip="make" className={`cs-pill ${mode === 'pantry' ? 'on' : ''}`} data-testid="make-btn" onClick={() => { setHand(null); setAsked(true); setUi({ cookMode: 'pantry' }); }}>{t('What can I make?')}</button>
           <button type="button" data-tip="fridge" className={`cs-pill ${mode === 'raid' ? 'on' : ''}`} data-testid="raid-btn" onClick={raid}><RescueFridge />{t('Fridge Raid')}</button>
         </div>
       </section>
@@ -93,11 +90,15 @@ export default function Cook() {
             <button key={d || 'any'} type="button" role="radio" aria-checked={diet === d} className={`chip diet ${d ? DIET_CLASS[d] : 'any'} ${diet === d ? 'on' : ''}`} onClick={() => setUi({ cookDiet: d })}>{d || t('Any diet')}</button>
           ))}
         </div>
-        <div><span className="eyebrow" id="o-cu">{t('Cuisine')}</span><CuisineStamps cuisines={cuisines} value={cu} onChange={(c) => setUi({ cookCuisine: c })} /></div>
+        <div className="meal-pick" role="radiogroup" aria-label={t('Meal')}>
+          {[{ id: '', label: t('Any meal'), icon: '🍽️' }, ...MEALS].map((m) => (
+            <button key={m.id || 'any'} type="button" role="radio" aria-checked={meal === m.id} className={`meal-tile ${meal === m.id ? 'on' : ''}`} data-testid={`meal-${m.id || 'any'}`} onClick={() => setUi({ cookMeal: m.id })}><b aria-hidden="true">{m.icon}</b>{m.label}</button>
+          ))}
+        </div>
       </div>
 
       <div className="seg" role="tablist" aria-label="Your recipes">
-        {[['saved', 'Saved'], ['mine', 'My recipes'], ['channels', 'Channels']].map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={yourTab === k} className={yourTab === k ? 'on' : ''} onClick={() => setYourTab(k)} data-testid={`cook-tab-${k}`}>{l}</button>)}
+        {[['saved', 'Saved'], ['mine', 'My recipes'], ['channels', 'Chefs']].map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={yourTab === k} className={yourTab === k ? 'on' : ''} onClick={() => setYourTab(k)} data-testid={`cook-tab-${k}`}>{l}</button>)}
       </div>
       <div hidden={yourTab !== 'saved'}>
         {saved && saved.size === 0 ? <div className="saved-mini" data-testid="saved-mini"><Icon name="star" size={16} />Saved recipes</div> : (

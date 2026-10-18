@@ -1538,3 +1538,21 @@ body { -webkit-tap-highlight-color: transparent; overscroll-behavior-x: none; }
 .stamp.on { opacity: 1; }
 .card.cook-filters { gap: 12px; padding: 14px; }
 .card.cook-filters .df-time { background: var(--field, var(--track)); }
+.social.youtube { background: #E62117; } .social.tiktok { background: #111; box-shadow: inset 2px 0 0 #25F4EE, inset -2px 0 0 #FE2C55; }
+.social.instagram { background: radial-gradient(circle at 30% 110%, #FDCB52 0%, #FD5949 40%, #D6249F 65%, #285AEB 100%); }
+.plat-pick { display: flex; gap: 10px; }
+.plat { width: 52px; height: 52px; border-radius: 16px; border: 3px solid transparent; display: grid; place-items: center; color: #fff; opacity: .5; }
+.plat.youtube { background: #E62117; } .plat.tiktok { background: #111; box-shadow: inset 2px 0 0 #25F4EE, inset -2px 0 0 #FE2C55; } .plat.instagram { background: radial-gradient(circle at 30% 110%, #FDCB52 0%, #FD5949 40%, #D6249F 65%, #285AEB 100%); }
+.plat.on { opacity: 1; border-color: #fff; transform: scale(1.06); }
+.df-step { display: inline-flex; align-items: center; align-self: flex-start; gap: 2px; height: 40px; padding: 0 4px; border-radius: 20px; background: var(--card); border: 1.5px solid var(--line); color: var(--fg); }
+.df-step.on { border-color: var(--accent); }
+.df-step-b { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--track); color: var(--fg); font-size: 20px; font-weight: 900; line-height: 1; display: grid; place-items: center; }
+.df-step-b:disabled { opacity: .35; }
+.df-step-mid { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; min-width: 140px; justify-content: center; font-weight: 800; font-size: 14px; }
+.df-step-mid output { white-space: nowrap; }
+.meal-pick { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 2px 4px; margin: 0 -2px; }
+.meal-pick::-webkit-scrollbar { display: none; }
+.meal-tile { flex: none; width: 74px; min-height: 66px; border-radius: 14px; border: 2px solid transparent; background: var(--track); color: var(--fg); font-weight: 800; font-size: 12px; display: grid; place-items: center; align-content: center; gap: 2px; padding: 6px 4px; font-family: inherit; }
+.meal-tile b { font-size: 24px; line-height: 1; }
+.meal-tile.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, var(--track)); }
+.df-step { justify-self: start; }

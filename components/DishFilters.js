@@ -9,7 +9,7 @@ const label = (m) => (m == null ? 'Any time' : m < 60 ? `${m} min` : m === 60 ? 
 // An hourglass: the more time you pick, the more sand has run into the bottom ("Any" = all of it).
 function Hourglass({ f }) {
   return (
-    <svg className="df-glass" viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
+    <svg className="df-glass" viewBox="0 0 32 32" width="22" height="22" aria-hidden="true">
       <defs>
         <clipPath id="hg-top"><path d="M10.6 5c.3 5.6 4.4 7.6 4.4 11h2c0-3.4 4.1-5.4 4.4-11z" /></clipPath>
         <clipPath id="hg-bot"><path d="M15 16c0 3.4-4.1 5.4-4.4 11h10.8c-.3-5.6-4.4-7.6-4.4-11z" /></clipPath>
@@ -36,18 +36,16 @@ function RescueFridge() {
   );
 }
 
-// "How long you have": an hourglass and a slider (time is 'any' or minutes as a string).
+// "How long you have": a small pill with − / + steps through 15, 30, 45 min, 1 hr, 1½ hr, Any (time is 'any' or minutes as a string).
 export function TimeSlider({ time = 'any', onTime }) {
   const i = idx(time), m = STOPS[i];
+  const go = (n) => { const v = STOPS[Math.max(0, Math.min(STOPS.length - 1, n))]; onTime(v == null ? 'any' : String(v)); };
   return (
-    <label className={`df-time ${m != null ? 'on' : ''}`}>
-      <Hourglass f={i / (STOPS.length - 1)} />
-      <input type="range" min="0" max={STOPS.length - 1} step="1" value={i} data-testid="time-slider"
-        aria-label="How long you have" aria-valuetext={m == null ? 'Any time' : `Up to ${label(m)}`}
-        style={{ '--p': `${(i / (STOPS.length - 1)) * 100}%` }}
-        onChange={(e) => { const v = STOPS[Number(e.target.value)]; onTime(v == null ? 'any' : String(v)); }} />
-      <output className="df-time-val" data-testid="time-val">{m == null ? 'Any' : label(m)}</output>
-    </label>
+    <div className={`df-step ${m != null ? 'on' : ''}`} role="group" aria-label="How long you have" data-testid="time-stepper">
+      <button type="button" className="df-step-b" onClick={() => go(i - 1)} disabled={i === 0} aria-label="Shorter" data-testid="time-minus">−</button>
+      <span className="df-step-mid"><Hourglass f={i / (STOPS.length - 1)} /><output data-testid="time-val" aria-live="polite">{m == null ? 'Any time' : `Up to ${label(m)}`}</output></span>
+      <button type="button" className="df-step-b" onClick={() => go(i + 1)} disabled={i === STOPS.length - 1} aria-label="Longer" data-testid="time-plus">+</button>
+    </div>
   );
 }
 export { RescueFridge };

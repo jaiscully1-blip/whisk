@@ -310,6 +310,7 @@ const server = http.createServer(async (req, res) => {
     if (path === '/__e2e/rc-opened') return send(res, 200, rcOpened);
     if (path === '/__e2e/events') { const r = await db.query(`select kind, page, target, value from app_events order by id`); return send(res, 200, r.rows); }
     if (path === '/__e2e/unlock-quiz') { await db.query(`update profiles set learn_next = null where id = $1`, [E2E_USER.id]); return send(res, 200, { ok: true }); }
+    if (path === '/__e2e/expiring') { await db.query(`update pantry_items set expires_on = _user_today(user_id) + 1 where id in (select id from pantry_items where user_id = $1 and status <> 'out' and category not in ('Spices & Seasonings','Sauces & Oils','Baking') order by name limit 3)`, [E2E_USER.id]); return send(res, 200, { ok: true }); }
     if (path === '/__e2e/uiu-items') { const uid = url.searchParams.get('who') === 'friend' ? lastAnon : E2E_USER.id; for (const [n, d] of [['milk', 1], ['spinach', 2], ['yogurt', 3]]) await db.query(`insert into pantry_items (user_id, name, category, expires_on) values ($1, $2, 'Other', _user_today($1) + $3::int)`, [uid, n, d]); const chk = await db.query(`select name, expires_on::text, status, _user_today(user_id)::text t from pantry_items where user_id = $1 and name in ('milk','spinach','yogurt')`, [uid]); return send(res, 200, { ok: true, chk: chk.rows }); }
     if (path === '/__e2e/gtc-setup') {
       const ids = ['c3c3c3c3-0000-4000-8000-000000000001', 'c3c3c3c3-0000-4000-8000-000000000002'];

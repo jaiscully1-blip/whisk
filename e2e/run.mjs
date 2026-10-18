@@ -394,8 +394,8 @@ await step('pantry draft is remembered', async () => {
 });
 await step('cook', async () => {
   await nav('Cook');
-  await page.click('text=What can I make?');
-  await page.getByText(/recipes? you can make/).waitFor();
+  await page.locator('#o-dish').fill(''); await page.getByRole('button', { name: 'Search dishes' }).click();
+  await page.getByText(/recipes? you can make/).first().waitFor();
   const n = await page.locator('main button.card:has(.chip.have)').count();
   check('cook shows web recipes the pantry can make', n >= 5, `${n} recipes`);
   check('no "Find more online" searches', (await page.getByText('Find more online').count()) === 0 && (await page.getByText('Only real recipes').count()) === 0);
@@ -407,27 +407,30 @@ await step('cook', async () => {
   const vegTotal = parseInt(await page.getByText(/recipes? you can make right now/).innerText(), 10);
   const vegTagged = await page.locator('main button.card:has(.chip.have):has(.chip.diet.veg), main button.card:has(.chip.have):has(.chip.diet.vegan)').count();
   check('Diet filter: Vegetarian keeps only vegetarian/vegan recipes', veg > 0 && vegTotal < total && veg === vegTagged, `${vegTotal} of ${total}`);
-  await page.getByRole('radio', { name: 'Any' }).click(); await page.waitForTimeout(300);
+  await page.getByRole('radio', { name: 'Any diet' }).click(); await page.waitForTimeout(300);
   check('Diet filter: Any shows them all again', (await page.locator('main button.card:has(.chip.have)').count()) === n);
   // time: hourglass slider moved here from Home
-  const slideC = async (i) => { await page.getByTestId('time-slider').evaluate((el, v) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); }, String(i)); await page.waitForTimeout(400); };
-  check('Cook has the time slider with the hourglass (Any by default)', (await page.getByTestId('time-slider').count()) === 1 && (await page.getByTestId('time-val').innerText()) === 'Any' && (await page.locator('.df-glass').count()) === 1);
-  await slideC(1);
+  const timeTxt = async () => (await page.getByTestId('time-val').innerText()).trim();
+  check('Cook has a small time stepper pill with the hourglass (Any time by default)', (await page.getByTestId('time-stepper').count()) === 1 && (await timeTxt()) === 'Any time' && (await page.locator('.df-glass').count()) === 1 && (await page.getByTestId('time-stepper').boundingBox()).height < 48);
+  for (let k = 0; k < 4; k++) await page.getByTestId('time-minus').click();
+  await page.waitForTimeout(400);
   const msC = (await page.locator('main button.card .chip').allTextContents()).filter((t) => /^\d+ min$/.test(t.trim())).map((t) => parseInt(t, 10));
-  check('slide to 30 min: only dishes of 30 minutes or less', (await page.getByTestId('time-val').innerText()) === '30 min' && msC.length > 0 && msC.every((m) => m <= 30), msC.join(','));
-  await slideC(5);
-  check('slide all the way: back to Any', (await page.getByTestId('time-val').innerText()) === 'Any');
-  check('Cuisine is a row of passport stamps (plus Any), with the Italian one among them', (await page.locator('.stamps .stamp').count()) > 5 && (await page.getByTestId('stamp-Italian').count()) === 1 && (await page.getByTestId('stamp-any').getAttribute('aria-checked')) === 'true');
-  await page.getByTestId('stamp-Italian').click(); await page.waitForTimeout(400);
-  const eb = (await page.locator('main button.card .eyebrow').allTextContents());
-  check('tapping the Italian stamp keeps only Italian dishes', (await page.getByTestId('stamp-Italian').getAttribute('aria-checked')) === 'true' && eb.every((t) => /^Italian/.test(t.trim())), eb.slice(0, 4).join('|'));
-  await page.getByTestId('stamp-any').click(); await page.waitForTimeout(300);
+  check('step down to 30 min: only dishes of 30 minutes or less', (await timeTxt()) === 'Up to 30 min' && msC.every((m) => m <= 30), msC.join(','));
+  for (let k = 0; k < 4; k++) await page.getByTestId('time-plus').click();
+  check('step all the way up: back to Any time (+ is disabled there)', (await timeTxt()) === 'Any time' && (await page.getByTestId('time-plus').isDisabled()));
+  const nAll = await page.locator('main button.card:has(.chip.have), main button.card:has(.chip.need)').count();
+  check('Meal is a row of tiles: Any, Breakfast, Lunch, Dinner, Snack, Dessert, Sauces', (await page.locator('.meal-pick .meal-tile').count()) === 7 && (await page.getByTestId('meal-sauce').count()) === 1 && (await page.getByTestId('meal-any').getAttribute('aria-checked')) === 'true');
+  await page.getByTestId('meal-dessert').click(); await page.waitForTimeout(400);
+  const nDes = await page.locator('main button.card:has(.chip.have), main button.card:has(.chip.need)').count();
+  check('tapping Dessert narrows the list and ticks the tile', (await page.getByTestId('meal-dessert').getAttribute('aria-checked')) === 'true' && nDes <= nAll, `${nDes} of ${nAll}`);
+  await page.getByTestId('meal-any').click(); await page.waitForTimeout(300);
   check('Learn is the apron card with patches', (await page.getByTestId('learn-btn').count()) === 1 && (await page.locator('.la-patch').count()) === 6);
+  await fetch('http://localhost:54321/__e2e/expiring'); await page.reload(); await page.waitForTimeout(1500); await closePopups();
   await page.getByRole('button', { name: 'Fridge Raid', exact: true }).click();
   await page.getByText('Ingredients', { exact: true }).waitFor();
-  check('Fridge Raid says "Ingredients" and "recipes you can make right now"', (await page.getByText('your hand').count()) === 0 && (await page.getByText(/you can make right now/).count()) >= 1);
-  check('Fridge Raid deals 4 pantry items', (await page.locator('.grid2 .card').count()) === 4);
-  await page.click('text=What can I make?');
+  check('Fridge Raid says "Ingredients" (no “your hand”)', (await page.getByText('your hand').count()) === 0);
+  check('Fridge Raid deals only food that goes off in the next 2 days (up to 4)', (await page.locator('.grid2 .card').count()) >= 1 && (await page.locator('.grid2 .card').count()) <= 4);
+  await page.locator('#o-dish').fill(''); await page.getByRole('button', { name: 'Search dishes' }).click();
   await page.getByRole('button', { name: /Poor Man's Burrito Bowls/ }).click();
   await page.getByText('Recipe from').waitFor();
   check('recipe sheet links to Budget Bytes', (await page.locator('[role=dialog] .src a').first().getAttribute('href')).includes('budgetbytes.com'));
@@ -523,7 +526,7 @@ await step('cook', async () => {
   await page.click('[role=dialog] >> text=Leave');
   await page.waitForTimeout(600); await closePopups();
   await nav('Cook');
-  check('Cook: Saved recipes has its own box; search is one coloured box with What can I make? and Fridge Raid inside', (await page.locator('main .saved-box h2', { hasText: 'Saved recipes' }).count()) === 1 && (await page.locator('main .cook-search', { has: page.locator('#o-dish') }).count()) === 1);
+  check('Cook: Saved recipes has its own box; search is one coloured box with Fridge Raid inside (no separate What can I make?)', (await page.locator('main .saved-box h2', { hasText: 'Saved recipes' }).count()) === 1 && (await page.locator('main .cook-search', { has: page.locator('#o-dish') }).count()) === 1);
   await page.locator('.saved-box .saved-open').first().waitFor();
   check('Saved recipes: just the recipes (no All / Liked / Disliked buttons), each with an unsave button', (await page.locator('.saved-box button.chip').count()) === 0 && (await page.locator('.saved-box .saved-open', { hasText: /Burrito Bowls/ }).count()) >= 1 && (await page.locator('.saved-box .saved-x').count()) >= 1);
   await nav('Pantry'); await page.getByTestId('kitchen-btn').waitFor();
@@ -873,8 +876,8 @@ await step('free dish search', async () => {
   check('no AI used for search (costs nothing)', !free.anthropic.includes('web_search') && free.wiki >= 1 && free.youtube.length >= 1, JSON.stringify(free));
   await page.evaluate(() => window.scrollTo(0, 0));
   await cookTab('channels');
-  check('just an "Add Channel" button: no heading, no explainer text, no built-in channels', (await page.locator('.channel').count()) === 0 && (await page.getByRole('button', { name: 'Add Channel' }).count()) === 1 && (await page.getByText(/Your YouTubers|They’ll be right here/).count()) === 0 && (await page.getByText(/You Suck at Cooking|Not Another Cooking Show/).count()) === 0);
-  await page.getByRole('button', { name: 'Add Channel' }).click();
+  check('just an "Add Channel" button: no heading, no explainer text, no built-in channels', (await page.locator('.channel').count()) === 0 && (await page.getByRole('button', { name: 'Add Chef' }).count()) === 1 && (await page.getByText(/Your YouTubers|They’ll be right here/).count()) === 0 && (await page.getByText(/You Suck at Cooking|Not Another Cooking Show/).count()) === 0);
+  await page.getByRole('button', { name: 'Add Chef' }).click();
   const yIn = page.getByLabel('@handle');
   check('one box titled @handle, with the @ already typed', (await yIn.inputValue()) === '@' && (await page.locator('.yt-add input').count()) === 1);
   await yIn.fill('javascript:alert(1)'); await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -882,10 +885,20 @@ await step('free dish search', async () => {
   await yIn.fill('https://m.youtube.com/@MockKitchen/videos');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   check('added channel opens inside Yoke', (await page.locator('.channel a[href^="/cook/channel?u="]', { hasText: 'Mock Kitchen' }).count()) === 1);
-  await page.getByRole('button', { name: 'Add Channel' }).click(); await yIn.fill('@mockkitchen'); await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('button', { name: 'Add Chef' }).click(); await yIn.fill('@mockkitchen'); await page.getByRole('button', { name: 'Add', exact: true }).click();
   check('the same channel can’t be added twice', (await page.getByText('Already on your list.').count()) === 1);
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await page.waitForTimeout(2500); await page.reload(); await cookTab('channels'); await page.getByRole('button', { name: 'Add Channel' }).waitFor();
+  await page.getByRole('button', { name: 'Add Chef' }).click();
+  check('pick where the chef is by logo: YouTube, TikTok, Instagram', (await page.locator('.plat-pick [role=radio]').count()) === 3);
+  await page.getByTestId('plat-tiktok').click(); await page.getByLabel('@username').fill('https://www.youtube.com/@mockkitchen'); await page.getByRole('button', { name: 'Add', exact: true }).click();
+  check('a YouTube link is refused on the TikTok tab', (await page.getByRole('alert').filter({ hasText: 'doesn’t look like a TikTok account' }).count()) === 1);
+  await page.getByLabel('@username').fill('https://www.tiktok.com/@tester.cook?lang=en'); await page.getByRole('button', { name: 'Add', exact: true }).click();
+  check('a TikTok chef opens TikTok in a new tab', (await page.locator('.channel a[href="https://www.tiktok.com/@tester.cook"][target=_blank]').count()) === 1);
+  await page.getByRole('button', { name: 'Add Chef' }).click(); await page.getByTestId('plat-instagram').click(); await page.getByLabel('@username').fill('instagram.com/tester_cook/'); await page.getByRole('button', { name: 'Add', exact: true }).click();
+  check('an Instagram chef opens Instagram in a new tab', (await page.locator('.channel a[href="https://www.instagram.com/tester_cook/"][target=_blank]').count()) === 1);
+  await page.getByRole('button', { name: /^Remove tester cook/i }).first().click(); await page.getByRole('button', { name: /^Remove tester cook/i }).first().click();
+  check('chefs can be removed', (await page.locator('.channel', { hasText: /tester cook/i }).count()) === 0);
+  await page.waitForTimeout(2500); await page.reload(); await cookTab('channels'); await page.getByRole('button', { name: 'Add Chef' }).waitFor();
   check('your channels are saved with your game', (await page.locator('.channel', { hasText: 'Mock Kitchen' }).count()) === 1);
   // the channel page: cooking videos only, then cook along
   await page.route('https://www.youtube-nocookie.com/**', (r) => r.fulfill({ body: '<body style="background:#000"></body>', contentType: 'text/html' }));
@@ -908,7 +921,7 @@ await step('free dish search', async () => {
   await page.locator('.vid-card', { hasText: 'Carbonara' }).click();
   check('no written recipe: the steps are the video’s cooking chapters (intro and thanks left out)', /Step 1 of 3 · 1:12/.test(await page.locator('.vc-count').innerText()) && /Boiling the pasta/.test(await page.locator('.vc-text').innerText()));
   await page.getByRole('button', { name: 'Close' }).click();
-  await page.goto(`${BASE}/cook`); await cookTab('channels'); await page.getByRole('button', { name: 'Add Channel' }).waitFor();
+  await page.goto(`${BASE}/cook`); await cookTab('channels'); await page.getByRole('button', { name: 'Add Chef' }).waitFor();
   await page.getByRole('button', { name: 'Remove Mock Kitchen' }).click();
   check('remove a channel', (await page.locator('.channel').count()) === 0);
 });
@@ -1012,7 +1025,7 @@ await step('activity backend', async () => {
 });
 await step('never show me, vacation, streak repair note', async () => {
   await page.goto(`${BASE}/cook`); await page.waitForTimeout(1200); await closePopups();
-  await page.click('text=What can I make?'); await page.getByText(/recipes? you can make right now/).waitFor();
+  await page.locator('#o-dish').fill(''); await page.getByRole('button', { name: 'Search dishes' }).click(); await page.getByText(/recipes? you can make right now/).waitFor();
   const n0 = parseInt(await page.getByText(/recipes? you can make right now/).innerText(), 10);
   await nav('Me'); await openSettings(); await page.getByRole('button', { name: /Never show me/ }).click();
   const ns = page.locator('[role=dialog][aria-label="Never show me"]');
@@ -1021,7 +1034,7 @@ await step('never show me, vacation, streak repair note', async () => {
   await ns.locator('#never-w').fill('Cilantro'); await ns.getByRole('button', { name: 'Add ingredient' }).click();
   await ns.getByRole('button', { name: 'Save' }).click(); await page.waitForTimeout(600);
   check('saved: the row says how many are hidden', /2 hidden/.test(await page.getByRole('button', { name: /Never show me/ }).innerText()));
-  await nav('Cook'); await page.click('text=What can I make?'); await page.getByText(/recipes? you can make right now/).waitFor();
+  await nav('Cook'); await page.locator('#o-dish').fill(''); await page.getByRole('button', { name: 'Search dishes' }).click(); await page.getByText(/recipes? you can make right now/).waitFor();
   const n1 = parseInt(await page.getByText(/recipes? you can make right now/).innerText(), 10);
   await page.locator('main button.card:has(.chip.have)').first().click(); await page.getByText('Recipe from').waitFor();
   const ingText = (await page.locator('[role=dialog] .ing-list').innerText()).toLowerCase();

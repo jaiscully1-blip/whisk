@@ -379,7 +379,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
             </div>
           </div>
         </header>
-        <PullToRefresh onRefresh={pullRefresh}><main key={refreshKey} className="wrap" style={ui.textScale && ui.textScale !== 1 ? { zoom: ui.textScale } : undefined}>{/^\/compete\/(cookoff|useitup)/.test(pathname || '') && <OfflineNote />}{children}</main></PullToRefresh>
+        <PullToRefresh onRefresh={pullRefresh} off={/^\/(pantry|cook|compete|me)(\/|$)/.test(pathname || '')}><main key={refreshKey} className="wrap" style={ui.textScale && ui.textScale !== 1 ? { zoom: ui.textScale } : undefined}>{/^\/compete\/(cookoff|useitup)/.test(pathname || '') && <OfflineNote />}{children}</main></PullToRefresh>
         <nav className="nav" aria-label="Main">
           <div className="nav-in">
             {NAV.map(([href, label, icon]) => (

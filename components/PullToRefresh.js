@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 const TRIGGER = 72; // px of pull needed to refresh
 
 // Pull down from the very top of the page to reload what's on screen.
-export default function PullToRefresh({ onRefresh, children }) {
+export default function PullToRefresh({ onRefresh, children, off = false }) {
   const [pull, setPull] = useState(0);
   const [busy, setBusy] = useState(false);
   const start = useRef(null);
   const pullRef = useRef(0); pullRef.current = pull;
 
   useEffect(() => {
+    if (off) { setPull(0); return undefined; }
     const down = (e) => { start.current = window.scrollY <= 0 && !busy && !document.querySelector('.scrim') ? e.touches[0].clientY : null; };
     const move = (e) => {
       if (start.current == null) return;
@@ -30,7 +31,7 @@ export default function PullToRefresh({ onRefresh, children }) {
     window.addEventListener('touchend', up);
     window.addEventListener('touchcancel', up);
     return () => { window.removeEventListener('touchstart', down); window.removeEventListener('touchmove', move); window.removeEventListener('touchend', up); window.removeEventListener('touchcancel', up); };
-  }, [onRefresh, busy]);
+  }, [onRefresh, busy, off]);
 
   const ready = pull >= TRIGGER * .8;
   return (

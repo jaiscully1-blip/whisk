@@ -490,6 +490,9 @@ button, a, [role="button"], [role="tab"], select, input { touch-action: manipula
 .shell[data-tab="compete"] { --tab: #8B5CF6; }
 .shell[data-tab="me"] { --tab: #1CB0F6; }
 .shell { --tab-d: color-mix(in srgb, var(--tab) 72%, #000); }
+/* each tab button carries its own colour, so a tapped tab lights up at once without recolouring the page you're still on */
+.nav a[data-tab-link="home"] { --tab: #58B030; } .nav a[data-tab-link="pantry"] { --tab: #FF9600; } .nav a[data-tab-link="cook"] { --tab: #FF5A4E; } .nav a[data-tab-link="compete"] { --tab: #8B5CF6; } .nav a[data-tab-link="me"] { --tab: #1CB0F6; }
+.nav a { --tab-d: color-mix(in srgb, var(--tab) 72%, #000); }
 html, body, .shell, .auth, .landing { background: var(--surface); }
 .shell, .auth, .landing { position: relative; isolation: isolate; }
 

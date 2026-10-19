@@ -588,11 +588,19 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
           {!taught && <span className="khand" style={{ left: W + 4, top: H / 2 }} aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10l.5-1a1.5 1.5 0 0 1 2.8.6V11l.4-.5a1.5 1.5 0 0 1 2.6 1V15a6 6 0 0 1-6 6h-1a5 5 0 0 1-4.2-2.3L5 15.5a1.5 1.5 0 0 1 2.4-1.8L9 15z" fill="#fff" stroke="#2E2620" strokeWidth="1.6" strokeLinejoin="round" /></svg></span>}
         </>}
       </div>
-      <div className="kface" style={{ left: 0, top: 0, width: W, height: D, transform: `translateZ(${H}px)`, borderRadius: 2, ...css(topCss) }}>
-        {m.gen === 'sink' && <>
-          <span className="kdeco" style={css('left:24%;top:24%;width:52%;height:56%;background:linear-gradient(160deg,#c8ccd1,#8f959c);border-radius:8px;box-shadow:inset 0 3px 6px rgba(0,0,0,.45),0 0 0 2px #dfe2e6')} />
-          <span className="kdeco" style={css('left:46%;top:5%;width:8%;height:14%;background:linear-gradient(90deg,#eef0f2,#9aa0a7);border-radius:3px;box-shadow:0 2px 2px rgba(0,0,0,.35)')} />
-        </>}
+      {m.gen === 'sink' && (() => {
+        const bx = W * 0.16, by = D * 0.2, bw = W * 0.68, bh = D * 0.62, dp = 22, z0 = H - dp;
+        const steel = (a) => ({ background: `linear-gradient(${a}deg,#d5d9dd,#8d949b)` });
+        return <>
+          <div className="kface" style={{ left: bx, top: by, width: bw, height: bh, transform: `translateZ(${z0}px)`, background: 'radial-gradient(circle at 50% 50%,#2b2f33 0 5%,#5d646b 6% 9%,#7c838a 10%)' }} />
+          <div className="kface" style={{ left: bx, top: by - dp, width: bw, height: dp, transformOrigin: '50% 100%', transform: `translateZ(${z0}px) rotateX(-90deg)`, ...steel(180) }} />
+          <div className="kface" style={{ left: bx, top: by + bh - dp, width: bw, height: dp, transformOrigin: '50% 100%', transform: `translateZ(${z0}px) rotateX(-90deg)`, ...steel(0), filter: 'brightness(.85)' }} />
+          <div className="kface" style={{ left: bx - dp, top: by, width: dp, height: bh, transformOrigin: '100% 50%', transform: `translateZ(${z0}px) rotateY(90deg)`, ...steel(90), filter: 'brightness(.9)' }} />
+          <div className="kface" style={{ left: bx + bw, top: by, width: dp, height: bh, transformOrigin: '0 50%', transform: `translateZ(${z0}px) rotateY(-90deg)`, ...steel(270), filter: 'brightness(.75)' }} />
+        </>;
+      })()}
+      <div className="kface" style={{ left: 0, top: 0, width: W, height: D, transform: `translateZ(${H}px)`, borderRadius: 2, ...css(topCss), ...(m.gen === 'sink' ? { clipPath: `path(evenodd, "M0 0H${W}V${D}H0Z M${W * 0.16} ${D * 0.2}H${W * 0.84}V${D * 0.82}H${W * 0.16}Z")` } : {}) }}>
+        {m.gen === 'sink' && <span className="kdeco" style={css('left:46%;top:6%;width:8%;height:12%;background:linear-gradient(90deg,#eef0f2,#9aa0a7);border-radius:3px;box-shadow:0 2px 2px rgba(0,0,0,.35)')} />}
         {(m.gen === 'range' || m.gen === 'pro') && Array.from({ length: m.gen === 'pro' ? 6 : 4 }, (_, i) => {
           const cols = m.gen === 'pro' ? 3 : 2, cx = ((i % cols) + 0.5) / cols, cy = i < cols ? 0.3 : 0.7, r = Math.min(W / cols, D / 2) * 0.34;
           return <span key={i} className="kdeco" style={{ left: cx * W - r, top: cy * D - r, width: r * 2, height: r * 2, borderRadius: '50%', background: 'radial-gradient(circle,#1a1b1d 0 22%,#5b5f66 24% 30%,#1a1b1d 32% 58%,#45484d 60% 66%,rgba(0,0,0,0) 68%)' }} />;

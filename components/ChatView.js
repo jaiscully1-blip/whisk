@@ -1,4 +1,5 @@
 'use client';
+import Avatar from './Avatar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWhisk } from './AppShell';
@@ -320,7 +321,7 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
             <h2 style={{ fontSize: 24 }}>{d.group.name}</h2>
             {d.members.map((m) => (
               <div key={m.code} className="fr-req">
-                <span className="post-av" style={{ background: color(m.name) }} aria-hidden="true">{m.name.slice(0, 1).toUpperCase()}</span>
+                <Avatar code={m.code} name={m.name} aria-hidden="true" />
                 <span><Crowned code={m.code} me={m.me} size={14}><b>{m.me ? 'You' : m.name}</b></Crowned>{m.owner && <span className="desc"> · made the group</span>}{m.muted && <span className="desc"> · muted</span>}</span>
                 {!m.me && <button className="btn ghost sm" onClick={() => muteUser(m.code, m.name, !m.muted)}>{m.muted ? 'Unmute' : 'Mute'}</button>}
                 {!m.me && d.group.mine && <button className="btn ghost sm" onClick={() => removePerson(m)} aria-label={`Remove ${m.name}`}><Icon name="x" size={16} /></button>}
@@ -328,7 +329,7 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
             ))}
             {addable.length > 0 && <>
               <span className="eyebrow">{t('Add a friend')}</span>
-              <div className="fr-list">{addable.map((f) => <button key={f.code} type="button" className="chip fr-chip" onClick={() => addPerson(f)} aria-label={`Add ${f.name} to the group`}><span className="post-av sm" style={{ background: color(f.name) }} aria-hidden="true">{f.name.slice(0, 1).toUpperCase()}</span>{f.name}<Icon name="plus" size={14} /></button>)}</div>
+              <div className="fr-list">{addable.map((f) => <button key={f.code} type="button" className="chip fr-chip" onClick={() => addPerson(f)} aria-label={`Add ${f.name} to the group`}><Avatar className="post-av sm" code={f.code} name={f.name} aria-hidden="true" />{f.name}<Icon name="plus" size={14} /></button>)}</div>
             </>}
             <button className="btn ghost wide" style={{ color: 'var(--bad)' }} onClick={leave}>{t('Leave group')}</button>
             <button className="btn wide" onClick={() => setPeople(false)}>{t('Done')}</button>

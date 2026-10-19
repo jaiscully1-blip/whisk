@@ -1,4 +1,5 @@
 'use client';
+import Avatar from '@/components/Avatar';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useWhisk } from '@/components/AppShell';
@@ -70,7 +71,7 @@ export default function Friends() {
           <span className="eyebrow">{t('Friend requests')}</span>
           {f.requests.map((r) => (
             <div key={r.code} className="fr-req">
-              <span className="post-av" style={{ background: color(r.name) }} aria-hidden="true">{r.name.slice(0, 1).toUpperCase()}</span>
+              <Avatar code={r.code} name={r.name} aria-hidden="true" />
               <span><b>{r.name}</b> wants to be friends</span>
               <button className="btn sm" onClick={() => answer(r, true)}>{t('Yes')}</button>
               <button className="btn ghost sm" onClick={() => answer(r, false)}>No</button>
@@ -87,7 +88,7 @@ export default function Friends() {
           {f.friends.map((fr) => (
             <div key={fr.code} className="fr-swipe">
               <button type="button" className="fr-row" onClick={(e) => { const w = e.currentTarget.parentElement; w.scrollTo({ left: w.scrollLeft > 4 ? 0 : w.scrollWidth, behavior: 'smooth' }); }} aria-label={`${fr.name}. Tap for options`}>
-                <span className="post-av" style={{ background: color(fr.name) }} aria-hidden="true">{fr.name.slice(0, 1).toUpperCase()}</span>
+                <Avatar code={fr.code} name={fr.name} aria-hidden="true" />
                 <span className="fr-nm"><Crowned code={fr.code} size={14}><b>{fr.name}</b></Crowned></span>
                 <Icon name="chevron" size={16} />
               </button>

@@ -9,6 +9,7 @@ import LevelPicker from '@/components/LevelPicker';
 import { levelLabel, learns } from '@/lib/learn/levels';
 import DailyQuest from '@/components/DailyQuest';
 import { TIPS } from '@/lib/tips';
+import AvatarPicker from '@/components/AvatarPicker';
 import { ProfileCard, CountryChallenges, MyKitchen } from '@/components/MeWorld';
 import ResetSheet from '@/components/ResetSheet';
 import NeverShowSheet from '@/components/NeverShowSheet';
@@ -119,6 +120,7 @@ export default function Me() {
           </form>
         ) : (
           <>
+            <AvatarPicker name={name} />
             <button className="namebtn" onClick={() => { setNameDraft(nameDraft || profile?.display_name || ''); setEditing(true); }} aria-label={`Edit name: ${name}`}><Crowned me size={26}><h1>{name}</h1></Crowned></button>
             <span className={`me-tag t${lvl.tier}${lvl.tier !== '0' ? ' shiny' : ''}`} data-testid="me-tag" data-tier={lvl.tier}>{lvl.title}</span>
           </>

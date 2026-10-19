@@ -1,4 +1,5 @@
 'use client';
+import Avatar from './Avatar';
 import { useState } from 'react';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
@@ -52,7 +53,7 @@ export default function ChatList({ chats, friends, onOpen, onMade }) {
               <span className="eyebrow">{t('Add friends')}</span>
               <div className="fr-list">{friends.map((f) => (
                 <button key={f.code} type="button" className={`chip fr-chip pick ${pick.includes(f.code) ? 'on' : ''}`} aria-pressed={pick.includes(f.code)} onClick={() => toggle(f.code)}>
-                  <span className="post-av sm" style={{ background: color(f.name) }} aria-hidden="true">{f.name.slice(0, 1).toUpperCase()}</span>{f.name}{pick.includes(f.code) && <Icon name="check" size={14} />}
+                  <Avatar className="post-av sm" code={f.code} name={f.name} aria-hidden="true" />{f.name}{pick.includes(f.code) && <Icon name="check" size={14} />}
                 </button>
               ))}</div>
             </> : <span className="desc">Add a friend with their code first, then add them here. You can also make the group now and add people later.</span>}

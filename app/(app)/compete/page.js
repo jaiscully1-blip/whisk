@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useCached } from '@/lib/cache';
 import { fetchCompete } from '@/components/tabData';
 import DietTags from '@/components/DietTags';
@@ -58,7 +59,7 @@ export default function Compete() {
       <div className="page-title"><h1>{t('Compete')}</h1><span className="muted pill-r">Resets in {resetIn}</span></div>
       <h2 data-tour="challenges" data-tip="challenges" style={{ fontSize: 22 }}>{t('This week’s challenges')}</h2>
       {challenges === null || !recipes ? <p className="muted">{t('Loading…')}</p> : challenges.length === 0 ? (
-        <div className="empty"><b>{t('No challenges yet')}</b></div>
+        <Link href="/pantry" className="card chat-item" style={{ textDecoration: 'none' }}><span className="chat-item-txt"><b>{t('No challenges yet')}</b><small>{t('Add groceries to your pantry and this week’s challenges appear here')}</small></span><Icon name="chevron" size={16} /></Link>
       ) : challenges.map((c) => {
         const r = recipeOf(c); if (!r) return null;
         const [tier, bg, ink] = TIER[c.slot] || TIER[3]; const on = !!flipped[c.id];

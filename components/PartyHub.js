@@ -1,4 +1,5 @@
 'use client';
+import Avatar from './Avatar';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -43,12 +44,12 @@ export function PartyCard() {
     <section className="stack" style={{ gap: 8 }} aria-label="Parties">
       <div className="party-card" data-testid="party-card">
         <div className="pc-top">
-          <span><b>Start a party</b><small>{online.length ? `${online.length} friend${online.length === 1 ? '' : 's'} online now` : friends.length ? 'Cook against your friends on one shared globe' : 'Add a friend to start a party'}</small></span>
+          <span><b>Start a party</b><small>{online.length ? `${online.length} friend${online.length === 1 ? '' : 's'} online now` : friends.length ? `Cook with ${friends.slice(0, 2).map((f) => f.name).join(' and ')}${friends.length > 2 ? ` +${friends.length - 2}` : ''} on one shared globe` : 'Add a friend to start a party'}</small></span>
         </div>
         <div className="pc-row">
           <div className="pc-avs">
             {(online.length ? online : friends).slice(0, 5).map((f) => (
-              <span key={f.code} className={`post-av pc-av ${f.online ? 'on' : ''}`} style={{ background: color(f.name) }} title={f.name} aria-label={`${f.name}${f.online ? ', online' : ''}`}>{f.name.slice(0, 1).toUpperCase()}</span>
+              <Avatar key={f.code} className={`post-av pc-av ${f.online ? 'on' : ''}`} code={f.code} name={f.name} title={f.name} aria-label={`${f.name}${f.online ? ', online' : ''}`} />
             ))}
           </div>
           {friends.length > 0
@@ -74,7 +75,7 @@ export function PartyCard() {
             <span className="eyebrow">Invite friends</span>
             <div className="fr-list">{sorted.map((f) => (
               <button key={f.code} type="button" className={`chip fr-chip pick ${pick.includes(f.code) ? 'on' : ''}`} aria-pressed={pick.includes(f.code)} onClick={() => toggle(f.code)}>
-                <span className={`post-av sm pc-av ${f.online ? 'on' : ''}`} style={{ background: color(f.name) }} aria-hidden="true">{f.name.slice(0, 1).toUpperCase()}</span>{f.name}{pick.includes(f.code) && <Icon name="check" size={14} />}
+                <Avatar className={`post-av sm pc-av ${f.online ? 'on' : ''}`} code={f.code} name={f.name} aria-hidden="true" />{f.name}{pick.includes(f.code) && <Icon name="check" size={14} />}
               </button>
             ))}</div>
             <button className="btn wide" type="submit" disabled={busy || !pick.length}>Start party</button>

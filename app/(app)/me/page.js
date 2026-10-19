@@ -24,7 +24,6 @@ import RecipeSheet from '@/components/RecipeSheet';
 import { usePantry, useWorld } from '@/components/usePantry';
 import { useRouter } from 'next/navigation';
 import { levelFor, fmt, dayNumber } from '@/lib/game';
-import { Crowned } from '@/components/Crown';
 import { LANGS } from '@/lib/i18n';
 
 const EMPTY_LIST = [];
@@ -121,7 +120,7 @@ export default function Me() {
         ) : (
           <>
             <AvatarPicker name={name} />
-            <button className="namebtn" onClick={() => { setNameDraft(nameDraft || profile?.display_name || ''); setEditing(true); }} aria-label={`Edit name: ${name}`}><Crowned me size={26}><h1>{name}</h1></Crowned></button>
+            <button className="namebtn" onClick={() => { setNameDraft(nameDraft || profile?.display_name || ''); setEditing(true); }} aria-label={`Edit name: ${name}`}><h1>{name}</h1></button>
             <span className={`me-tag t${lvl.tier}${lvl.tier !== '0' ? ' shiny' : ''}`} data-testid="me-tag" data-tier={lvl.tier}>{lvl.title}</span>
           </>
         )}

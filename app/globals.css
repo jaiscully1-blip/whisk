@@ -1657,7 +1657,7 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 /* profile picture on the Me header */
 .av-pick { position: relative; flex: none; border: 0; padding: 0; background: none; border-radius: 50%; cursor: pointer; margin-right: 12px; box-shadow: 0 3px 0 rgba(0,0,0,.25); }
 .av-pick .av-pick-img { display: grid; place-items: center; border-radius: 50%; color: #fff; font-weight: 800; border: 3px solid #fff; box-sizing: border-box; }
-.av-pick-cam { position: absolute; right: -4px; bottom: -4px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: #8FD14F; color: #1c2a10; border: 2px solid #fff; }
+.av-crown { position: absolute; left: 50%; top: 0; transform: translate(-50%, -62%) rotate(-10deg); pointer-events: none; filter: drop-shadow(0 2px 0 rgba(0,0,0,.25)); }
 .me-title .namebtn { min-width: 0; flex: 1; text-align: left; }
 
 /* Compete: friends as big round pictures */

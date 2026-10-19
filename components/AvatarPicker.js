@@ -4,6 +4,7 @@ import { useCached } from '@/lib/cache';
 import { fetchFriends } from './tabData';
 import { useWhisk } from './AppShell';
 import Avatar from './Avatar';
+import { useChampion } from '@/lib/champion';
 
 // Square-crop a photo from the camera roll to 256px and save it as a small JPEG.
 async function squareJpeg(file, size = 256) {
@@ -24,6 +25,8 @@ export default function AvatarPicker({ name, size = 64 }) {
   const [v, setV] = useState(0);
   const [busy, setBusy] = useState(false);
   const input = useRef(null);
+  const champ = useChampion(supabase);
+  const crowned = !!(champ?.code && champ.me);
 
   async function chosen(e) {
     const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
@@ -43,7 +46,13 @@ export default function AvatarPicker({ name, size = 64 }) {
       <input ref={input} type="file" accept="image/*" hidden onChange={chosen} data-testid="avatar-file" />
       <button type="button" className="av-pick" onClick={() => input.current?.click()} disabled={busy} aria-label="Change your profile picture" data-testid="avatar-pick" style={{ width: size, height: size }}>
         <Avatar className="av-pick-img" code={code} v={v} name={name || profile?.display_name || '?'} style={{ width: size, height: size, fontSize: size * 0.42 }} />
-        <span className="av-pick-cam" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg></span>
+        {crowned && (
+          <svg className="av-crown" width={size * 0.62} height={size * 0.62} viewBox="0 0 24 24" role="img" aria-label="Cook of the week" data-testid="crown">
+            <title>Cook of the week</title>
+            <path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z" fill="#F4B400" stroke="#7a5600" strokeWidth="1.4" strokeLinejoin="round" />
+            <circle cx="3" cy="8" r="1.6" fill="#F4B400" stroke="#7a5600" strokeWidth="1" /><circle cx="12" cy="5" r="1.6" fill="#F4B400" stroke="#7a5600" strokeWidth="1" /><circle cx="21" cy="8" r="1.6" fill="#F4B400" stroke="#7a5600" strokeWidth="1" />
+          </svg>
+        )}
       </button>
     </>
   );

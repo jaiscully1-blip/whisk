@@ -2,5 +2,5 @@
 update public.chat_bg_catalog set name = 'Peach haze' where id = 'tiles';
 update public.chat_bg_catalog set name = 'Lavender mist' where id = 'gingham';
 update public.chat_bg_catalog set name = 'Matcha' where id = 'herbs';
-update public.chat_bg_catalog set name = 'Soft sunset' where id = 'sunset';
+update public.chat_bg_catalog set name = 'Sunrise' where id = 'sunset';
 update public.chat_bg_catalog set name = 'Teal lagoon' where id = 'ocean';

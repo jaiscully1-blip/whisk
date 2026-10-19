@@ -1716,15 +1716,18 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .chat-full[data-bg="gingham"]::before { background: radial-gradient(60% 18% at 30% 40%, rgba(200, 185, 255, .28), transparent 70%), radial-gradient(60% 18% at 70% 70%, rgba(170, 160, 255, .24), transparent 70%); filter: blur(10px); animation: bgmist 20s ease-in-out infinite alternate; }
 .chat-full[data-bg="herbs"] { --chat-bg: #4d6b50; background-image: linear-gradient(180deg, #5d7b55, #3d5b46); }
 .chat-full[data-bg="herbs"]::before { inset: 0; background-image: radial-gradient(circle, rgba(215, 240, 190, .35) 0 4px, transparent 5px), radial-gradient(circle, rgba(215, 240, 190, .22) 0 7px, transparent 8px); background-size: 70px 110px, 110px 160px; background-position: 0 0, 40px 50px; animation: bgbubble 22s linear infinite; }
-.chat-full[data-bg="sunset"] { --chat-bg: #8a5a4a; background-image: linear-gradient(180deg, #8a5a4a 0%, #9a5568 55%, #5b3a63 100%); }
-.chat-full[data-bg="sunset"]::before { inset: 0; background: radial-gradient(60% 40% at 50% 78%, rgba(255, 190, 120, .45), transparent 70%); animation: bgbreathe 7s ease-in-out infinite alternate; }
+.chat-full[data-bg="sunset"] { --chat-bg: #7a5a78; background-image: linear-gradient(180deg, #4f5287 0%, #8a5f86 38%, #c27a7e 68%, #d99a6c 100%); }
+.chat-full[data-bg="sunset"]::before { inset: 0; background: radial-gradient(55% 34% at 50% 100%, rgba(255, 214, 140, .55), transparent 72%); animation: bgrise2 12s ease-in-out infinite alternate; }
 .chat-full[data-bg="ocean"] { --chat-bg: #26676f; background-image: linear-gradient(180deg, #2f7a80, #1f5560); }
 .chat-full[data-bg="ocean"]::before { background: repeating-radial-gradient(ellipse 80px 50px at 30% 40%, rgba(200, 255, 245, .12) 0 6px, transparent 6px 22px); filter: blur(1.5px); animation: bgcaus 18s ease-in-out infinite alternate; }
 .chat-full[data-bg="ocean"]::after { background: repeating-radial-gradient(ellipse 90px 55px at 72% 65%, rgba(200, 255, 245, .10) 0 6px, transparent 6px 26px); filter: blur(1.5px); animation: bgcaus 24s ease-in-out infinite alternate-reverse; }
 @keyframes bgorb { from { transform: translate(-8%, 6%) scale(1); } to { transform: translate(8%, -8%) scale(1.2); } }
 @keyframes bgmist { from { transform: translateX(-14%); } to { transform: translateX(14%); } }
 @keyframes bgbubble { to { background-position: 14px -110px, 26px -110px; } }
+@keyframes bgrise2 { from { transform: translateY(14%) scale(.9); opacity: .65; } to { transform: translateY(-6%) scale(1.1); opacity: 1; } }
 @keyframes bgbreathe { from { transform: scale(.85); opacity: .6; } to { transform: scale(1.15); opacity: 1; } }
 @keyframes bgcaus { from { transform: translate(-6%, 4%) scale(1); } to { transform: translate(6%, -4%) scale(1.15); } }
 @media (prefers-reduced-motion: reduce) { .chat-full[data-bg="tiles"]::before, .chat-full[data-bg="gingham"]::before, .chat-full[data-bg="herbs"]::before, .chat-full[data-bg="sunset"]::before, .chat-full[data-bg="ocean"]::before, .chat-full[data-bg="tiles"]::after, .chat-full[data-bg="gingham"]::after, .chat-full[data-bg="herbs"]::after, .chat-full[data-bg="sunset"]::after, .chat-full[data-bg="ocean"]::after { animation: none; } }
 .bg-tile .bg-prev[data-bg="tiles"], .bg-tile .bg-prev[data-bg="gingham"], .bg-tile .bg-prev[data-bg="herbs"], .bg-tile .bg-prev[data-bg="sunset"], .bg-tile .bg-prev[data-bg="ocean"] { position: relative; z-index: 0; overflow: hidden; --fg: #F2E9E2; }
+
+.bg-tile .bg-prev:not([data-bg]) { background-color: var(--bg); background-image: none; }

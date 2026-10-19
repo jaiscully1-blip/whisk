@@ -119,3 +119,55 @@ export function ChatsPeek() {
     </section>
   );
 }
+
+// Compete, top of the page: your friends as big round pictures (green dot = online). Tap one to message them or invite them to a party.
+export function FriendStrip() {
+  const { supabase, say } = useWhisk();
+  const router = useRouter();
+  const [f0] = useCached('friends', () => fetchFriends(supabase));
+  const [sel, setSel] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const friends = f0?.friends || [];
+  if (!friends.length) return null;
+  const sorted = [...friends.filter((f) => f.online), ...friends.filter((f) => !f.online)];
+
+  async function message(f) {
+    if (busy) return; setBusy(true);
+    const { data, error } = await supabase.rpc('open_shared_list', { p_code: f.code }); setBusy(false);
+    if (error) { say(chatError(error, 'Couldn’t open that chat.')); return; }
+    router.push(`/compete/friends?chat=${data}`);
+  }
+  async function party(f) {
+    if (busy) return; setBusy(true);
+    const { data, error } = await supabase.rpc('start_party', { p_name: 'Party', p_codes: [f.code] }); setBusy(false);
+    if (error) { say(partyError(error, 'Couldn’t start that party.')); return; }
+    router.push(`/compete/party?g=${data}`);
+  }
+
+  return (
+    <>
+      <div className="fstrip" data-testid="friend-strip" role="list" aria-label="Your friends">
+        {sorted.map((f) => (
+          <button key={f.code} type="button" role="listitem" className="fs-item" onClick={() => setSel(f)} aria-label={`${f.name}${f.online ? ', online' : ''}`}>
+            <Avatar className={`post-av fs-av ${f.online ? 'on' : ''}`} code={f.code} name={f.name} />
+            <span className="fs-nm">{f.name}</span>
+          </button>
+        ))}
+        <Link href="/compete/friends" prefetch className="fs-item" aria-label="Add or manage friends"><span className="post-av fs-av fs-add"><Icon name="plus" size={22} /></span><span className="fs-nm">Friends</span></Link>
+      </div>
+      {sel && (
+        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setSel(null); }}>
+          <div className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label={sel.name}>
+            <div className="row" style={{ gap: 12, flexWrap: 'nowrap' }}>
+              <Avatar className="post-av fs-av" code={sel.code} name={sel.name} style={{ width: 52, height: 52 }} />
+              <span><b style={{ fontSize: 20 }}>{sel.name}</b><br /><small className="desc">{sel.online ? 'Online now' : 'Offline'}</small></span>
+            </div>
+            <button className="btn wide" type="button" disabled={busy} onClick={() => message(sel)} data-testid="strip-message">Message</button>
+            <button className="btn ghost wide" type="button" disabled={busy} onClick={() => party(sel)} data-testid="strip-party">Invite to party</button>
+            <button className="btn ghost wide" type="button" onClick={() => setSel(null)}>Close</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

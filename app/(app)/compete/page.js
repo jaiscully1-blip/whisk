@@ -14,7 +14,7 @@ import { fmt } from '@/lib/game';
 import { ServingsX, IngredientList, StepList } from '@/components/RecipeSteps';
 import { cultureStyle } from '@/lib/culture';
 import Scene from '@/components/Scene';
-import { PartyCard, ChatsPeek } from '@/components/PartyHub';
+import { PartyCard, ChatsPeek, FriendStrip } from '@/components/PartyHub';
 
 const TIER = { 1: ['Small', 'var(--fresh-soft)', 'var(--fresh)'], 2: ['Medium', 'var(--warn-soft)', 'var(--warn)'], 3: ['Big', 'var(--pop-soft)', 'var(--bad)'] };
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
@@ -57,6 +57,7 @@ export default function Compete() {
   return (
     <div className="stack">
       <div className="page-title"><h1>{t('Compete')}</h1><span className="muted pill-r">Resets in {resetIn}</span></div>
+      <FriendStrip />
       <h2 data-tour="challenges" data-tip="challenges" style={{ fontSize: 22 }}>{t('This week’s challenges')}</h2>
       {challenges === null || !recipes ? <p className="muted">{t('Loading…')}</p> : challenges.length === 0 ? (
         <Link href="/pantry" className="card chat-item" style={{ textDecoration: 'none' }}><span className="chat-item-txt"><b>{t('No challenges yet')}</b><small>{t('Add groceries to your pantry and this week’s challenges appear here')}</small></span><Icon name="chevron" size={16} /></Link>

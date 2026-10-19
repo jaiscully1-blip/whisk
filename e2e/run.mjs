@@ -811,6 +811,9 @@ await step('profile picture', async () => {
   await page.waitForTimeout(800);
   await page.getByTestId('avatar-file').setInputFiles('e2e/plate.jpg');
   check('a profile picture can be picked from the camera roll and saves', await page.locator('.toast', { hasText: 'Profile picture saved' }).first().waitFor({ timeout: 8000 }).then(() => true, () => false));
+  await nav('Compete');
+  check('Compete starts with your friends as round pictures', await page.getByTestId('friend-strip').waitFor({ timeout: 8000 }).then(() => true, () => false));
+  await shot('12c-friend-strip');
 });
 await step('free dish search', async () => {
   await nav('Cook');

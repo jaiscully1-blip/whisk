@@ -1659,3 +1659,12 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .av-pick .av-pick-img { display: grid; place-items: center; border-radius: 50%; color: #fff; font-weight: 800; border: 3px solid #fff; box-sizing: border-box; }
 .av-pick-cam { position: absolute; right: -4px; bottom: -4px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: #8FD14F; color: #1c2a10; border: 2px solid #fff; }
 .me-title .namebtn { min-width: 0; flex: 1; text-align: left; }
+
+/* Compete: friends as big round pictures */
+.fstrip { display: flex; gap: 14px; overflow-x: auto; padding: 6px 4px 8px; scrollbar-width: none; }
+.fstrip::-webkit-scrollbar { display: none; }
+.fs-item { flex: none; width: 66px; display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: 0; padding: 0; color: var(--fg); text-decoration: none; cursor: pointer; }
+.fs-av { width: 60px; height: 60px; font-size: 24px; position: relative; box-shadow: 0 0 0 3px var(--surface, #221B1C), 0 0 0 5px #8B5CF6; }
+.fs-av.on::after { content: ''; position: absolute; right: 0; bottom: 0; width: 15px; height: 15px; border-radius: 50%; background: #58E07A; border: 3px solid var(--surface, #221B1C); }
+.fs-add { background: var(--card); color: var(--muted); box-shadow: none; border: 2px dashed var(--line); }
+.fs-nm { font-size: 12px; font-weight: 800; max-width: 66px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1731,3 +1731,13 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .bg-tile .bg-prev[data-bg="tiles"], .bg-tile .bg-prev[data-bg="gingham"], .bg-tile .bg-prev[data-bg="herbs"], .bg-tile .bg-prev[data-bg="sunset"], .bg-tile .bg-prev[data-bg="ocean"] { position: relative; z-index: 0; overflow: hidden; --fg: #F2E9E2; }
 
 .bg-tile .bg-prev:not([data-bg]) { background-color: var(--bg); background-image: none; }
+
+/* sheets slide up smoothly; the background picker's little previews stay still so it opens without lag */
+@keyframes scrimfade { from { opacity: 0; } }
+@keyframes sheetslide { from { transform: translateY(40px); opacity: .6; } }
+.scrim { animation: scrimfade .18s ease-out; }
+.scrim > .sheet { animation: sheetslide .28s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .scrim, .scrim > .sheet { animation: none; } }
+.bg-tile .bg-prev::before, .bg-tile .bg-prev::after { animation: none !important; filter: none !important; }
+.bg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bg-coins { display: inline-flex; align-items: center; gap: 6px; background: var(--card); border: 2px solid var(--line); border-radius: 99px; padding: 5px 12px 5px 8px; font-weight: 900; font-size: 16px; }

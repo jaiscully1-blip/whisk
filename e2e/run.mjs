@@ -1194,7 +1194,7 @@ await step('friends and group chat', async () => {
   await fp.getByTestId('chat-bell').click(); await fp.locator('.toast', { hasText: 'Notifications off for this chat' }).waitFor();
   check('notifications can be turned off for a chat', (await fp.getByTestId('chat-bell').getAttribute('aria-pressed')) === 'true');
   // chat backgrounds: bought with coins, seen only by you
-  const coinsFp = async (want) => { let n = 0; for (let i = 0; i < 24; i++) { n = Number((await fp.getByTestId('chat-bgs').innerText()).match(/You have (\d+) coins/)[1]); if (want === undefined || n === want) break; await fp.waitForTimeout(250); } return n; };
+  const coinsFp = async (want) => { let n = 0; for (let i = 0; i < 24; i++) { n = Number((await fp.getByTestId('bg-coins').innerText()).replace(/\D/g, '')); if (want === undefined || n === want) break; await fp.waitForTimeout(250); } return n; };
   await fp.getByTestId('chat-bgbtn').click(); await fp.getByTestId('chat-bgs').waitFor(); await fp.getByTestId('bg-tiles').waitFor();
   check('the background picker lists the looks with prices', (await fp.locator('.bg-tile').count()) === 20 && (await fp.getByTestId('bg-tiles').innerText()).includes('300'));
   const c0 = await coinsFp();

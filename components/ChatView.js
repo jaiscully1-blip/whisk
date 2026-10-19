@@ -3,7 +3,8 @@ import Avatar from './Avatar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWhisk } from './AppShell';
-import Icon from './Icon';
+import Icon, { Coin } from './Icon';
+import { peek, put, load } from '@/lib/cache';
 import { Crowned } from './Crown';
 import { isPhoto, uploadTo } from '@/lib/photo';
 import { color, stamp, EMOJI, chatError } from '@/lib/social';
@@ -189,11 +190,15 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
   }
 
   const msgs = d?.messages || [];
+  const fetchLooks = () => supabase.rpc('get_chat_bgs').then(({ data, error }) => (error ? undefined : data || []));
+  // the list of looks is fetched ahead of time, so the sheet opens already full
+  useEffect(() => { load('chat-bgs', fetchLooks, 30000).catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   async function openLooks() {
-    setLooks([]);
-    const { data, error } = await supabase.rpc('get_chat_bgs');
-    if (error) { setLooks(null); say('Couldn’t open the backgrounds'); return; }
-    setLooks(data || []);
+    const cached = peek('chat-bgs');
+    setLooks(cached || []);
+    const data = await load('chat-bgs', fetchLooks, cached ? 0 : -1).catch(() => undefined);
+    if (data === undefined && !cached) { setLooks(null); say('Couldn’t open the backgrounds'); return; }
+    if (data) setLooks(data);
   }
   async function pickLook(b) {
     if (buyingBg) return;
@@ -203,7 +208,7 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
       const { error } = await supabase.rpc('buy_chat_bg', { p_bg: b.id });
       if (error) { setBuyingBg(false); say(/enough/i.test(error.message) ? 'Not enough coins yet' : 'Couldn’t buy that'); return; }
       refreshProfile?.();
-      setLooks((l) => (l || []).map((x) => (x.id === b.id ? { ...x, owned: true } : x)));
+      setLooks((l) => { const n = (l || []).map((x) => (x.id === b.id ? { ...x, owned: true } : x)); put('chat-bgs', n); return n; });
     }
     const { error: e2 } = await supabase.rpc('set_chat_bg', { p_group: id, p_bg: next });
     setBuyingBg(false);
@@ -301,8 +306,10 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
       {looks && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setLooks(null); }}>
           <div className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label="Chat background" data-testid="chat-bgs">
-            <h2 style={{ fontSize: 24 }}>{t('Background')}</h2>
-            <p className="desc">Only you see it. It never changes any game. You have {profile?.coins ?? 0} coins.</p>
+            <div className="bg-head">
+              <h2 style={{ fontSize: 24 }}>{t('Background')}</h2>
+              <span className="bg-coins" data-testid="bg-coins" aria-label={`${profile?.coins ?? 0} coins`}><Coin size={20} />{(profile?.coins ?? 0).toLocaleString()}</span>
+            </div>
             <div className="bg-grid">
               <button type="button" className={`bg-tile ${!d?.group?.bg ? 'on' : ''}`} onClick={() => pickLook(null)} aria-pressed={!d?.group?.bg} data-testid="bg-plain"><span className="bg-prev" /><b>{t('Plain')}</b><small>{t('Free')}</small></button>
               {looks.map((b) => (

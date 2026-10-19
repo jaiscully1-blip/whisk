@@ -1705,13 +1705,11 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 @media (prefers-reduced-motion: reduce) { .chat-full[data-bg="dusk"]::before, .chat-full[data-bg="forest"]::before, .chat-full[data-bg="mocha"]::before, .chat-full[data-bg="slate"]::before, .chat-full[data-bg="aurora"]::before, .chat-full[data-bg="rose"]::before, .chat-full[data-bg="rain"]::before, .chat-full[data-bg="embers"]::before, .chat-full[data-bg="snow"]::before, .chat-full[data-bg="lava"]::before, .chat-full[data-bg="stars"]::before, .chat-full[data-bg="waves"]::before, .chat-full[data-bg="fireflies"]::before { animation: none; } }
 .bg-tile .bg-prev[data-bg="dusk"], .bg-tile .bg-prev[data-bg="forest"], .bg-tile .bg-prev[data-bg="mocha"], .bg-tile .bg-prev[data-bg="slate"], .bg-tile .bg-prev[data-bg="aurora"], .bg-tile .bg-prev[data-bg="rose"], .bg-tile .bg-prev[data-bg="rain"], .bg-tile .bg-prev[data-bg="embers"], .bg-tile .bg-prev[data-bg="snow"], .bg-tile .bg-prev[data-bg="lava"], .bg-tile .bg-prev[data-bg="stars"], .bg-tile .bg-prev[data-bg="waves"], .bg-tile .bg-prev[data-bg="fireflies"] { position: relative; z-index: 0; overflow: hidden; --fg: #F2E9E2; }
 
-/* Me header: blue banner with a big picture (crown on its rim), name over tag, XP bar inside */
-.page-title.me-title { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 14px; padding: 18px; margin-top: 34px; min-height: 0; }
-.me-title .me-head { display: flex; align-items: center; gap: 16px; }
-.me-title .me-who { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; flex: 1; }
+/* Me header: the same slim blue banner as every other tab; picture with the crown on its rim, name over tag */
+.page-title.me-title { flex-direction: row; align-items: center; flex-wrap: nowrap; gap: 0; margin-top: 30px; }
+.me-title .me-head { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
+.me-title .me-who { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; flex: 1; }
 .me-title .me-who .namebtn { flex: none; }
+.me-title .me-who h1 { font-size: 26px; line-height: 1.05; }
 .me-title .av-pick { margin-right: 0; }
-.me-title .av-pick .av-pick-img { border: 4px solid #fff; box-shadow: 0 0 0 5px rgba(255, 255, 255, .28); }
-.me-title .me-xp { color: #fff; font-weight: 800; }
-.me-title .me-xp .muted, .me-title .me-xp span { color: #fff; }
-.me-title .me-xp .bar { background: rgba(0, 0, 0, .25); }
+.me-title .av-pick .av-pick-img { border: 3px solid #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, .28); }

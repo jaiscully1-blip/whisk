@@ -120,7 +120,7 @@ export default function Me() {
           </form>
         ) : (
           <>
-            <AvatarPicker name={name} size={96} />
+            <AvatarPicker name={name} size={62} />
             <span className="me-who">
             <button className="namebtn" onClick={() => { setNameDraft(nameDraft || profile?.display_name || ''); setEditing(true); }} aria-label={`Edit name: ${name}`}><h1>{name}</h1></button>
             <span className={`me-tag t${lvl.tier}${lvl.tier !== '0' ? ' shiny' : ''}`} data-testid="me-tag" data-tier={lvl.tier}>{lvl.title}</span>
@@ -128,10 +128,10 @@ export default function Me() {
           </>
         )}
         </div>
-      <div className="me-xp">
+      </div>
+      <div>
         <div className="row" style={{ justifyContent: 'space-between', fontSize: 13, fontWeight: 800 }}><span>{fmt(profile?.xp)} XP</span><span className="muted">{lvl.next ? `${fmt(lvl.next - (profile?.xp || 0))} to level ${lvl.level + 1}` : 'Max level'}</span></div>
         <div className="bar" style={{ height: 10, marginTop: 4 }}><i style={{ width: `${lvl.pct}%` }} /></div>
-      </div>
       </div>
 
       <ProfileCard level={lvl} xp={profile?.xp || 0} recipes={recipesCooked} ingredients={ingredients} countries={countries.length} streak={profile?.streak_days || 0} />

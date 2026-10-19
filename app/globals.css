@@ -1034,7 +1034,7 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .unlocked-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 .unlocked-it { display: grid; justify-items: center; gap: 2px; font-size: 13px; animation: gl-in .4s ease-out both; }
 
-.kmag { position: absolute; width: 13px; height: 13px; pointer-events: none; -webkit-user-drag: none; filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); }
+.kmag { position: absolute; width: 52px; height: 52px; pointer-events: none; -webkit-user-drag: none; filter: drop-shadow(0 4px 0 rgba(0,0,0,.25)); image-rendering: auto; }   /* drawn 4x and scaled back down, so it stays sharp when the kitchen is zoomed */
 
 /* the dollhouse room around the 3D kitchen */
 .kwall, .kslab { position: absolute; backface-visibility: hidden; -webkit-backface-visibility: hidden; background-size: 100% 100%; pointer-events: none; }

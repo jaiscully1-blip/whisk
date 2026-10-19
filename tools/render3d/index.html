@@ -33,7 +33,7 @@ window.renderItem = (name, size = 384) => {
   const im = x.getImageData(0, 0, 1024, 1024).data; let x0 = 1024, y0 = 1024, x1 = 0, y1 = 0;
   for (let y = 0; y < 1024; y++) for (let xx = 0; xx < 1024; xx++) if (im[(y * 1024 + xx) * 4 + 3] > 24) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (y < y0) y0 = y; if (y > y1) y1 = y; }
   const w = x1 - x0 + 1, h = y1 - y0 + 1, side = Math.max(w, h) * 1.08, f = document.createElement('canvas'); f.width = f.height = size; const fx = f.getContext('2d');
-  fx.drawImage(out, x0 - (side - w) / 2, y0 - (side - h) / 2 - side * .01, side, side, 0, 0, size, size);
+  fx.drawImage(out, x0 - (side - w) / 2, y1 + 1 - side + side * .025, side, side, 0, 0, size, size);
   scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); return f.toDataURL('image/png');
 };
 window.ready = true;

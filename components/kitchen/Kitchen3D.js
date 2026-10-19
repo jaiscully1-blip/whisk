@@ -536,7 +536,7 @@ function Piece({ b, build, view, open, openAll, onToggle, spot, onSpot, sel, idx
     const toggle = c.k === 'panel' || !view || !onToggle ? undefined : guard(() => (onFocus && !focused ? onFocus() : onToggle(okey)));
     const aria = `${isOpen ? 'Close' : 'Open'} ${nick} ${c.name}`;
     const decos = deco.map((d, i) => <span key={i} className="kdeco" style={css(d.st)} />)
-      .concat((mags[okey] || []).map((g) => <img key={g.id} className="kmag" src={magnetUrl(g.id)} alt="" draggable={false} style={{ left: `${g.x * 100}%`, top: `${g.y * 100}%`, transform: `translate(-50%, -50%) rotate(${g.rot}deg)` }} />));
+      .concat((mags[okey] || []).map((g) => <img key={g.id} className="kmag" src={magnetUrl(g.id)} alt="" draggable={false} style={{ left: `${g.x * 100}%`, top: `${g.y * 100}%`, transform: `translate(-50%, -50%) rotate(${g.rot}deg) scale(.25)` }} />));
     return (
       <div key={ci} className="kcw">
         {!deepOk(c, onTop) && <div className="kin" style={{ ...pos, ...css(inCss) }} />}

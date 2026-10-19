@@ -778,7 +778,6 @@ await step('buy coins with Apple Pay (RevenueCat)', async () => {
 await step('me settings', async () => {
   await nav('Me'); await page.getByTestId('hud-settings').waitFor();
   check('autosave is not shown', (await page.getByText('Autosave').count()) === 0);
-  check('day counter starts at Day 1', (await page.locator('.dayno').innerText()) === 'Day 1');
   await openSettings();
   await page.getByRole('button', { name: /Cookies & privacy/ }).click();
   check('cookie choices can be reopened from Settings', await page.getByRole('dialog', { name: 'Your choices' }).isVisible());

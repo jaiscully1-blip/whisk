@@ -23,7 +23,7 @@ import DeleteDataSheet from '@/components/DeleteDataSheet';
 import RecipeSheet from '@/components/RecipeSheet';
 import { usePantry, useWorld } from '@/components/usePantry';
 import { useRouter } from 'next/navigation';
-import { levelFor, fmt, dayNumber } from '@/lib/game';
+import { levelFor, fmt } from '@/lib/game';
 import { LANGS } from '@/lib/i18n';
 
 const EMPTY_LIST = [];
@@ -111,6 +111,7 @@ export default function Me() {
     <div className="stack">
       {backupAsk && account?.anon && <div data-testid="name-backup"><BackupSheet supabase={supabase} onClose={() => setBackupAsk(false)} /></div>}
       <div data-tour="name" className="page-title me-title" style={{ flexWrap: 'nowrap' }}>
+        <div className="me-head">
         {editing ? (
           <form className="row" style={{ flexWrap: 'nowrap', flex: 1 }} onSubmit={saveName}>
             <label htmlFor="nm" hidden>{t('Your name')}</label>
@@ -119,15 +120,18 @@ export default function Me() {
           </form>
         ) : (
           <>
-            <AvatarPicker name={name} />
+            <AvatarPicker name={name} size={96} />
+            <span className="me-who">
             <button className="namebtn" onClick={() => { setNameDraft(nameDraft || profile?.display_name || ''); setEditing(true); }} aria-label={`Edit name: ${name}`}><h1>{name}</h1></button>
             <span className={`me-tag t${lvl.tier}${lvl.tier !== '0' ? ' shiny' : ''}`} data-testid="me-tag" data-tier={lvl.tier}>{lvl.title}</span>
+            </span>
           </>
         )}
-      </div>
-      <div>
-        <div className="row" style={{ justifyContent: 'space-between', fontSize: 13, fontWeight: 800 }}><span>{fmt(profile?.xp)} XP · <span className="dayno">Day {dayNumber(profile)}</span></span><span className="muted">{lvl.next ? `${fmt(lvl.next - (profile?.xp || 0))} to level ${lvl.level + 1}` : 'Max level'}</span></div>
+        </div>
+      <div className="me-xp">
+        <div className="row" style={{ justifyContent: 'space-between', fontSize: 13, fontWeight: 800 }}><span>{fmt(profile?.xp)} XP</span><span className="muted">{lvl.next ? `${fmt(lvl.next - (profile?.xp || 0))} to level ${lvl.level + 1}` : 'Max level'}</span></div>
         <div className="bar" style={{ height: 10, marginTop: 4 }}><i style={{ width: `${lvl.pct}%` }} /></div>
+      </div>
       </div>
 
       <ProfileCard level={lvl} xp={profile?.xp || 0} recipes={recipesCooked} ingredients={ingredients} countries={countries.length} streak={profile?.streak_days || 0} />

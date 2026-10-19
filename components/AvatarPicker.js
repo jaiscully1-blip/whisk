@@ -47,7 +47,7 @@ export default function AvatarPicker({ name, size = 64 }) {
       <button type="button" className="av-pick" onClick={() => input.current?.click()} disabled={busy} aria-label="Change your profile picture" data-testid="avatar-pick" style={{ width: size, height: size }}>
         <Avatar className="av-pick-img" code={code} v={v} name={name || profile?.display_name || '?'} style={{ width: size, height: size, fontSize: size * 0.42 }} />
         {crowned && (
-          <svg className="av-crown" width={size * 0.62} height={size * 0.62} viewBox="0 0 24 24" role="img" aria-label="Cook of the week" data-testid="crown">
+          <svg className="av-crown" width={size * 0.78} height={size * 0.78} viewBox="0 0 24 24" role="img" aria-label="Cook of the week" data-testid="crown">
             <title>Cook of the week</title>
             <path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z" fill="#F4B400" stroke="#7a5600" strokeWidth="1.4" strokeLinejoin="round" />
             <circle cx="3" cy="8" r="1.6" fill="#F4B400" stroke="#7a5600" strokeWidth="1" /><circle cx="12" cy="5" r="1.6" fill="#F4B400" stroke="#7a5600" strokeWidth="1" /><circle cx="21" cy="8" r="1.6" fill="#F4B400" stroke="#7a5600" strokeWidth="1" />

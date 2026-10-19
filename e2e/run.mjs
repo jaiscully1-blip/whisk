@@ -1250,7 +1250,6 @@ await step('friends and group chat', async () => {
   await shot('12b-friends-chats');
   check('Back returns to the list, where the group sits at the top', (await page.locator('.chat-item').first().innerText()).includes('Dinner crew'));
   // a shared grocery list with one friend
-  await page.locator('.fr-list summary').click();
   await page.getByTestId('shared-list').first().click();
   await page.getByTestId('chat-shoplist').waitFor({ timeout: 8000 });
   await page.locator('#gl-add').fill('bread'); await page.getByTestId('gl-add-btn').click();

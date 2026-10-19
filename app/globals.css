@@ -1637,3 +1637,18 @@ input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-sele
 /* real 3D grocery sprites: a faint light rim keeps their dark outline readable on the dark theme */
 img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); object-fit: contain; }
 .kthing-up img[src^="/food3d/"] { filter: none; }
+
+/* Friends: one clean row each; swipe (or tap) to reveal Shared list and Remove */
+.fr-strip .fr-copy { min-width: 0; }
+.fr-strip .btn { flex: none; white-space: nowrap; }
+.fr-strip .desc { flex: none; white-space: nowrap; }
+.fr-rows { display: flex; flex-direction: column; gap: 10px; }
+.fr-h { font-size: 20px; margin: 4px 2px 0; }
+.fr-swipe { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border-radius: 18px; box-shadow: 0 4px 0 var(--tile-edge, rgba(0,0,0,.3)); }
+.fr-swipe::-webkit-scrollbar { display: none; }
+.fr-row { flex: 0 0 100%; scroll-snap-align: start; display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--card); border: 0; color: var(--fg); text-align: left; min-height: 64px; cursor: pointer; }
+.fr-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; }
+.fr-act { flex: 0 0 92px; scroll-snap-align: end; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 0; color: #fff; font-weight: 800; font-size: 13px; cursor: pointer; padding: 8px; }
+.fr-act.list { background: #8B5CF6; }
+.fr-act.rm { background: #E5484D; }
+.fr-tip { text-align: center; font-size: 12.5px; margin: 0; }

@@ -82,17 +82,21 @@ export default function Friends() {
       <ChatList chats={chats === undefined ? null : chats} friends={f?.friends || []} onOpen={setOpen} onMade={reloadChats} />
 
       {f?.friends?.length > 0 && (
-        <details className="card fr-list">
-          <summary><b>Your friends ({f.friends.length})</b></summary>
+        <section className="fr-rows" aria-label={t('Your friends')}>
+          <h2 className="fr-h">{t('Friends')} · {f.friends.length}</h2>
           {f.friends.map((fr) => (
-            <div key={fr.code} className="fr-req" style={{ marginTop: 8 }}>
-              <span className="post-av" style={{ background: color(fr.name) }} aria-hidden="true">{fr.name.slice(0, 1).toUpperCase()}</span>
-              <span><Crowned code={fr.code} size={14}><b>{fr.name}</b></Crowned></span>
-              <button className="btn ghost sm" onClick={() => sharedList(fr)} data-testid="shared-list"><Icon name="bag" size={16} />{t('Shared list')}</button>
-              <button className="btn ghost sm" onClick={() => unfriend(fr)}>{t('Remove')}</button>
+            <div key={fr.code} className="fr-swipe">
+              <button type="button" className="fr-row" onClick={(e) => { const w = e.currentTarget.parentElement; w.scrollTo({ left: w.scrollLeft > 4 ? 0 : w.scrollWidth, behavior: 'smooth' }); }} aria-label={`${fr.name}. Tap for options`}>
+                <span className="post-av" style={{ background: color(fr.name) }} aria-hidden="true">{fr.name.slice(0, 1).toUpperCase()}</span>
+                <span className="fr-nm"><Crowned code={fr.code} size={14}><b>{fr.name}</b></Crowned></span>
+                <Icon name="chevron" size={16} />
+              </button>
+              <button type="button" className="fr-act list" onClick={() => sharedList(fr)} data-testid="shared-list"><Icon name="bag" size={18} />{t('Shared list')}</button>
+              <button type="button" className="fr-act rm" onClick={() => unfriend(fr)}>{t('Remove')}</button>
             </div>
           ))}
-        </details>
+          <p className="desc fr-tip">{t('Swipe a friend left, or tap them, for Shared list and Remove.')}</p>
+        </section>
       )}
 
       {adding && (

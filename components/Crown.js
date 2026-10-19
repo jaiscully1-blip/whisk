@@ -15,3 +15,21 @@ export default function Crown({ code, me = false, size = 16 }) {
     </svg>
   );
 }
+
+// Wrap a name: this week's Cook of the week gets the crown centred right above it.
+export function Crowned({ code, me = false, size = 16, children }) {
+  const { supabase } = useWhisk();
+  const c = useChampion(supabase);
+  const on = !!(c?.code && (me ? c.me : code && code === c.code));
+  if (!on) return children;
+  return (
+    <span className="crowned" style={{ position: 'relative', display: 'inline-block' }}>
+      {children}
+      <svg className="crown-top" width={size} height={size} viewBox="0 0 24 24" role="img" aria-label="Cook of the week" data-testid="crown" style={{ position: 'absolute', left: '50%', bottom: '100%', transform: 'translateX(-50%)', marginBottom: -2, pointerEvents: 'none' }}>
+        <title>Cook of the week</title>
+        <path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z" fill="#F4B400" stroke="#7a5600" strokeWidth="1.4" strokeLinejoin="round" />
+        <circle cx="3" cy="8" r="1.6" fill="#F4B400" stroke="#7a5600" strokeWidth="1" /><circle cx="12" cy="5" r="1.6" fill="#F4B400" stroke="#7a5600" strokeWidth="1" /><circle cx="21" cy="8" r="1.6" fill="#F4B400" stroke="#7a5600" strokeWidth="1" />
+      </svg>
+    </span>
+  );
+}

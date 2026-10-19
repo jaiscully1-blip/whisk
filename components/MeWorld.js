@@ -12,8 +12,6 @@ import { MAGNETS, magnetUrl } from '@/lib/art/magnets';
 import { teamColors, COUNTRY_NAME } from '@/lib/world/flair';
 import { nextPlace } from '@/lib/art/tampa';
 import { fmt, LEVELS } from '@/lib/game';
-import Crown from './Crown';
-import { useChampion } from '@/lib/champion';
 
 export const tierOf = (n, done) => (done || n >= 5 ? 'gold' : n >= 3 ? 'silver' : n >= 1 ? 'bronze' : '');
 // The country's real flag (flag-icons, MIT), drawn 4:3.
@@ -53,7 +51,6 @@ export function MyKitchen({ shop = false }) {
   const [naming, setNaming] = useState(null);
   const place = usePlace();
   const level100 = place.key === 'yacht';
-  const champ = useChampion(supabase);
   const shown = kitchens?.find((k) => k.is_display) || null;
   const pieces = useMemo(() => (shown ? K.cleanPieces(shown.pieces) : []), [shown]);
   // the food you've put away shows on the same shelves as in the Pantry
@@ -93,7 +90,6 @@ export function MyKitchen({ shop = false }) {
         </div>
       )}
       <KitchenStage mode="view" place={place.key} pieces={pieces} title={title} spot={spot} height={420} scale={0.9} />
-      {champ?.me && <span className="plaque" data-testid="champ-plaque"><Crown me size={18} />#1 Cook of the week · {fmt(champ.xp)} XP</span>}
       {!shown && <span className="desc" style={{ textAlign: 'center' }}>{place.key === 'dorm' ? 'Your dorm. Cook a meal to move into your first apartment, then build your kitchen.' : 'Build your kitchen, then everything you buy goes in it.'}</span>}
     </section>
   );

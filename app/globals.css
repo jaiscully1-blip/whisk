@@ -758,6 +758,7 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .fr-code { font-family: var(--f-display); font-size: 17px; letter-spacing: .14em; font-weight: 700; }
 .fr-req { display: flex; align-items: center; gap: 8px; }
 .fr-req > span { flex: 1; min-width: 0; }
+.fr-req > .post-av { flex: none; width: 36px; }
 .post { padding: 0; overflow: hidden; }
 .post-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
 .post-av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; flex: none; }

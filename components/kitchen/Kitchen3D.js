@@ -33,7 +33,7 @@ function magnetSpots(pieces, owned) {
 
 // The kitchen in 3D, drawn with CSS 3D boxes (no WebGL, so it's light and works everywhere).
 // mode: 'view'  — doors and drawers open with a tap; lit spots can be tapped
-//       'build' — doors off so every shelf shows; drag a piece anywhere (left/right along the floor, up/down to lift it),
+//       'build' — doors off so every shelf shows; drag a piece along the floor (wall cabinets can also be lifted up/down; everything else stays on the floor),
 //                 pull a yellow dot to make it wider or taller
 //       'mini'  — a small floating picture (tap anywhere → onTap)
 // Camera: drag to spin (the model follows your finger), two fingers to slide it anywhere and pinch to zoom
@@ -243,7 +243,8 @@ export default function Kitchen3D({
         const B = K.bounds(n);
         if (useX) n.x = K.clamp(settle(n.x, d.b0.x + side), B.x0, B.x1 - n.w); else n.y = K.clamp(settle(n.y, d.b0.y + side), B.y0, B.y1 - n.d);
         // lifting needs a clear up/down drag (30 px) so sliding sideways never bumps it off the floor
-        if (Math.abs(dy) > 30) n.z = K.clamp(settle(n.z * 2, (d.b0.z + lift(dy - Math.sign(dy) * 30)) * 2) / 2, 0, 9 - n.h);
+        // only wall cabinets (and the hood) hang up there; islands, tables, fridges and base cabinets always stand on the floor
+        if (K.MODEL[n.mid]?.cat === 'upper' && Math.abs(dy) > 30) n.z = K.clamp(settle(n.z * 2, (d.b0.z + lift(dy - Math.sign(dy) * 30)) * 2) / 2, 0, 9 - n.h);
       });
       return;
     }
@@ -326,16 +327,19 @@ const FLOORS = {
   teak: 'repeating-linear-gradient(90deg,rgba(40,22,6,.45) 0 1.5px,rgba(0,0,0,0) 1.5px 17px),repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 2px,rgba(0,0,0,0) 2px 8px),linear-gradient(135deg,#B98A55,#8E6234)',
   concrete: 'radial-gradient(circle at 30% 40%,rgba(255,255,255,.06),rgba(0,0,0,0) 40%),linear-gradient(135deg,#4A484C,#38363A)'
 };
-// A shop thing: a drawn cut-out standing on the counter (or floor), always turned to face you.
+// A shop thing: a drawn cut-out standing on the counter (or floor), fixed in the room (it never turns to follow the camera).
 function Thing({ b, selected, onDown }) {
   const m = K.MODEL[b.mid]; const C = K.C, HU = K.HU;
   const W = b.w * C, VW = Math.round(W * 1.6), H = VW, Z = Math.round(b.z * HU);   // drawn a bit bigger than its cell so you can see it
   return (
     <div className={`kthing ${selected ? 'sel' : ''}`} style={{ left: b.x * C, top: b.y * C, width: W, height: b.d * C, transform: `translateZ(${Z + 0.5}px)` }} onPointerDown={onDown} data-piece={b.id}>
       <div className="kthing-shadow" />
-      <div className="kthing-up" style={{ left: (W - VW) / 2, top: b.d * C / 2 - H, width: VW, height: H, transform: 'rotateZ(calc(var(--rz) * -1deg)) rotateX(-90deg)' }}>
-        <img src={itemUrl(m.item)} alt={m.nick} title={m.nick} draggable={false} />
-      </div>
+      {/* two cut-outs crossed like an X and fixed in the room (never turned to the camera): they stay put exactly like the cabinets when you spin or slide the kitchen */}
+      {[0, 90].map((a) => (
+        <div key={a} className="kthing-up" style={{ left: (W - VW) / 2, top: b.d * C / 2 - H, width: VW, height: H, transform: `rotateZ(${a}deg) rotateX(-90deg)` }}>
+          <img src={itemUrl(m.item)} alt={a ? '' : m.nick} title={m.nick} draggable={false} />
+        </div>
+      ))}
     </div>
   );
 }

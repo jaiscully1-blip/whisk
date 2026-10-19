@@ -1,26 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase/server';
+import { categorizeProduct } from '@/lib/pantry/rules';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Maps Open Food Facts category tags onto Yoke pantry categories.
-const MAP = [
-  ['Proteins', ['meat', 'poultry', 'chicken', 'beef', 'pork', 'fish', 'seafood', 'tofu', 'legume', 'bean']],
-  ['Dairy & Eggs', ['dairy', 'milk', 'cheese', 'yogurt', 'butter', 'egg', 'cream']],
-  ['Produce', ['fruit', 'vegetable', 'salad', 'fresh']],
-  ['Frozen', ['frozen']],
-  ['Carbs & Grains', ['bread', 'pasta', 'rice', 'cereal', 'grain', 'noodle', 'flour', 'tortilla']],
-  ['Canned & Jarred', ['canned', 'jar', 'soup', 'preserve']],
-  ['Sauces & Oils', ['sauce', 'oil', 'condiment', 'dressing', 'vinegar', 'ketchup', 'mayonnaise']],
-  ['Spices & Seasonings', ['spice', 'seasoning', 'salt', 'pepper', 'herb']],
-  ['Baking', ['baking', 'sugar', 'chocolate', 'yeast']]
-];
-function categorize(tags = []) {
-  const t = tags.join(' ').toLowerCase();
-  for (const [cat, words] of MAP) if (words.some((w) => t.includes(w))) return cat;
-  return 'Other';
-}
+// The aisle comes from the product's name first and the food database's category tags second (lib/pantry/rules.js).
 
 export async function GET(req) {
   const supabase = await supabaseServer();
@@ -45,7 +30,7 @@ export async function GET(req) {
       name: String(p.product_name).slice(0, 60),
       brand: p.brands ? String(p.brands).split(',')[0].slice(0, 40) : null,
       quantity: p.quantity ? String(p.quantity).slice(0, 30) : null,
-      category: categorize(p.categories_tags)
+      category: categorizeProduct(String(p.product_name), p.categories_tags || [])
     });
   } catch {
     return NextResponse.json({ error: 'Barcode lookup is unavailable right now. Type the name instead.' }, { status: 502 });

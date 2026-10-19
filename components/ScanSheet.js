@@ -4,6 +4,7 @@ import Icon from './Icon';
 import { CATEGORIES, guessCategory } from '@/lib/game';
 import { isFrozenMeat } from '@/lib/recipes/match';
 import { parseReceipt } from '@/lib/scan/receipt';
+import BarcodeField from './BarcodeField';
 import { openCamera, grabRegion, decodeBarcode, warmBarcodes, readText, warmReceipts, prepareReceipt, closeReader, beep, unlockSound } from '@/lib/scan/engine';
 
 // The in-game scanners, full screen like a store's handheld scanner.
@@ -173,7 +174,7 @@ function BarcodeScan({ onAdd, onClose }) {
           </>
         )}
         <form className="scan-type" onSubmit={(e) => { e.preventDefault(); if (/^\d{8,14}$/.test(typed)) { got(typed); setTyped(''); } }}>
-          <input inputMode="numeric" aria-label="Type a barcode" placeholder="Won’t scan? Type the numbers" value={typed} onChange={(e) => setTyped(e.target.value.replace(/\D/g, '').slice(0, 14))} />
+          <BarcodeField value={typed} onChange={setTyped} placeholder="Won’t scan? Type the numbers" />
           <button type="submit" className="btn ghost sm" disabled={!/^\d{8,14}$/.test(typed)}>Add</button>
         </form>
         <p className="scan-note">Product names from Open Food Facts. Nothing is recorded, only the barcode number is looked up.</p>

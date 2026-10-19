@@ -1454,7 +1454,7 @@ await step('kitchen layout', async () => {
   if (hit) {
     const z0 = await topOf();
     await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2); await page.mouse.down(); await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2 - 90, { steps: 8 }); await page.mouse.up();
-    check('drag a piece up and it lifts up', (await topOf()).split('|')[1] !== z0.split('|')[1], await topOf());
+    check('dragging a floor piece up does NOT lift it (islands, tables and base cabinets stay on the floor)', (await topOf()).split('|')[1] === z0.split('|')[1], await topOf());
     const sb2 = await page.locator('.kbox.sel').boundingBox();
     await page.mouse.move(sb2.x + sb2.width / 2, sb2.y + sb2.height / 2); await page.mouse.down(); await page.mouse.move(sb2.x + sb2.width / 2, sb2.y + sb2.height / 2 + 200, { steps: 8 }); await page.mouse.up();
     check('…and drag it down to set it back on the floor', /translateZ\(0px\)/.test(await topOf()), await topOf());

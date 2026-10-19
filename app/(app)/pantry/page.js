@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useWhisk, useDraft } from '@/components/AppShell';
 import { isFrozenMeat, thawState, THAW_HOURS } from '@/lib/recipes/match';
 import Icon from '@/components/Icon';
-import { CATEGORIES, freshness, guessCategory } from '@/lib/game';
+import { CATEGORIES, freshness, guessCategory, shelve, learnAisle, catKey } from '@/lib/game';
 import ScanSheet from '@/components/ScanSheet';
 import { usePantry, useList } from '@/components/usePantry';
 import ShareListSheet from '@/components/ShareListSheet';
@@ -40,7 +40,7 @@ export default function Pantry() {
   async function addPantry(e) {
     e.preventDefault();
     const name = form.name.trim(); if (!name) return;
-    const category = kind === 'frozen' ? 'Frozen' : kind === 'canned' ? 'Canned & Jarred' : guessCategory(name);   // Frozen / Canned come from the picker; Fresh is shelved from the name ("fish sauce" → Sauces & Oils)
+    const category = kind === 'frozen' ? 'Frozen' : kind === 'canned' ? 'Canned & Jarred' : shelve(name, ui.catMap);   // Frozen / Canned come from the picker; Fresh is shelved from the name ("fish sauce" → Sauces & Oils)
     const { data, error } = await supabase.from('pantry_items').insert({ name: name.slice(0, 60), category, quantity: form.quantity.trim().slice(0, 30) || null, expires_on: form.expires_on || null }).select().single();
     if (error) { say('Couldn’t add that.'); return; }
     setItems((x) => [...x, data].sort((a, b) => a.name.localeCompare(b.name)));
@@ -54,7 +54,7 @@ export default function Pantry() {
     const fresh = [], restock = [];
     for (const f of found) { const ex = byName.get(f.name.toLowerCase()); if (ex) restock.push(ex.id); else if (!fresh.some((x) => x.name.toLowerCase() === f.name.toLowerCase())) fresh.push(f); }
     const [ins, upd] = await Promise.all([
-      fresh.length ? supabase.from('pantry_items').insert(fresh.map((f) => ({ name: f.name, category: f.category, quantity: f.quantity }))) : { error: null },
+      fresh.length ? supabase.from('pantry_items').insert(fresh.map((f) => ({ name: f.name, category: (ui.catMap || {})[catKey(f.name)] || f.category, quantity: f.quantity }))) : { error: null },
       restock.length ? supabase.from('pantry_items').update({ status: 'stocked', added_at: new Date().toISOString(), thaw_started_at: null }).in('id', restock) : { error: null }
     ]);
     if (ins.error || upd.error) { say('Some items couldn’t be added.'); }
@@ -126,6 +126,28 @@ export default function Pantry() {
       if (e2) { setList((l) => l.filter((x) => x.id !== it.id)); say('Couldn’t bring that back.'); }
     } });
   }
+  // Moving an item to another aisle: your choice is remembered for that name, next time it goes there by itself.
+  const [moving, setMoving] = useState(null);
+  async function moveItem(item, category) {
+    setMoving(null);
+    if (category === item.category) return;
+    setItems((x) => x.map((i) => (i.id === item.id ? { ...i, category } : i)));
+    const { error } = await supabase.from('pantry_items').update({ category }).eq('id', item.id);
+    if (error) { setItems((x) => x.map((i) => (i.id === item.id ? { ...i, category: item.category } : i))); say('Couldn’t move that.'); return; }
+    setUi({ catMap: learnAisle(ui.catMap, item.name, category) });
+    say(`${item.name} is now in ${category}`);
+  }
+  // Re-shelves everything you haven't placed yourself, with the latest sorting rules.
+  async function tidyAisles() {
+    const mine = ui.catMap || {};
+    const moves = (items || []).map((i) => ({ i, to: mine[catKey(i.name)] || guessCategory(i.name) })).filter((m) => m.to !== 'Other' && m.to !== m.i.category && !mine[catKey(m.i.name)]);
+    if (!moves.length) { say('Everything is already in the right aisle'); return; }
+    setItems((x) => x.map((i) => { const m = moves.find((v) => v.i.id === i.id); return m ? { ...i, category: m.to } : i; }));
+    const res = await Promise.all(moves.map((m) => supabase.from('pantry_items').update({ category: m.to }).eq('id', m.i.id)));
+    const failed = res.filter((r) => r.error).length;
+    if (failed) load();
+    say(`Moved ${moves.length - failed} item${moves.length - failed === 1 ? '' : 's'} to the right aisle`);
+  }
   // Quick add: the staples you pick (★ on an item). One tap puts it back in the pantry, stocked.
   const quick = ui.quickAdd || [];
   const isQuick = (name) => quick.some((q) => q.name.toLowerCase() === name.toLowerCase());
@@ -140,7 +162,7 @@ export default function Pantry() {
       setItems((x) => x.map((i) => (i.id === ex.id ? { ...i, status: 'stocked', thaw_started_at: null } : i)));
       await supabase.from('pantry_items').update({ status: 'stocked', added_at: new Date().toISOString(), thaw_started_at: null }).eq('id', ex.id);
     } else {
-      const { data, error } = await supabase.from('pantry_items').insert({ name: q.name, category: q.category || guessCategory(q.name) }).select().single();
+      const { data, error } = await supabase.from('pantry_items').insert({ name: q.name, category: (ui.catMap || {})[catKey(q.name)] || q.category || guessCategory(q.name) }).select().single();
       if (error) { say('Couldn’t add that.'); return; }
       setItems((x) => [...x, data].sort((a, b) => a.name.localeCompare(b.name)));
     }
@@ -217,6 +239,7 @@ export default function Pantry() {
             {['All', ...CATEGORIES].map((c) => <button key={c} className={`chip`} style={{ border: 0, background: filter === c ? 'var(--fg)' : 'var(--track)', color: filter === c ? 'var(--bg)' : 'var(--fg)' }} onClick={() => { setFilter(c); setTimeout(() => { const el = document.getElementById('pantry-items'); if (el) { const y = el.getBoundingClientRect().top + window.scrollY - 70; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } }, 60); }}>{c}</button>)}
           </div>
           <div id="pantry-items" style={{ height: 0 }} />
+          {items?.length > 0 && <button type="button" className="tidy-btn" data-testid="tidy-aisles" onClick={tidyAisles}>Items in the wrong aisle? <b>Tidy aisles</b></button>}
 
           {items === null ? <p className="muted">{t('Loading your pantry…')}</p> : items.length === 0 ? (
             <div className="empty"><b>{t('Your pantry is empty')}</b></div>
@@ -232,6 +255,7 @@ export default function Pantry() {
                         <b style={{ textDecoration: i.status === 'out' ? 'line-through' : 'none' }}>{i.name}</b>{i.quantity && <span className="muted"> · {i.quantity}</span>}
                         {(() => { const t = thawState(i); if (!t) return null; return <div style={{ marginTop: 4 }}>{t.state === 'frozen' ? <button className="chip ice" onClick={() => startThaw(i)}><Icon name="snow" size={14} />Frozen meat · tap to start thawing</button> : t.state === 'thawing' ? <span className="chip ice"><Icon name="snow" size={14} />Thawing · ~{t.hoursLeft} h left</span> : <span className="chip ice drip"><Drip />Thawed · use by {useBy(i)}</span>}</div>; })()}
                         <div className="row exp-row">
+                          <button type="button" className="chip aisle-chip" data-testid="aisle-chip" onClick={() => setMoving(i)} aria-label={`${i.name} is in ${i.category}. Tap to move it to another aisle`}>{i.category}<Icon name="chevron" size={12} /></button>
                           <label className={`chip exp-chip ${i.expires_on ? '' : 'ghost'}`}>{i.expires_on ? `Expires ${new Date(i.expires_on + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : '+ expiry'}
                             <input type="date" value={i.expires_on || ''} onChange={(e) => setExpiry(i, e.target.value)} aria-label={`${i.name} expiry date`} /></label>
                           {i.expires_on && <button type="button" className="chip exp-reset" onClick={() => setExpiry(i, null)} aria-label={`Reset ${i.name} expiry`}>Reset</button>}
@@ -273,6 +297,18 @@ export default function Pantry() {
             </section>
           ))}
         </>
+      )}
+      {moving && (
+        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setMoving(null); }}>
+          <div className="sheet stack" role="dialog" aria-modal="true" aria-label={`Move ${moving.name}`}>
+            <h2 style={{ fontSize: 22 }}>Move {moving.name}</h2>
+            <p className="desc" style={{ margin: 0 }}>Pick the aisle it belongs in. Yoke remembers, so it goes there by itself next time.</p>
+            <div className="row" style={{ gap: 8 }}>
+              {CATEGORIES.map((c) => <button key={c} type="button" className={`chip aisle-pick ${c === moving.category ? 'on' : ''}`} data-testid={`aisle-${c}`} aria-pressed={c === moving.category} onClick={() => moveItem(moving, c)}>{c}</button>)}
+            </div>
+            <button className="btn ghost wide" onClick={() => setMoving(null)}>Cancel</button>
+          </div>
+        </div>
       )}
       {sharing && <ShareListSheet onClose={() => setSharing(false)} />}
       {scan && <ScanSheet mode={scan} onAdd={addMany} onClose={() => setScan(null)} />}

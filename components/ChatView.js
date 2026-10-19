@@ -241,7 +241,7 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
           return (
             <div key={m.id} className={`chat-row ${m.mine ? 'mine' : ''} ${first ? 'first' : ''}`}>
               {gap && <div className="chat-stamp">{stamp(m.at)}</div>}
-              {!m.mine && first && <span className="chat-name" style={{ color: color(m.name) }}><Crowned code={m.code} size={14}>{m.name}</Crowned></span>}
+              {!m.mine && first && <span className="chat-name" style={{ color: color(m.name) }}><Avatar className="post-av xs" code={m.code} name={m.name} aria-hidden="true" /><Crowned code={m.code} size={14}>{m.name}</Crowned></span>}
               {m.kind === 'video' ? <VideoCard m={m} onWatch={() => setVidWatch(m)} onMore={() => setMenu(m)} /> : m.game !== undefined && GAMES[m.kind] ? <GameCard m={m} onMore={() => setMenu(m)} onPlay={() => setGame('guess')} /> : <button type="button" className={`chat-bubble ${m.kind}`} onClick={() => setMenu(m)} aria-label={`${m.mine ? 'Your' : `${m.name}’s`} message. Tap for options`}>
                 {m.kind === 'photo' && (urls[m.photo]
                   ? <img src={urls[m.photo]} alt="Photo in the chat" loading="lazy" decoding="async" onClick={(e) => { e.stopPropagation(); setViewer(urls[m.photo]); }} />

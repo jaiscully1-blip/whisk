@@ -40,7 +40,7 @@
  "tc":1,"pp":1,"pr":2},
 
 {"dish":"Mikate","min":120,"sv":8,
- "ing":[["all-purpose flour",3,"cup","",1],["sugar",0.25,"cup","",1],["active dry yeast",2.25,"tsp","one packet",1],["warm water",1,"cup","about",0],["vegetable oil",1,"tbsp","for the dough",0],["salt",0.5,"tsp","",0],["vegetable oil",3,"cup","for frying",1]],
+ "ing":[["all-purpose flour",3,"cup","",1],["sugar",0.25,"cup","",1],["active dry yeast",2.25,"tsp","one packet",1],["warm water",1,"cup","about",0],["oil for the dough",1,"tbsp","vegetable oil",0],["salt",0.5,"tsp","",0],["vegetable oil",3,"cup","for frying",1]],
  "st":[["Stir the yeast and [[1 tbsp]] of the sugar into [[1 cup]] warm water. Wait 8 minutes until foamy.",8],["Mix the flour, the remaining sugar and salt in a large bowl.",null],["Add the yeast water and [[1 tbsp]] oil. Mix and knead for 8 minutes until the dough is smooth and elastic.",8],["Cover and let rise in a warm place for 1 hour, until doubled.",60],["Punch down the dough and pinch off pieces the size of a golf ball. Roll into smooth balls.",null],["Cover and let rest for 15 minutes.",15],["Heat [[3 cups]] oil in a deep pot to 350°F (175°C).",null],["Fry the dough balls in batches for 3 to 4 minutes, turning, until deep golden.",8],["Drain on paper towels. Serve warm.",null]],
  "tc":3,"pp":2,"pr":3},
 

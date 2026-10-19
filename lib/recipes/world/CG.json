@@ -1,0 +1,36 @@
+[
+{"dish":"Saka Saka","min":100,"sv":6,
+ "ing":[["frozen chopped cassava leaves",2,"lb","thawed; or collard greens",1],["palm oil",0.25,"cup","or vegetable oil",1],["smooth peanut butter",0.25,"cup","",1],["yellow onion",1,"","chopped",1],["garlic",4,"clove","minced",1],["smoked fish",4,"oz","soaked and flaked",1],["water",3,"cup","",0],["hot chili pepper",1,"","whole",0],["salt",1,"tsp","",0]],
+ "st":[["Soak the smoked fish in hot water for 15 minutes, then flake it and remove any bones.",15],["Put the cassava leaves and [[3 cups]] water in a large pot. Boil for 30 minutes until tender.",30],["Heat [[0.25 cup]] palm oil in a pan and cook the onion and garlic for 4 minutes.",4],["Add the onion mix, fish, whole chili and [[1 tsp]] salt to the leaves.",null],["Stir [[0.25 cup]] peanut butter with a ladle of hot cooking liquid until smooth and pour it in.",null],["Cover and simmer on low for 40 minutes, stirring often, until thick.",40],["Remove the whole chili, taste and adjust salt.",null],["Serve hot with rice or chikwangue.",null]],
+ "tc":2,"pp":3,"pr":1},
+
+{"dish":"Poulet Moambé","min":90,"sv":6,
+ "ing":[["bone-in chicken pieces",3,"lb","thighs and drumsticks",1],["palm butter",1,"can","14 oz canned palm nut cream",1],["yellow onion",1,"","chopped",1],["tomatoes",3,"","chopped",1],["garlic",4,"clove","minced",1],["hot chili pepper",1,"","whole, to taste",1],["palm oil",2,"tbsp","or vegetable oil",0],["water",2,"cup","",0],["salt",1.5,"tsp","",0],["black pepper",0.5,"tsp","",0]],
+ "st":[["Season the chicken with [[1 tsp]] salt and [[0.5 tsp]] pepper.",null],["Heat [[2 tbsp]] oil in a heavy pot and brown the chicken for 4 minutes per side. Remove to a plate.",8],["Cook the onion and garlic in the same pot for 4 minutes.",4],["Add the tomatoes and cook for 5 minutes until they break down.",5],["Return the chicken and add the palm butter, [[2 cups]] water, whole chili and [[0.5 tsp]] salt.",null],["Bring to a boil, reduce the heat, cover and simmer for 45 minutes, stirring now and then.",45],["The sauce will be thick and dark with oil on top. Chicken must reach 165°F (74°C).",null],["Remove the whole chili. Serve with rice, fufu or chikwangue.",null]],
+ "tc":3,"pp":2,"pr":2},
+
+{"dish":"Liboké de Poisson","min":60,"sv":4,
+ "ing":[["whole tilapia or firm fish fillets",1.5,"lb","cleaned",1],["banana leaves",4,"sheet","or foil, thawed if frozen",1],["yellow onion",1,"","thinly sliced",1],["tomatoes",2,"","diced",1],["hot chili pepper",1,"","finely chopped, to taste",1],["garlic",4,"clove","minced",1],["lemon",1,"","juiced",1],["palm oil",2,"tbsp","or vegetable oil",0],["salt",1.5,"tsp","",0],["black pepper",0.5,"tsp","",0]],
+ "st":[["Rub the fish with the lemon juice, [[1 tsp]] salt and [[0.5 tsp]] pepper. Rest 10 minutes.",10],["Mix the onion, tomatoes, chili, garlic, [[2 tbsp]] oil and [[0.5 tsp]] salt in a bowl.",null],["Soften the banana leaves over a flame or in hot water and cut into 4 large squares.",null],["Place fish on each leaf and cover with the vegetable mixture.",null],["Fold into tight packets and tie with twine, or wrap in foil.",null],["Steam over simmering water for 35 minutes, or grill over medium coals, turning once.",35],["Check that the fish is opaque and flaky, at 145°F (63°C).",null],["Open the packets carefully since steam escapes. Serve with chikwangue or rice.",null]],
+ "tc":3,"pp":3,"pr":2},
+
+{"dish":"Chikwangue","min":240,"sv":8,
+ "ing":[["cassava flour",3,"cup","",1],["warm water",2,"cup","about",1],["banana leaves",4,"sheet","or foil with parchment",1],["smoked fish",4,"oz","flaked, for serving",1],["palm oil",1,"tbsp","for serving",1],["salt",0.5,"tsp","",0],["water",10,"cup","for boiling",0]],
+ "st":[["Mix the cassava flour with [[2 cups]] warm water and [[0.5 tsp]] salt into a thick paste. Cover and ferment in a warm place for 12 hours, or skip for a milder loaf.",null],["Cook the paste in a pot over medium heat, stirring constantly, for 10 minutes until it becomes a smooth, thick dough.",10],["Let it cool until you can handle it.",null],["Soften the banana leaves over heat and cut into 4 large squares.",null],["Shape the dough into 4 rolls. Wrap each tightly in leaves and tie with twine.",null],["Bring [[10 cups]] water to a boil in a large pot and lower in the bundles.",null],["Boil gently for 90 minutes, turning once, until firm.",90],["Cool, unwrap and slice. Serve with [[1 tbsp]] palm oil and flaked smoked fish.",null]],
+ "tc":4,"pp":3,"pr":3},
+
+{"dish":"Fufu","min":25,"sv":4,
+ "ing":[["cassava flour",1.5,"cup","",1],["fine cornmeal",1,"cup","corn flour",1],["water",4,"cup","divided",0],["palm oil",1,"tbsp","for serving",1],["fresh spinach",4,"cup","chopped, for the side",1],["salt",0.5,"tsp","",0]],
+ "st":[["Bring [[3 cups]] water to a boil in a heavy pot.",null],["Whisk the cassava flour and cornmeal with [[1 cup]] cold water in a bowl until smooth.",null],["Pour the paste into the boiling water slowly, stirring hard with a wooden spoon.",null],["Cook over medium-low heat for 5 minutes, stirring, until thick.",5],["Keep turning and pressing the dough against the pot for 8 minutes until it is stiff, smooth and pulls from the sides.",8],["Wilt the spinach in a pan with [[0.5 tsp]] salt for 3 minutes.",3],["Shape the fufu into balls with wet hands.",null],["Drizzle with [[1 tbsp]] palm oil and serve hot with the spinach and a stew.",null]],
+ "tc":2,"pp":1,"pr":3},
+
+{"dish":"Fried Plantains","min":20,"sv":4,
+ "ing":[["very ripe plantains",3,"","yellow with black spots, peeled",1],["vegetable oil",0.5,"cup","for frying",1],["yellow onion",0.5,"","thinly sliced",1],["hot chili pepper",1,"","finely chopped, to taste",1],["salt",0.5,"tsp","",0]],
+ "st":[["Slice the plantains on a slant into pieces about 0.5 inch thick.",null],["Sprinkle with [[0.5 tsp]] salt.",null],["Heat [[0.5 cup]] oil in a large skillet over medium heat until shimmering.",null],["Fry the plantains in a single layer for 2 to 3 minutes per side until deep golden with crisp edges.",5],["Drain the plantains on paper towels.",null],["Cook the onion and chili in a little of the oil in the same skillet for 2 minutes.",2],["Pile the hot plantains on a plate and top with the onion and chili, then serve.",null]],
+ "tc":1,"pp":1,"pr":2},
+
+{"dish":"Mikate","min":120,"sv":8,
+ "ing":[["all-purpose flour",3,"cup","",1],["sugar",0.25,"cup","",1],["active dry yeast",2.25,"tsp","one packet",1],["warm water",1,"cup","about",0],["oil for the dough",1,"tbsp","vegetable oil",0],["salt",0.5,"tsp","",0],["vegetable oil",3,"cup","for frying",1]],
+ "st":[["Stir the yeast and [[1 tbsp]] of the sugar into [[1 cup]] warm water. Wait 8 minutes until foamy.",8],["Mix the flour, remaining sugar and salt in a large bowl.",null],["Add the yeast water and [[1 tbsp]] oil. Knead for 8 minutes until smooth and elastic.",8],["Cover and let rise in a warm place for 1 hour, until doubled.",60],["Punch down the dough and pinch off golf-ball-size pieces. Roll into smooth balls.",null],["Cover and rest for 15 minutes.",15],["Heat [[3 cups]] oil in a deep pot to 350°F (175°C).",null],["Fry the balls in batches for 3 to 4 minutes, turning, until deep golden.",8],["Drain on paper towels. Serve warm.",null]],
+ "tc":3,"pp":2,"pr":3}
+]

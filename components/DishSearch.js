@@ -8,6 +8,8 @@ import { canon, STAPLES } from '@/lib/recipes/match';
 import { guessCategory } from '@/lib/game';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 import LogMealSheet from './LogMealSheet';
+import RecipeSheet from './RecipeSheet';
+import { worldIdFor } from '@/lib/recipes/worldExpand';
 import { cultureStyle, motifFor } from '@/lib/culture';
 import Scene from './Scene';
 
@@ -52,7 +54,7 @@ export default function DishSearch({ q, pantry }) {
         <span className="eyebrow row" style={{ gap: 6 }}>{c ? `Dishes from ${c[1]}` : `Results for “${q}”`}</span>
         {res && <span className="desc">{list.length} found</span>}
       </div>
-      {list.slice(0, shown).map((d, i) => <DishCard key={d.name + i} d={d} have={have} country={res?.country} />)}
+      {list.slice(0, shown).map((d, i) => <DishCard key={d.name + i} d={d} have={have} country={res?.country} pantry={pantry} />)}
       {!res && !err && Array.from({ length: 4 }, (_, i) => <div key={'s' + i} className="card dish-row skel" aria-hidden="true"><span className="dish-ico" /><span style={{ flex: 1 }}><i /><i /></span></div>)}
       {err && <div className="empty"><b>{err}</b><button className="btn ghost sm" style={{ marginTop: 8 }} onClick={load}>Try again</button></div>}
       {res && !list.length && <div className="empty"><b>Nothing found for “{q}”</b>Try a country, a dish, or something like “soup” or “chickpeas”.</div>}
@@ -61,9 +63,17 @@ export default function DishSearch({ q, pantry }) {
   );
 }
 
-function DishCard({ d, have, country }) {
+function DishCard({ d, have, country, pantry }) {
   const [cooking, setCooking] = useState(false);
-  const { supabase, say } = useWhisk();
+  const { supabase, say, ensureRecipes } = useWhisk();
+  const [full, setFull] = useState(null);      // the dish's full recipe (ingredients with amounts + steps)
+  const [loadingFull, setLoadingFull] = useState(false);
+  async function openFull() {
+    if (loadingFull) return; setLoadingFull(true);
+    const r = (await ensureRecipes([worldIdFor(d.countries[0], d.name)]))[0];
+    setLoadingFull(false);
+    if (r) setFull(r); else say('That recipe isn’t ready yet. Try again in a moment.');
+  }
   const [on, setOn] = useState(false);
   const [info, setInfo] = useState(null);
   const asked = useRef(false);
@@ -116,12 +126,14 @@ function DishCard({ d, have, country }) {
               ) : (
                 <a className="ytbtn" href={info.search} target="_blank" rel="noopener noreferrer" tabIndex={t}><YouTubeLogo /><span><b>Find it on YouTube</b></span></a>
               )}
-              {!d.wiki && (d.countries || []).length > 0 && <button className="btn wide" onClick={() => setCooking(true)} tabIndex={t}><Icon name="camera" size={18} />I cooked it</button>}
+              {!d.wiki && (d.countries || []).length > 0 && <button className="btn wide" onClick={openFull} disabled={loadingFull} tabIndex={t} data-testid="dish-full-recipe"><Icon name="cook" size={18} />{loadingFull ? 'Opening…' : 'Full recipe'}</button>}
+              {!d.wiki && (d.countries || []).length > 0 && <button className="btn ghost wide" onClick={() => setCooking(true)} tabIndex={t}><Icon name="camera" size={18} />I cooked it</button>}
             </>
           )}
         </div>
       </div>
       {/* the sheet goes on <body>: a fixed overlay inside the 3D flip card would be trapped in the card */}
+      {full && createPortal(<RecipeSheet recipe={full} pantry={pantry || []} onClose={() => setFull(null)} />, document.body)}
       {cooking && createPortal(<LogMealSheet dish={d} country={country && d.countries.includes(country) ? country : null} onClose={() => setCooking(false)} />, document.body)}
     </div>
   );

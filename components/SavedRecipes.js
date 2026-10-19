@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWhisk } from './AppShell';
 import RecipeSheet from './RecipeSheet';
 import Icon from './Icon';
@@ -10,7 +10,7 @@ import { addToShoppingList, listMsg } from '@/lib/shoplist';
 
 // Recipes you saved (or cooked and rated), newest first.
 export default function SavedRecipes({ pantry, onChanged, limit = 0 }) {
-  const { recipes, supabase, say } = useWhisk();
+  const { allRecipes: recipes, ensureRecipes, supabase, say } = useWhisk();
   async function unsave(r) {
     const { error } = await supabase.from('saved_recipes').delete().eq('recipe_id', r.id);
     if (error) { say('Couldn’t unsave that.'); return; }
@@ -22,6 +22,7 @@ export default function SavedRecipes({ pantry, onChanged, limit = 0 }) {
   }
   const [saved, reloadSaved] = useSaved();
   const [open, setOpen] = useState(null);
+  useEffect(() => { if (saved) ensureRecipes([...saved.keys()]); }, [saved]); // eslint-disable-line react-hooks/exhaustive-deps
   const [all, setAll] = useState(false);
   const list = saved && recipes ? [...saved.values()].map((s) => ({ s, r: recipes.find((r) => r.id === s.recipe_id) })).filter((x) => x.r) : [];
 

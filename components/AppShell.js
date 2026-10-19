@@ -84,6 +84,23 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   const [profile, setProfile] = useState(initialProfile);
   const [loadout, setLoadout] = useState(initialLoadout);
   const [recipes, setRecipes] = useState(null);
+  const [worldExtra, setWorldExtra] = useState([]);   // world recipes opened so far (full, with steps)
+  const worldHave = useRef(new Map());
+  // ensureRecipes(['w-it-lasagna', ...]) → the full recipes (web ones come from the list, world ones are fetched once)
+  const ensureRecipes = useCallback(async (ids) => {
+    const want = [...new Set((ids || []).filter((id) => /^w-[a-z]{2}-/.test(id)))];
+    const need = want.filter((id) => !worldHave.current.has(id));
+    for (let i = 0; i < need.length; i += 40) {
+      try {
+        const r = await fetch(`/api/world-recipe?ids=${encodeURIComponent(need.slice(i, i + 40).join(','))}`);
+        const j = await r.json().catch(() => ({}));
+        for (const x of j.recipes || []) worldHave.current.set(x.id, x);
+      } catch {}
+    }
+    if (need.length) setWorldExtra([...worldHave.current.values()]);
+    return want.map((id) => worldHave.current.get(id)).filter(Boolean);
+  }, []);
+  const allRecipes = useMemo(() => (recipes && worldExtra.length ? [...recipes, ...worldExtra] : recipes), [recipes, worldExtra]);
   const [popups, setPopups] = useState([]);           // queue: 'back' | 'late' | 'wrapped' | {kind:'cooked', mealId}
   const [rating, setRating] = useState(null);
   const [toast, setToast] = useState('');
@@ -231,7 +248,8 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
 
   // Real web recipes (read-only catalog), loaded once.
   useEffect(() => {
-    supabase.from('web_recipes').select('id, title, cuisine, source, url, minutes, servings, score, data').then(({ data }) => {
+    // Yoke's own world recipes (ids start w-) are loaded one at a time when you open them, not all at the start.
+    supabase.from('web_recipes').select('id, title, cuisine, source, url, minutes, servings, score, data').not('id', 'like', 'w-%').then(({ data }) => {
       setRecipes((data || []).map((r) => ({ ...r.data, id: r.id, title: r.title, cuisine: r.cuisine, source: r.source, url: r.url, minutes: r.minutes, servings: r.servings, score: r.score })));
     });
   }, [supabase]);
@@ -340,8 +358,8 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   }, [setUi]);
   const t = useCallback((text, vars) => translate(lang, text, vars), [lang]);
   useEffect(() => { try { document.documentElement.lang = lang; } catch {} }, [lang]);
-  const value = useMemo(() => ({ lang, setLang, t, profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, recipes: shownRecipes, allRecipes: recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump }),
-    [lang, setLang, t, profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, shownRecipes, recipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump]);
+  const value = useMemo(() => ({ lang, setLang, t, profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, recipes: shownRecipes, allRecipes, ensureRecipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump }),
+    [lang, setLang, t, profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, shownRecipes, allRecipes, ensureRecipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump]);
 
   return (
     <Ctx.Provider value={value}>

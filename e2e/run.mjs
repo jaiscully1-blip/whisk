@@ -839,6 +839,11 @@ await step('free dish search', async () => {
   check('YouTube button: most-watched video that is really about the dish', yt === 'https://www.youtube.com/watch?v=BIGmatch001', yt);
   check('YouTube logo on the button', (await card.locator('.ytbtn svg path[fill="#FF0000"]').count()) === 1);
   await shot('07-dish-flip');
+  // every dish in the list has a full recipe of its own (measured ingredients + numbered steps)
+  await card.getByTestId('dish-full-recipe').click();
+  const wdlg = page.locator('[role="dialog"][aria-label="Byrek"]'); await wdlg.waitFor({ timeout: 15000 });
+  check('Full recipe: Yoke Kitchen recipe with measured ingredients and numbered steps', /Yoke Kitchen recipe/.test(await wdlg.innerText()) && (await wdlg.locator('ol.steps li').count()) >= 5 && (await wdlg.locator('ol.steps .amt').count()) >= 2);
+  await wdlg.getByRole('button', { name: 'Close' }).click(); await wdlg.waitFor({ state: 'detached' });
   await card.getByRole('button', { name: /Add \d+ missing to shopping list/ }).click(); await page.getByText(/Added \d+ to your shopping list/).waitFor();
   check('missing ingredients go to the shopping list', true);
   check('"I cooked it" on the card', (await card.getByRole('button', { name: 'I cooked it' }).count()) === 1);

@@ -28,7 +28,8 @@ const Stamp = memo(function Stamp({ c, i, n, onOpen, preview = false }) {
 });
 
 export default function Passport({ counts, onOpenRecipe }) {
-  const { getUi, setUiQuiet, recipes } = useWhisk();
+  const { getUi, setUiQuiet, recipes, ensureRecipes } = useWhisk();
+  const [world, setWorld] = useState({});   // iso → Yoke world recipes (light rows), fetched when a country is opened
   const scroller = useRef(null);
   const [page, setPage] = useState(() => getUi().passportPage || 0);
   const [open, setOpen] = useState(null);
@@ -42,7 +43,14 @@ export default function Passport({ counts, onOpenRecipe }) {
     setPage((cur) => { if (cur !== p) setUiQuiet({ passportPage: p }); return p; });
   }, [setUiQuiet]);
   const go = (p) => { const el = scroller.current; if (!el) return; const t = Math.max(0, Math.min(PAGES.length - 1, p)); el.scrollTo({ left: t * el.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); };
-  const fromHere = open && recipes ? recipes.filter((r) => r.country === open[0]) : [];
+  useEffect(() => {
+    if (!open || world[open[0]]) return;
+    const iso = open[0]; let off = false;
+    fetch(`/api/world-recipe?iso=${iso}`).then((r) => r.json()).then((j) => { if (!off) setWorld((w) => ({ ...w, [iso]: j.recipes || [] })); }).catch(() => { if (!off) setWorld((w) => ({ ...w, [iso]: [] })); });
+    return () => { off = true; };
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fromHere = open ? [...(recipes || []).filter((r) => r.country === open[0]), ...(world[open[0]] || [])] : [];
+  async function openOne(r) { setOpen(null); const full = r.steps ? r : (await ensureRecipes([r.id]))[0]; if (full) onOpenRecipe?.(full); }
 
   return (
     <section className="album" data-tip="album" aria-labelledby="pp-h">
@@ -81,7 +89,7 @@ export default function Passport({ counts, onOpenRecipe }) {
             {fromHere.length ? (
               <div className="stack" style={{ gap: 6, width: '100%', textAlign: 'left' }}>
                 <span className="eyebrow">Yoke recipes from {open[1]}</span>
-                {fromHere.map((r) => <button key={r.id} className="card row" style={{ flexWrap: 'nowrap', padding: '10px 12px', textAlign: 'left' }} onClick={() => { setOpen(null); onOpenRecipe?.(r); }}><b style={{ flex: 1 }}>{r.title}</b><span className="desc">{r.minutes} min</span></button>)}
+                {fromHere.map((r) => <button key={r.id} className="card row" style={{ flexWrap: 'nowrap', padding: '10px 12px', textAlign: 'left' }} onClick={() => openOne(r)}><b style={{ flex: 1 }}>{r.title}</b><span className="desc">{r.minutes} min</span></button>)}
               </div>
             ) : <p className="desc" style={{ margin: 0 }}>No Yoke recipes from {open[1]} yet.</p>}
             <button className="btn ghost wide" onClick={() => setOpen(null)}>Close</button>

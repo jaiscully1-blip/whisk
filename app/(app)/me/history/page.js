@@ -13,7 +13,7 @@ const PAGE = 24;
 const monthKey = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
 export default function History() {
-  const { supabase, allRecipes, t } = useWhisk();
+  const { supabase, allRecipes, ensureRecipes, t } = useWhisk();
   const [pantry] = usePantry();
   const [rows, setRows] = useState(null);
   const [q, setQ] = useState('');
@@ -32,6 +32,7 @@ export default function History() {
     return () => { off = true; };
   }, [supabase]);
 
+  useEffect(() => { if (rows?.length) ensureRecipes(rows.map((r) => r.recipe_id).filter(Boolean)); }, [rows]); // eslint-disable-line react-hooks/exhaustive-deps
   const byId = useMemo(() => new Map((allRecipes || []).map((r) => [r.id, r])), [allRecipes]);
   const cuisines = useMemo(() => {
     const c = new Map(); (rows || []).forEach((r) => { if (r.cuisine) c.set(r.cuisine, (c.get(r.cuisine) || 0) + 1); });

@@ -66,7 +66,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
           <div><span className="eyebrow">{r.cuisine}</span><h2 style={{ fontSize: 26 }}>{r.title}</h2></div>
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
         </div>
-        <span className="src">Recipe from <a href={r.url} target="_blank" rel="noopener noreferrer">{r.source}</a>{r.video && <> · <a href={r.video} target="_blank" rel="noopener noreferrer">Watch the video</a></>}</span>
+        <span className="src">{r.source === 'Yoke Kitchen' ? 'Yoke Kitchen recipe' : <>Recipe from <a href={r.url} target="_blank" rel="noopener noreferrer">{r.source}</a></>}{r.video && <> · <a href={r.video} target="_blank" rel="noopener noreferrer">Watch the video</a></>}</span>
         <div className="row">
           <span className="chip">{r.minutes} min</span><span className="chip xp">Up to +100 XP · 400 coins when you cook it</span>
           {needs.length ? <span className="chip need">{needs.length} to buy</span> : <span className="chip have">You have everything</span>}

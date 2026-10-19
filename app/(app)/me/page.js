@@ -30,7 +30,7 @@ const EMPTY_LIST = [];
 const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
 
 export default function Me() {
-  const { account, supabase, profile, setProfile, refreshProfile, say, ui, setUi, openPrivacy, replayTour, dataVersion, allRecipes, bump, t, lang, setLang } = useWhisk();
+  const { account, supabase, profile, setProfile, refreshProfile, say, ui, setUi, openPrivacy, replayTour, dataVersion, allRecipes, ensureRecipes, bump, t, lang, setLang } = useWhisk();
   const [backupSet, setBackupSet] = useState(false);   // the same backup sheet, opened from Settings
   const [backupAsk, setBackupAsk] = useState(false);   // after a name change: offer to back the game up (one time: it never shows again once backed up)
   const router = useRouter();
@@ -85,8 +85,8 @@ export default function Me() {
   const recipesCooked = world && !world.missing ? world.recipes || 0 : meals.length;
 
   // the dart hit a country: find something to cook from there
-  function openChallenge(c) {
-    const r = (allRecipes || []).find((x) => x.id === c.recipe_id);
+  async function openChallenge(c) {
+    const r = (allRecipes || []).find((x) => x.id === c.recipe_id) || (await ensureRecipes([c.recipe_id]))[0];
     if (r) setRecipe(r); else { setUi({ cookMode: 'named', cookDish: c.title }); router.push('/cook'); }
   }
   async function toggleVacation() {

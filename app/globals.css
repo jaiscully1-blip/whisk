@@ -83,7 +83,7 @@ label.lbl, span.lbl { font-size: 13px; font-weight: 800; color: var(--muted); di
 .empty { padding: 26px 18px; text-align: center; border: 1.5px dashed var(--line); border-radius: 20px; color: var(--muted); }
 .empty b { display: block; color: var(--fg); font-family: var(--f-display); font-size: 18px; margin-bottom: 4px; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); z-index: 60; background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 800; max-width: calc(100% - 32px); text-align: center; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); z-index: 60; background: rgba(34,27,28,.35); color: #F2E9E2; border: 1.5px solid rgba(242,233,226,.45); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); padding: 10px 18px; border-radius: 999px; font-weight: 800; max-width: calc(100% - 32px); text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.5); pointer-events: none; }
 
 /* sheets & popups */
 .scrim { position: fixed; inset: 0; z-index: 50; background: var(--scrim); display: flex; align-items: flex-end; justify-content: center; }
@@ -694,8 +694,8 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 @media (prefers-reduced-motion: reduce) { .cm-step { animation: none; } .cm-progress i { transition: none; } }
 
 /* toast with an Undo button */
-.toast.act { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; }
-.toast.act button { display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: 10px; padding: 8px 12px; font: inherit; font-weight: 800; background: color-mix(in srgb, var(--bg) 18%, transparent); color: var(--bg); }
+.toast.act { pointer-events: auto; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; }
+.toast.act button { display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: 10px; padding: 8px 12px; font: inherit; font-weight: 800; background: rgba(242,233,226,.16); color: #F2E9E2; }
 /* Quick add: staples you starred */
 .quick { display: flex; flex-direction: column; gap: 6px; }
 .quick-row { display: flex; gap: 6px; flex-wrap: wrap; }

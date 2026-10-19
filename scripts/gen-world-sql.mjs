@@ -1,7 +1,7 @@
 // Generates the SQL for Yoke's world recipes from lib/recipes/world/<ISO>.json.
 // The database only needs a light row per recipe (so saving, cooking, stamps and challenges work); the steps and
 // amounts are served from the app (app/api/world-recipe). Writes supabase/migrations/0052_world_recipes.sql and
-// three paste-sized files supabase/setup/45a/45b/45c-*.sql.
+// supabase/setup/45-world-recipes.sql.
 import fs from 'node:fs';
 import { canon, difficulty } from '../lib/recipes/match.js';
 import { expandWorld, worldIds } from '../lib/recipes/worldExpand.js';
@@ -31,6 +31,5 @@ on conflict (id) do update set title = excluded.title, cuisine = excluded.cuisin
 `;
 const chunk = (a, b, n, of) => head(a, b, n, of) + rows.slice(a, b).join(',\n') + tail;
 fs.writeFileSync(new URL('supabase/migrations/0052_world_recipes.sql', root), chunk(0, rows.length, 1, 1));
-const third = Math.ceil(rows.length / 3);
-['a', 'b', 'c'].forEach((k, i) => fs.writeFileSync(new URL(`supabase/setup/45${k}-world-recipes.sql`, root), chunk(i * third, Math.min(rows.length, (i + 1) * third), i + 1, 3)));
+fs.copyFileSync(new URL('supabase/migrations/0052_world_recipes.sql', root), new URL('supabase/setup/45-world-recipes.sql', root));
 console.log(`${rows.length} rows`);

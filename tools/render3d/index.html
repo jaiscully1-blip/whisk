@@ -21,7 +21,7 @@ window.renderItem = (name, size = 384) => {
   const { g, dims } = MODELS[name](T); const scene = new T.Scene(); scene.add(g); g.updateMatrixWorld(true);
   const box = new T.Box3().setFromObject(g); const ctr = box.getCenter(new T.Vector3()); const sph = box.getBoundingSphere(new T.Sphere()); const R = sph.radius;
   outline(g, Math.max(...dims) * .0085);
-  const ground = new T.Mesh(new T.PlaneGeometry(R * 8, R * 8), new T.ShadowMaterial({ opacity: .22 })); ground.rotation.x = -Math.PI / 2; ground.position.set(ctr.x, box.min.y - .01, ctr.z); ground.receiveShadow = true; scene.add(ground);
+  const ground = new T.Mesh(new T.PlaneGeometry(R * 8, R * 8), new T.ShadowMaterial({ opacity: 0 })); ground.rotation.x = -Math.PI / 2; ground.position.set(ctr.x, box.min.y - .01, ctr.z); ground.receiveShadow = true; scene.add(ground);
   scene.add(new T.HemisphereLight(0xfff4e6, 0x8a7560, .6));
   const key = new T.DirectionalLight(0xfff1de, 1.9); key.position.set(ctr.x - R * .9, ctr.y + R * 1.8, ctr.z + R * 1.6); key.target.position.copy(ctr); scene.add(key, key.target); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.radius = 9; const s = R * 1.6; Object.assign(key.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: .1, far: R * 8 }); key.shadow.camera.updateProjectionMatrix(); key.shadow.bias = -.0004;
   const rim = new T.DirectionalLight(0xcfe3ff, .9); rim.position.set(ctr.x + R * 1.4, ctr.y + R * .7, ctr.z - R * 1.4); scene.add(rim);

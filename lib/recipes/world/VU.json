@@ -1,0 +1,22 @@
+[
+{"dish":"Laplap","min":120,"sv":6,
+ "ing":[["yam",1.5,"lb","peeled and finely grated",1],["taro",1,"lb","peeled and finely grated",1],["coconut cream",1,"can","13.5 oz, divided",1],["chicken thighs",1.5,"lb","bone-in, cut in pieces",1],["banana leaves",4,"piece","large, or foil",1],["salt",1.5,"tsp","",0],["black pepper",0.5,"tsp","",0]],
+ "st":[["Heat the oven to 375°F (190°C).",null],["Season the chicken with [[1 tsp]] salt and [[0.5 tsp]] pepper.",null],["Mix the grated yam and taro with [[0.5 tsp]] salt and half the coconut cream to form a thick, damp paste.",null],["Soften the banana leaves over a flame or in hot water, then lay two overlapping leaves in a baking dish.",null],["Spread half the root paste on the leaves, add the chicken, then cover with the remaining paste.",null],["Pour the rest of the coconut cream over the top.",null],["Fold the leaves over to seal and cover the dish tightly with foil.",null],["Bake for [[90 minutes]] until the chicken reaches 165°F (74°C) and the pudding is firm.",90],["Rest 10 minutes, then slice into squares.",10]],
+ "tc":2,"pp":3,"pr":2},
+{"dish":"Simboro","min":75,"sv":4,
+ "ing":[["cassava",1.5,"lb","peeled and finely grated",1],["island cabbage or spinach",1,"lb","leaves, washed",1],["coconut cream",0.5,"cup","",1],["salt",0.5,"tsp","",0],["banana leaves",4,"piece","or foil",0]],
+ "st":[["Peel the cassava and grate it finely, then squeeze it in a cloth to remove extra liquid.",null],["Mix with [[0.5 tsp]] salt and a few spoonfuls of the coconut cream.",null],["Blanch the greens in boiling water for 1 minute and drain.",1],["Lay out 2 or 3 leaves and put a spoonful of cassava mixture on them.",null],["Roll up like a cigar, tucking in the sides.",null],["Place the rolls in a pot with a banana leaf on the bottom.",null],["Pour [[0.5 cup]] coconut cream over the rolls and add water to come half way up.",null],["Cover and simmer gently for [[40 minutes]] until the cassava is cooked through.",40],["Serve hot with the cooking liquid.",null]],
+ "tc":2,"pp":3,"pr":2},
+{"dish":"Tuluk","min":150,"sv":6,
+ "ing":[["cassava",2,"lb","peeled and finely grated",1],["pork shoulder",1,"lb","cut in small cubes",1],["grated coconut",0.5,"cup","fresh or unsweetened",1],["banana leaves",6,"piece","or foil",1],["salt",2,"tsp","",0],["black pepper",0.5,"tsp","",0]],
+ "st":[["Grate the cassava finely and squeeze in a cloth to remove extra liquid.",null],["Mix with [[0.5 cup]] grated coconut and [[1 tsp]] salt to make a thick dough.",null],["Season the pork with [[1 tsp]] salt and [[0.5 tsp]] pepper.",null],["Soften banana leaves over a flame, then lay one flat.",null],["Press a flat layer of dough in the center of the leaf.",null],["Add a spoonful of pork, then cover with more dough, forming a ball.",null],["Fold the leaf tightly around the parcel and tie with string.",null],["Steam covered for [[90 minutes]], keeping water in the pot, until the pork reaches 145°F (63°C) or more.",90],["Cool for 10 minutes before unwrapping.",10]],
+ "tc":3,"pp":4,"pr":2},
+{"dish":"Nalot","min":70,"sv":6,
+ "ing":[["taro",1,"lb","peeled and cubed",1],["green plantains",2,"","peeled and sliced",1],["breadfruit",1,"lb","peeled and cubed",1],["coconut cream",1,"cup","",1],["salt",0.5,"tsp","",0],["water",6,"cup","",0]],
+ "st":[["Put the taro, plantains and breadfruit in a large pot with [[6 cups]] water and [[0.5 tsp]] salt.",null],["Bring to a boil.",null],["Cook for [[30 minutes]] until all of them are very soft.",30],["Drain well, saving some of the liquid.",null],["Pound or mash the roots in a large bowl until smooth and stretchy.",null],["Add a splash of cooking liquid if it is too stiff.",null],["Spoon into bowls and make a well in the center of each.",null],["Pour [[1 cup]] coconut cream around the roots and serve warm.",null]],
+ "tc":2,"pp":2,"pr":2},
+{"dish":"Kava","min":20,"sv":4,
+ "ing":[["ground kava root",0.5,"cup","fine powder",1],["cool water",3,"cup","",1],["muslin or strainer cloth",1,"","",0]],
+ "st":[["Put [[0.5 cup]] ground kava in a clean muslin cloth or fine strainer bag.",null],["Place it in a large bowl.",null],["Pour in [[1 cup]] cool water.",null],["Knead and squeeze the bag in the water for 5 minutes, until it turns a muddy brown.",5],["Add [[1 cup]] more water, then knead 5 minutes.",5],["Repeat with the last [[1 cup]] water.",5],["Wring out the bag very well and discard the pulp.",null],["Serve at once in small cups. It numbs the mouth slightly and should be sipped slowly.",null]],
+ "tc":1,"pp":1,"pr":2}
+]

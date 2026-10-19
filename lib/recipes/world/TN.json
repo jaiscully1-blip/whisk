@@ -21,7 +21,7 @@
  "tc":1,"pp":2,"pr":1},
 {"dish":"Salade Mechouia","min":45,"sv":4,
  "ing":[["green bell peppers",3,"","",1],["tomatoes",3,"","",1],["hot green chili",1,"","",1],["garlic",3,"clove","",1],["olive oil",3,"tbsp","",1],["canned tuna",5,"oz","drained",1],["hard-boiled eggs",2,"","quartered",1],["lemon juice",1,"tbsp","",0],["caraway",0.5,"tsp","ground",0],["salt",0.75,"tsp","",0]],
- "st":[["Heat a grill or the oven broiler. Roast the peppers, tomatoes, chili and garlic, turning, until charred all over.",20],["Place the peppers and chili in a bowl, cover, and let steam.",10],["Peel the peppers, chili, tomatoes and garlic and remove the seeds from the peppers.",null],["Chop everything finely.",null],["Mix with the olive oil, lemon juice, caraway and salt.",null],["Boil the eggs for 10 minutes if not already done, cool and peel.",10],["Spoon the salad on a plate and top with tuna and egg.",null]],
+ "st":[["Heat a grill or the oven broiler. Roast the peppers, tomatoes, chili and garlic, turning, until charred all over.",20],["Place the peppers and chili in a bowl, cover, and let steam.",10],["Peel the peppers, chili, tomatoes and garlic and remove the seeds from the peppers.",null],["Chop everything finely on a board.",null],["Mix with the olive oil, lemon juice, caraway and salt.",null],["Boil the eggs for 10 minutes if not already done, cool and peel.",10],["Spoon the salad on a plate and top with tuna and egg.",null]],
  "tc":2,"pp":2,"pr":1},
 {"dish":"Ojja","min":35,"sv":4,
  "ing":[["merguez sausage",0.75,"lb","sliced",1],["eggs",4,"","",1],["tomatoes",4,"","chopped",1],["red bell pepper",1,"","diced",1],["garlic",4,"clove","minced",1],["harissa",1,"tbsp","",1],["olive oil",3,"tbsp","",1],["caraway",0.5,"tsp","ground",0],["salt",0.75,"tsp","",0],["water",0.5,"cup","",0]],
@@ -37,6 +37,6 @@
  "tc":3,"pp":3,"pr":3},
 {"dish":"Kafteji","min":45,"sv":4,
  "ing":[["potatoes",1,"lb","peeled, cubed",1],["green bell pepper",2,"","diced",1],["zucchini",2,"","diced",1],["tomatoes",2,"","diced",1],["pumpkin",1,"cup","diced",1],["eggs",3,"","",1],["vegetable oil",1.5,"cup","for frying",0],["garlic",2,"clove","minced",0],["cumin",1,"tsp","ground",0],["salt",1,"tsp","",0],["harissa",1,"tsp","optional",0]],
- "st":[["Heat the oil in a wide pan to medium-high.",null],["Fry the potatoes until golden and cooked through. Drain on paper towels.",10],["Fry the pumpkin, zucchini and peppers in batches until soft and browned.",15],["Drain the oil from the pan except [[1 tbsp]].",null],["Cook the garlic and tomatoes for 5 minutes.",5],["Return the vegetables, then chop everything coarsely with the edge of a spatula.",null],["Crack in the eggs, season with salt, cumin and harissa, and stir until set.",3],["Serve hot with bread.",null]],
+ "st":[["Heat the oil in a wide pan to medium-high.",null],["Fry the potatoes until golden and cooked through. Drain on paper towels.",10],["Fry the pumpkin, zucchini and peppers in batches until soft and browned.",15],["Drain the oil from the pan except [[1 tbsp]].",null],["Cook the garlic and tomatoes for 5 minutes.",5],["Return the vegetables, then chop everything coarsely with the edge of a spatula.",null],["Crack in the eggs, season with salt, cumin and harissa, and stir until set.",3],["Serve hot with fresh bread.",null]],
  "tc":2,"pp":3,"pr":2}
 ]

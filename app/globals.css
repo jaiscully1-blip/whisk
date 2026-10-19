@@ -1406,11 +1406,6 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .game-sheet { max-height: 90dvh; }
 
 /* chat backgrounds: patterns drawn in CSS, no images to load */
-.chat-full[data-bg="tiles"] { --chat-bg: #f4efe6; background-image: linear-gradient(#d9cfbd 1px, transparent 1px), linear-gradient(90deg, #d9cfbd 1px, transparent 1px); background-size: 36px 36px; }
-.chat-full[data-bg="gingham"] { --chat-bg: #fbe9e7; background-image: linear-gradient(90deg, rgba(220, 70, 70, .22) 50%, transparent 50%), linear-gradient(rgba(220, 70, 70, .22) 50%, transparent 50%); background-size: 40px 40px; }
-.chat-full[data-bg="herbs"] { --chat-bg: #e3f1dc; background-image: radial-gradient(ellipse 9px 4px at 12px 12px, #7fb46a 98%, transparent), radial-gradient(ellipse 9px 4px at 34px 30px, #9ccc84 98%, transparent); background-size: 46px 46px; }
-.chat-full[data-bg="sunset"] { --chat-bg: #ff9966; background-image: linear-gradient(180deg, #ffd27a 0%, #ff9966 45%, #c0508a 100%); }
-.chat-full[data-bg="ocean"] { --chat-bg: #7cc4e8; background-image: linear-gradient(180deg, #bfe8f7 0%, #5aa9d6 60%, #2a6fa6 100%); }
 .chat-full[data-bg="night"] { --chat-bg: #14122b; background-image: radial-gradient(circle at 20% 30%, #fff 0 1px, transparent 2px), radial-gradient(circle at 70% 60%, #ffe9a8 0 1.5px, transparent 2.5px), radial-gradient(circle at 45% 85%, #fff 0 1px, transparent 2px); background-size: 90px 90px, 130px 130px, 70px 70px; }
 .chat-full[data-bg] .chat-list { background: transparent; }
 .bg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -1418,10 +1413,7 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .bg-tile.on { border-color: var(--accent, #f5b301); }
 .bg-tile small { color: var(--muted, #888); font-weight: 700; }
 .bg-tile .bg-prev { position: static; inset: auto; width: 100%; height: 64px; border-radius: 10px; display: block; border: 1px solid var(--line); background-color: var(--chat-bg, var(--bg)); z-index: auto; }
-.chat-full[data-bg="tiles"], .chat-full[data-bg="gingham"], .chat-full[data-bg="herbs"], .chat-full[data-bg="sunset"], .chat-full[data-bg="ocean"] { --fg: #231f1a; --muted: #5d564d; --card: #ffffff; --line: rgba(0, 0, 0, .14); color: var(--fg); }
 .bg-tile .bg-prev { --fg: #231f1a; }
-.chat-full[data-bg="tiles"] .chat-compose input, .chat-full[data-bg="gingham"] .chat-compose input, .chat-full[data-bg="herbs"] .chat-compose input, .chat-full[data-bg="sunset"] .chat-compose input, .chat-full[data-bg="ocean"] .chat-compose input,
-.chat-full[data-bg="tiles"] .chat-compose textarea, .chat-full[data-bg="gingham"] .chat-compose textarea, .chat-full[data-bg="herbs"] .chat-compose textarea, .chat-full[data-bg="sunset"] .chat-compose textarea, .chat-full[data-bg="ocean"] .chat-compose textarea { background: #f3f0ea; color: #231f1a; border-color: rgba(0, 0, 0, .14); }
 
 /* recipe videos in chat */
 .chat-bubble.video { cursor: default; gap: 8px; min-width: 230px; padding: 12px 14px; align-items: start; justify-items: start; }
@@ -1713,3 +1705,26 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .me-title .me-who h1 { font-size: 26px; line-height: 1.05; }
 .me-title .av-pick { margin-right: 0; }
 .me-title .av-pick .av-pick-img { border: 3px solid #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, .28); }
+
+/* the first five looks, softened and moving (mid-tone, no white): tiles = Peach haze, gingham = Lavender mist, herbs = Matcha, sunset = Soft sunset, ocean = Teal lagoon */
+.chat-full[data-bg="tiles"], .chat-full[data-bg="gingham"], .chat-full[data-bg="herbs"], .chat-full[data-bg="sunset"], .chat-full[data-bg="ocean"] { --fg: #F2E9E2; --muted: #c8b9ae; --card: #2d2425; --line: rgba(255, 255, 255, .14); color: var(--fg); overflow: hidden; }
+.chat-full[data-bg="tiles"]::before, .chat-full[data-bg="gingham"]::before, .chat-full[data-bg="herbs"]::before, .chat-full[data-bg="sunset"]::before, .chat-full[data-bg="ocean"]::before, .chat-full[data-bg="tiles"]::after, .chat-full[data-bg="gingham"]::after, .chat-full[data-bg="herbs"]::after, .chat-full[data-bg="sunset"]::after, .chat-full[data-bg="ocean"]::after { content: ''; position: absolute; inset: -30%; z-index: -1; pointer-events: none; }
+.chat-full[data-bg="tiles"] { --chat-bg: #8f5560; background-image: linear-gradient(160deg, #a8645a, #7d4a62); }
+.chat-full[data-bg="tiles"]::before { background: radial-gradient(28% 22% at 30% 35%, rgba(255, 200, 160, .45), transparent 72%), radial-gradient(30% 24% at 70% 70%, rgba(255, 150, 150, .38), transparent 72%); filter: blur(8px); animation: bgorb 16s ease-in-out infinite alternate; }
+.chat-full[data-bg="tiles"]::after { background: radial-gradient(22% 18% at 65% 25%, rgba(255, 225, 180, .35), transparent 72%); filter: blur(8px); animation: bgorb 22s ease-in-out infinite alternate-reverse; }
+.chat-full[data-bg="gingham"] { --chat-bg: #4d4577; background-image: linear-gradient(180deg, #5b4f86, #3f3866); }
+.chat-full[data-bg="gingham"]::before { background: radial-gradient(60% 18% at 30% 40%, rgba(200, 185, 255, .28), transparent 70%), radial-gradient(60% 18% at 70% 70%, rgba(170, 160, 255, .24), transparent 70%); filter: blur(10px); animation: bgmist 20s ease-in-out infinite alternate; }
+.chat-full[data-bg="herbs"] { --chat-bg: #4d6b50; background-image: linear-gradient(180deg, #5d7b55, #3d5b46); }
+.chat-full[data-bg="herbs"]::before { inset: 0; background-image: radial-gradient(circle, rgba(215, 240, 190, .35) 0 4px, transparent 5px), radial-gradient(circle, rgba(215, 240, 190, .22) 0 7px, transparent 8px); background-size: 70px 110px, 110px 160px; background-position: 0 0, 40px 50px; animation: bgbubble 22s linear infinite; }
+.chat-full[data-bg="sunset"] { --chat-bg: #8a5a4a; background-image: linear-gradient(180deg, #8a5a4a 0%, #9a5568 55%, #5b3a63 100%); }
+.chat-full[data-bg="sunset"]::before { inset: 0; background: radial-gradient(60% 40% at 50% 78%, rgba(255, 190, 120, .45), transparent 70%); animation: bgbreathe 7s ease-in-out infinite alternate; }
+.chat-full[data-bg="ocean"] { --chat-bg: #26676f; background-image: linear-gradient(180deg, #2f7a80, #1f5560); }
+.chat-full[data-bg="ocean"]::before { background: repeating-radial-gradient(ellipse 80px 50px at 30% 40%, rgba(200, 255, 245, .12) 0 6px, transparent 6px 22px); filter: blur(1.5px); animation: bgcaus 18s ease-in-out infinite alternate; }
+.chat-full[data-bg="ocean"]::after { background: repeating-radial-gradient(ellipse 90px 55px at 72% 65%, rgba(200, 255, 245, .10) 0 6px, transparent 6px 26px); filter: blur(1.5px); animation: bgcaus 24s ease-in-out infinite alternate-reverse; }
+@keyframes bgorb { from { transform: translate(-8%, 6%) scale(1); } to { transform: translate(8%, -8%) scale(1.2); } }
+@keyframes bgmist { from { transform: translateX(-14%); } to { transform: translateX(14%); } }
+@keyframes bgbubble { to { background-position: 14px -110px, 26px -110px; } }
+@keyframes bgbreathe { from { transform: scale(.85); opacity: .6; } to { transform: scale(1.15); opacity: 1; } }
+@keyframes bgcaus { from { transform: translate(-6%, 4%) scale(1); } to { transform: translate(6%, -4%) scale(1.15); } }
+@media (prefers-reduced-motion: reduce) { .chat-full[data-bg="tiles"]::before, .chat-full[data-bg="gingham"]::before, .chat-full[data-bg="herbs"]::before, .chat-full[data-bg="sunset"]::before, .chat-full[data-bg="ocean"]::before, .chat-full[data-bg="tiles"]::after, .chat-full[data-bg="gingham"]::after, .chat-full[data-bg="herbs"]::after, .chat-full[data-bg="sunset"]::after, .chat-full[data-bg="ocean"]::after { animation: none; } }
+.bg-tile .bg-prev[data-bg="tiles"], .bg-tile .bg-prev[data-bg="gingham"], .bg-tile .bg-prev[data-bg="herbs"], .bg-tile .bg-prev[data-bg="sunset"], .bg-tile .bg-prev[data-bg="ocean"] { position: relative; z-index: 0; overflow: hidden; --fg: #F2E9E2; }

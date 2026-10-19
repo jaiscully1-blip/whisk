@@ -42,7 +42,7 @@ page.on('response', (r) => { if (r.status() >= 400 && !/api\/barcode/.test(r.url
 const shot = async (n) => { if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `${n}.png`), fullPage: true }); };
 const step = async (name, fn) => { curStep = name; if (process.env.ONLY && !['signed-out redirect', 'log in', ...String(process.env.ONLY).split('|')].includes(name)) return; try { await fn(); } catch (e) { check(name, false, e.message.split('\n').filter((l) => /locator|Timeout|waiting/.test(l)).slice(0, 3).join(' | ') || String(e.message).slice(0, 300)); await shot(`fail-${name.replace(/\W+/g, '-')}`); } };
 const openSettings = async (p = page) => { if (!(await p.getByTestId('settings-page').count())) await p.getByTestId('hud-settings').click(); await p.getByTestId('settings-page').waitFor(); };
-const cookTab = async (id) => { const sel = `[data-testid=cook-tab-${id}]`; await page.waitForFunction((q) => { const el = document.querySelector(q); return el && Object.keys(el).some((k) => k.startsWith('__reactProps')); }, sel, { timeout: 15000 }); await page.locator(sel).click(); };
+const cookTab = async (id) => { const sel = `[data-testid=cook-tab-${id}]`; await page.waitForFunction((q) => { const el = document.querySelector(q); return el && Object.keys(el).some((k) => k.startsWith('__reactProps')); }, sel, { timeout: 15000 }); await page.locator(sel).first().click(); };
 const nav = async (n) => { if (await page.getByTestId('settings-page').count()) await page.getByTestId('settings-back').click(); await page.getByRole('navigation').getByRole('link', { name: n, exact: true }).click(); };
 const ktab = async (tab) => { for (let i = 0; i < 3; i++) { const ok = page.locator('.tip-ok'); if (await ok.count()) await ok.first().click().catch(() => {}); await page.waitForTimeout(150); } await closePopups().catch(() => {}); await page.getByTestId(`kt-${tab}`).click(); };
 const openKitchen = async (tab = 'food') => { await nav('Pantry'); const tip = async () => { for (let i = 0; i < 3; i++) { const ok = page.locator('.tip-ok'); if (await ok.count()) await ok.first().click().catch(() => {}); await page.waitForTimeout(150); } }; await tip(); await page.getByTestId('kitchen-btn').click(); await tip(); await page.getByTestId(`kt-${tab}`).click(); };
@@ -811,9 +811,6 @@ await step('profile picture', async () => {
   await page.waitForTimeout(800);
   await page.getByTestId('avatar-file').setInputFiles('e2e/plate.jpg');
   check('a profile picture can be picked from the camera roll and saves', await page.locator('.toast', { hasText: 'Profile picture saved' }).first().waitFor({ timeout: 8000 }).then(() => true, () => false));
-  await nav('Compete');
-  check('Compete starts with your friends as round pictures', await page.getByTestId('friend-strip').waitFor({ timeout: 8000 }).then(() => true, () => false));
-  await shot('12c-friend-strip');
 });
 await step('free dish search', async () => {
   await nav('Cook');
@@ -1127,6 +1124,9 @@ await step('friends and group chat', async () => {
   check('the other player sees the request', true);
   await page.locator('.fr-req', { hasText: 'wants to be friends' }).getByRole('button', { name: 'Yes' }).click();
   await page.locator('.toast', { hasText: 'are friends' }).waitFor();
+  await fp.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await fp.waitForURL('**/compete');
+  check('Compete starts with your friends as round pictures', await fp.getByTestId('friend-strip').waitFor({ timeout: 10000 }).then(() => true, () => false));
+  await fp.screenshot({ path: SHOTS ? path.join(SHOTS, '12c-friend-strip.png') : '/dev/null' }).catch(() => {});
   // make a group
   await page.getByTestId('new-group').click(); await page.locator('#g-name').fill('Dinner crew');
   await page.locator('.fr-chip.pick').first().click(); await page.getByRole('button', { name: 'Make group' }).click();

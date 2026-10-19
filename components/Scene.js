@@ -9,7 +9,7 @@ export default function Scene({ iso, cuisine, title, ingredients, height = 170, 
   return (
     <div className={`scene ${className}`} style={{ height }}>
       <div className="scene-art" aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />
-      <span className="scene-name">{placeName(iso, cuisine)}</span>
+      <span className="scene-name">{placeName(iso, cuisine, title)}</span>
     </div>
   );
 }

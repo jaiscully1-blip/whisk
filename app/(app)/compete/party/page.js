@@ -6,7 +6,8 @@ import { useWhisk } from '@/components/AppShell';
 import Icon from '@/components/Icon';
 import { Crowned } from '@/components/Crown';
 import Globe from '@/components/Globe';
-import { seatColor, partyError } from '@/components/PartyHub';
+import { useCached } from '@/lib/cache';
+import { seatColor, fetchPartyGlobe } from '@/components/PartyHub';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 
 export default function PartyPage() { return <Suspense fallback={null}><Party /></Suspense>; }
@@ -17,20 +18,17 @@ function Party() {
   const { supabase, say, setUi, dataVersion } = useWhisk();
   const router = useRouter();
   const gid = useSearchParams().get('g');
-  const [d, setD] = useState(null);
-  const [err, setErr] = useState('');
-  useEffect(() => {
-    if (!/^[0-9a-f-]{36}$/i.test(gid || '')) { setErr('That party link isn’t right.'); return; }
-    let live = true;
-    const go = () => supabase.rpc('get_party_globe', { p_group: gid }).then(({ data, error }) => { if (!live) return; if (error) setErr(partyError(error, 'Couldn’t open that party.')); else { setErr(''); setD(data); } });
-    go(); const t = setInterval(() => { if (!document.hidden) go(); }, 30000);
-    return () => { live = false; clearInterval(t); };
-  }, [gid, supabase, dataVersion]);
+  const valid = /^[0-9a-f-]{36}$/i.test(gid || '');
+  const [d, , reload] = useCached(`party:${gid}`, () => (valid ? fetchPartyGlobe(supabase, gid) : undefined), [dataVersion]);
+  const [failed, setFailed] = useState(false);
+  // refresh now and then, and show an error only if there is nothing to show
+  useEffect(() => { if (!valid) return undefined; const t = setInterval(() => { if (!document.hidden) reload(); }, 30000); return () => clearInterval(t); }, [valid, reload]);
+  useEffect(() => { if (!valid || d) { setFailed(false); return undefined; } const t = setTimeout(() => setFailed(true), 6000); return () => clearTimeout(t); }, [valid, d]);
+  const err = !valid ? 'That party link isn’t right.' : failed && !d ? 'Couldn’t open that party.' : '';
 
   const paint = useMemo(() => new Map((d?.countries || []).map((c) => [c.iso, seatColor(c.seat)])), [d]);
   const bySeat = useMemo(() => new Map((d?.members || []).map((m) => [m.seat, m])), [d]);
   const standings = useMemo(() => [...(d?.members || [])].sort((a, b) => b.countries - a.countries || b.cooked - a.cooked || a.seat - b.seat), [d]);
-  const month = d ? new Date(d.month_start).toLocaleDateString(undefined, { month: 'long' }) : '';
   const daysLeft = d ? Math.max(1, Math.ceil((new Date(d.month_end) - Date.now()) / 864e5)) : 0;
   const owned = useMemo(() => [...(d?.countries || [])].sort((a, b) => b.n - a.n).slice(0, 12), [d]);
 
@@ -43,7 +41,7 @@ function Party() {
   return (
     <div className="stack">
       <div className="page-title party-title">
-        <span><h1>{d?.group?.name || 'Party'}</h1><span className="muted">{d ? `Party globe · ${month} · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : 'Loading…'}</span></span>
+        <span><h1>{d?.group?.name || 'Party'}</h1><span className="muted">{d ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : ''}</span></span>
         <Link href="/compete" className="title-link"><Icon name="chevron" size={18} style={{ transform: 'rotate(180deg)' }} />Compete</Link>
       </div>
 

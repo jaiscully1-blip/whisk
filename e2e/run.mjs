@@ -1197,7 +1197,7 @@ await step('friends and group chat', async () => {
   // chat backgrounds: bought with coins, seen only by you
   const coinsFp = async () => Number((await fp.getByTestId('chat-bgs').innerText()).match(/You have (\d+) coins/)[1]);
   await fp.getByTestId('chat-bgbtn').click(); await fp.getByTestId('chat-bgs').waitFor(); await fp.getByTestId('bg-tiles').waitFor();
-  check('the background picker lists the looks with prices', (await fp.locator('.bg-tile').count()) === 7 && (await fp.getByTestId('bg-tiles').innerText()).includes('300'));
+  check('the background picker lists the looks with prices', (await fp.locator('.bg-tile').count()) === 20 && (await fp.getByTestId('bg-tiles').innerText()).includes('300'));
   const c0 = await coinsFp();
   await fp.getByTestId('bg-tiles').click();
   if (c0 < 300) {
@@ -1288,7 +1288,7 @@ await step('friends and group chat', async () => {
   await page.getByRole('dialog', { name: 'Start a party' }).locator('.fr-chip').first().click();
   await page.getByRole('button', { name: 'Start party' }).click();
   await page.waitForURL('**/compete/party?g=*'); await page.getByTestId('party-standings').waitFor({ timeout: 8000 });
-  check('a new party opens its globe with both of you in the standings', (await page.locator('.pb-row').count()) === 2 && /Party globe/.test(await page.locator('.page-title').innerText()));
+  check('a new party opens its globe with both of you in the standings', (await page.locator('.pb-row').count()) === 2 && /day[s]? left/.test(await page.locator('.page-title').innerText()));
   await fetch('http://localhost:54321/__e2e/seed-meals?country=PE&n=2');
   await page.getByRole('link', { name: 'Compete', exact: true }).first().click(); await page.waitForURL('**/compete'); await page.getByTestId('party-link').first().click(); await page.waitForURL('**/compete/party?g=*'); await page.getByTestId('party-standings').waitFor({ timeout: 10000 });
   const peru = page.locator('[data-testid=party-country]', { hasText: 'Peru' });

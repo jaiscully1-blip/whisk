@@ -204,7 +204,7 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook, pa
     <div className="globe">
       <div className="globe-box" ref={box} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
         <svg ref={svg} viewBox={`0 0 ${W} ${H}`} className="globe-svg" role="img" tabIndex={0}
-          aria-label={`Globe. Swipe to spin, tap to throw a dart. ${cooked.length} countries cooked from.`} onKeyDown={key}>
+          aria-label={`Globe. Tap to throw a dart. ${cooked.length} countries cooked from.`} onKeyDown={key}>
           <defs>
             <radialGradient id="gl-sea" cx="42%" cy="36%" r="70%"><stop offset="0" stopColor="#EEF3F7" /><stop offset="1" stopColor="#C9D5DE" /></radialGradient>
             <radialGradient id="gl-shade" cx="36%" cy="30%" r="75%"><stop offset="0" stopColor="#fff" stopOpacity=".55" /><stop offset=".35" stopColor="#fff" stopOpacity="0" /><stop offset=".8" stopColor="#1B2430" stopOpacity=".12" /><stop offset="1" stopColor="#1B2430" stopOpacity=".42" /></radialGradient>
@@ -258,7 +258,7 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook, pa
           <button type="button" className="kd-round" onClick={() => setZoom((z) => Math.min(GLOBE_ZOOM[1], +(z + 0.15).toFixed(2)))} disabled={zoom >= GLOBE_ZOOM[1]} aria-label="Zoom in"><Icon name="plus" size={18} /></button>
           <button type="button" className="kd-round" onClick={() => setZoom((z) => Math.max(GLOBE_ZOOM[0], +(z - 0.15).toFixed(2)))} disabled={zoom <= GLOBE_ZOOM[0]} aria-label="Zoom out"><b style={{ fontSize: 22, lineHeight: 1 }}>−</b></button>
         </div>
-        <span className="globe-hint">{phase === 'aim' ? 'Here it comes…' : 'Swipe to spin · tap to throw a dart'}</span>
+        <span className="globe-hint">{phase === 'aim' ? 'Here it comes…' : 'Tap to throw a dart'}</span>
       </div>
       {result && (
         <div className={`card globe-hit ${result.miss ? 'miss' : ''}`} role="status">

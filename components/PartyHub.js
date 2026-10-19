@@ -1,14 +1,15 @@
 'use client';
 import Avatar from './Avatar';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCached } from '@/lib/cache';
+import { useCached, load } from '@/lib/cache';
 import { fetchFriends, fetchChats } from './tabData';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
 import { color, ago, chatError } from '@/lib/social';
 
+export const fetchPartyGlobe = (supabase, gid) => supabase.rpc('get_party_globe', { p_group: gid }).then(({ data, error }) => (error ? undefined : data));
 export const fetchParties = (supabase) => supabase.rpc('get_parties').then(({ data, error }) => (error ? undefined : data || []));
 // one colour per party member, in the order they joined
 export const SEAT_COLORS = ['#FF8A5C', '#5CC8FF', '#B98BFF', '#7ED957', '#FFD166', '#FF5DA2', '#4DD4AC', '#F2994A', '#9AA9FF', '#E25C5C', '#C3E86B', '#6FE3E3'];
@@ -26,6 +27,8 @@ export function PartyCard() {
   const [pick, setPick] = useState([]);
   const [busy, setBusy] = useState(false);
   const friends = f0?.friends || [];
+  // fetch each party's globe ahead of time, so opening one is instant
+  useEffect(() => { (parties || []).slice(0, 4).forEach((p) => load(`party:${p.id}`, () => fetchPartyGlobe(supabase, p.id), 20000).catch(() => {})); }, [parties, supabase]);
   const online = friends.filter((f) => f.online);
   const sorted = [...online, ...friends.filter((f) => !f.online)];
   const toggle = (c) => setPick((p) => (p.includes(c) ? p.filter((x) => x !== c) : [...p, c]));

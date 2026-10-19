@@ -1016,7 +1016,7 @@ await step('cook off with a friend', async () => {
   await shot('06f-winner');
   await page.getByRole('link', { name: 'Back to Compete' }).click(); await page.waitForURL('**/compete');
   await page.waitForTimeout(800);
-  const c1 = await pill(page);
+  let c1 = await pill(page); for (let i = 0; i < 20 && c1 - c0 !== 2100; i++) { await page.waitForTimeout(300); c1 = await pill(page); }   // the pill catches up a moment after the page switches
   check('coins: win (+1,000) + invite reward (+1,000) + 100 for a new cuisine', c1 - c0 === 2100, `${c0} → ${c1}`);
   await ctx2.close(); await ctx3.close();
 });

@@ -29,7 +29,7 @@
  "tc":2,"pp":3,"pr":3},
 {"dish":"Fried Plantains","min":20,"sv":4,
  "ing":[["ripe plantains",3,"","yellow with black spots",1],["vegetable oil",0.5,"cup","",1],["chili powder",0.5,"tsp","",1],["yellow onion",0.5,"","sliced thin",1],["salt",0.5,"tsp","",0]],
- "st":[["Peel the plantains and slice them diagonally into pieces about 0.5 inch thick.",null],["Sprinkle with [[0.5 tsp]] salt and [[0.5 tsp]] chili powder.",null],["Heat [[0.5 cup]] oil in a large skillet over medium heat.",null],["Fry the onion for 3 minutes until soft and lift it out.",3],["Fry the plantains in one layer for 3 minutes per side until golden brown.",6],["Drain on paper towels.",null],["Serve warm with the onion on top.",null]],
+ "st":[["Peel the plantains and slice them diagonally into pieces about 0.5 inch thick.",null],["Sprinkle with [[0.5 tsp]] salt and [[0.5 tsp]] chili powder.",null],["Heat [[0.5 cup]] oil in a large skillet over medium heat.",null],["Fry the onion for 3 minutes until soft and lift it out.",3],["Fry the plantains in one layer for 3 minutes per side until golden brown.",6],["Drain the plantains on paper towels.",null],["Serve warm with the onion on top.",null]],
  "tc":1,"pp":1,"pr":2},
 {"dish":"Kanya","min":40,"sv":8,
  "ing":[["roasted peanuts",2,"cup","unsalted, skins off",1],["rice flour",1,"cup","toasted",1],["sugar",0.75,"cup","",1],["vanilla extract",1,"tsp","",1],["water",0.25,"cup","",0],["salt",null,"","a pinch",0]],

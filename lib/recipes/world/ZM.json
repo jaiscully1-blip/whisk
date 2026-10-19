@@ -30,7 +30,7 @@
  ["Add the garlic and cook for 1 minute.",1],
  ["Stir in the tomatoes, salt and pepper. Cook for 8 minutes until soft and saucy.",8],
  ["Return the fish to the pan and stir gently. Cook for 3 minutes so the fish soaks up the sauce.",3],
- ["Serve hot with nshima.",null]],
+ ["Serve hot with nshima and a little extra sauce.",null]],
  "tc":2,"pp":1,"pr":2},
 {"dish":"Chikanda","min":120,"sv":8,
  "ing":[["orchid tubers",1.5,"cup","dried and ground into flour; sold as chikanda or orchid tuber flour",1],["roasted peanuts",1,"cup","unsalted, finely ground",1],["chili powder",1,"tsp","or to taste",1],["baking soda",0.5,"tsp","",1],["water",5,"cup","",1],["salt",1,"tsp","",0]],
@@ -53,7 +53,7 @@
  ["Add the tomatoes, the remaining salt and chili powder if using. Cook for 8 minutes until thick.",8],
  ["Stir in the caterpillars and coat them well in the tomato mixture.",null],
  ["Fry over medium heat for 6 minutes, stirring often, until browned at the edges and slightly crisp.",6],
- ["Serve hot with nshima.",null]],
+ ["Serve hot with nshima and a little extra sauce.",null]],
  "tc":2,"pp":2,"pr":2},
 {"dish":"Village Chicken Stew","min":90,"sv":4,
  "ing":[["bone-in chicken pieces",3,"lb","skin on, cut into serving pieces",1],["tomatoes",4,"","chopped",1],["yellow onion",2,"","sliced",1],["vegetable oil",3,"tbsp","",1],["garlic",3,"clove","minced",0],["green bell pepper",1,"","diced, optional",0],["salt",1.5,"tsp","",0],["black pepper",0.5,"tsp","",0],["water",2,"cup","",0]],
@@ -64,6 +64,6 @@
  ["Return the chicken to the pot and add the water and the remaining salt.",null],
  ["Bring to a simmer, cover and cook on low heat for 45 minutes until the chicken is tender and reaches 165°F (74°C).",45],
  ["Uncover and simmer for 10 minutes to thicken the gravy. Taste and add salt.",10],
- ["Serve hot with nshima.",null]],
+ ["Serve hot with nshima and a little extra sauce.",null]],
  "tc":2,"pp":2,"pr":1}
 ]

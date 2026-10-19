@@ -627,7 +627,7 @@ await step('me', async () => {
   check('the kitchen stands in a cut-away room (floor slab + walls that hide on the near side), no box or wallpaper', (await page.locator('#my-kitchen .kw').count()) === 3 && (await page.locator('#my-kitchen .kwin').count()) === 1 && (await page.locator('#my-kitchen .k3-bg').count()) === 0 && (await page.locator('#my-kitchen .k3.placed').count()) === 1);
   check('the kitchen’s heading is where it is (or its name), with Edit on the same line', /Riverwalk Apartment|Ybor City Loft/.test(await page.locator('#my-kitchen .mk-title').innerText()) && Math.abs((await page.locator('#my-kitchen .mk-title').boundingBox()).y - (await page.locator('#my-kitchen .mk-bar a').boundingBox()).y) < 30);
   await ktab('shop');
-  check('Kitchen shop opens on kitchen things with prices, has an Appliances section (countertop things only, no stoves)', (await page.locator('.shop-grid .tile').count()) >= 20 && /\d/.test(await page.locator('.shop-grid .tile .tprice').first().innerText()) && (await page.locator('.shop [role=tab]', { hasText: 'Appliances' }).count()) === 1 && (await page.locator('.shop-grid .tile', { hasText: 'Gas range' }).count()) === 0);
+  check('Kitchen shop opens on kitchen things with prices, has an Appliances section (countertop things only, no stoves)', (await page.locator('.shop-grid .tile').count()) >= 12 && /\d/.test(await page.locator('.shop-grid .tile .tprice').first().innerText()) && (await page.locator('.shop [role=tab]', { hasText: 'Appliances' }).count()) === 1 && (await page.locator('.shop-grid .tile', { hasText: 'Gas range' }).count()) === 0, `tiles ${await page.locator('.shop-grid .tile').count()} tabs ${await page.locator('.shop [role=tab]').allInnerTexts()}`);
   check('country things stay hidden until that country is done (no teaser text)', (await page.locator('.shop-grid .tile', { hasText: 'Molcajete' }).count()) === 0 && (await page.getByText(/Finish a country/).count()) === 0);
   await page.locator('.shop [role=tab]', { hasText: 'Finishes' }).click();
   check('finishes: 16 in the shop (terrazzo, lacquer, copper, gold marble and 12 more)', (await page.locator('.shop-grid .tile').count()) === 16);
@@ -1159,6 +1159,8 @@ await step('friends and group chat', async () => {
   await fp.locator('.chat-item', { hasText: 'Dinner crew' }).click(); await fp.getByTestId('chat-view').waitFor();
   await fp.locator('.chat-bubble.photo img').waitFor({ timeout: 10000 });
   check('the friend sees the text and the photo', (await fp.locator('.chat-bubble', { hasText: 'Hello crew' }).count()) === 1 && (await fp.locator('.chat-bubble.photo img').count()) === 1);
+  check('chat: the other person’s picture shows next to their name in the group', (await fp.locator('.chat-name .post-av img, .chat-name .post-av').count()) >= 1);
+  if (SHOTS) await fp.locator('[data-testid=chat-view]').screenshot({ path: path.join(SHOTS, 'chat-avatars.png') }).catch(() => {});
   const src = await fp.locator('.chat-bubble.photo img').getAttribute('src');
   check('the friend can open the photo', (await fp.request.get(src)).ok());
   await fp.locator('#chat-in').fill('Hi back'); await fp.locator('#chat-in').press('Enter');

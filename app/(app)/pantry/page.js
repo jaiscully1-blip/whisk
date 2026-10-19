@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useWhisk, useDraft } from '@/components/AppShell';
 import { isFrozenMeat, thawState, THAW_HOURS } from '@/lib/recipes/match';
 import Icon from '@/components/Icon';
@@ -151,10 +151,20 @@ export default function Pantry() {
   // Quick add: the staples you pick (★ on an item). One tap puts it back in the pantry, stocked.
   const quick = ui.quickAdd || [];
   const isQuick = (name) => quick.some((q) => q.name.toLowerCase() === name.toLowerCase());
-  function toggleQuick(item) {
+  // Starring never moves the screen: no toast, and when the Quick add row appears/disappears above, the page is
+  // scrolled back by exactly that much so the tapped star stays under the finger.
+  const starAnchor = useRef(null);
+  function toggleQuick(item, e) {
+    const btn = e?.currentTarget;
+    starAnchor.current = btn ? { btn, top: btn.getBoundingClientRect().top } : null;
     setUi({ quickAdd: isQuick(item.name) ? quick.filter((q) => q.name.toLowerCase() !== item.name.toLowerCase()) : [...quick, { name: item.name, category: item.category }].slice(-24) });
-    say(isQuick(item.name) ? `${item.name} left Quick add` : `${item.name} is in Quick add`);
   }
+  useLayoutEffect(() => {
+    const a = starAnchor.current; if (!a) return; starAnchor.current = null;
+    if (!a.btn.isConnected) return;
+    const d = a.btn.getBoundingClientRect().top - a.top;
+    if (Math.abs(d) > 0.5) { const sc = document.scrollingElement; if (sc) sc.scrollTop += d; }
+  }, [quick.length]);
   async function quickAdd(q) {
     const ex = (items || []).find((i) => i.name.toLowerCase() === q.name.toLowerCase());
     if (ex && ex.status === 'stocked') { say(`${ex.name} is already stocked`); return; }
@@ -265,7 +275,7 @@ export default function Pantry() {
                         ? <span className="chip reup-on" aria-label={`${i.name} is on your list`}><Icon name="check" size={14} />On list</span>
                         : <button type="button" className="chip reup" onClick={() => reup(i)} aria-label={`Reup ${i.name}: add to shopping list`}>Reup</button>)}
                       <StockMeter status={i.status} name={i.name} aisle={i.category} onClick={() => cycle(i)} />
-                      <button className={`btn ghost sm star ${isQuick(i.name) ? 'on' : ''}`} style={{ border: 0, width: 36, padding: 0 }} onClick={() => toggleQuick(i)} aria-pressed={isQuick(i.name)} aria-label={isQuick(i.name) ? `Take ${i.name} out of Quick add` : `Put ${i.name} in Quick add`}><Icon name="star" size={18} /></button>
+                      <button className={`btn ghost sm star ${isQuick(i.name) ? 'on' : ''}`} style={{ border: 0, width: 36, padding: 0 }} onClick={(e) => toggleQuick(i, e)} aria-pressed={isQuick(i.name)} aria-label={isQuick(i.name) ? `Take ${i.name} out of Quick add` : `Put ${i.name} in Quick add`}><Icon name="star" size={18} /></button>
                       <button className="btn ghost sm" style={{ border: 0, width: 36, padding: 0 }} onClick={() => remove(i)} aria-label={`Remove ${i.name}`}><Icon name="trash" size={18} /></button>
                     </div>
                   </div>

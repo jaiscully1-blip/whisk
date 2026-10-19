@@ -327,19 +327,16 @@ const FLOORS = {
   teak: 'repeating-linear-gradient(90deg,rgba(40,22,6,.45) 0 1.5px,rgba(0,0,0,0) 1.5px 17px),repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 2px,rgba(0,0,0,0) 2px 8px),linear-gradient(135deg,#B98A55,#8E6234)',
   concrete: 'radial-gradient(circle at 30% 40%,rgba(255,255,255,.06),rgba(0,0,0,0) 40%),linear-gradient(135deg,#4A484C,#38363A)'
 };
-// A shop thing: a drawn cut-out standing on the counter (or floor), fixed in the room (it never turns to follow the camera).
+// A shop thing: a drawn cut-out standing on the counter (or floor), turned to face you; its spot in the room never changes.
 function Thing({ b, selected, onDown }) {
   const m = K.MODEL[b.mid]; const C = K.C, HU = K.HU;
   const W = b.w * C, VW = Math.round(W * 1.6), H = VW, Z = Math.round(b.z * HU);   // drawn a bit bigger than its cell so you can see it
   return (
     <div className={`kthing ${selected ? 'sel' : ''}`} style={{ left: b.x * C, top: b.y * C, width: W, height: b.d * C, transform: `translateZ(${Z + 0.5}px)` }} onPointerDown={onDown} data-piece={b.id}>
       <div className="kthing-shadow" />
-      {/* two cut-outs crossed like an X and fixed in the room (never turned to the camera): they stay put exactly like the cabinets when you spin or slide the kitchen */}
-      {[0, 90].map((a) => (
-        <div key={a} className="kthing-up" style={{ left: (W - VW) / 2, top: b.d * C / 2 - H, width: VW, height: H, transform: `rotateZ(${a}deg) rotateX(-90deg)` }}>
-          <img src={itemUrl(m.item)} alt={a ? '' : m.nick} title={m.nick} draggable={false} />
-        </div>
-      ))}
+      <div className="kthing-up" style={{ left: (W - VW) / 2, top: b.d * C / 2 - H, width: VW, height: H, transform: 'rotateZ(calc(var(--rz) * -1deg)) rotateX(-90deg)' }}>
+        <img src={itemUrl(m.item)} alt={m.nick} title={m.nick} draggable={false} />
+      </div>
     </div>
   );
 }

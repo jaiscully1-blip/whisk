@@ -21,7 +21,8 @@ function Party() {
   const valid = /^[0-9a-f-]{36}$/i.test(gid || '');
   const [d, , reload] = useCached(`party:${gid}`, () => (valid ? fetchPartyGlobe(supabase, gid) : undefined), [dataVersion]);
   const [failed, setFailed] = useState(false);
-  // refresh now and then, and show an error only if there is nothing to show
+  // always refresh when it opens (the saved copy shows meanwhile), then every 30 s
+  useEffect(() => { if (valid) reload(); }, [valid, gid]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!valid) return undefined; const t = setInterval(() => { if (!document.hidden) reload(); }, 30000); return () => clearInterval(t); }, [valid, reload]);
   useEffect(() => { if (!valid || d) { setFailed(false); return undefined; } const t = setTimeout(() => setFailed(true), 6000); return () => clearTimeout(t); }, [valid, d]);
   const err = !valid ? 'That party link isn’t right.' : failed && !d ? 'Couldn’t open that party.' : '';

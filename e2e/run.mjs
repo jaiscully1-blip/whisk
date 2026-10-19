@@ -1124,7 +1124,7 @@ await step('friends and group chat', async () => {
   check('the other player sees the request', true);
   await page.locator('.fr-req', { hasText: 'wants to be friends' }).getByRole('button', { name: 'Yes' }).click();
   await page.locator('.toast', { hasText: 'are friends' }).waitFor();
-  await fp.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await fp.waitForURL('**/compete');
+  await fp.reload(); await fp.getByRole('navigation').getByRole('link', { name: 'Compete', exact: true }).click(); await fp.waitForURL('**/compete');
   check('Compete starts with your friends as round pictures', await fp.getByTestId('friend-strip').waitFor({ timeout: 10000 }).then(() => true, () => false));
   await fp.screenshot({ path: SHOTS ? path.join(SHOTS, '12c-friend-strip.png') : '/dev/null' }).catch(() => {});
   // make a group
@@ -1195,7 +1195,7 @@ await step('friends and group chat', async () => {
   await fp.getByTestId('chat-bell').click(); await fp.locator('.toast', { hasText: 'Notifications off for this chat' }).waitFor();
   check('notifications can be turned off for a chat', (await fp.getByTestId('chat-bell').getAttribute('aria-pressed')) === 'true');
   // chat backgrounds: bought with coins, seen only by you
-  const coinsFp = async () => Number((await fp.getByTestId('chat-bgs').innerText()).match(/You have (\d+) coins/)[1]);
+  const coinsFp = async (want) => { let n = 0; for (let i = 0; i < 24; i++) { n = Number((await fp.getByTestId('chat-bgs').innerText()).match(/You have (\d+) coins/)[1]); if (want === undefined || n === want) break; await fp.waitForTimeout(250); } return n; };
   await fp.getByTestId('chat-bgbtn').click(); await fp.getByTestId('chat-bgs').waitFor(); await fp.getByTestId('bg-tiles').waitFor();
   check('the background picker lists the looks with prices', (await fp.locator('.bg-tile').count()) === 20 && (await fp.getByTestId('bg-tiles').innerText()).includes('300'));
   const c0 = await coinsFp();
@@ -1205,10 +1205,10 @@ await step('friends and group chat', async () => {
     check('a background you cannot afford is refused', !(await fp.getByTestId('chat-view').getAttribute('data-bg')));
   } else {
     await fp.waitForFunction(() => document.querySelector('[data-testid="chat-view"]')?.dataset.bg === 'tiles');
-    check('buying a background takes its coins and puts it on', (await coinsFp()) === c0 - 300);
+    check('buying a background takes its coins and puts it on', (await coinsFp(c0 - 300)) === c0 - 300);
     await fp.getByTestId('bg-plain').click(); await fp.waitForFunction(() => !document.querySelector('[data-testid="chat-view"]')?.dataset.bg);
     await fp.getByTestId('bg-tiles').click(); await fp.waitForFunction(() => document.querySelector('[data-testid="chat-view"]')?.dataset.bg === 'tiles');
-    check('an owned background switches back on for free', (await coinsFp()) === c0 - 300);
+    check('an owned background switches back on for free', (await coinsFp(c0 - 300)) === c0 - 300);
     if (SHOTS) { await fp.getByTestId('chat-bgs').getByRole('button', { name: 'Done' }).click(); await fp.screenshot({ path: path.join(SHOTS, '12c-chat-background.png') }); await fp.getByTestId('chat-bgbtn').click(); await fp.getByTestId('chat-bgs').waitFor(); }
   }
   await fp.getByTestId('chat-bgs').getByRole('button', { name: 'Done' }).click();

@@ -7,6 +7,7 @@ import { useCached, load } from '@/lib/cache';
 import { fetchFriends, fetchChats } from './tabData';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
+import AddFriendSheet from './AddFriendSheet';
 import { color, ago, chatError } from '@/lib/social';
 
 export const fetchPartyGlobe = (supabase, gid) => supabase.rpc('get_party_globe', { p_group: gid }).then(({ data, error }) => (error ? undefined : data));
@@ -23,6 +24,7 @@ export function PartyCard() {
   const [f0] = useCached('friends', () => fetchFriends(supabase));
   const [parties, , reloadParties] = useCached('parties', () => fetchParties(supabase));
   const [making, setMaking] = useState(false);
+  const [addingF, setAddingF] = useState(false);
   const [name, setName] = useState('');
   const [pick, setPick] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -57,7 +59,7 @@ export function PartyCard() {
           </div>
           {friends.length > 0
             ? <button type="button" className="pc-go" onClick={() => setMaking(true)} data-testid="party-start">Invite<Icon name="chevron" size={16} /></button>
-            : <Link href="/compete/friends" className="pc-go">Add friend<Icon name="chevron" size={16} /></Link>}
+            : <button type="button" className="pc-go" onClick={() => setAddingF(true)} data-testid="party-add-friend">Add friend<Icon name="chevron" size={16} /></button>}
         </div>
         {parties?.length > 0 && (
           <div className="pc-parties">
@@ -68,6 +70,7 @@ export function PartyCard() {
         )}
       </div>
 
+      {addingF && <AddFriendSheet onClose={() => setAddingF(false)} />}
       {making && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setMaking(false); }}>
           <form className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label="Start a party" onSubmit={make}>
@@ -130,6 +133,7 @@ export function FriendStrip() {
   const [f0] = useCached('friends', () => fetchFriends(supabase));
   const [sel, setSel] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [addingF, setAddingF] = useState(false);
   const friends = f0?.friends || [];
   if (!friends.length) return null;
   const sorted = [...friends.filter((f) => f.online), ...friends.filter((f) => !f.online)];
@@ -156,8 +160,9 @@ export function FriendStrip() {
             <span className="fs-nm">{f.name}</span>
           </button>
         ))}
-        <Link href="/compete/friends" prefetch className="fs-item" aria-label="Add or manage friends"><span className="post-av fs-av fs-add"><Icon name="plus" size={22} /></span><span className="fs-nm">Friends</span></Link>
+        <button type="button" className="fs-item" onClick={() => setAddingF(true)} aria-label="Add a friend" data-testid="strip-add"><span className="post-av fs-av fs-add"><Icon name="plus" size={22} /></span><span className="fs-nm">Add</span></button>
       </div>
+      {addingF && <AddFriendSheet onClose={() => setAddingF(false)} />}
       {sel && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setSel(null); }}>
           <div className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label={sel.name}>

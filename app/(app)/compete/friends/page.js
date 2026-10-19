@@ -6,6 +6,7 @@ import { useWhisk } from '@/components/AppShell';
 import { useCached } from '@/lib/cache';
 import { fetchChats, fetchFriends } from '@/components/tabData';
 import Icon from '@/components/Icon';
+import AddFriendSheet from '@/components/AddFriendSheet';
 import { Crowned } from '@/components/Crown';
 import ChatList from '@/components/ChatList';
 import ChatView from '@/components/ChatView';
@@ -18,8 +19,6 @@ export default function Friends() {
   const [f0, , reloadFriends] = useCached('friends', () => fetchFriends(supabase));
   const [chats, , reloadChats] = useCached('chats', () => fetchChats(supabase));
   const f = f0 === undefined ? null : f0 || { code: '', friends: [], requests: [] };
-  const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState(null);       // the chat that's open
   const [openList, setOpenList] = useState(false);   // …and whether it opens on its shopping list
@@ -30,14 +29,6 @@ export default function Friends() {
   useEffect(() => { const t = setInterval(() => { if (!document.hidden && !open) reloadChats(); }, 15000); return () => clearInterval(t); }, [open, reloadChats]);
   const refresh = useCallback(() => { reloadFriends(); reloadChats(); }, [reloadFriends, reloadChats]);
 
-  async function add(e) {
-    e.preventDefault(); const c = code.trim().toUpperCase();
-    if (!/^[A-Z0-9]{6}$/.test(c)) { say(t('Friend codes are 6 letters.')); return; }
-    setBusy(true); const { data, error } = await supabase.rpc('add_friend', { p_code: c }); setBusy(false);
-    if (error) { say(String(error.message || 'Couldn’t add that code.').replace(/^\w/, (x) => x.toUpperCase())); return; }
-    setCode(''); setAdding(false); say(data === 'friends' ? 'You’re friends now! Start a shared grocery list from Your friends.' : 'Request sent · they’ll see it on Compete');
-    reloadFriends();
-  }
   async function answer(r, yes) {
     const { error } = await supabase.rpc('answer_friend', { p_code: r.code, p_accept: yes });
     if (error) { say('Couldn’t answer that.'); return; }
@@ -100,17 +91,7 @@ export default function Friends() {
         </section>
       )}
 
-      {adding && (
-        <div className="scrim top" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setAdding(false); }}>
-          <form className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label={t('Add a friend')} onSubmit={add}>
-            <h2 style={{ fontSize: 24 }}>{t('Add a friend')}</h2>
-            <label htmlFor="fr-code" className="desc">{t('Their 6-letter code')}</label>
-            <input id="fr-code" className="input co-code-in" maxLength={6} autoCapitalize="characters" autoComplete="off" autoFocus value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} />
-            <button className="btn wide" type="submit" disabled={busy}>{t('Add')}</button>
-            <button className="btn ghost wide" type="button" onClick={() => setAdding(false)}>{t('Cancel')}</button>
-          </form>
-        </div>
-      )}
+      {adding && <AddFriendSheet onClose={() => setAdding(false)} onAdded={reloadFriends} />}
       {open && <ChatView id={open} startList={openList} onClose={() => { setOpen(null); setOpenList(false); reloadChats(); }} onChanged={reloadChats} />}
     </div>
   );

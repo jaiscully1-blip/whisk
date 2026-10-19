@@ -231,7 +231,6 @@ export default function Pantry() {
               <div><label className="lbl" htmlFor="p-qty">{t('Amount')}</label><input id="p-qty" className="input" maxLength={30} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
               <div style={{ minWidth: 0 }}><label className="lbl" htmlFor="p-exp">{t('Expires')}</label><div className="date-wrap"><input id="p-exp" className={`input ${form.expires_on ? '' : 'empty'}`} type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} /></div>{form.expires_on && <button type="button" className="date-reset" onClick={() => setForm({ ...form, expires_on: '' })} aria-label="Reset the expiry date">Reset</button>}</div>
             </div>
-            {kind && <div className="kindnote" data-testid="kind-note">{kind === 'frozen' ? 'Goes to the Frozen aisle · frozen meat thaws first' : kind === 'canned' ? 'Goes to the Canned & jarred aisle' : 'Fresh · the aisle is picked from the name'}</div>}
             <button data-tour="add" data-tip="add" className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry</button>
           </form>
 

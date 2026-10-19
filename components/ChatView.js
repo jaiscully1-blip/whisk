@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWhisk } from './AppShell';
 import Icon, { Coin } from './Icon';
-import { peek, put, load } from '@/lib/cache';
+import { peek, put, load as cacheLoad } from '@/lib/cache';
 import { Crowned } from './Crown';
 import { isPhoto, uploadTo } from '@/lib/photo';
 import { color, stamp, EMOJI, chatError } from '@/lib/social';
@@ -192,11 +192,11 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
   const msgs = d?.messages || [];
   const fetchLooks = () => supabase.rpc('get_chat_bgs').then(({ data, error }) => (error ? undefined : data || []));
   // the list of looks is fetched ahead of time, so the sheet opens already full
-  useEffect(() => { load('chat-bgs', fetchLooks, 30000).catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { cacheLoad('chat-bgs', fetchLooks, 30000).catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   async function openLooks() {
     const cached = peek('chat-bgs');
     setLooks(cached || []);
-    const data = await load('chat-bgs', fetchLooks, cached ? 0 : -1).catch(() => undefined);
+    const data = await cacheLoad('chat-bgs', fetchLooks, cached ? 0 : -1).catch(() => undefined);
     if (data === undefined && !cached) { setLooks(null); say('Couldn’t open the backgrounds'); return; }
     if (data) setLooks(data);
   }

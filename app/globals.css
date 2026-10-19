@@ -1768,3 +1768,4 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 /* no scrollbars anywhere: scrolling still works, the bar is just never drawn */
 * { scrollbar-width: none; -ms-overflow-style: none; }
 *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.tidy-chip { border: 0; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); font-weight: 800; padding: 6px 14px; font-size: 13px; text-decoration: none; }

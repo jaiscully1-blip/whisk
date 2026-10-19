@@ -248,13 +248,15 @@ export default function Pantry() {
             {['All', ...CATEGORIES].map((c) => <button key={c} className={`chip`} style={{ border: 0, background: filter === c ? 'var(--fg)' : 'var(--track)', color: filter === c ? 'var(--bg)' : 'var(--fg)' }} onClick={() => { setFilter(c); setTimeout(() => { const el = document.getElementById('pantry-items'); if (el) { const y = el.getBoundingClientRect().top + window.scrollY - 70; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } }, 60); }}>{c}</button>)}
           </div>
           <div id="pantry-items" style={{ height: 0 }} />
-          {items?.length > 0 && <button type="button" className="tidy-btn" data-testid="tidy-aisles" onClick={tidyAisles}>Items in the wrong aisle? <b>Tidy aisles</b></button>}
 
           {items === null ? <p className="muted">{t('Loading your pantry…')}</p> : items.length === 0 ? (
             <div className="empty"><b>{t('Your pantry is empty')}</b></div>
-          ) : groups.map(([cat, list]) => (
+          ) : groups.map(([cat, list], gi) => (
             <section key={cat} className="stack" style={{ gap: 8 }}>
-              <span className="eyebrow">{cat} · {list.length}</span>
+              <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="eyebrow">{cat} · {list.length}</span>
+                {gi === 0 && <button type="button" className="chip tidy-chip" data-testid="tidy-aisles" onClick={tidyAisles}>Tidy up</button>}
+              </div>
               {list.map((i) => {
                 const f = freshness(i);
                 return (

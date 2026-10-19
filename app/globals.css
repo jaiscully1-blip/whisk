@@ -1741,3 +1741,8 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .bg-tile .bg-prev::before, .bg-tile .bg-prev::after { animation: none !important; filter: none !important; }
 .bg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .bg-coins { display: inline-flex; align-items: center; gap: 6px; background: var(--card); border: 2px solid var(--line); border-radius: 99px; padding: 5px 12px 5px 8px; font-weight: 900; font-size: 16px; }
+
+/* Sheets with a text field sit at the top so the keyboard never covers them */
+.scrim.top { align-items: flex-start; padding-top: calc(env(safe-area-inset-top, 0px) + 12px); }
+.scrim.top > .sheet { border-radius: 24px; border-bottom: 2px solid var(--tile-edge); height: auto; padding-bottom: 20px; margin: 0 8px; width: calc(100% - 16px); animation-name: sheetdrop; }
+@keyframes sheetdrop { from { transform: translateY(-24px); opacity: .6; } }

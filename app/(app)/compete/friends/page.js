@@ -101,7 +101,7 @@ export default function Friends() {
       )}
 
       {adding && (
-        <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setAdding(false); }}>
+        <div className="scrim top" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setAdding(false); }}>
           <form className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label={t('Add a friend')} onSubmit={add}>
             <h2 style={{ fontSize: 24 }}>{t('Add a friend')}</h2>
             <label htmlFor="fr-code" className="desc">{t('Their 6-letter code')}</label>

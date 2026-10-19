@@ -13,7 +13,7 @@
  "tc":3,"pp":4,"pr":2},
 {"dish":"Nalot","min":70,"sv":6,
  "ing":[["taro",1,"lb","peeled and cubed",1],["green plantains",2,"","peeled and sliced",1],["breadfruit",1,"lb","peeled and cubed",1],["coconut cream",1,"cup","",1],["salt",0.5,"tsp","",0],["water",6,"cup","",0]],
- "st":[["Put the taro, plantains and breadfruit in a large pot with [[6 cups]] water and [[0.5 tsp]] salt.",null],["Bring to a boil.",null],["Cook for [[30 minutes]] until all of them are very soft.",30],["Drain well, saving some of the liquid.",null],["Pound or mash the roots in a large bowl until smooth and stretchy.",null],["Add a splash of cooking liquid if it is too stiff.",null],["Spoon into bowls and make a well in the center of each.",null],["Pour [[1 cup]] coconut cream around the roots and serve warm.",null]],
+ "st":[["Put the taro, plantains and breadfruit in a large pot with [[6 cups]] water and [[0.5 tsp]] salt.",null],["Bring the pot to a full boil over high heat.",null],["Cook for [[30 minutes]] until all of them are very soft.",30],["Drain well, saving some of the liquid.",null],["Pound or mash the roots in a large bowl until smooth and stretchy.",null],["Add a splash of cooking liquid if it is too stiff.",null],["Spoon into bowls and make a well in the center of each.",null],["Pour [[1 cup]] coconut cream around the roots and serve warm.",null]],
  "tc":2,"pp":2,"pr":2},
 {"dish":"Kava","min":20,"sv":4,
  "ing":[["ground kava root",0.5,"cup","fine powder",1],["cool water",3,"cup","",1],["muslin or strainer cloth",1,"","",0]],

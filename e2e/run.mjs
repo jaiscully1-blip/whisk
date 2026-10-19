@@ -1027,8 +1027,10 @@ await step('cook off with a friend', async () => {
   await shot('06f-winner');
   await page.getByRole('link', { name: 'Back to Compete' }).click(); await page.waitForURL('**/compete');
   await page.waitForTimeout(800);
-  let c1 = await pill(page); for (let i = 0; i < 20 && c1 - c0 !== 2100; i++) { await page.waitForTimeout(300); c1 = await pill(page); }   // the pill catches up a moment after the page switches
-  check('coins: win (+1,000) + invite reward (+1,000) + 100 for a new cuisine', c1 - c0 === 2100, `${c0} → ${c1}`);
+  let c1 = await pill(page); for (let i = 0; i < 20 && c1 - c0 < 2000; i++) { await page.waitForTimeout(300); c1 = await pill(page); }   // the pill catches up a moment after the page switches
+  await page.waitForTimeout(1500); c1 = await pill(page);
+  // the plate is a random recipe: +100 only when its cuisine is one this player hasn't cooked yet (the bonus itself is checked with the first meal)
+  check('coins: win (+1,000) + invite reward (+1,000), plus 100 when the plate is a new cuisine', c1 - c0 === 2000 || c1 - c0 === 2100, `${c0} → ${c1}`);
   await ctx2.close(); await ctx3.close();
 });
 await step('activity backend', async () => {

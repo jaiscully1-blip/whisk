@@ -17,6 +17,13 @@ const first = runs.map((r) => r.map((x) => x[1]));
 ok('10 cards', first[0].length === 10);
 ok('10 different places in the first 10', new Set(runs[0].map((x) => x[0])).size >= 9);
 const overlap = (a, c) => a.filter((x) => c.includes(x)).length;
+// switching tabs and coming back must not change a single card
+await p.getByRole('navigation').getByRole('link', { name: 'Pantry', exact: true }).click(); await p.waitForTimeout(800);
+await p.getByRole('navigation').getByRole('link', { name: 'Home', exact: true }).click(); await p.waitForTimeout(1500);
+const again = (await grab()).map((x) => x[1]); ok('same mix after switching tabs', JSON.stringify(again) === JSON.stringify(runs[3].map((x) => x[1])));
+// no reshuffle while it sits there
+const snap = []; for (let i = 0; i < 4; i++) { snap.push(JSON.stringify((await grab()).map((x) => x[1]))); await p.waitForTimeout(700); }
+ok('no second refresh', new Set(snap).size === 1);
 ok('visit 2 mostly new dishes', overlap(first[0], first[1]) <= 3);
 ok('visit 3 mostly new vs 1+2', overlap(first[2], [...first[0], ...first[1]]) <= 3);
 await p.getByTestId('shuffle').click(); await p.waitForTimeout(1500);

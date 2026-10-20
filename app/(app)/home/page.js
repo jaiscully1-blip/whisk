@@ -13,6 +13,13 @@ import Postcard from '@/components/Postcard';
 
 const PAGE = 10;
 const SHOW = 3;   // missing ingredients shown on a card; the recipe lists them all
+// Discover a Dish keeps the same mix for as long as you are in the app (switching tabs and coming back changes nothing).
+// It only deals a new one after you have left the app for a while and come back (or pressed Shuffle).
+let SESSION = null; let hiddenAt = 0;
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => {
+  if (document.hidden) hiddenAt = Date.now();
+  else if (hiddenAt && Date.now() - hiddenAt > 60000) { SESSION = null; hiddenAt = 0; }
+});
 const mix = (id, seed) => { let h = seed >>> 0; for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 2654435761) >>> 0; return h; };
 
 // Home is "Discover a Dish": recipes you can't fully make yet (plus a defrost reminder when frozen meat is waiting).
@@ -22,7 +29,7 @@ export default function Home() {
   const [pantry, reload] = usePantry();
   const [saved, reloadSaved] = useSaved();
   const [open, setOpen] = useState(null);
-  const [shown, setShown] = useState(PAGE);
+  const [shown, setShown] = useState(() => (SESSION ? SESSION.shown : PAGE));
   const moreRef = useRef(null);
   const fabRef = useRef(null);
   // The shuffle button tucks away while you scroll down and comes back when you stop or scroll up (no re-renders).
@@ -37,16 +44,21 @@ export default function Home() {
     return () => { window.removeEventListener('scroll', on); clearTimeout(t); };
   }, []);
 
-  const [seed, setSeed] = useState(() => Math.floor(Math.random() * 2 ** 31));
-  // Dishes from all over the world join the web recipes: a fresh sample each time Home opens, and another on every Shuffle.
-  const [worldPool, setWorldPool] = useState([]);
-  const fetchWorld = useCallback((sd) => {
-    fetch(`/api/world-recipe?sample=90&seed=${sd}`).then((r) => (r.ok ? r.json() : null)).then((j) => {
-      if (j?.recipes?.length) setWorldPool((cur) => { const have = new Set(cur.map((x) => x.id)); return [...cur, ...j.recipes.filter((x) => !have.has(x.id))].slice(-360); });
-    }).catch(() => {});
-  }, []);
-  useEffect(() => { fetchWorld(seed); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const seen = useMemo(() => new Set(ui?.seenDiscover || []), []); // eslint-disable-line react-hooks/exhaustive-deps  (what you saw in earlier visits)
+  const [sess] = useState(() => (SESSION ||= { seed: Math.floor(Math.random() * 2 ** 31), pool: [], next: [], seen: new Set(ui?.seenDiscover || []), ready: false, shown: PAGE }));
+  const [seed, setSeed] = useState(sess.seed);
+  // Dishes from all over the world join the web recipes. They're fetched once, before the first card is drawn, so nothing reshuffles afterwards.
+  const [worldPool, setWorldPool] = useState(sess.pool);
+  const [ready, setReady] = useState(sess.ready);
+  const grab = useCallback((sd) => fetch(`/api/world-recipe?sample=90&seed=${sd}`).then((r) => (r.ok ? r.json() : null)).then((j) => j?.recipes || []).catch(() => []), []);
+  useEffect(() => {
+    if (sess.ready) { return undefined; }
+    let off = false;
+    const t = setTimeout(() => { if (!off) { sess.ready = true; setReady(true); } }, 2500);   // slow network: show what we have
+    grab(sess.seed).then((list) => { if (off) return; sess.pool = list; sess.ready = true; setWorldPool(list); setReady(true); grab((sess.seed + 0x9e3779b9) >>> 0).then((n) => { sess.next = n; }); });
+    return () => { off = true; clearTimeout(t); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { sess.shown = shown; }, [shown, sess]);
+  const seen = sess.seen;   // what you saw in earlier visits
   // Heavy part (matching every recipe to your pantry) only when the pantry or recipes change.
   const base = useMemo(() => {
     if (!pantry || !recipes) return null;
@@ -76,7 +88,12 @@ export default function Home() {
     setUiQuiet?.((cur) => ({ seenDiscover: [...new Set([...(cur.seenDiscover || []), ...ids])].slice(-900) }));
   }, [ordered, shown]); // eslint-disable-line react-hooks/exhaustive-deps
   const almost = ordered;
-  const shuffle = () => { const ns = (seed + 0x9e3779b9) >>> 0; fetchWorld(ns); startTransition(() => { setSeed(ns); setShown(PAGE); }); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const shuffle = () => {
+    const ns = (seed + 0x9e3779b9) >>> 0;
+    const have = new Set(sess.pool.map((x) => x.id)); sess.pool = [...sess.pool, ...sess.next.filter((x) => !have.has(x.id))].slice(-360); sess.next = []; sess.seed = ns; sess.shown = PAGE;
+    grab((ns + 0x9e3779b9) >>> 0).then((n) => { sess.next = n; });   // ready for the next press
+    startTransition(() => { setWorldPool(sess.pool); setSeed(ns); setShown(PAGE); }); window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   useEffect(() => {
     const el = moreRef.current; if (!el || !almost || shown >= almost.length) return;
     const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) setShown((n) => n + PAGE); }, { rootMargin: '500px' });
@@ -92,7 +109,7 @@ export default function Home() {
     <div className="stack" style={{ paddingTop: 16 }}>
       {frozen.length > 0 && <ThawBanner items={frozen} onChanged={reload} />}
       <div className="page-title" style={{ margin: '6px 0 0' }}><h1>{t('Discover a Dish')}</h1></div>
-      {almost === null ? <p className="muted">Checking your pantry…</p> : almost.length === 0 ? (
+      {almost === null || !ready ? <p className="muted">Checking your pantry…</p> : almost.length === 0 ? (
         <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">{t('Add pantry items')}</Link><Link className="btn ghost" href="/cook">{t('What can I make?')}</Link></div></div>
       ) : almost.slice(0, shown).map((x, i) => <DishCard key={x.r.id} x={x} first={i === 0} onOpen={openFull} onAdd={addToList} t={t} />)}
       {almost && almost.length > shown && <div ref={moreRef}><button className="btn ghost wide" onClick={() => setShown((n) => n + PAGE)}>{t('Show more')}</button></div>}

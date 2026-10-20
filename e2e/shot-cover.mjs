@@ -11,7 +11,7 @@ await p.waitForTimeout(1500); await sweep();
 for (const [t, h] of [['Pasta', 3], ['Salad', 2], ['Curry', 1]])
   await sql(`insert into public.meals (user_id, title, cuisine, photo_path, cooked_at) select id, '${t}', 'Italian', id::text || '/${t}.jpg', now() - interval '${h} minutes' from public.profiles order by created_at desc limit 1`);
 await p.reload(); await p.waitForTimeout(2500); await sweep();
-ok('stack badge +2', (await p.getByTestId('pb-more').first().innerText()).includes('+2'));
+ok('tape on multi-meal day', await p.getByTestId('pb-more').count() === 1);
 await p.locator('.pb-row').screenshot({ path: `${OUT}/cover-tile.png` });
 await p.locator('.pb-tile.done').last().click(); await p.waitForTimeout(800);
 ok('strip has 3', await p.getByTestId('pb-th').count() === 3);

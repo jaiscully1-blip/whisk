@@ -81,11 +81,10 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
           return (
             <button key={x.k} type="button" className={`pb-tile ${m ? 'done' : ''} ${x.today ? 'today' : ''}`} data-testid={x.today ? 'pb-today' : 'pb-day'} data-day={x.k} onClick={open} disabled={!open} aria-label={m ? `${label}: ${m.title}` : x.today ? t('Add your photo') : label}>
               <span className={`pb-img ${more > 0 ? 'pb-stack' : ''}`}>
-                {more > 0 && <><span className="pb-back b1" /><span className="pb-back b2" /></>}
+                {more > 0 && <span className="pb-tape" data-testid="pb-more" aria-label={`${x.meals.length} meals`} />}
                 {m ? (url ? <img src={url} alt="" loading="lazy" decoding="async" /> : <span className="pb-ph"><Icon name="utensils" size={22} /></span>)
                   : x.today && todayRecipe ? <><Postcard iso={todayRecipe.country} cuisine={todayRecipe.cuisine} title={todayRecipe.title} ingredients={todayRecipe.key} /><span className="pb-cam"><Icon name="camera" size={16} /></span></>
                   : <span className="pb-empty" />}
-                {more > 0 && <span className="pb-plus" data-testid="pb-more">+{more}</span>}
               </span>
               <span className="pb-date">{x.today ? t('Today') : label}</span>
             </button>

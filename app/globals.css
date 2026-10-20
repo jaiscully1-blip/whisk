@@ -1866,13 +1866,9 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .cm-hide { visibility: hidden; }
 
 .pb-stack { overflow: visible; background: transparent; }
-.pb-stack > img, .pb-stack > .pb-ph, .pb-stack > .rcard-art { border-radius: 6px; }
-.pb-stack > img { position: relative; z-index: 2; border: 2px solid rgba(255,255,255,.2); }
-.pb-stack > .pb-ph { z-index: 2; background: #261e1f; border-radius: 6px; }
-.pb-back { position: absolute; inset: 0; border-radius: 6px; background: #4a3d3e; border: 2px solid #342a2b; }
-.pb-back.b1 { transform: rotate(-6deg) translate(-3px, 1px); background: #6aa6d6; opacity: .8; }
-.pb-back.b2 { transform: rotate(5deg) translate(3px, 0); background: #e8c24a; opacity: .8; }
-.pb-plus { position: absolute; right: -5px; top: -7px; z-index: 3; background: var(--accent); color: #171C16; border-radius: 99px; font-size: 11px; font-weight: 900; padding: 2px 7px; box-shadow: 0 2px 0 rgba(0,0,0,.35); }
+.pb-stack > img { border-radius: 6px; border: 2px solid rgba(255,255,255,.25); box-sizing: border-box; }
+.pb-stack > .pb-ph { background: #261e1f; border-radius: 6px; border: 2px solid rgba(255,255,255,.25); }
+.pb-tape { position: absolute; top: -7px; left: 50%; width: 34px; height: 12px; background: rgba(232,194,74,.85); transform: translateX(-50%) rotate(-4deg); z-index: 3; border-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,.35); }
 .pb-strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px; }
 .pb-th { flex: none; position: relative; width: 62px; height: 62px; border-radius: 10px; overflow: hidden; border: 2px solid transparent; background: #261e1f; color: var(--muted); display: grid; place-items: center; padding: 0; }
 .pb-th img { width: 100%; height: 100%; object-fit: cover; display: block; }

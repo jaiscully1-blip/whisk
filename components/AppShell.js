@@ -83,6 +83,13 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   const [profile, setProfile] = useState(initialProfile);
   const [loadout, setLoadout] = useState(initialLoadout);
   const [recipes, setRecipes] = useState(null);
+  // tell the start-up screen (components/Splash.js) the app is ready: the recipes are in, or 2.5 s have passed
+  useEffect(() => {
+    if (window.__yokeReady) return undefined;
+    const go = () => { if (window.__yokeReady) return; window.__yokeReady = true; window.dispatchEvent(new Event('yoke:ready')); };
+    if (recipes) { go(); return undefined; }
+    const t = setTimeout(go, 2500); return () => clearTimeout(t);
+  }, [recipes]);
   const [worldExtra, setWorldExtra] = useState([]);   // world recipes opened so far (full, with steps)
   const worldHave = useRef(new Map());
   // ensureRecipes(['w-it-lasagna', ...]) → the full recipes (web ones come from the list, world ones are fetched once)

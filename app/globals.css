@@ -1891,3 +1891,7 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 @media (prefers-reduced-motion: reduce) { .dflip.on .face.back .scene-bleed { animation: none; } }
 .theme-night .desc { color: #D9CCBF; }
 .soon-note { margin: -2px 0 2px; font-size: 13.5px; line-height: 1.4; font-weight: 700; color: var(--fg); background: color-mix(in srgb, var(--warn) 14%, var(--card)); border: 1.5px solid color-mix(in srgb, var(--warn) 45%, transparent); border-radius: 12px; padding: 8px 12px; }
+/* start-up screen (components/Splash.js): the chick on the app icon's sage green, then a short fade */
+.splash { position: fixed; inset: 0; z-index: 10000; background: #CFE9B5; display: flex; align-items: center; justify-content: center; transition: opacity .36s ease; }
+.splash img { width: 170px; height: 170px; border: 0; background: none; }
+.splash.out { opacity: 0; pointer-events: none; }

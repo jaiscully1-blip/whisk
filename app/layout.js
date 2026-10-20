@@ -1,5 +1,6 @@
 import './globals.css';
 import { headers } from 'next/headers';
+import Splash from '@/components/Splash';
 
 export const metadata = {
   title: 'Yoke',
@@ -14,7 +15,7 @@ export default async function RootLayout({ children }) {
   await headers();
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><Splash />{children}</body>
     </html>
   );
 }

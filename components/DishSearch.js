@@ -85,6 +85,26 @@ function DishCard({ d, have, country, pantry }) {
       .then((r) => r.json()).then((x) => setInfo({ ingredients: x.ingredients || (d.ingredients || []).map((name) => ({ name })), video: x.video || null, configured: !!x.configured, search: x.search }))
       .catch(() => setInfo({ ingredients: (d.ingredients || []).map((name) => ({ name })), video: null, configured: false, search: `https://www.youtube.com/results?search_query=${encodeURIComponent(d.name + ' recipe')}` }));
   }
+  // when the card opens, scroll so all of it is on screen (between the top bar and the tab bar); if it's taller than that, line its top up under the bar
+  const box = useRef(null); const moved = useRef(false);
+  const reveal = () => {
+    const el = box.current; if (!el || moved.current) return;
+    const top = document.querySelector('.hud')?.getBoundingClientRect().bottom || 0;
+    const nav = document.querySelector('.nav')?.getBoundingClientRect().top || window.innerHeight;
+    const r = el.getBoundingClientRect(); const room = nav - top - 12;
+    const want = r.height <= room ? top + (room - r.height) / 2 + 6 : top + 8;   // where its top should end up
+    const dy = r.top - want;
+    if (Math.abs(dy) > 4) window.scrollBy({ top: dy, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  };
+  useEffect(() => {
+    if (!on) return;
+    moved.current = false;
+    const stop = () => { moved.current = true; };
+    window.addEventListener('wheel', stop, { passive: true, once: true }); window.addEventListener('touchmove', stop, { passive: true, once: true });
+    const id = setTimeout(reveal, 480);
+    return () => { clearTimeout(id); window.removeEventListener('wheel', stop); window.removeEventListener('touchmove', stop); };
+  }, [on]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (on && info) { const id = setTimeout(reveal, 120); return () => clearTimeout(id); } }, [info]); // eslint-disable-line react-hooks/exhaustive-deps
   const rows = (info?.ingredients || []).map((x) => ({ ...x, ok: STAPLES.has(canon(x.name)) || have.has(canon(x.name)) }));
   const missing = rows.filter((x) => !x.ok);
   async function addMissing() {
@@ -98,7 +118,7 @@ function DishCard({ d, have, country, pantry }) {
   const t = on ? 0 : -1;
 
   return (
-    <div className={`flip dflip ${on ? 'on' : ''}`}>
+    <div className={`flip dflip ${on ? 'on' : ''}`} ref={box}>
       <div className="flip-in">
         <button className="card face dish-row" onClick={flip} aria-label={`${d.name}: show ingredients and video`} aria-hidden={on} tabIndex={on ? -1 : 0}>
           <span className="dish-ico" aria-hidden="true">{flags[0] ? <img className="flagimg" src={`/flags/${flags[0][0].toLowerCase()}.svg`} alt="" width="29" height="22" /> : <Icon name="cook" size={18} />}</span>

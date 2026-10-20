@@ -16,9 +16,16 @@ export function checkFile(iso) {
     const r = a?.[i]; const at = `${iso} #${i} ${name}`;
     if (!r) { errs.push(`${at}: missing`); return; }
     if (r.dish !== name) errs.push(`${at}: dish name is "${r.dish}" (must match exactly, same order)`);
+    checkRecord(errs, at, r, ing);
+  });
+  return errs;
+}
+export function checkRecord(errs, at, r, ing) {
+  {
     if (!Number.isInteger(r.min) || r.min < 5 || r.min > 600) errs.push(`${at}: min`);
     if (!Number.isInteger(r.sv) || r.sv < 1 || r.sv > 12) errs.push(`${at}: sv`);
     for (const k of ['tc', 'pp', 'pr']) if (!Number.isInteger(r[k]) || r[k] < 1 || r[k] > 5) errs.push(`${at}: ${k} must be 1-5`);
+    if (r.nt !== undefined && !(Array.isArray(r.nt) && r.nt.length === 2 && r.nt.every((x) => typeof x === 'string' && x.length >= 8 && x.length <= 170))) errs.push(`${at}: nt must be [how it is cooked, best swap], each 8-170 chars`);
     if (!Array.isArray(r.ing) || r.ing.length < 3 || r.ing.length > 30) { errs.push(`${at}: ing needs 3-30 rows`); return; }
     const seen = new Set(); let keys = 0;
     for (const g of r.ing) {
@@ -46,8 +53,7 @@ export function checkFile(iso) {
       for (const m of s[0].matchAll(/\[\[(.*?)\]\]/g)) if (!/^\d/.test(m[1])) errs.push(`${at} step ${j}: [[${m[1]}]] must start with a number`);
       if (/\b\d+(\.\d+)?\s*(cups?|tbsp|tsp|oz|lb|g|kg|ml)\b/i.test(s[0].replace(/\[\[.*?\]\]/g, ''))) errs.push(`${at} step ${j}: measured amount outside [[ ]]`);
     });
-  });
-  return errs;
+  }
 }
 if (process.argv[1] && process.argv[1].endsWith('validate-world.mjs')) {
   const isos = process.argv.slice(2).length ? process.argv.slice(2) : fs.readdirSync(new URL('lib/recipes/world/', root)).filter((f) => /^[A-Z]{2}\.json$/.test(f)).map((f) => f.slice(0, 2));

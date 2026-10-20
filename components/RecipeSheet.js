@@ -80,6 +80,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
           </div>
         )}
         <MacroBars nutrition={r.nutrition} />
+        {r.note && <div className="card stack" style={{ gap: 4, padding: 12 }} data-testid="recipe-note"><span><b>How it's cooked:</b> {r.note.how}</span>{r.note.swap && <span><b>Best swap:</b> {r.note.swap}</span>}</div>}
         <DietTags recipe={r} />
         {c.frozen.length > 0 && <ThawBanner items={c.frozen} onChanged={onChanged} />}
         <BatchCook base={r.servings} factor={factor} onChange={setFactor} kcal={r.nutrition?.calories} />

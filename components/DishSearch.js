@@ -16,7 +16,7 @@ import Scene from './Scene';
 // Search anything — a country, a dish, a sauce, an ingredient. Free: Yoke's own list of dishes from all 193 countries,
 // plus Wikipedia for anything else. Tap a dish and its card flips: what you have / need, and a YouTube button.
 const PAGE = 20;
-export const TYPE_LABEL = { main: 'Main', soup: 'Soup', side: 'Side', salad: 'Salad', bread: 'Bread', 'street food': 'Street food', snack: 'Snack', dessert: 'Dessert', sauce: 'Sauce', drink: 'Drink', breakfast: 'Breakfast' };
+export const TYPE_LABEL = { main: 'Main', soup: 'Soup', side: 'Side', salad: 'Salad', bread: 'Bread', 'street food': 'Street food', snack: 'Snack', dessert: 'Dessert', sauce: 'Sauce', drink: 'Drink', breakfast: 'Breakfast', board: 'Platter', dumpling: 'Dumpling', sushi: 'Sushi', pastry: 'Pastry' };
 
 export function YouTubeLogo({ size = 22, off }) {
   return (

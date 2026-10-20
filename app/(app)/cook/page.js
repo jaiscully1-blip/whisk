@@ -86,7 +86,8 @@ export default function Cook() {
     const dinners = stable(recipes.filter((r) => fitsMeal(r, 'dinner') && fitsDiet(r, 'High protein')));
     const soul = stable(recipes.filter((r) => (SOUL.test(r.title) || /soul|southern|cajun|creole/i.test(r.cuisine || '')) && r.minutes <= 45 && !fitsMeal(r, 'dessert')));
     const sweetsAll = recipes.filter((r) => fitsMeal(r, 'dessert')); const sweets = stable(sweetsAll.filter((r) => r.minutes <= 60).length >= 3 ? sweetsAll.filter((r) => r.minutes <= 60) : sweetsAll);
-    return [['Protein-packed dinner', pick(dinners, 0)], ['Easy soul food', pick(soul, 1)], ['Dessert', pick(sweets, 2)]].filter(([, r]) => r);
+    const first = pick(sweets, 2); const rest = sweets.filter((r) => r.id !== first?.id);
+    return [['Protein-packed dinner', pick(dinners, 0)], ['Easy soul food', pick(soul, 1)], ['Dessert', first], ['Sweet tooth', pick(rest, 3)]].filter(([, r]) => r);
   }, [recipes, hour]);
   function useWhatIHave() { if (!inStock.length) { router.push('/pantry'); return; } setHand(null); setAsked(true); setUi({ cookMode: 'pantry', cookDish: '' }); toTop(); }
 
@@ -141,7 +142,7 @@ export default function Cook() {
               <span className="eyebrow">{t('Made for you')}</span>
               <div className="fy-row">{forYou.map(([label, r], i) => (
                 <button key={label} type="button" className={`fy-card fy-${i}`} data-testid="fy-card" onClick={() => setOpen(r)}>
-                  <span className="fy-art"><Postcard iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} /><span className="fy-tag">{t(['Protein', 'Comfort', 'Sweet'][i] || label)}</span></span>
+                  <span className="fy-art"><Postcard iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} /><span className="fy-tag">{t(['Protein', 'Comfort', 'Sweet', 'Treat'][i] || label)}</span></span>
                   <b>{r.title}</b><small>{hrs(r.minutes)}</small>
                 </button>))}</div>
             </section>

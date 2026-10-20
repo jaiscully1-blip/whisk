@@ -366,7 +366,11 @@ function Thing({ b, selected, onDown, onSpin }) {
   const m = K.MODEL[b.mid]; const C = K.C, HU = K.HU;
   const W = b.w * C, D = b.d * C, Z = Math.round(b.z * HU), rot = b.rot || 0, solid = SOLID[m.item];
   // a picture is sized so the item in it is its real height, and its bottom stands exactly on the surface
-  const f = FIT[m.item] || [0.04, 0.04, 0.96, 0.96], ih = b.h * HU, PH = ih / (f[3] - f[1]), PW = PH;
+  // Sized to its real footprint AND real height: whichever would make it bigger than the real thing wins less, so a
+  // flat paella pan isn't blown up to be tall and a tall amphora isn't stretched wide. (3/4 pictures show a bit of the
+  // top, so the picture is allowed ~40% of the footprint extra height.)
+  const f = FIT[m.item] || [0.04, 0.04, 0.96, 0.96], cw = f[2] - f[0], ch = f[3] - f[1], md = Math.max(b.w, b.d);
+  const PH = Math.min(md / cw, (b.h + 0.4 * md) / ch) * C, PW = PH;
   const R = 4;   // drawn 4× bigger and shrunk back, so the picture stays sharp when you zoom in
   const ring = Math.max(W, D) * 0.78 + 14;
   return (

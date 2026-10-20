@@ -12,7 +12,7 @@ const GRAIN = 'repeating-linear-gradient(90deg,rgba(90,55,20,.13) 0 2px,rgba(0,0
 
 function Box({ p, rot }) {
   const x = p.x * C * R, y = p.y * C * R, w = p.w * C * R, d = p.d * C * R, h = Math.max(1, p.h * HU * R), z = p.z * HU * R;
-  const rad = (p.rad || 0) * R, g = p.grain ? GRAIN : '';
+  const rad = Math.min((p.rad || 0) * R, h / 3, w / 3, d / 3), g = p.grain ? GRAIN : '';
   // light comes from the front-left of the room, so sides darken as the model turns away from it
   const lit = (a) => 0.18 * Math.cos(((a + rot) * Math.PI) / 180 + 0.6);
   const f = (k, st, kids) => <div className="ksf" style={{ ...st, background: `${g}${shade(p.c, k)}` }}>{kids}</div>;
@@ -42,7 +42,7 @@ function Cyl({ p, rot }) {
 export default function Solid({ parts, w, d, rot = 0 }) {
   return (
     <div className="ksolid" style={{ width: w * C, height: d * C, transform: `rotateZ(${rot}deg)` }}>
-      <div className="ksolid-in" style={{ width: w * C * R, height: d * C * R, transform: `scale(${1 / R})` }}>
+      <div className="ksolid-in" style={{ width: w * C * R, height: d * C * R, transform: `scale3d(${1 / R}, ${1 / R}, ${1 / R})` }}>
         {parts.map((p, i) => (p.t === 'cyl' ? <Cyl key={i} p={p} rot={rot} /> : <Box key={i} p={p} rot={rot} />))}
       </div>
     </div>

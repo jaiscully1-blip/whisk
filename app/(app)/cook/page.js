@@ -63,16 +63,17 @@ export default function Cook() {
 
   const results = useMemo(() => {
     if (!mode) return null;
-    let list = makeable.filter(({ r }) => (!+time || r.minutes <= +time) && fitsMeal(r, meal) && fitsDiet(r, diet));
+    let list = makeable.filter(({ r }) => (!+time || r.minutes <= +time) && fitsMeal(r, meal) && fitsDiet(r, diet) && !(mode === 'pantry' && saved?.has(r.id)));   // Use what I have: recipes you haven't saved yet (those live under Saved)
     if (mode === 'raid' && hand) { const hc = new Set(hand.map(canon)); list = list.map((x) => ({ ...x, hits: x.r.key.filter((k) => hc.has(canon(k))).length })).filter((x) => x.hits > 0).sort((a, b) => (a.c.ok === b.c.ok ? 0 : a.c.ok ? -1 : 1) || b.hits - a.hits); }
     if (mode === 'named') { const words = (ui.cookDish || '').toLowerCase().split(/\s+/).filter((w) => w.length > 2); list = list.filter(({ r }) => words.some((w) => `${r.title} ${r.cuisine}`.toLowerCase().includes(w.replace(/s$/, '')))); }
     // food about to go bad first (Fridge Raid keeps its own order: most of your dealt cards first)
     if (mode !== 'raid') { list = list.map((x) => ({ ...x, soon: usesSoon(x.r, pantry || []) })); list = [...list.filter((x) => x.c.ok && x.soon.length), ...list.filter((x) => x.c.ok && !x.soon.length), ...list.filter((x) => !x.c.ok)]; }
     return list;
-  }, [mode, makeable, pantry, time, meal, diet, hand, ui.cookDish]);
+  }, [mode, makeable, pantry, time, meal, diet, hand, ui.cookDish, saved]);
 
   // First visit: one question and three picks for today (same for everyone). The filters and tabs appear after "More filters" or the first search.
   const simple = !mode && !asked && !ui.cookFilters;
+  const savedView = !mode && !asked && !!ui.cookFilters;   // the Saved chip: only your saved recipes, nothing else
   const [shuffle, setShuffle] = useState(0);
   const pool = useMemo(() => {
     if (!recipes?.length) return [];
@@ -160,7 +161,7 @@ export default function Cook() {
       )}
 
       {!simple && <button type="button" className="fr-more" data-testid="back-to-picks" style={{ alignSelf: 'flex-start' }} onClick={() => { setAsked(false); setHand(null); setUi({ cookFilters: false, cookMode: null, cookDish: '' }); toTop(); }}>‹ {t('Back to tonight’s picks')}</button>}
-      {!simple && <div className="card cook-filters">
+      {!simple && !savedView && <div className="card cook-filters">
         <TimeSlider time={time || 'any'} onTime={(v) => setUi({ cookTime: v === 'any' ? '' : v })} />
         <div className="diet-pick" role="radiogroup" aria-label={t('Diet')}>
           {['', ...DIET_ORDER].map((d) => (
@@ -174,7 +175,7 @@ export default function Cook() {
         </div>
       </div>}
 
-      {!simple && (
+      {savedView && (
         <section className="card stack saved-box" aria-labelledby="saved-h" data-testid="saved-box">
           <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
             <h2 id="saved-h" style={{ fontSize: 20, margin: 0 }}><Icon name="star" size={18} /> {t('Saved recipes')}</h2>
@@ -186,7 +187,7 @@ export default function Cook() {
               <b>{m.title}</b><span className="desc">{m.minutes ? `${m.minutes} min · ` : ''}{(m.ingredients || []).length} {(m.ingredients || []).length === 1 ? t('ingredient') : t('ingredients')}</span>
             </button>
           ))}
-          <SavedRecipes pantry={pantry} onChanged={reload} limit={4} />
+          <SavedRecipes pantry={pantry} onChanged={reload} />
           {saved && saved.size === 0 && !(mine || []).length && <span className="desc">{t('Recipes you save show up here.')}</span>}
         </section>
       )}

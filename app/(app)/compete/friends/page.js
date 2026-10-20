@@ -87,7 +87,6 @@ export default function Friends() {
               <button type="button" className="fr-act rm" onClick={() => unfriend(fr)}>{t('Remove')}</button>
             </div>
           ))}
-          <p className="desc fr-tip">{t('Swipe a friend left, or tap them, for Shared list and Remove.')}</p>
         </section>
       )}
 

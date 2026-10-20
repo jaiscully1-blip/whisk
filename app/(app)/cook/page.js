@@ -155,7 +155,7 @@ export default function Cook() {
           )}
           <CookPhotobook tz={tz} todayRecipe={picks[0] || null} onAdd={setLogFor} t={t} />
           <div className="row" style={{ justifyContent: 'center', gap: 8, flexWrap: 'nowrap' }}>
-            <button type="button" className="uw-chip" data-testid="use-what-i-have" onClick={useWhatIHave}><span aria-hidden>🧺</span>{t('Use what I have')}</button>
+            <button type="button" className="uw-chip" data-testid="use-what-i-have" onClick={useWhatIHave}><span aria-hidden>🥕</span>{t('Cook from my kitchen')}</button>
             <button type="button" className="uw-chip" data-testid="saved-chip" onClick={() => { setUi({ cookFilters: true }); toTop(); }}><span aria-hidden>♡</span>{t('Saved')}{saved?.size ? ` ${saved.size}` : ''}</button>
           </div>
         </>
@@ -216,7 +216,7 @@ export default function Cook() {
             </button>
           ))}
           {shown < results.length ? <div ref={moreRef}><button className="btn ghost wide" onClick={() => setShown((n) => n + PAGE)}>{t('Show more')}</button></div>
-            : <span className="desc" style={{ textAlign: 'center' }}>{t('That’s everything that fits your pantry right now.')}</span>}
+            : <span className="desc" style={{ textAlign: 'center' }}>{t('You’re all caught up! Add groceries for more recipes.')}</span>}
         </>
       ) : asked && <div className="empty"><b>{t('Nothing fits yet')}</b>{mode === 'named' ? 'None of Yoke’s recipes match that dish and your pantry.' : 'Add a few more staples to your pantry and check back.'}</div>)}
 

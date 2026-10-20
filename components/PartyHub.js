@@ -49,7 +49,7 @@ export function PartyCard() {
     <section className="stack" style={{ gap: 8 }} aria-label="Parties">
       <div className="party-card" data-testid="party-card" suppressHydrationWarning style={{ '--ph-delay': `-${Math.floor(Date.now() / 1000 % 14400)}s` }}>
         <div className="pc-top">
-          <span><b>Start a party</b><small>{online.length ? `${online.length} friend${online.length === 1 ? '' : 's'} online now` : friends.length ? `Cook with ${friends.slice(0, 2).map((f) => f.name).join(' and ')}${friends.length > 2 ? ` +${friends.length - 2}` : ''} on one shared globe` : 'Add a friend to start a party'}</small></span>
+          <span><b>Start a party</b><small>{online.length ? `${online.length} friend${online.length === 1 ? '' : 's'} online now` : friends.length ? `Race ${friends.slice(0, 2).map((f) => f.name).join(' and ')}${friends.length > 2 ? ` +${friends.length - 2}` : ''} around the world` : 'Add a friend to start a party'}</small></span>
         </div>
         <div className="pc-row">
           <div className="pc-avs">

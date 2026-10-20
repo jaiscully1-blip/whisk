@@ -161,7 +161,7 @@ function PutAway() {
               ))}
             </section>
           ) : live.length > 0 ? (
-            <div className="empty"><b>Everything has a home</b>Tap a door to peek inside.</div>
+            <div className="empty"><b>Everything has a home</b></div>
           ) : (
             <div className="empty"><b>Nothing to put away</b><Link href="/pantry">Add food to your pantry</Link></div>
           )}

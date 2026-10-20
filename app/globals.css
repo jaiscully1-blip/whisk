@@ -1889,3 +1889,4 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .dflip.on .face.back .scene-bleed { animation: df-rise .5s .08s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes df-rise { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .dflip.on .face.back .scene-bleed { animation: none; } }
+.theme-night .desc { color: #D9CCBF; }

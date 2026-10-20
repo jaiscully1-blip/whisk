@@ -227,7 +227,7 @@ export default function Pantry() {
       {tab === 'pantry' ? (
         <>
           <div className="grid2 scanrow">
-            <button type="button" data-tour="scan" data-tip="receipt" className="scan-tile receipt" onClick={() => setScan('receipt')}><ReceiptArt /><span><b>{t('Scan receipt')}</b><small>{t('Add a whole shop')}</small></span></button>
+            <button type="button" data-tour="scan" data-tip="receipt" className="scan-tile receipt" onClick={() => setScan('receipt')}><ReceiptArt /><span><b>{t('Scan receipt')}</b><small>{t('Add a full grocery trip')}</small></span></button>
             <button type="button" className="scan-tile barcode" data-tip="barcode" onClick={() => setScan('barcode')}><BarcodeArt /><span><b>{t('Scan barcode')}</b><small>{t('Add one item')}</small></span></button>
           </div>
           {bare && (

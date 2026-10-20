@@ -60,7 +60,7 @@ export default function Compete() {
       <FriendStrip />
       <h2 data-tour="challenges" data-tip="challenges" style={{ fontSize: 22 }}>{t('This week’s challenges')}</h2>
       {challenges === null || !recipes ? <p className="muted">{t('Loading…')}</p> : challenges.length === 0 ? (
-        <Link href="/pantry" className="card chat-item" style={{ textDecoration: 'none' }}><span className="chat-item-txt"><b>{t('No challenges yet')}</b><small>{t('Add groceries to your pantry and this week’s challenges appear here')}</small></span><Icon name="chevron" size={16} /></Link>
+        <Link href="/pantry" className="card chat-item" style={{ textDecoration: 'none' }}><span className="chat-item-txt"><b>{t('Unlock this week’s challenges')}</b><small style={{ color: '#E8DCCF' }}>{t('Add groceries to get started')}</small></span><Icon name="chevron" size={16} /></Link>
       ) : challenges.map((c) => {
         const r = recipeOf(c); if (!r) return null;
         const [tier, bg, ink] = TIER[c.slot] || TIER[3]; const on = !!flipped[c.id];

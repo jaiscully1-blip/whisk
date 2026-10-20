@@ -57,8 +57,8 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
     if (error) { setAdded((a) => a.filter((x) => x !== k)); say('Couldn’t add that.'); return; }
     say(`${name} is in your pantry`); refreshProfile(); onChanged?.();
   }
-  const finish = () => { if (c.frozen.length) { say(`Defrost ${c.frozen.map((p) => p.name).join(', ')} first`); return; } setCooking(false); setLogging(true); };
-  if (cooking) return <CookMode r={r} factor={factor} canFinish={c.ok} onFinish={finish} onClose={() => setCooking(false)} />;
+  const finish = () => { setCooking(false); setLogging(true); };
+  if (cooking) return <CookMode r={r} factor={factor} challenge={challenge} onFinish={finish} onClose={() => setCooking(false)} />;
   if (logging) return <LogMealSheet recipe={r} challenge={challenge} factor={factor} onClose={() => { setLogging(false); onClose?.(); }} onDone={onChanged} />;
 
   return (
@@ -101,10 +101,13 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         <IngredientList r={r} factor={factor} missing={needs} />
         <div className="row" style={{ justifyContent: 'space-between' }}><h3>Steps</h3><button type="button" className="btn sm cm-open" onClick={() => { setCooking(true); remember(); }}><Icon name="play" size={16} />Cook mode</button></div>
         <StepList r={r} factor={factor} />
-        <div className="row">
-          {isSaved ? <button type="button" className="btn ghost" style={{ flex: '1 1 140px' }} onClick={unsave} aria-label="Saved. Tap to unsave"><Icon name="check" size={18} />Saved · Unsave</button>
-            : <button className="btn ghost" style={{ flex: '1 1 140px' }} onClick={save}>Save</button>}
-          {c.ok && <button className="btn" style={{ flex: '1 1 160px' }} onClick={() => { if (c.frozen.length) { say(`Defrost ${c.frozen.map((p) => p.name).join(', ')} first`); return; } setLogging(true); }}>I cooked it</button>}
+        <div className="rs-bar" data-testid="rs-bar">
+          <div className="row" style={{ flexWrap: 'nowrap', gap: 8 }}>
+            {isSaved ? <button type="button" className="btn ghost" style={{ flex: '1 1 0' }} onClick={unsave} aria-label="Saved. Tap to unsave"><Icon name="check" size={18} />Saved</button>
+              : <button className="btn ghost" style={{ flex: '1 1 0' }} onClick={save}><Icon name="heart" size={18} />Save</button>}
+            <button className="btn rs-post" style={{ flex: '2 1 0' }} data-testid="rs-post" onClick={() => setLogging(true)}><Icon name="camera" size={18} />I cooked it{challenge?.coins ? ` · +${challenge.coins} coins` : ''}</button>
+          </div>
+          {!c.ok && <span className="desc rs-note">Made it anyway? You can still post it.</span>}
         </div>
       </div>
     </div>

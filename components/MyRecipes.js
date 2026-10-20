@@ -33,7 +33,7 @@ export function Viewer({ row, pantry, onClose, onEdit, onDeleted }) {
     if (error) { say('Couldn’t delete that.'); return; }
     say('Recipe deleted'); onDeleted();
   }
-  if (cooking) return <CookMode r={r} factor={factor} canFinish={false} onClose={() => setCooking(false)} />;
+  if (cooking) return <CookMode r={r} factor={factor} onClose={() => setCooking(false)} />;
   return (
     <div className="scrim" role="presentation" style={{ zIndex: 70 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sheet stack" role="dialog" aria-modal="true" aria-label={row.title} data-testid="mine-view">

@@ -149,7 +149,7 @@ export default function LogMealSheet({ recipe: recipe0 = null, dish = null, coun
         {dish && (dish.countries || []).length === 1 && <span className="desc">Counts toward {COUNTRY_BY_ISO[country]?.[1]} on your globe</span>}
         <label className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, minHeight: 180, cursor: 'pointer', borderStyle: 'dashed', padding: 8 }}>
           {preview ? <img src={preview} alt="Your plate" style={{ maxHeight: 260, maxWidth: '100%', borderRadius: 14 }} /> : <span className="row muted" style={{ fontWeight: 800 }}><Icon name="camera" size={24} />Add a photo of your plate</span>}
-          <input type="file" accept="image/*" capture="environment" onChange={pick} hidden />
+          <input type="file" accept="image/*" onChange={pick} hidden />
         </label>
         {preview && <ShareChips value={share} onChange={setShare} />}
         <div>

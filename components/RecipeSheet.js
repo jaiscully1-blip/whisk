@@ -19,7 +19,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
   const [isSaved, setSaved] = useState(!!saved);
   const [logging, setLogging] = useState(false);
   // remember the recipes you've been reading, so when you post a photo you can pick the one you actually cooked
-  const remember = () => setUiQuiet?.((cur) => ({ recentRecipes: [{ id: r.id, title: r.title }, ...(cur.recentRecipes || []).filter((x) => x.id !== r.id)].slice(0, 5) }));
+  const remember = () => setUiQuiet?.((cur) => ({ recentRecipes: [{ id: r.id, title: r.title, country: r.country, cuisine: r.cuisine, key: (r.key || []).slice(0, 6) }, ...(cur.recentRecipes || []).filter((x) => x.id !== r.id)].slice(0, 8) }));
   useEffect(() => { remember(); }, [r.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [factor, setFactor] = useState(1);
   const [cooking, setCooking] = useState(false);   // Cook mode

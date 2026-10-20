@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useWhisk, useDraft } from './AppShell';
 import Icon from './Icon';
+import { postcardSvg } from '@/lib/scenes';
 import { fmt } from '@/lib/game';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 import { compress } from '@/lib/photo';
@@ -30,7 +31,7 @@ export default function LogMealSheet({ recipe: recipe0 = null, dish = null, coun
     if (!wr || have.length) return;
     supabase.from('pantry_items').select('name').limit(8).then(({ data }) => setHave((data || []).map((d) => d.name)), () => {});
   }, [wr]); // eslint-disable-line react-hooks/exhaustive-deps
-  const recents = recipe0 && !challenge ? [recipe0, ...((ui?.recentRecipes || []).map((x) => (allRecipes || []).find((r) => r.id === x.id) || { id: x.id, title: x.title }))].filter((r, i, a) => a.findIndex((y) => y.id === r.id) === i).slice(0, 5) : [];
+  const recents = recipe0 && !challenge ? [recipe0, ...((ui?.recentRecipes || []).map((x) => (allRecipes || []).find((r) => r.id === x.id) || x))].filter((r, i, a) => a.findIndex((y) => y.id === r.id) === i).slice(0, 8) : [];
   const found = findQ.trim().length >= 2 ? (allRecipes || []).filter((r) => r.title.toLowerCase().includes(findQ.trim().toLowerCase())).slice(0, 6) : [];
   const lines = (t) => t.split('\n').map((x) => x.trim()).filter(Boolean);
   function split() {
@@ -104,7 +105,12 @@ export default function LogMealSheet({ recipe: recipe0 = null, dish = null, coun
         {recents.length > 1 && (
           <div className="stack" style={{ gap: 6 }} data-testid="lm-which">
             <span className="lbl">Which recipe did you cook?</span>
-            <div className="row" style={{ gap: 6 }}>{recents.map((r) => <button key={r.id} type="button" className={`pill ${recipe?.id === r.id ? 'on' : ''}`} style={{ cursor: 'pointer', fontWeight: 800, outline: recipe?.id === r.id ? '2px solid var(--accent, #8bd16a)' : 'none' }} onClick={() => setRecipe(r)} data-testid="lm-recent">{r.title}</button>)}</div>
+            <div className="lm-rec" data-testid="lm-recents">{recents.map((r) => { const on = recipe?.id === r.id; return (
+              <button key={r.id} type="button" className={`lm-tile ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => setRecipe(r)} data-testid="lm-recent">
+                <span className="rcard-art" aria-hidden="true" dangerouslySetInnerHTML={{ __html: postcardSvg({ iso: r.country, cuisine: r.cuisine, title: r.title, ingredients: r.key }).replace('<svg ', '<svg preserveAspectRatio="xMidYMid slice" ') }} />
+                <span className="lm-fade" />{on && <span className="lm-chk"><Icon name="check" size={12} /></span>}
+                <span className="lm-name">{r.title}</span>
+              </button>); })}</div>
           </div>
         )}
         {recipe0 && !challenge && (

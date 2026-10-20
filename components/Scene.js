@@ -7,9 +7,8 @@ import { postcardSvg, placeName } from '@/lib/scenes';
 export default function Scene({ iso, cuisine, title, ingredients, height = 170, className = '' }) {
   const html = useMemo(() => postcardSvg({ iso, cuisine, title, ingredients }), [iso, cuisine, title, ingredients]);
   return (
-    <div className={`scene ${className}`} style={{ height }}>
+    <div className={`scene ${className}`} style={{ height }} role="img" aria-label={placeName(iso, cuisine, title)}>
       <div className="scene-art" aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />
-      <span className="scene-name">{placeName(iso, cuisine, title)}</span>
     </div>
   );
 }

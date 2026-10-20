@@ -1,21 +1,39 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWhisk, useDraft } from './AppShell';
 import Icon from './Icon';
 import { fmt } from '@/lib/game';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 import { compress } from '@/lib/photo';
+import { parseRecipeText } from '@/lib/recipes/parseText';
 
 // Photo of your plate → log_meal. Title, cuisine and nutrition come from the recipe on the server.
 // Or a dish from the search (`dish` = { name, countries }): it counts toward that country on your globe.
 export default function LogMealSheet({ recipe = null, dish = null, country: country0 = null, challenge = null, onClose, onDone }) {
-  const { supabase, profile, refreshProfile, showPopup, say } = useWhisk();
+  const { supabase, profile, refreshProfile, showPopup, say, setUi } = useWhisk();
   const [notes, setNotes, clearNotes] = useDraft(`notes:${recipe ? recipe.id : 'dish:' + dish.name}`);
   const [country, setCountry] = useState(country0 || dish?.countries?.[0] || null);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Optional: write your own recipe right here. Hidden until "Write my recipe" is tapped; saved with the meal on Submit.
+  const [wr, setWr] = useState(false);
+  const [paste, setPaste] = useState('');
+  const [ings, setIngs] = useState('');
+  const [stepsTxt, setStepsTxt] = useState('');
+  const [have, setHave] = useState([]);
+  useEffect(() => {
+    if (!wr || have.length) return;
+    supabase.from('pantry_items').select('name').limit(8).then(({ data }) => setHave((data || []).map((d) => d.name)), () => {});
+  }, [wr]); // eslint-disable-line react-hooks/exhaustive-deps
+  const lines = (t) => t.split('\n').map((x) => x.trim()).filter(Boolean);
+  function split() {
+    const r = parseRecipeText(paste.split('\n'));
+    if (!r.ingredients.length && !r.steps.length) { setError('I couldn’t tell which lines are ingredients and which are steps. Type them in the boxes below.'); return; }
+    setError(''); setIngs(r.ingredients.map((l) => l.text).join('\n')); setStepsTxt(r.steps.map((l) => l.text).join('\n')); setPaste('');
+  }
+  const addChip = (n) => setIngs((t) => (lines(t).some((l) => l.toLowerCase() === n.toLowerCase()) ? t : `${t.trim()}${t.trim() ? '\n' : ''}${n}`));
 
   function pick(e) {
     const f = e.target.files?.[0]; if (!f) return;
@@ -26,6 +44,8 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
   async function submit(e) {
     e.preventDefault();
     if (!file) { setError('Add a photo of your plate. It’s how you earn the XP.'); return; }
+    const wIng = wr ? lines(ings) : [], wSteps = wr ? lines(stepsTxt) : [];
+    if (wr && (wIng.length || wSteps.length) && (!wIng.length || !wSteps.length)) { setError(!wIng.length ? 'Add at least one ingredient to your recipe, or close the recipe box.' : 'Add at least one step to your recipe, or close the recipe box.'); return; }
     setBusy(true); setError('');
     try {
       const blob = await compress(file);
@@ -38,6 +58,12 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
         : { p_recipe_id: null, p_photo_path: path, p_notes: notes.trim().slice(0, 500) || null, p_dish: dish.name, p_country: country });
       if (error) throw new Error('Could not save that meal.');
       clearNotes();
+      if (wIng.length && wSteps.length) {
+        const title = (recipe ? recipe.title : dish.name).slice(0, 120);
+        const { data: row, error: re } = await supabase.from('my_recipes').insert({ title, servings: null, minutes: null, ingredients: wIng.map((t) => t.slice(0, 200)).slice(0, 60), steps: wSteps.map((t) => t.slice(0, 1000)).slice(0, 60) }).select('id').single();
+        if (!re && row?.id && data?.meal_id) setUi((cur) => ({ pbLinks: { ...(cur.pbLinks || {}), [data.meal_id]: row.id } }));
+        else say('Your meal is saved, but the recipe didn’t save. You can add it from the photobook.');
+      }
       await refreshProfile();
       onDone?.(data);
       onClose?.();
@@ -72,6 +98,24 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
           <label className="lbl" htmlFor="meal-notes">Notes (optional)</label>
           <textarea id="meal-notes" className="input" rows={2} maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
+        {!wr ? (
+          <button type="button" className="btn ghost wide" style={{ borderStyle: 'dashed' }} onClick={() => setWr(true)} data-testid="lm-write"><Icon name="pencil" size={18} />Write my recipe</button>
+        ) : (
+          <div className="card stack" style={{ gap: 8, borderStyle: 'dashed' }} data-testid="lm-editor">
+            <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+              <b>Your recipe for {recipe ? recipe.title : dish.name}</b>
+              <button type="button" className="btn ghost sm" onClick={() => { setWr(false); setIngs(''); setStepsTxt(''); setPaste(''); }} aria-label="Close recipe box"><Icon name="x" size={16} /></button>
+            </div>
+            <textarea className="input" rows={2} placeholder="Paste a whole recipe here and tap Split it" value={paste} onChange={(e) => setPaste(e.target.value)} aria-label="Paste a recipe" data-testid="lm-paste" />
+            {paste.trim() && <button type="button" className="btn ghost sm" style={{ alignSelf: 'flex-start' }} onClick={split} data-testid="lm-split">Split it</button>}
+            <label className="lbl" htmlFor="lm-ings">Ingredients (one per line)</label>
+            {have.length > 0 && <div className="row" style={{ gap: 6 }}>{have.map((n) => <button key={n} type="button" className="pill" style={{ cursor: 'pointer' }} onClick={() => addChip(n)}>+ {n}</button>)}</div>}
+            <textarea id="lm-ings" className="input" rows={4} value={ings} onChange={(e) => setIngs(e.target.value)} data-testid="lm-ings" />
+            <label className="lbl" htmlFor="lm-steps">Steps (one per line)</label>
+            <textarea id="lm-steps" className="input" rows={4} value={stepsTxt} onChange={(e) => setStepsTxt(e.target.value)} data-testid="lm-steps" />
+            <span className="desc">Saved with your meal when you tap Submit.</span>
+          </div>
+        )}
         {error && <p className="err" role="alert" style={{ margin: 0 }}>{error}</p>}
         <button className="btn wide" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Submit'}</button>
       </form>

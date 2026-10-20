@@ -7,6 +7,7 @@ export const UNITS = new Set(['', 'tsp', 'tbsp', 'cup', 'oz', 'lb', 'fl oz', 'g'
 const fold = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 export function checkFile(iso) {
   const errs = [];
+  const dishes = JSON.parse(fs.readFileSync(new URL('lib/dishes/data.json', root), 'utf8'));
   const p = new URL(`lib/recipes/world/${iso}.json`, root);
   if (!fs.existsSync(p)) return [`${iso}: file missing`];
   let a; try { a = JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return [`${iso}: bad JSON ${e.message}`]; }

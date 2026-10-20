@@ -1,0 +1,15 @@
+import { createRequire } from 'node:module';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const BASE = 'http://localhost:3000', OUT = process.argv[2];
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); const p = await ctx.newPage();
+const sweep = async () => { for (let i = 0; i < 4; i++) { for (const sel of ['.tip-ok', 'button:has-text("Maybe later")', '.popup-scrim button']) { if (await p.locator(sel).count()) await p.locator(sel).first().click({ timeout: 1500 }).catch(() => {}); } await p.waitForTimeout(150); } };
+const ok = (n, v) => console.log(v ? 'PASS' : 'FAIL', n);
+await p.goto(`${BASE}/login`); await p.getByRole('radio', { name: 'Accept' }).click(); await p.getByRole('button', { name: 'Start playing' }).click(); await p.waitForURL('**/cook'); await p.waitForTimeout(2500); await sweep();
+ok('4 made-for-you cards', await p.getByTestId('fy-card').count() === 4);
+await p.screenshot({ path: `${OUT}/nf-cook.png` });
+const r = await p.evaluate(async () => { const j = await (await fetch('/api/world-recipe?id=w-in-mango-lassi')).json(); return j; });
+console.log(JSON.stringify(r).slice(0, 200));
+const ids = await p.evaluate(async () => { const j = await (await fetch('/api/world-recipe?iso=IN')).json(); return j.recipes.slice(-6).map((x) => x.id + ' ' + x.type); });
+console.log(ids.join(' | '));
+await b.close();

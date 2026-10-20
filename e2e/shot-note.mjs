@@ -1,0 +1,18 @@
+import { createRequire } from 'node:module';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const BASE = 'http://localhost:3000', OUT = process.argv[2];
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); const p = await ctx.newPage();
+const sweep = async () => { for (let i = 0; i < 4; i++) { for (const sel of ['.tip-ok', 'button:has-text("Maybe later")', '.popup-scrim button']) { if (await p.locator(sel).count()) await p.locator(sel).first().click({ timeout: 1500 }).catch(() => {}); } await p.waitForTimeout(150); } };
+const ok = (n, v) => console.log(v ? 'PASS' : 'FAIL', n);
+await p.goto(`${BASE}/login`); await p.getByRole('radio', { name: 'Accept' }).click(); await p.getByRole('button', { name: 'Start playing' }).click(); await p.waitForURL('**/cook'); await p.waitForTimeout(2500); await sweep();
+const sql = (q) => fetch('http://localhost:54321/__e2e/sql?q=' + encodeURIComponent(q)).then((r) => r.text());
+await sql("insert into public.saved_recipes (user_id, recipe_id) select id, 'w-in-falooda' from public.profiles order by created_at desc limit 1");
+await p.reload(); await p.waitForTimeout(2500); await sweep();
+await p.getByTestId('more-filters').click(); await p.waitForTimeout(1500); await sweep();
+await p.getByText('Falooda').first().click(); await p.waitForTimeout(1500);
+console.log(await p.evaluate(async () => JSON.stringify((await (await fetch('/api/world-recipe?id=w-in-falooda')).json()).recipe.note)));
+ok('recipe note shown', await p.getByTestId('recipe-note').count() === 1);
+console.log(await p.getByTestId('recipe-note').innerText().catch(() => 'none'));
+await p.screenshot({ path: `${OUT}/nf-note.png` });
+await b.close();

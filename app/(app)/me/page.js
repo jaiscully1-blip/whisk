@@ -227,10 +227,10 @@ export default function Me() {
           <span className="desc" style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Player ID: <span className="mono" style={{ userSelect: 'all' }}>{profile?.id}</span></span>
         </div>
       </div>
-      <button className="row setbtn" data-testid="log-out" onClick={() => {
+      <button className="btn wide" data-testid="log-out" onClick={() => {
         if (account?.anon && !window.confirm('You haven’t backed up this game. If you log out you won’t be able to get back into it. Log out anyway?')) return;
         const f = document.createElement('form'); f.method = 'POST'; f.action = '/auth/signout'; document.body.appendChild(f); f.submit();
-      }} style={{ alignSelf: 'stretch', justifyContent: 'center', background: 'none', border: 0, padding: 10, color: 'var(--fg)' }}><Icon name="chevron" size={18} />{t('Log out')}</button>
+      }} style={{ alignSelf: 'stretch', width: '100%' }}>{t('Log out')}</button>
       <button className="row setbtn danger-row" data-testid="delete-data" onClick={() => setDeleting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, padding: 6, fontSize: 11, gap: 4, minHeight: 28 }}><Icon name="trash" size={12} />{t('Delete my data')}</button>
       <button onClick={() => setResetting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, color: 'var(--muted)', fontSize: 11, textDecoration: 'underline', padding: 8, minHeight: 32 }}>{t('Reset game')}</button>
           </div>

@@ -84,7 +84,7 @@ export default function Home() {
     let top = [];
     const sig = (pantry || []).filter((p) => p.status !== 'out' && p.expires_on).map((p) => `${p.name}|${p.expires_on}`).sort().join(',');
     const byId = new Map(base.map((x) => [x.r.id, x]));
-    if (ready && sess.topIds && sess.topSig === sig) top = sess.topIds.map((id) => byId.get(id)).filter(Boolean);   // chosen once the full list arrived: shuffling never swaps it out
+    if (ready && sess.topIds && sess.topSig === sig && (sess.topWithPool || !worldPool.length)) top = sess.topIds.map((id) => byId.get(id)).filter(Boolean);   // chosen once the full list arrived: shuffling never swaps it out
     else {
       const soonAll = base.filter((x) => x.soon.length);
       const left = new Map(); soonAll.forEach((x) => x.soon.forEach((p) => { const k = canon(p.name); if (!left.has(k) || left.get(k) > p.left) left.set(k, p.left); }));
@@ -94,11 +94,11 @@ export default function Home() {
         for (const x of cands) { if ((cnt.get(k) || 0) >= 2 || top.length >= 8) break; top.push(x); x.soon.forEach((p) => { const kk = canon(p.name); cnt.set(kk, (cnt.get(kk) || 0) + 1); }); }
       }
       top.sort((a, b) => a.soon[0].left - b.soon[0].left || b.soon.length - a.soon.length);
-      if (ready) { sess.topIds = top.map((x) => x.r.id); sess.topSig = sig; }
+      if (ready) { sess.topIds = top.map((x) => x.r.id); sess.topSig = sig; sess.topWithPool = worldPool.length > 0; }
     }
     const rest = base.filter((x) => !top.includes(x));
     return [...top, ...diverse(rest.filter(fresh)), ...diverse(rest.filter((x) => !fresh(x)))];
-  }, [base, seed, seen, ready, pantry]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [base, seed, seen, ready, pantry, worldPool]); // eslint-disable-line react-hooks/exhaustive-deps
   // remember what you've been shown, so the next visit leads with dishes you haven't seen
   useEffect(() => {
     if (!ordered) return;

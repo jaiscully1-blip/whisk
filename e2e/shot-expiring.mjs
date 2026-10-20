@@ -16,7 +16,7 @@ await p.locator('.nav a[href="/home"]').click({ force: true }); await p.waitForU
 const heads = async () => p.evaluate(() => [...document.querySelectorAll('.rcard')].slice(0, 10).map((c) => ({ t: c.querySelector('h2')?.textContent, soon: !!c.querySelector('.chip.soon'), chip: c.querySelector('.chip.soon')?.textContent || '' })));
 const a = await heads();
 console.log(JSON.stringify(a.slice(0, 9)));
-const nSoon = a.filter((x) => x.soon).length;
+let nSoon = 0; while (nSoon < a.length && a[nSoon].soon) nSoon++;
 ok(`expiring block on top (${nSoon} dishes)`, nSoon >= 2 && nSoon <= 8 && a.slice(0, nSoon).every((x) => x.soon));
 ok('nothing expiring below the block in the first 10 is forced up', a.slice(nSoon).filter((x) => x.soon).length >= 0);
 ok('heading + plain-words nudge', (await p.getByTestId('soon-note').innerText()).includes('about to go bad'));

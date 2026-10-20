@@ -15,6 +15,7 @@ import GuessCook from './GuessCook';
 import { VideoCard, VideoSheet, VideoShare } from './ChatVideo';
 import ChatShopList from './ChatShopList';
 import OfflineNote from './OfflineNote';
+import AddFriendSheet from './AddFriendSheet';
 import { parseVideo } from '@/lib/video';
 
 // One group chat, full screen, like a text thread: bubbles, photos, emoji. Refreshes every few seconds while it is open
@@ -68,6 +69,7 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
   const [menu, setMenu] = useState(null);           // a message whose options are open
   const [reporting, setReporting] = useState(null);
   const [people, setPeople] = useState(false);
+  const [byCode, setByCode] = useState(false);   // adding someone by friend code from the people sheet
   const [plus, setPlus] = useState(false);
   const [emoji, setEmoji] = useState(false);
   const [game, setGame] = useState(null);         // a game sheet: 'cookoff' | 'uiu' | 'guess'
@@ -326,6 +328,11 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
           </div>
         </div>
       )}
+      {byCode && <AddFriendSheet onClose={() => setByCode(false)} onAdded={async (res, code) => {
+        const { data } = await supabase.rpc('get_friends'); setFriends(data?.friends || []);
+        const f = (data?.friends || []).find((x) => x.code === code);
+        if (f) addPerson(f); else say('Friend request sent. Once they accept, add them here.');
+      }} />}
       {people && d && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setPeople(false); }}>
           <div className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label="People in this group" data-testid="chat-people">
@@ -338,9 +345,12 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
                 {!m.me && d.group.mine && <button className="btn ghost sm" onClick={() => removePerson(m)} aria-label={`Remove ${m.name}`}><Icon name="x" size={16} /></button>}
               </div>
             ))}
-            {!isDM && addable.length > 0 && <>
-              <span className="eyebrow">{t('Add a friend')}</span>
+            {!isDM && <>
+              <span className="eyebrow">{t('Add people')}</span>
+              {addable.length > 0 && <>              
               <div className="fr-list">{addable.map((f) => <button key={f.code} type="button" className="chip fr-chip" onClick={() => addPerson(f)} aria-label={`Add ${f.name} to the group`}><Avatar className="post-av sm" code={f.code} name={f.name} aria-hidden="true" />{f.name}<Icon name="plus" size={14} /></button>)}</div>
+            </>}
+              <button type="button" className="btn ghost wide" onClick={() => setByCode(true)} data-testid="chat-add-code"><Icon name="plus" size={16} />{t('Add someone by friend code')}</button>
             </>}
             {!isDM && <button className="btn ghost wide" style={{ color: 'var(--bad)' }} onClick={leave}>{t('Leave group')}</button>}
             <button className="btn wide" onClick={() => setPeople(false)}>{t('Done')}</button>

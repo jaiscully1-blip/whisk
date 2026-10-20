@@ -42,4 +42,17 @@ await p.screenshot({ path: `${OUT}/dm-swipe.png` });
 { const wb = await p.locator('.fr-swipe').boundingBox(); await p.touchscreen.tap(wb.x + 40, wb.y + wb.height / 2); } await p.waitForTimeout(700);
 ok('tap while swiped just closes it (no chat)', await p.locator('[data-testid=chat-view]').count() === 0 && await p.evaluate(() => document.querySelector('.fr-swipe').scrollLeft) < 4);
 await p.screenshot({ path: `${OUT}/dm-list.png` });
+// a group: the people sheet always offers adding someone
+await sql(`insert into public.chat_groups (id, name, owner) values ('33333333-3333-3333-3333-333333333333','Ave','${me}')`);
+await sql(`insert into public.chat_members (group_id, user_id) values ('33333333-3333-3333-3333-333333333333','${me}'),('33333333-3333-3333-3333-333333333333',${F})`);
+await sql(`insert into public.chat_messages (group_id, sender, kind, body) values ('33333333-3333-3333-3333-333333333333',${F},'text','Hello')`);
+await p.reload(); await p.waitForTimeout(2000); await sweep();
+await p.locator('.nav a[href="/compete"]').click({ force: true }); await p.waitForURL('**/compete'); await p.waitForTimeout(1200); await sweep();
+await p.getByTestId('see-all-chats').click(); await p.waitForURL('**/compete/friends'); await p.waitForTimeout(1800); await sweep();
+await p.locator('.chat-item', { hasText: 'Ave' }).click(); await p.waitForSelector('[data-testid=chat-view]'); await p.waitForTimeout(800);
+await p.locator('.chat-title').click(); await p.waitForSelector('[data-testid=chat-people]');
+ok('group people sheet offers adding by code', await p.getByTestId('chat-add-code').isVisible());
+await p.getByTestId('chat-add-code').click(); await p.waitForTimeout(400);
+ok('the code sheet opens on top', await p.getByTestId('add-friend-code').isVisible());
+await p.screenshot({ path: `${OUT}/dm-addcode.png` });
 await b.close();

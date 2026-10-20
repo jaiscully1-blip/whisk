@@ -16,7 +16,7 @@ export default function AddFriendSheet({ onClose, onAdded }) {
     if (error) { say(String(error.message || 'Couldn’t add that code.').replace(/^\w/, (x) => x.toUpperCase())); return; }
     say(data === 'friends' ? 'You’re friends now! Start a shared grocery list from Your friends.' : 'Request sent · they’ll see it on Compete');
     try { load('friends', () => fetchFriends(supabase), -1); } catch { /* the list refreshes by itself soon */ }
-    onAdded?.(); onClose();
+    onAdded?.(data, c); onClose();
   }
   return (
     <div className="scrim top" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>

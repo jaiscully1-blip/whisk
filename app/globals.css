@@ -1903,3 +1903,4 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .dish-skel .ln { height: 14px; margin: 0 16px; }
 .dish-skel .w60 { width: 60%; height: 20px; } .dish-skel .w40 { width: 40%; } .dish-skel .w80 { width: 80%; }
 @media (prefers-reduced-motion: reduce) { .dish-skel i { animation: none; } }
+.chat-full .scrim.top { z-index: 90; }

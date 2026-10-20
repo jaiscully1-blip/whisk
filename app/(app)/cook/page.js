@@ -65,7 +65,7 @@ export default function Cook() {
   }, [mode, makeable, pantry, time, meal, diet, hand, ui.cookDish]);
 
   // First visit: one question and three picks for today (same for everyone). The filters and tabs appear after "More filters" or the first search.
-  const simple = !!saved && saved.size === 0 && !mode && !asked && !ui.cookFilters;
+  const simple = !mode && !asked && !ui.cookFilters;
   const [shuffle, setShuffle] = useState(0);
   const pool = useMemo(() => {
     if (!recipes?.length) return [];
@@ -153,6 +153,7 @@ export default function Cook() {
         </>
       )}
 
+      {!simple && <button type="button" className="fr-more" data-testid="back-to-picks" style={{ alignSelf: 'flex-start' }} onClick={() => { setAsked(false); setHand(null); setUi({ cookFilters: false, cookMode: null, cookDish: '' }); }}>‹ {t('Back to tonight’s picks')}</button>}
       {!simple && <div className="card cook-filters">
         <TimeSlider time={time || 'any'} onTime={(v) => setUi({ cookTime: v === 'any' ? '' : v })} />
         <div className="diet-pick" role="radiogroup" aria-label={t('Diet')}>
@@ -171,7 +172,7 @@ export default function Cook() {
         <section className="card stack saved-box" aria-labelledby="saved-h" data-testid="saved-box">
           <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
             <h2 id="saved-h" style={{ fontSize: 20, margin: 0 }}><Icon name="star" size={18} /> {t('Saved recipes')}</h2>
-            <button type="button" className="btn ghost sm" data-testid="new-recipe" onClick={() => setMineNew(true)}><Icon name="plus" size={16} />{t('New recipe')}</button>
+            <button type="button" className="btn ghost sm" data-testid="new-recipe" data-tip="import" onClick={() => setMineNew(true)}><Icon name="plus" size={16} />{t('New recipe')}</button>
           </div>
           {(mine || []).map((m) => (
             <button key={m.id} type="button" className="card stack" data-testid="mine-item" onClick={() => setMineOpen(m)} style={{ textAlign: 'left', gap: 2, background: 'var(--field)', color: 'var(--fg)', width: '100%' }}>

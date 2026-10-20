@@ -42,6 +42,8 @@ page.on('response', (r) => { if (r.status() >= 400 && !/api\/barcode/.test(r.url
 const shot = async (n) => { if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `${n}.png`), fullPage: true }); };
 const step = async (name, fn) => { curStep = name; if (process.env.ONLY && !['signed-out redirect', 'log in', ...String(process.env.ONLY).split('|')].includes(name)) return; try { await fn(); } catch (e) { check(name, false, e.message.split('\n').filter((l) => /locator|Timeout|waiting/.test(l)).slice(0, 3).join(' | ') || String(e.message).slice(0, 300)); await shot(`fail-${name.replace(/\W+/g, '-')}`); } };
 const openSettings = async (p = page) => { if (!(await p.getByTestId('settings-page').count())) await p.getByTestId('hud-settings').click(); await p.getByTestId('settings-page').waitFor(); };
+const openMore = async () => { const b = page.getByTestId('more-filters'); if (await b.count()) await b.click(); await page.getByTestId('saved-box').waitFor({ timeout: 8000 }); };
+const goMeChefs = async () => { await page.goto(`${BASE}/me`); await page.waitForTimeout(1500); await closePopups(); };
 const cookTab = async (id) => { const sel = `[data-testid=cook-tab-${id}]`; await page.waitForFunction((q) => { const el = document.querySelector(q); return el && Object.keys(el).some((k) => k.startsWith('__reactProps')); }, sel, { timeout: 15000 }); await page.locator(sel).first().click(); };
 const nav = async (n) => { if (await page.getByTestId('settings-page').count()) await page.getByTestId('settings-back').click(); await page.getByRole('navigation').getByRole('link', { name: n, exact: true }).click(); };
 const ktab = async (tab) => { for (let i = 0; i < 3; i++) { const ok = page.locator('.tip-ok'); if (await ok.count()) await ok.first().click().catch(() => {}); await page.waitForTimeout(150); } await closePopups().catch(() => {}); await page.getByTestId(`kt-${tab}`).click(); };
@@ -187,10 +189,9 @@ await step('backup card in the shop', async () => {
 });
 await step('recipe import', async () => {
   await nav('Cook'); await page.waitForURL('**/cook');
-  await cookTab('mine');
-  await page.getByTestId('my-recipes').waitFor();
-  await page.getByTestId('mine-add').waitFor({ timeout: 6000 });
-  check('My recipes starts empty: just the title and Add recipe, no “nothing here” text', !/Nothing here/.test(await page.getByTestId('my-recipes').innerText()) && (await page.getByTestId('mine-add').count()) === 1);
+  await openMore();
+  await page.getByTestId('new-recipe').waitFor({ timeout: 6000 });
+  check('Cook shows only Saved recipes, with a New recipe button (no tabs)', (await page.getByTestId('new-recipe').count()) === 1 && (await page.locator('[data-testid^=cook-tab-]').count()) === 0);
   // a clean printed recipe page, drawn in the browser, so the on-device reader has something real to read
   const dataUrl = await page.evaluate(() => {
     const c = document.createElement('canvas'); c.width = 1300; c.height = 1500; const x = c.getContext('2d');
@@ -200,7 +201,7 @@ await step('recipe import', async () => {
     return c.toDataURL('image/png');
   });
   const pageImg = { name: 'recipe.png', mimeType: 'image/png', buffer: Buffer.from(dataUrl.split(',')[1], 'base64') };
-  await page.getByTestId('mine-add').click(); await page.getByTestId('import-sheet').waitFor();
+  await page.getByTestId('new-recipe').click(); await page.getByTestId('import-sheet').waitFor();
   check('Add offers a photo, a picker and typing it in', (await page.getByTestId('import-pick').count()) === 1 && (await page.getByTestId('import-type').count()) === 1 && /Take a photo/.test(await page.getByTestId('import-sheet').innerText()));
   await shot('09-import-start');
   await page.getByTestId('import-file').setInputFiles(pageImg);
@@ -234,7 +235,7 @@ await step('recipe import', async () => {
   await page.waitForTimeout(700);
   check('editing a recipe saves the change', /Lemon Garlic Noodles/.test(await page.getByTestId('mine-item').innerText()));
   // type one in
-  await page.getByTestId('mine-add').click(); await page.getByTestId('import-type').click();
+  await page.getByTestId('new-recipe').click(); await page.getByTestId('import-type').click();
   await page.getByTestId('ri-title').fill('Toast'); await page.getByTestId('ri-ing').first().fill('2 slices bread'); await page.getByTestId('ri-step').first().fill('Toast the bread for 3 minutes.');
   await page.getByTestId('ri-save').click(); await page.getByTestId('import-sheet').waitFor({ state: 'detached' });
   await page.waitForTimeout(700);
@@ -898,7 +899,7 @@ await step('free dish search', async () => {
   const free = await (await fetch('http://localhost:54321/__e2e/free-calls')).json();
   check('no AI used for search (costs nothing)', !free.anthropic.includes('web_search') && free.wiki >= 1 && free.youtube.length >= 1, JSON.stringify(free));
   await page.evaluate(() => window.scrollTo(0, 0));
-  await cookTab('channels');
+  await goMeChefs();
   check('just an "Add Channel" button: no heading, no explainer text, no built-in channels', (await page.locator('.channel').count()) === 0 && (await page.getByRole('button', { name: 'Add Chef' }).count()) === 1 && (await page.getByText(/Your YouTubers|They’ll be right here/).count()) === 0 && (await page.getByText(/You Suck at Cooking|Not Another Cooking Show/).count()) === 0);
   await page.getByRole('button', { name: 'Add Chef' }).click();
   const yIn = page.getByLabel('@handle');
@@ -921,7 +922,7 @@ await step('free dish search', async () => {
   check('an Instagram chef opens Instagram in a new tab', (await page.locator('.channel a[href="https://www.instagram.com/tester_cook/"][target=_blank]').count()) === 1);
   await page.getByRole('button', { name: /^Remove tester cook/i }).first().click(); await page.getByRole('button', { name: /^Remove tester cook/i }).first().click();
   check('chefs can be removed', (await page.locator('.channel', { hasText: /tester cook/i }).count()) === 0);
-  await page.waitForTimeout(2500); await page.reload(); await cookTab('channels'); await page.getByRole('button', { name: 'Add Chef' }).waitFor();
+  await page.waitForTimeout(2500); await page.reload(); await goMeChefs(); await page.getByRole('button', { name: 'Add Chef' }).waitFor();
   check('your channels are saved with your game', (await page.locator('.channel', { hasText: 'Mock Kitchen' }).count()) === 1);
   // the channel page: cooking videos only, then cook along
   await page.route('https://www.youtube-nocookie.com/**', (r) => r.fulfill({ body: '<body style="background:#000"></body>', contentType: 'text/html' }));
@@ -944,7 +945,7 @@ await step('free dish search', async () => {
   await page.locator('.vid-card', { hasText: 'Carbonara' }).click();
   check('no written recipe: the steps are the video’s cooking chapters (intro and thanks left out)', /Step 1 of 3 · 1:12/.test(await page.locator('.vc-count').innerText()) && /Boiling the pasta/.test(await page.locator('.vc-text').innerText()));
   await page.getByRole('button', { name: 'Close' }).click();
-  await page.goto(`${BASE}/cook`); await cookTab('channels'); await page.getByRole('button', { name: 'Add Chef' }).waitFor();
+  await page.goto(`${BASE}/cook`); await goMeChefs(); await page.getByRole('button', { name: 'Add Chef' }).waitFor();
   await page.getByRole('button', { name: 'Remove Mock Kitchen' }).click();
   check('remove a channel', (await page.locator('.channel').count()) === 0);
 });

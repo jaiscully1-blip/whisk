@@ -18,7 +18,7 @@ export const dayKey = (d, tz) => {
 const part = (d, tz, opt) => { try { return new Intl.DateTimeFormat('en-US', { timeZone: tz || undefined, ...opt }).format(d); } catch { return new Intl.DateTimeFormat('en-US', opt).format(d); } };
 
 export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) {
-  const { supabase } = useWhisk();
+  const { supabase, ui, setUi } = useWhisk();
   const [meals, setMeals] = useState(null);
   const [urls, setUrls] = useState({});
   const [view, setView] = useState(null);
@@ -28,7 +28,11 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
   const [writing, setWriting] = useState(null);   // 'new' | row to edit
   const [reading, setReading] = useState(null);   // a my_recipes row open in full
   const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  const mineFor = (title) => (mine || []).find((r) => norm(r.title) === norm(title)) || null;
+  // a photo's recipe: the one you attached to it, else a recipe with the same name ('none' = you chose to unlink it)
+  const links = ui?.pbLinks || {};
+  const setLink = (mealId, rid) => setUi((cur) => ({ pbLinks: { ...(cur.pbLinks || {}), [mealId]: rid } }));
+  const mineFor = (v) => { const l = links[v.id]; if (l === 'none') return null; return (mine || []).find((r) => r.id === l) || (mine || []).find((r) => norm(r.title) === norm(v.title)) || null; };
+  const [pickOpen, setPickOpen] = useState(false);
 
   useEffect(() => {
     let off = false;
@@ -91,7 +95,7 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
             </div>
             {view.url && <img src={view.url} alt={view.title} style={{ width: '100%', borderRadius: 16, maxHeight: '38vh', objectFit: 'cover' }} />}
             <span className="desc">{view.label}</span>
-            {(() => { const mr = mineFor(view.title); return mr ? (
+            {(() => { const mr = mineFor(view); return mr ? (
               <div className="stack" style={{ gap: 8 }} data-testid="pb-recipe">
                 <div className="card stack" style={{ gap: 4 }}>
                   <span className="eyebrow">{t('My recipe')}</span>
@@ -102,18 +106,21 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
                   <button type="button" className="btn ghost" style={{ flex: 1 }} data-testid="pb-edit" onClick={() => setWriting(mr)}><Icon name="pencil" size={16} />{t('Edit')}</button>
                   <button type="button" className="btn" style={{ flex: 1 }} data-testid="pb-open-recipe" onClick={() => setReading(mr)}><Icon name="cook" size={16} />{t('Open recipe')}</button>
                 </div>
+                <button type="button" className="fr-more" data-testid="pb-unlink" onClick={() => { setLink(view.id, 'none'); setPickOpen(false); }}>{t('Not this recipe? Change it')}</button>
               </div>
             ) : (
               <div className="stack" style={{ gap: 8 }} data-testid="pb-no-recipe">
                 <div className="empty" style={{ padding: 14 }}>{t('No recipe saved for this one yet')}</div>
-                <button type="button" className="btn wide" data-testid="pb-write" onClick={() => setWriting({ prefill: view.title, typed: true })}><Icon name="pencil" size={18} />{t('Write my recipe')}</button>
-                <button type="button" className="btn ghost wide" data-testid="pb-snap" onClick={() => setWriting({ prefill: view.title })}><Icon name="camera" size={18} />{t('Snap a recipe card or page')}</button>
+                <button type="button" className="btn wide" data-testid="pb-write" onClick={() => setWriting({ prefill: view.title, typed: true, forMeal: view.id })}><Icon name="pencil" size={18} />{t('Write my recipe')}</button>
+                <button type="button" className="btn ghost wide" data-testid="pb-snap" onClick={() => setWriting({ prefill: view.title, forMeal: view.id })}><Icon name="camera" size={18} />{t('Snap a recipe card or page')}</button>
+                {(mine || []).length > 0 && <button type="button" className="btn ghost wide" data-testid="pb-pick" onClick={() => setPickOpen((v) => !v)}><Icon name="star" size={18} />{t('Use one of my recipes')}</button>}
+                {pickOpen && <div className="stack" style={{ gap: 6 }} data-testid="pb-pick-list">{(mine || []).map((r) => <button key={r.id} type="button" className="card" style={{ textAlign: 'left', background: 'var(--field)', color: 'var(--fg)', fontWeight: 800 }} onClick={() => { setLink(view.id, r.id); setPickOpen(false); }}>{r.title}</button>)}</div>}
               </div>
             ); })()}
           </div>
         </div>
       )}
-      {writing && <RecipeImport edit={writing.id ? writing : null} prefill={writing.prefill || ''} typed={!!writing.typed} onClose={() => setWriting(null)} onSaved={() => { setWriting(null); reloadMine(); }} />}
+      {writing && <RecipeImport edit={writing.id ? writing : null} prefill={writing.prefill || ''} typed={!!writing.typed} onClose={() => setWriting(null)} onSaved={(id) => { if (writing.forMeal && id) setLink(writing.forMeal, id); setWriting(null); reloadMine(); }} />}
       {reading && <MineViewer row={reading} pantry={pantry} onClose={() => setReading(null)} onEdit={() => { setWriting(reading); setReading(null); }} onDeleted={() => { setReading(null); reloadMine(); }} />}
     </section>
   );

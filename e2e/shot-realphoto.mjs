@@ -1,0 +1,28 @@
+import { createRequire } from 'node:module';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const BASE = 'http://localhost:3000', OUT = process.argv[2];
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); const p = await ctx.newPage();
+const sweep = async () => { for (let i = 0; i < 4; i++) { for (const sel of ['.tip-ok', 'button:has-text("Maybe later")', '.popup-scrim [aria-label=Close]']) { if (await p.locator(sel).count()) await p.locator(sel).first().click({ timeout: 1500 }).catch(() => {}); } await p.waitForTimeout(200); } };
+const ok = (n, v) => console.log(v ? 'PASS' : 'FAIL', n);
+await p.goto(`${BASE}/login`); await p.getByRole('radio', { name: 'Accept' }).click(); await p.getByRole('button', { name: 'Start playing' }).click(); await p.waitForURL('**/cook'); await p.waitForTimeout(2000); await sweep();
+await p.getByTestId('pb-today').click(); await p.waitForTimeout(600);
+await p.locator('[aria-label="Log a meal"] input[type=file]').setInputFiles('e2e/plate.jpg'); await p.waitForTimeout(800);
+await p.getByRole('button', { name: 'Submit' }).click(); await p.waitForTimeout(2500); console.log('err:', await p.locator('.err').allTextContents(), 'toast:', await p.locator('.toast').allTextContents()); await p.getByRole('button', { name: 'Leave' }).click().catch(() => {}); await p.waitForTimeout(800);
+await p.reload(); await p.waitForTimeout(3000); await sweep(); console.log('tiles', await p.locator('.pb-tile').count(), 'done', await p.locator('.pb-tile.done').count(), 'today classes', await p.getByTestId('pb-today').getAttribute('class'));
+ok('today now shows a done tile', await p.locator('.pb-tile.done.today').count() === 1);
+ok('the tile shows the real photo', await p.locator('.pb-tile.done.today img').count() === 1 && await p.locator('.pb-tile.done.today img').evaluate((i) => i.complete && i.naturalWidth > 0));
+await p.locator('.pb-tile.done.today').scrollIntoViewIfNeeded(); await p.screenshot({ path: `${OUT}/pb-real.png` });
+await p.locator('.pb-tile.done.today').click(); await p.waitForTimeout(900);
+ok('the sheet shows the big photo', await p.locator('[role=dialog] img').evaluate((i) => i.complete && i.naturalWidth > 0));
+await p.screenshot({ path: `${OUT}/pb-real-sheet.png` });
+// attach an existing recipe to this photo
+await p.getByTestId('pb-write').click(); await p.waitForTimeout(400);
+await p.getByTestId('ri-ing').first().fill('1 cup rice'); await p.getByTestId('ri-step').first().fill('Cook it'); await p.getByTestId('ri-title').fill("Mom's fried rice");
+await p.getByTestId('ri-save').click(); await p.waitForTimeout(1500);
+ok('a recipe with a DIFFERENT name attaches to the photo', await p.getByTestId('pb-recipe').count() === 1 && (await p.getByTestId('pb-recipe').innerText()).includes('1 cup rice'));
+await p.getByTestId('pb-unlink').click(); await p.waitForTimeout(500);
+ok('unlink shows the options again', await p.getByTestId('pb-no-recipe').count() === 1 && await p.getByTestId('pb-pick').count() === 1);
+await p.getByTestId('pb-pick').click(); await p.getByTestId('pb-pick-list').locator('button').first().click(); await p.waitForTimeout(500);
+ok('pick one of my recipes re-attaches it', await p.getByTestId('pb-recipe').count() === 1);
+await b.close();

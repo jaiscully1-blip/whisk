@@ -32,9 +32,13 @@ async function loadWorld() {
       let best = -1;
       for (const coords of f.geometry.coordinates) { const g = { type: 'Polygon', coordinates: coords }; const a = geoArea(g); if (a > best) { best = a; main = g; } }
     }
-    return { iso, f, center: geoCentroid(main) };
+    const center = geoCentroid(main);
+    // how far (in radians) the country reaches from its centre: lets a frame skip countries on the far side of the globe
+    let rad = 0; const walk = (a) => { if (typeof a[0] === 'number') { const d = geoDistance(center, a); if (d > rad) rad = d; } else a.forEach(walk); };
+    walk(f.geometry.coordinates);
+    return { iso, f, center, rad };
   });
-  for (const [iso, c] of Object.entries(TINY)) list.push({ iso, tiny: true, f: { type: 'Feature', geometry: geoCircle().center(c).radius(1.1)() }, center: c });
+  for (const [iso, c] of Object.entries(TINY)) list.push({ iso, tiny: true, f: { type: 'Feature', geometry: geoCircle().center(c).radius(1.1)() }, center: c, rad: 0.03 });
   WORLD = list; return list;
 }
 
@@ -65,6 +69,7 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook, pa
   const els = useRef({});                           // index → { path, clip, art, edge }
   const st = useRef({ lam: -20, vel: 0.12, drag: null, aim: null, dart: null, zoom: 1, pins: new Map(), run: true });
   st.current.zoom = zoom; st.current.dirty = true;   // re-rendered (new tiers, zoom…): draw again
+  for (const e of Object.values(els.current)) if (e) e.d = undefined;   // and forget what each outline was (its element may be new)
 
   useEffect(() => { let on = true; loadWorld().then((w) => { if (on) setWorld(w); }); return () => { on = false; }; }, []);
 
@@ -73,9 +78,9 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook, pa
     if (!world) return undefined;
     const s = st.current;
     const proj = geoOrthographic().translate([CX, CY]).scale(R).clipAngle(90).precision(0.6);
-    const path = geoPath(proj), grat = geoGraticule10();
+    const path = geoPath(proj).digits(1), grat = geoGraticule10();   // 0.1px is plenty on a 360px globe, and shorter outlines are quicker to build and draw
     const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let raf = 0, last = performance.now(), wasSpin = false; s.dirty = true; void reduce;
+    let raf = 0, last = performance.now(), wasSpin = false, fine = false; s.dirty = true; void reduce;
     const tiltPt = ([x, y]) => { const a = TILT * Math.PI / 180, dx = x - CX, dy = y - CY; return [CX + dx * Math.cos(a) - dy * Math.sin(a), CY + dx * Math.sin(a) + dy * Math.cos(a)]; };
     function frame(now) {
       const dt = Math.min(50, now - last); last = now;
@@ -93,12 +98,19 @@ export default function Globe({ counts = new Map(), done = new Set(), onCook, pa
       // nothing moved since the last frame: skip the drawing work entirely
       if (s.drawn === s.lam && !(s.dart && now - s.dart.t0 < 1500) && !s.dirty) { raf = requestAnimationFrame(frame); return; }
       s.drawn = s.lam; s.dirty = false;
+      // while it turns, trace the outlines a little coarser (the eye can't tell); once it stops, draw them sharp again
+      const moving = !!(s.aim || s.drag || s.vel);
+      if (moving) { if (fine) { proj.precision(1.6); fine = false; } } else if (!fine) { proj.precision(0.6); fine = true; }
       proj.rotate([s.lam, PHI, 0]);
+      const view = [-s.lam, -PHI];
       const g = svg.current; if (!g) { raf = requestAnimationFrame(frame); return; }
       const gp = els.current.grat; if (gp) gp.setAttribute('d', path(grat) || '');
       world.forEach((c, i) => {
         const e = els.current[i]; if (!e?.path) return;
-        const d = path(c.f) || '';
+        // wholly on the far side: nothing to draw (and nothing to touch if it was already hidden)
+        const d = c.rad != null && geoDistance(c.center, view) - c.rad > Math.PI / 2 + 0.02 ? '' : (path(c.f) || '');
+        if (d === e.d) return;
+        e.d = d;
         e.path.setAttribute('d', d);
         if (e.clip) {
           e.clip.setAttribute('d', d);

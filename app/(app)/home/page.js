@@ -115,7 +115,7 @@ export default function Home() {
       <div className="page-title" style={{ margin: '6px 0 0' }}><h1>{t('Discover a Dish')}</h1></div>
       {almost === null || !ready ? <p className="muted">Checking your pantry…</p> : almost.length === 0 ? (
         <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">{t('Add pantry items')}</Link><Link className="btn ghost" href="/cook">{t('What can I make?')}</Link></div></div>
-      ) : almost.slice(0, shown).map((x, i) => <DishCard key={x.r.id} x={x} first={i === 0} onOpen={openFull} onWarm={warm} onAdd={addToList} t={t} />)}
+      ) : almost.slice(0, shown).map((x, i) => <DishCard key={x.r.id} x={x} first={i === 0} lazy={i > 1} onOpen={openFull} onWarm={warm} onAdd={addToList} t={t} />)}
       {almost && almost.length > shown && <div ref={moreRef}><button className="btn ghost wide" onClick={() => setShown((n) => n + PAGE)}>{t('Show more')}</button></div>}
       {almost && almost.length > 1 && !open && <button ref={fabRef} type="button" className="fab-shuffle" data-testid="shuffle" onClick={shuffle} aria-label={t('Shuffle')} title={t('Shuffle')}><Icon name="shuffle" size={22} /></button>}
       {open && <RecipeSheet recipe={open} pantry={pantry} saved={saved?.get(open.id)} onClose={() => setOpen(null)} onChanged={() => { reload(); reloadSaved(); }} />}
@@ -124,12 +124,12 @@ export default function Home() {
 }
 
 // One recipe card. Memoised: shuffling or filtering re-uses cards that are already drawn.
-const DishCard = memo(function DishCard({ x: { r, soon, needs }, first, onOpen, onWarm, onAdd, t }) {
+const DishCard = memo(function DishCard({ x: { r, soon, needs }, first, lazy, onOpen, onWarm, onAdd, t }) {
   return (
         <div className="stack" style={{ gap: 8 }}>
         {soon.length > 0 && first && <h2 className="away-h soon-h">{t('Use it before it goes bad')}</h2>}
         <div className="card stack rcard" style={{ gap: 8 }}>
-          <Postcard iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} />
+          <Postcard iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} lazy={lazy} />
           <div className="rcard-body stack" style={{ gap: 8 }}>
           <span className="eyebrow">{r.cuisine}</span>
           <h2 style={{ fontSize: 22 }}>{r.title}</h2>

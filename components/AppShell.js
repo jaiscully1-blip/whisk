@@ -117,7 +117,9 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   const lastLevel = useRef(levelFor(initialProfile?.xp).level);
   const logged = useRef(false);
   const [lastPlayed, setLastPlayed] = useState(null);
-  const [saveState, setSaveState] = useState('saved');
+  // whether the last save reached the server. Kept out of React state on purpose: nothing shows it, and changing it
+  // used to re-render the whole app twice on every save (scroll spots, drafts, recipes you open).
+  const saveState = useRef('saved'); const setSaveState = (v) => { saveState.current = v; };
   const [dataVersion, setDataVersion] = useState(0);   // bump to make lists (saved recipes, pantry) reload
   const bump = useCallback(() => setDataVersion((v) => v + 1), []);
   const [refreshKey, setRefreshKey] = useState(0);   // pull to refresh remounts the page so it reloads everything
@@ -366,8 +368,8 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   }, [setUi]);
   const t = useCallback((text, vars) => translate(lang, text, vars), [lang]);
   useEffect(() => { try { document.documentElement.lang = lang; } catch {} }, [lang]);
-  const value = useMemo(() => ({ lang, setLang, t, profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, recipes: shownRecipes, allRecipes, ensureRecipes, peekRecipe, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump }),
-    [lang, setLang, t, profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, shownRecipes, allRecipes, ensureRecipes, peekRecipe, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump]);
+  const value = useMemo(() => ({ lang, setLang, t, profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, recipes: shownRecipes, allRecipes, ensureRecipes, peekRecipe, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, dataVersion, bump }),
+    [lang, setLang, t, profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, shownRecipes, allRecipes, ensureRecipes, peekRecipe, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, dataVersion, bump]);
 
   return (
     <Ctx.Provider value={value}>

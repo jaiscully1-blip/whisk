@@ -12,11 +12,11 @@ import PlateManage from './PlateManage';
 // "My photobook": one little page per day in the player's own time zone, oldest on the left, today on the right (swipe either way).
 // A cooked day shows the plate photo; today shows the pick on the table with a camera to log your own photo; other days stay quiet.
 const DAYS = 45;
-export const dayKey = (d, tz) => {
-  try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz || undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d); }
-  catch { return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(d); }
-};
-const part = (d, tz, opt) => { try { return new Intl.DateTimeFormat('en-US', { timeZone: tz || undefined, ...opt }).format(d); } catch { return new Intl.DateTimeFormat('en-US', opt).format(d); } };
+// Building an Intl.DateTimeFormat is slow (the photobook needs ~100 dates per draw), so each one is made once and reused.
+const FMT = new Map();
+const fmt = (loc, opt) => { const k = loc + JSON.stringify(opt); let f = FMT.get(k); if (!f) { try { f = new Intl.DateTimeFormat(loc, opt); } catch { const { timeZone, ...rest } = opt; f = new Intl.DateTimeFormat(loc, rest); } FMT.set(k, f); } return f; };
+export const dayKey = (d, tz) => fmt('en-CA', { timeZone: tz || undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+const part = (d, tz, opt) => fmt('en-US', { timeZone: tz || undefined, ...opt }).format(d);
 
 export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) {
   const { supabase, ui, setUi, say } = useWhisk();

@@ -19,7 +19,7 @@ export const dayKey = (d, tz) => {
 const part = (d, tz, opt) => { try { return new Intl.DateTimeFormat('en-US', { timeZone: tz || undefined, ...opt }).format(d); } catch { return new Intl.DateTimeFormat('en-US', opt).format(d); } };
 
 export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) {
-  const { supabase, ui, setUi } = useWhisk();
+  const { supabase, ui, setUi, say } = useWhisk();
   const [meals, setMeals] = useState(null);
   const [urls, setUrls] = useState({});
   const [view, setView] = useState(null);
@@ -34,6 +34,10 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
   const setLink = (mealId, rid) => setUi((cur) => ({ pbLinks: { ...(cur.pbLinks || {}), [mealId]: rid } }));
   const mineFor = (v) => { const l = links[v.id]; if (l === 'none') return null; return (mine || []).find((r) => r.id === l) || (mine || []).find((r) => norm(r.title) === norm(v.title)) || null; };
   const [pickOpen, setPickOpen] = useState(false);
+  // which meal is a day's cover (day -> meal id); until you pick one, the first plate cooked that day
+  const covers = ui?.pbCover || {};
+  const setCover = (day, mealId) => setUi((cur) => ({ pbCover: { ...(cur.pbCover || {}), [day]: mealId } }));
+  const coverOf = (x) => { const L = x.meals; return L.find((q) => q.id === covers[x.k]) || L[L.length - 1]; };
 
   useEffect(() => {
     let off = false;
@@ -71,16 +75,17 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
       </div>
       <div className="pb-row" ref={row}>
         {days.map((x) => {
-          const m = x.meals[0]; const url = m && urls[m.photo_path];
+          const m = x.meals.length ? coverOf(x) : null; const url = m && urls[m.photo_path]; const more = x.meals.length - 1;
           const label = `${part(x.d, tz, { weekday: 'short' })} ${part(x.d, tz, { day: 'numeric' })}`;
-          const open = m ? () => setView({ ...m, url, label }) : x.today && todayRecipe ? () => onAdd(todayRecipe) : undefined;
+          const open = m ? () => setView({ ...m, url, label, day: x.k, dayMeals: [...x.meals].reverse() }) : x.today && todayRecipe ? () => onAdd(todayRecipe) : undefined;
           return (
             <button key={x.k} type="button" className={`pb-tile ${m ? 'done' : ''} ${x.today ? 'today' : ''}`} data-testid={x.today ? 'pb-today' : 'pb-day'} data-day={x.k} onClick={open} disabled={!open} aria-label={m ? `${label}: ${m.title}` : x.today ? t('Add your photo') : label}>
-              <span className="pb-img">
+              <span className={`pb-img ${more > 0 ? 'pb-stack' : ''}`}>
+                {more > 0 && <><span className="pb-back b1" /><span className="pb-back b2" /></>}
                 {m ? (url ? <img src={url} alt="" loading="lazy" decoding="async" /> : <span className="pb-ph"><Icon name="utensils" size={22} /></span>)
                   : x.today && todayRecipe ? <><Postcard iso={todayRecipe.country} cuisine={todayRecipe.cuisine} title={todayRecipe.title} ingredients={todayRecipe.key} /><span className="pb-cam"><Icon name="camera" size={16} /></span></>
                   : <span className="pb-empty" />}
-                {x.meals.length > 1 && <span className="pb-n">{x.meals.length}</span>}
+                {more > 0 && <span className="pb-plus" data-testid="pb-more">+{more}</span>}
               </span>
               <span className="pb-date">{x.today ? t('Today') : label}</span>
             </button>
@@ -96,6 +101,22 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
             </div>
             {view.url && <img src={view.url} alt={view.title} style={{ width: '100%', borderRadius: 16, maxHeight: '38vh', objectFit: 'cover' }} />}
             <span className="desc">{view.label}</span>
+            {view.dayMeals?.length > 1 && (
+              <div className="stack" style={{ gap: 8 }} data-testid="pb-day-strip">
+                <div className="pb-strip">
+                  {view.dayMeals.map((q) => { const u = urls[q.photo_path]; const isCover = coverOf({ k: view.day, meals: view.dayMeals.slice().reverse() })?.id === q.id;
+                    return (
+                      <button key={q.id} type="button" className={`pb-th ${q.id === view.id ? 'sel' : ''} ${isCover ? 'cov' : ''}`} data-testid="pb-th" aria-label={q.title} onClick={() => setView({ ...view, ...q, url: u })}>
+                        {u ? <img src={u} alt="" /> : <Icon name="utensils" size={18} />}
+                        {isCover && <span className="pb-star on"><Icon name="star" size={12} /></span>}
+                      </button>
+                    ); })}
+                </div>
+                {coverOf({ k: view.day, meals: view.dayMeals.slice().reverse() })?.id !== view.id
+                  ? <button type="button" className="btn wide" data-testid="pb-make-cover" onClick={() => { setCover(view.day, view.id); say('Cover updated'); }}><Icon name="star" size={16} />{t('Make this the cover')}</button>
+                  : <span className="desc" data-testid="pb-is-cover">{t('This is the cover for this day')}</span>}
+              </div>
+            )}
             {(() => { const mr = mineFor(view); return mr ? (
               <div className="stack" style={{ gap: 8 }} data-testid="pb-recipe">
                 <div className="card stack" style={{ gap: 4 }}>

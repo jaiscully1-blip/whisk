@@ -1,0 +1,28 @@
+import { createRequire } from 'node:module';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const BASE = 'http://localhost:3000', OUT = process.argv[2];
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); const p = await ctx.newPage();
+const sweep = async () => { for (let i = 0; i < 4; i++) { for (const sel of ['.lv-opt', '.tip-ok', 'button:has-text("Maybe later")']) { if (await p.locator(sel).count()) await p.locator(sel).first().click({ timeout: 1500 }).catch(() => {}); } await p.waitForTimeout(150); } };
+const ok = (n, v) => console.log(v ? 'PASS' : 'FAIL', n);
+const sql = (q) => fetch('http://localhost:54321/__e2e/sql?q=' + encodeURIComponent(q)).then((r) => r.text());
+await p.goto(`${BASE}/login`); await p.getByRole('radio', { name: 'Accept' }).click(); await p.getByRole('button', { name: 'Start playing' }).click(); await p.waitForURL('**/cook');
+await p.waitForTimeout(1500); await sweep();
+for (const [t, h] of [['Pasta', 3], ['Salad', 2], ['Curry', 1]])
+  await sql(`insert into public.meals (user_id, title, cuisine, photo_path, cooked_at) select id, '${t}', 'Italian', id::text || '/${t}.jpg', now() - interval '${h} minutes' from public.profiles order by created_at desc limit 1`);
+await p.reload(); await p.waitForTimeout(2500); await sweep();
+ok('stack badge +2', (await p.getByTestId('pb-more').first().innerText()).includes('+2'));
+await p.locator('.pb-row').screenshot({ path: `${OUT}/cover-tile.png` });
+await p.locator('.pb-tile.done').last().click(); await p.waitForTimeout(800);
+ok('strip has 3', await p.getByTestId('pb-th').count() === 3);
+ok('opens on cover = first cooked (Pasta)', (await p.locator('.sheet h2').innerText()) === 'Pasta' && await p.getByTestId('pb-is-cover').count() === 1);
+await p.getByTestId('pb-th').last().click(); await p.waitForTimeout(400);
+ok('selecting Curry offers make cover', await p.getByTestId('pb-make-cover').count() === 1);
+await p.screenshot({ path: `${OUT}/cover-sheet.png` });
+await p.getByTestId('pb-make-cover').click(); await p.waitForTimeout(500);
+ok('now marked as cover', await p.getByTestId('pb-is-cover').count() === 1);
+await p.keyboard.press('Escape'); await p.locator('.scrim').click({ position: { x: 5, y: 5 } }).catch(() => {}); await p.waitForTimeout(400);
+await p.reload(); await p.waitForTimeout(2500); await sweep();
+await p.locator('.pb-tile.done').last().click(); await p.waitForTimeout(700);
+ok('cover persists after reload', (await p.locator('.sheet h2').innerText()) === 'Curry' && await p.getByTestId('pb-is-cover').count() === 1);
+await b.close();

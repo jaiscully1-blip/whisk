@@ -6,7 +6,7 @@ import { DIET_ORDER, DIET_CLASS, fitsDiet } from '@/lib/recipes/diet';
 import { useWhisk, useDraft } from '@/components/AppShell';
 import RecipeSheet from '@/components/RecipeSheet';
 import Icon from '@/components/Icon';
-import { usePantry, useSaved } from '@/components/usePantry';
+import { usePantry, useSaved, useMine } from '@/components/usePantry';
 import { useRouter } from 'next/navigation';
 import Postcard from '@/components/Postcard';
 import CookPhotobook from '@/components/CookPhotobook';
@@ -18,10 +18,10 @@ import { canon, checkRecipe, usesSoon } from '@/lib/recipes/match';
 import WeekGoal from '@/components/WeekGoal';
 import { TimeSlider, RescueFridge } from '@/components/DishFilters';
 import { MEALS, fitsMeal } from '@/lib/recipes/meal';
-import MyYouTubers from '@/components/MyYouTubers';
 import DishSearch from '@/components/DishSearch';
 import SavedRecipes from '@/components/SavedRecipes';
-import MyRecipes from '@/components/MyRecipes';
+import RecipeImport from '@/components/RecipeImport';
+import { Viewer as MineViewer } from '@/components/MyRecipes';
 
 const SKIP = ['Spices & Seasonings', 'Sauces & Oils', 'Baking'];
 const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
@@ -37,8 +37,10 @@ export default function Cook() {
   const [pantry, reload] = usePantry();
   const [saved, reloadSaved] = useSaved();
   const [shown, setShown] = useState(PAGE);
-  const [yourTab, setYourTab] = useState('saved');   // Saved / My recipes / Channels share one spot
-  useEffect(() => { if (ui.cookMode === 'named' || ui.cookMode === 'raid') setYourTab('saved'); }, [ui.cookMode, ui.cookDish]);   // a search, Fridge Raid or a dish from the globe shows in Saved only
+  const [mine, reloadMine] = useMine();   // your own recipes live in the Saved list now (and open from your photobook)
+  const [mineOpen, setMineOpen] = useState(null);
+  const [mineEdit, setMineEdit] = useState(null);
+  const [mineNew, setMineNew] = useState(false);
   const moreRef = useRef(null);
   const [dish, setDish] = useDraft('o-dish');
   const [hand, setHand] = useState(null);
@@ -165,21 +167,27 @@ export default function Cook() {
         </div>
       </div>}
 
-      {!simple && <div className="seg" role="tablist" aria-label="Your recipes">
-        {[['saved', 'Saved'], ['mine', 'My recipes'], ['channels', 'Chefs']].map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={yourTab === k} className={yourTab === k ? 'on' : ''} onClick={() => setYourTab(k)} data-testid={`cook-tab-${k}`}>{l}</button>)}
-      </div>}
-      <div hidden={yourTab !== 'saved' || simple}>
-        {saved && saved.size === 0 ? <div className="saved-mini" data-testid="saved-mini"><Icon name="star" size={16} />Saved recipes</div> : (
-          <section className="card stack saved-box" aria-labelledby="saved-h">
-            <h2 id="saved-h" style={{ fontSize: 20, margin: 0 }}><Icon name="star" size={18} /> Saved recipes</h2>
-            <SavedRecipes pantry={pantry} onChanged={reload} limit={4} />
-          </section>
-        )}
-      </div>
-      <div hidden={yourTab !== 'mine'}><MyRecipes pantry={pantry} /></div>
-      <div hidden={yourTab !== 'channels'}><MyYouTubers /></div>
+      {!simple && (
+        <section className="card stack saved-box" aria-labelledby="saved-h" data-testid="saved-box">
+          <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+            <h2 id="saved-h" style={{ fontSize: 20, margin: 0 }}><Icon name="star" size={18} /> {t('Saved recipes')}</h2>
+            <button type="button" className="btn ghost sm" data-testid="new-recipe" onClick={() => setMineNew(true)}><Icon name="plus" size={16} />{t('New recipe')}</button>
+          </div>
+          {(mine || []).map((m) => (
+            <button key={m.id} type="button" className="card stack" data-testid="mine-item" onClick={() => setMineOpen(m)} style={{ textAlign: 'left', gap: 2, background: 'var(--field)', color: 'var(--fg)', width: '100%' }}>
+              <span className="eyebrow"><Icon name="pencil" size={12} /> {t('Yours')}</span>
+              <b>{m.title}</b><span className="desc">{m.minutes ? `${m.minutes} min · ` : ''}{(m.ingredients || []).length} {(m.ingredients || []).length === 1 ? t('ingredient') : t('ingredients')}</span>
+            </button>
+          ))}
+          <SavedRecipes pantry={pantry} onChanged={reload} limit={4} />
+          {saved && saved.size === 0 && !(mine || []).length && <span className="desc">{t('Recipes you save show up here.')}</span>}
+        </section>
+      )}
+      {mineNew && <RecipeImport onClose={() => setMineNew(false)} onSaved={() => { setMineNew(false); reloadMine(); }} />}
+      {mineEdit && <RecipeImport edit={mineEdit} onClose={() => setMineEdit(null)} onSaved={() => { setMineEdit(null); setMineOpen(null); reloadMine(); }} />}
+      {mineOpen && !mineEdit && <MineViewer row={mineOpen} pantry={pantry} onClose={() => setMineOpen(null)} onEdit={() => setMineEdit(mineOpen)} onDeleted={() => { setMineOpen(null); reloadMine(); }} />}
 
-      <div className="stack" hidden={yourTab !== 'saved'}>
+      <div className="stack">
       {hand && mode === 'raid' && (
         <div className="stack" style={{ gap: 8 }}><span className="eyebrow">{t('Ingredients')}</span>
           <div className="grid2">{hand.map((c, i) => <div key={c} className="card" style={{ textAlign: 'center', fontWeight: 800, background: 'var(--pop-soft)', transform: `rotate(${[-3, 2, -1, 3][i % 4]}deg)` }}>{c}</div>)}</div>

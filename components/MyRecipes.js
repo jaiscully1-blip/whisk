@@ -12,7 +12,7 @@ import { guessCategory } from '@/lib/game';
 
 // Your own recipes (photographed or typed): a list on the Cook tab, and a page for each with what you have, what's
 // missing, Cook mode, and a one-tap add-to-shopping-list.
-function Viewer({ row, pantry, onClose, onEdit, onDeleted }) {
+export function Viewer({ row, pantry, onClose, onEdit, onDeleted }) {
   const { supabase, say } = useWhisk();
   const r = useMemo(() => toRecipe(row), [row]);
   const [factor, setFactor] = useState(1);

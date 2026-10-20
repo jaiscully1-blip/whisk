@@ -9,6 +9,7 @@ import Icon from '@/components/Icon';
 import LevelPicker from '@/components/LevelPicker';
 import { levelLabel, learns } from '@/lib/learn/levels';
 import DailyQuest from '@/components/DailyQuest';
+import MyYouTubers from '@/components/MyYouTubers';
 import { TIPS } from '@/lib/tips';
 import AvatarPicker from '@/components/AvatarPicker';
 import { ProfileCard, CountryChallenges, MyKitchen } from '@/components/MeWorld';
@@ -141,6 +142,8 @@ export default function Me() {
       <DailyQuest />
 
       <CountryChallenges challenges={world?.challenges} onOpen={openChallenge} />
+
+      <MyYouTubers />
 
       {meals.length > 0 && (
         <>

@@ -15,16 +15,16 @@ async function decode(file) {
   catch { return await new Promise((ok, no) => { const u = URL.createObjectURL(file), im = new Image(); im.onload = () => { ok(im); }; im.onerror = no; im.src = u; }); }
 }
 
-export default function RecipeImport({ edit = null, onClose, onSaved }) {
+export default function RecipeImport({ edit = null, prefill = '', typed = false, onClose, onSaved }) {
   const { supabase, say } = useWhisk();
-  const [phase, setPhase] = useState(edit ? 'review' : 'start');   // start → reading → review
+  const [phase, setPhase] = useState(edit || typed ? 'review' : 'start');   // start → reading → review
   const [pct, setPct] = useState(0);
   const [page, setPage] = useState([0, 0]);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [f, setF] = useState(() => (edit
     ? { title: { text: edit.title, low: false }, servings: edit.servings || '', minutes: edit.minutes || '', ingredients: edit.ingredients.map((g) => ({ text: typeof g === 'string' ? g : g.item, low: false })), steps: edit.steps.map((t) => ({ text: t, low: false })) }
-    : blank()));
+    : prefill ? { ...blank(), title: { text: prefill, low: false } } : blank()));
   const cam = useRef(null), pick = useRef(null);
   useEffect(() => { if (!edit) warmReceipts(); return () => { closeReader(); }; }, [edit]);
 
@@ -41,7 +41,7 @@ export default function RecipeImport({ edit = null, onClose, onSaved }) {
       }
       if (!all.some((l) => /[A-Za-z]{3}/.test(l.text))) { setErr('I couldn’t find any text in that photo. Try again in good light, with the page flat and filling the picture.'); setPhase('start'); return; }
       const r = parseRecipeText(all);
-      setF({ title: r.title, servings: r.servings || '', minutes: r.minutes || '', ingredients: r.ingredients.length ? r.ingredients : [{ text: '', low: false }], steps: r.steps.length ? r.steps : [{ text: '', low: false }] });
+      setF({ title: r.title?.text ? r.title : prefill ? { text: prefill, low: false } : r.title, servings: r.servings || '', minutes: r.minutes || '', ingredients: r.ingredients.length ? r.ingredients : [{ text: '', low: false }], steps: r.steps.length ? r.steps : [{ text: '', low: false }] });
       setPhase('review');
     } catch { setErr('Couldn’t read that photo. Try again, or type the recipe in.'); setPhase('start'); }
   }

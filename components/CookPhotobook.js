@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { useWhisk } from './AppShell';
 import Postcard from './Postcard';
 import Icon from './Icon';
+import RecipeImport from './RecipeImport';
+import { Viewer as MineViewer } from './MyRecipes';
+import { useMine, usePantry } from './usePantry';
 
 // "My photobook": one little page per day in the player's own time zone, oldest on the left, today on the right (swipe either way).
 // A cooked day shows the plate photo; today shows the pick on the table with a camera to log your own photo; other days stay quiet.
@@ -20,6 +23,12 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
   const [urls, setUrls] = useState({});
   const [view, setView] = useState(null);
   const row = useRef(null);
+  const [mine, reloadMine] = useMine();
+  const [pantry, reloadPantry] = usePantry();
+  const [writing, setWriting] = useState(null);   // 'new' | row to edit
+  const [reading, setReading] = useState(null);   // a my_recipes row open in full
+  const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const mineFor = (title) => (mine || []).find((r) => norm(r.title) === norm(title)) || null;
 
   useEffect(() => {
     let off = false;
@@ -80,11 +89,32 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
               <h2 style={{ fontSize: 22, margin: 0 }}>{view.title}</h2>
               <button type="button" className="btn ghost sm" onClick={() => setView(null)} aria-label={t('Close')}><Icon name="x" /></button>
             </div>
-            {view.url && <img src={view.url} alt={view.title} style={{ width: '100%', borderRadius: 16, maxHeight: '60vh', objectFit: 'cover' }} />}
+            {view.url && <img src={view.url} alt={view.title} style={{ width: '100%', borderRadius: 16, maxHeight: '38vh', objectFit: 'cover' }} />}
             <span className="desc">{view.label}</span>
+            {(() => { const mr = mineFor(view.title); return mr ? (
+              <div className="stack" style={{ gap: 8 }} data-testid="pb-recipe">
+                <div className="card stack" style={{ gap: 4 }}>
+                  <span className="eyebrow">{t('My recipe')}</span>
+                  <span style={{ fontWeight: 700 }}>{(mr.ingredients || []).slice(0, 5).map((g) => (typeof g === 'string' ? g : g.item)).join(' · ')}{(mr.ingredients || []).length > 5 ? ` · +${mr.ingredients.length - 5}` : ''}</span>
+                  <span className="desc">{(mr.steps || []).length} {(mr.steps || []).length === 1 ? t('step') : t('steps')}</span>
+                </div>
+                <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+                  <button type="button" className="btn ghost" style={{ flex: 1 }} data-testid="pb-edit" onClick={() => setWriting(mr)}><Icon name="pencil" size={16} />{t('Edit')}</button>
+                  <button type="button" className="btn" style={{ flex: 1 }} data-testid="pb-open-recipe" onClick={() => setReading(mr)}><Icon name="cook" size={16} />{t('Open recipe')}</button>
+                </div>
+              </div>
+            ) : (
+              <div className="stack" style={{ gap: 8 }} data-testid="pb-no-recipe">
+                <div className="empty" style={{ padding: 14 }}>{t('No recipe saved for this one yet')}</div>
+                <button type="button" className="btn wide" data-testid="pb-write" onClick={() => setWriting({ prefill: view.title, typed: true })}><Icon name="pencil" size={18} />{t('Write my recipe')}</button>
+                <button type="button" className="btn ghost wide" data-testid="pb-snap" onClick={() => setWriting({ prefill: view.title })}><Icon name="camera" size={18} />{t('Snap a recipe card or page')}</button>
+              </div>
+            ); })()}
           </div>
         </div>
       )}
+      {writing && <RecipeImport edit={writing.id ? writing : null} prefill={writing.prefill || ''} typed={!!writing.typed} onClose={() => setWriting(null)} onSaved={() => { setWriting(null); reloadMine(); }} />}
+      {reading && <MineViewer row={reading} pantry={pantry} onClose={() => setReading(null)} onEdit={() => { setWriting(reading); setReading(null); }} onDeleted={() => { setReading(null); reloadMine(); }} />}
     </section>
   );
 }

@@ -1290,8 +1290,9 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .set-lab { flex: 1; min-width: 0; font-weight: 700; }
 .set-end { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .set-val { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--muted); text-align: right; max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.set-btn .set-val { margin-left: 0; }
-b.set-val { color: var(--fg); font-size: 15px; font-weight: 800; }
+.set-btn .set-lab { flex: 0 0 auto; white-space: nowrap; }
+.set-btn .set-val { flex: 1 1 0; min-width: 0; max-width: none; margin-left: 0; }
+b.set-val { color: var(--fg); font-size: 15px; font-weight: 800; max-width: none; overflow: visible; }
 .set-hint { flex-basis: 100%; padding-left: 46px; font-size: 12.5px; line-height: 1.35; color: var(--muted); }
 .set-sub { flex-basis: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-left: 46px; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
 .set-wide { flex-basis: 100%; padding-left: 46px; margin-top: 8px; }

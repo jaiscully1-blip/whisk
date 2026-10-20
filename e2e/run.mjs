@@ -170,7 +170,8 @@ await step('learn quiz', async () => {
   await nav('Me'); await page.waitForURL('**/me'); await page.waitForTimeout(500);
   check('Expert hides Learn', (await page.getByTestId('learn-btn').count()) === 0);
   await nav('Me'); await openSettings(); await page.getByTestId('level-row').click(); await page.locator('.lv-opt', { hasText: 'Novice' }).click();
-  await nav('Me'); await page.waitForURL('**/me'); await page.waitForTimeout(500);
+  await fetch('http://localhost:54321/__e2e/unlock-quiz');   // a new day: Learn comes back
+  await page.reload(); await nav('Me'); await page.waitForURL('**/me'); await page.waitForTimeout(500);
   check('Novice shows Learn again', (await page.getByTestId('learn-btn').count()) === 1);
   await nav('Home');
 });
@@ -657,7 +658,7 @@ await step('calorie goal', async () => {
 });
 await step('streak shown as days only', async () => {
   await nav('Me');
-  await page.getByTestId('learn-btn').waitFor({ timeout: 8000 });
+  await page.locator('.pcard').waitFor({ timeout: 8000 });
   check('the Me page has no streak milestone card', (await page.getByTestId('streak-card').count()) === 0);
   check('the streak shows as days in the top bar', /\d+d/.test(await page.locator('.hud').first().innerText()));
 });

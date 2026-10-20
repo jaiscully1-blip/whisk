@@ -1593,21 +1593,16 @@ await step('chat links stay put; lost sign-in comes back', async () => {
   await page.waitForURL('**/cook', { timeout: 15000 }).catch(() => {});
   check('with the cookie lost, the same game comes back (no new game)', /\/cook/.test(page.url()), page.url());
 });
-await step('delete my data', async () => {
+await step('log out', async () => {
   const ctx5 = await browser.newContext({ viewport: { width: 390, height: 844 } }); const dp = await ctx5.newPage(); await dp.addInitScript(() => { try { localStorage.setItem('whisk-level-later', new Date().toDateString()); } catch {} });
+  dp.on('dialog', (d) => d.accept());
   await dp.goto(`${BASE}/login`); await dp.getByRole('radio', { name: 'Accept' }).click(); await dp.getByRole('button', { name: 'Start playing' }).click(); await dp.waitForURL('**/cook');
   await dp.waitForTimeout(1500); await dp.mouse.click(5, 400);
   await dp.getByRole('navigation').getByRole('link', { name: 'Me', exact: true }).click(); await dp.waitForURL('**/me');
   await openSettings(dp);
-  const uid = await dp.locator('.mono').first().innerText();
-  await dp.getByRole('button', { name: 'Delete my data' }).click();
-  const del = dp.getByRole('dialog', { name: 'Delete my data' });
-  check('Delete my data asks you to type DELETE first', await del.getByRole('button', { name: 'Delete everything' }).isDisabled());
-  await del.getByLabel('Type DELETE to confirm').fill('delete'); await del.getByRole('button', { name: 'Delete everything' }).click();
-  await dp.waitForURL('**/login?deleted=1', { timeout: 15000 });
-  check('after deleting, you land on the start screen with a goodbye', (await dp.getByText('Your data is deleted').count()) === 1);
-  await dp.goto(`${BASE}/me`); check('the old game is gone (signed out)', dp.url().includes('/login'));
-  check('the player’s id is a real one (sanity)', /^[0-9a-f-]{36}$/.test(uid), uid);
+  check('there is no Delete my data button any more', (await dp.getByRole('button', { name: 'Delete my data' }).count()) === 0);
+  await dp.getByTestId('log-out').click(); await dp.waitForURL('**/login', { timeout: 15000 });
+  await dp.goto(`${BASE}/me`); check('after logging out you are signed out', dp.url().includes('/login'));
   await ctx5.close();
 });
 await step('tabs open instantly from memory', async () => {

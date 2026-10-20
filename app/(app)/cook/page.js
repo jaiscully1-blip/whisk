@@ -1,4 +1,5 @@
 'use client';
+import { openRecipe, warmRecipes } from '@/lib/openRecipe';
 import { mealArt } from '@/lib/art/meals';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DietTags from '@/components/DietTags';
@@ -28,7 +29,7 @@ const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
 
 // Only real recipes from the web, and only ones your pantry can make.
 export default function Cook() {
-  const { recipes, ui, setUi, say, t , ensureRecipes } = useWhisk();
+  const { recipes, ui, setUi, say, t , ensureRecipes, peekRecipe } = useWhisk();
   const tz = useTimeZone();
   const [logFor, setLogFor] = useState(null);
   // Every visit opens on the Cook home (tonight's pick, made for you, photobook) for new and returning players. "More filters" goes deeper; a dish sent from the globe still opens its results.
@@ -51,7 +52,7 @@ export default function Cook() {
   // the world's desserts (Yoke Kitchen) join the web recipes in Made for you
   const [worldSweets, setWorldSweets] = useState([]);
   useEffect(() => { let off = false; fetch('/api/world-recipe?type=dessert').then((r) => r.json()).then((j) => { if (!off) setWorldSweets(j.recipes || []); }).catch(() => {}); return () => { off = true; }; }, []);
-  const openFull = async (r) => { if (r.steps || !/^w-/.test(r.id)) { setOpen(r); return; } const full = (await ensureRecipes([r.id]))[0]; if (full) setOpen(full); };
+  const openFull = (r) => openRecipe(r, { setOpen, ensureRecipes, peekRecipe, say });
   const [asked, setAsked] = useState(false);   // "Nothing fits yet" only shows right after you ask, never on its own
   const savedMode = ui.cookMode || null; const time = ui.cookTime || ''; const meal = ui.cookMeal || ''; const diet = ui.cookDiet || '';
 
@@ -139,14 +140,14 @@ export default function Cook() {
               <div className="fr-in">
                 <h2>{hero.title}</h2>
                 <span className="desc">{[hero.cuisine, hrs(hero.minutes)].filter(Boolean).join(' · ')}</span>
-                <button type="button" className="btn wide" data-testid="cook-pick" onClick={() => setOpen(hero)}>{t('Let’s cook it')}</button>
+                <button type="button" className="btn wide" data-testid="cook-pick" onPointerDown={() => warmRecipes([hero.id], ensureRecipes)} onClick={() => openFull(hero)}>{t('Let’s cook it')}</button>
               </div>
             </div>); })()}
           {forYou.length > 0 && (
             <section className="stack" style={{ gap: 6 }} aria-label={t('Made for you')} data-testid="made-for-you">
               <span className="eyebrow">{t('Made for you')}</span>
               <div className="fy-row">{forYou.map(([label, r], i) => (
-                <button key={label} type="button" className={`fy-card fy-${i}`} data-testid="fy-card" onClick={() => openFull(r)}>
+                <button key={label} type="button" className={`fy-card fy-${i}`} data-testid="fy-card" onPointerDown={() => warmRecipes([r.id], ensureRecipes)} onClick={() => openFull(r)}>
                   <span className="fy-art"><Postcard iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} /><span className="fy-tag">{t(['Protein', 'Comfort', 'Sweet', 'Treat'][i] || label)}</span></span>
                   <b>{r.title}</b><small>{hrs(r.minutes)}</small>
                 </button>))}</div>
@@ -205,7 +206,7 @@ export default function Cook() {
         <>
           <span className="eyebrow">{mode === 'named' ? `From your Yoke recipes · ${results.length}` : (() => { const n = results.filter((x) => x.c.ok).length; return n ? `${n} recipe${n === 1 ? '' : 's'} you can make right now` : 'Closest to what you have'; })()}</span>
           {results.slice(0, shown).map(({ r, c, soon }) => (
-            <button key={r.id} className="card stack" style={{ gap: 8, textAlign: 'left' }} onClick={() => setOpen(r)}>
+            <button key={r.id} className="card stack" style={{ gap: 8, textAlign: 'left' }} onPointerDown={() => warmRecipes([r.id], ensureRecipes)} onClick={() => openFull(r)}>
               <span className="eyebrow">{r.cuisine} · {r.source}</span>
               <h2 style={{ fontSize: 20 }}>{r.title}</h2>
               <div className="row"><span className="chip">{hrs(r.minutes)}</span><span className="chip">Serves {r.servings}</span>{c.ok ? <span className="chip have">{c.subs.length ? 'You can make it' : 'You have everything'}</span> : <span className="chip need">Need {c.missing.slice(0, 2).join(' + ').toLowerCase()}</span>}{c.frozen.length > 0 && <span className="chip ice"><Icon name="snow" size={14} />{t('Defrost first')}</span>}</div>

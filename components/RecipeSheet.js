@@ -24,6 +24,19 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
   const [factor, setFactor] = useState(1);
   const [cooking, setCooking] = useState(false);   // Cook mode
   const [added, setAdded] = useState([]);   // ingredients just added from this sheet (shown as ✓ straight away)
+  if (r.pending) return (
+    <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+      <div className="sheet stack cx" style={cultureStyle(r.country, r.cuisine)} data-motif={motifFor(r.country, r.cuisine)} role="dialog" aria-modal="true" aria-busy="true" aria-label={r.title} data-testid="rs-loading">
+        <Scene iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} className="scene-bleed" />
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'nowrap' }}>
+          <div><span className="eyebrow">{r.cuisine}</span><h2 style={{ fontSize: 26 }}>{r.title}</h2></div>
+          <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
+        </div>
+        <div className="row"><span className="chip">{r.minutes} min</span></div>
+        <div className="rs-skel" aria-hidden="true"><i style={{ width: '38%' }} /><i /><i style={{ width: '86%' }} /><i style={{ width: '72%' }} /><i style={{ width: '92%' }} /><i style={{ width: '60%' }} /></div>
+      </div>
+    </div>
+  );
   const c0 = checkRecipe(r, pantry);
   const c = { ...c0, missing: c0.missing.filter((m) => !added.includes(m)) };
   c.ok = c0.ok || (c0.missing.length > 0 && c.missing.length === 0);

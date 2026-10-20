@@ -10,6 +10,7 @@ import { usePantry, useSaved } from '@/components/usePantry';
 import { addToShoppingList, listMsg } from '@/lib/shoplist';
 import { checkRecipe, thawState, usesSoon, shoppingNeeds, canon } from '@/lib/recipes/match';
 import Postcard from '@/components/Postcard';
+import { openRecipe, warmRecipes } from '@/lib/openRecipe';
 
 const PAGE = 10;
 const SHOW = 3;   // missing ingredients shown on a card; the recipe lists them all
@@ -25,7 +26,7 @@ const mix = (id, seed) => { let h = seed >>> 0; for (let i = 0; i < id.length; i
 // Home is "Discover a Dish": recipes you can't fully make yet (plus a defrost reminder when frozen meat is waiting).
 // Always a fresh random mix each time it opens (Shuffle for another).
 export default function Home() {
-  const { supabase, recipes, say, ui, setUiQuiet, t, ensureRecipes } = useWhisk();
+  const { supabase, recipes, say, ui, setUiQuiet, t, ensureRecipes, peekRecipe } = useWhisk();
   const [pantry, reload] = usePantry();
   const [saved, reloadSaved] = useSaved();
   const [open, setOpen] = useState(null);
@@ -102,7 +103,10 @@ export default function Home() {
   const expiring = useMemo(() => new Set((pantry || []).filter((p) => p.status !== 'out' && p.expires_on && (new Date(String(p.expires_on).slice(0, 10) + 'T00:00:00') - new Date(new Date().toDateString())) / 864e5 <= 3 && (new Date(String(p.expires_on).slice(0, 10) + 'T00:00:00') - new Date(new Date().toDateString())) / 864e5 >= 0).map((p) => canon(p.name))).size, [pantry]);
   const frozen = (pantry || []).filter((p) => { const t = thawState(p); return t && t.state !== 'thawed'; });
 
-  const openFull = async (r) => { if (r.steps || !/^w-/.test(r.id)) { setOpen(r); return; } const full = (await ensureRecipes([r.id]))[0]; if (full) setOpen(full); };
+  const openFull = useCallback((r) => openRecipe(r, { setOpen, ensureRecipes, peekRecipe, say }), [ensureRecipes, peekRecipe, say]);
+  const warm = useCallback((r) => warmRecipes([r.id], ensureRecipes), [ensureRecipes]);
+  // warm up the first few dishes on screen, so opening one is instant
+  useEffect(() => { if (almost?.length) warmRecipes(almost.slice(0, 4).map((x) => x.r.id), ensureRecipes); }, [almost]); // eslint-disable-line react-hooks/exhaustive-deps
   const addToList = useCallback(async (r, missing) => { say(listMsg(await addToShoppingList(supabase, missing))); }, [supabase, say]);
 
   return (
@@ -111,7 +115,7 @@ export default function Home() {
       <div className="page-title" style={{ margin: '6px 0 0' }}><h1>{t('Discover a Dish')}</h1></div>
       {almost === null || !ready ? <p className="muted">Checking your pantry…</p> : almost.length === 0 ? (
         <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">{t('Add pantry items')}</Link><Link className="btn ghost" href="/cook">{t('What can I make?')}</Link></div></div>
-      ) : almost.slice(0, shown).map((x, i) => <DishCard key={x.r.id} x={x} first={i === 0} onOpen={openFull} onAdd={addToList} t={t} />)}
+      ) : almost.slice(0, shown).map((x, i) => <DishCard key={x.r.id} x={x} first={i === 0} onOpen={openFull} onWarm={warm} onAdd={addToList} t={t} />)}
       {almost && almost.length > shown && <div ref={moreRef}><button className="btn ghost wide" onClick={() => setShown((n) => n + PAGE)}>{t('Show more')}</button></div>}
       {almost && almost.length > 1 && !open && <button ref={fabRef} type="button" className="fab-shuffle" data-testid="shuffle" onClick={shuffle} aria-label={t('Shuffle')} title={t('Shuffle')}><Icon name="shuffle" size={22} /></button>}
       {open && <RecipeSheet recipe={open} pantry={pantry} saved={saved?.get(open.id)} onClose={() => setOpen(null)} onChanged={() => { reload(); reloadSaved(); }} />}
@@ -120,7 +124,7 @@ export default function Home() {
 }
 
 // One recipe card. Memoised: shuffling or filtering re-uses cards that are already drawn.
-const DishCard = memo(function DishCard({ x: { r, soon, needs }, first, onOpen, onAdd, t }) {
+const DishCard = memo(function DishCard({ x: { r, soon, needs }, first, onOpen, onWarm, onAdd, t }) {
   return (
         <div className="stack" style={{ gap: 8 }}>
         {soon.length > 0 && first && <h2 className="away-h soon-h">{t('Use it before it goes bad')}</h2>}
@@ -135,7 +139,7 @@ const DishCard = memo(function DishCard({ x: { r, soon, needs }, first, onOpen, 
           <div className="row">{needs.slice(0, SHOW).map((m) => <span key={m} className="chip need">+ {m}</span>)}{needs.length > SHOW && <button type="button" className="chip more-need" onClick={() => onOpen(r)} aria-label={`See all ${needs.length} you need`}>+{needs.length - SHOW} more</button>}</div>
           <div className="row" style={{ flexWrap: 'nowrap' }}>
             <button className="btn ghost" style={{ flex: 1 }} onClick={() => onAdd(r, needs)}>{t('Add to list')}</button>
-            <button className="btn" style={{ flex: 1 }} onClick={() => onOpen(r)}>{t('Open recipe')}</button>
+            <button className="btn" style={{ flex: 1 }} onPointerDown={() => onWarm?.(r)} onClick={() => onOpen(r)}>{t('Open recipe')}</button>
           </div>
           </div>
         </div>

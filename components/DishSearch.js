@@ -79,6 +79,7 @@ function DishCard({ d, have, country, pantry }) {
   const asked = useRef(false);
   function flip() {
     setOn((x) => !x);
+    if (d.countries?.[0] && !d.wiki) ensureRecipes([worldIdFor(d.countries[0], d.name)]);   // warm the full recipe
     if (asked.current) return; asked.current = true;
     fetch('/api/dish-info', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d.wiki ? { dish: d.name, wiki: d.wiki } : { dish: d.name }) })
       .then((r) => r.json()).then((x) => setInfo({ ingredients: x.ingredients || (d.ingredients || []).map((name) => ({ name })), video: x.video || null, configured: !!x.configured, search: x.search }))

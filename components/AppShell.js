@@ -86,19 +86,28 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   const [worldExtra, setWorldExtra] = useState([]);   // world recipes opened so far (full, with steps)
   const worldHave = useRef(new Map());
   // ensureRecipes(['w-it-lasagna', ...]) → the full recipes (web ones come from the list, world ones are fetched once)
+  const inflight = useRef(new Map());   // id -> the batch request already on its way (a tap and an early warm-up share one)
   const ensureRecipes = useCallback(async (ids) => {
     const want = [...new Set((ids || []).filter((id) => /^w-[a-z]{2}-/.test(id)))];
     const need = want.filter((id) => !worldHave.current.has(id));
-    for (let i = 0; i < need.length; i += 40) {
-      try {
-        const r = await fetch(`/api/world-recipe?ids=${encodeURIComponent(need.slice(i, i + 40).join(','))}`);
-        const j = await r.json().catch(() => ({}));
-        for (const x of j.recipes || []) worldHave.current.set(x.id, x);
-      } catch {}
+    const fresh = need.filter((id) => !inflight.current.has(id));
+    for (let i = 0; i < fresh.length; i += 40) {
+      const batch = fresh.slice(i, i + 40);
+      const job = (async () => {
+        try {
+          const r = await fetch(`/api/world-recipe?ids=${encodeURIComponent(batch.join(','))}`);
+          const j = await r.json().catch(() => ({}));
+          for (const x of j.recipes || []) worldHave.current.set(x.id, x);
+        } catch {}
+        batch.forEach((id) => inflight.current.delete(id));
+        setWorldExtra([...worldHave.current.values()]);
+      })();
+      batch.forEach((id) => inflight.current.set(id, job));
     }
-    if (need.length) setWorldExtra([...worldHave.current.values()]);
+    await Promise.all([...new Set(need.map((id) => inflight.current.get(id)).filter(Boolean))]);
     return want.map((id) => worldHave.current.get(id)).filter(Boolean);
   }, []);
+  const peekRecipe = useCallback((id) => worldHave.current.get(id) || null, []);
   const allRecipes = useMemo(() => (recipes && worldExtra.length ? [...recipes, ...worldExtra] : recipes), [recipes, worldExtra]);
   const [popups, setPopups] = useState([]);           // queue: 'back' | 'late' | 'wrapped' | {kind:'cooked', mealId}
   const [rating, setRating] = useState(null);
@@ -357,8 +366,8 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   }, [setUi]);
   const t = useCallback((text, vars) => translate(lang, text, vars), [lang]);
   useEffect(() => { try { document.documentElement.lang = lang; } catch {} }, [lang]);
-  const value = useMemo(() => ({ lang, setLang, t, profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, recipes: shownRecipes, allRecipes, ensureRecipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump }),
-    [lang, setLang, t, profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, shownRecipes, allRecipes, ensureRecipes, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump]);
+  const value = useMemo(() => ({ lang, setLang, t, profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, recipes: shownRecipes, allRecipes, ensureRecipes, peekRecipe, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump }),
+    [lang, setLang, t, profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, shownRecipes, allRecipes, ensureRecipes, peekRecipe, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, saveState, dataVersion, bump]);
 
   return (
     <Ctx.Provider value={value}>

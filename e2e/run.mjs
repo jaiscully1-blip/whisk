@@ -1600,7 +1600,7 @@ await step('log out', async () => {
   await dp.waitForTimeout(1500); await dp.mouse.click(5, 400);
   await dp.getByRole('navigation').getByRole('link', { name: 'Me', exact: true }).click(); await dp.waitForURL('**/me');
   await openSettings(dp);
-  check('there is no Delete my data button any more', (await dp.getByRole('button', { name: 'Delete my data' }).count()) === 0);
+  check('Delete my data is still there, next to Log out', (await dp.getByRole('button', { name: 'Delete my data' }).count()) === 1);
   await dp.getByTestId('log-out').click(); await dp.waitForURL('**/login', { timeout: 15000 });
   await dp.goto(`${BASE}/me`); check('after logging out you are signed out', dp.url().includes('/login'));
   await ctx5.close();

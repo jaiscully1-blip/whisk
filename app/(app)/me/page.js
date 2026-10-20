@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useCached } from '@/lib/cache';
 import { fetchMe } from '@/components/tabData';
+import DeleteDataSheet from '@/components/DeleteDataSheet';
 import Link from 'next/link';
 import { useWhisk, useDraft } from '@/components/AppShell';
 import Icon from '@/components/Icon';
@@ -58,6 +59,7 @@ export default function Me() {
   }, []);
   const [howTo, setHowTo] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [never, setNever] = useState(false);
   const [backingUp, setBackingUp] = useState(false);
@@ -229,10 +231,12 @@ export default function Me() {
         if (account?.anon && !window.confirm('You haven’t backed up this game. If you log out you won’t be able to get back into it. Log out anyway?')) return;
         const f = document.createElement('form'); f.method = 'POST'; f.action = '/auth/signout'; document.body.appendChild(f); f.submit();
       }} style={{ alignSelf: 'stretch', justifyContent: 'center', background: 'none', border: 0, padding: 10, color: 'var(--fg)' }}><Icon name="chevron" size={18} />{t('Log out')}</button>
+      <button className="row setbtn danger-row" data-testid="delete-data" onClick={() => setDeleting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, padding: 6, fontSize: 11, gap: 4, minHeight: 28 }}><Icon name="trash" size={12} />{t('Delete my data')}</button>
       <button onClick={() => setResetting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, color: 'var(--muted)', fontSize: 11, textDecoration: 'underline', padding: 8, minHeight: 32 }}>{t('Reset game')}</button>
           </div>
         </div>
       )}
+      {deleting && <DeleteDataSheet onClose={() => setDeleting(false)} />}
       {resetting && <ResetSheet onClose={() => setResetting(false)} />}
       {never && <NeverShowSheet onClose={() => setNever(false)} />}
       {recipe && <RecipeSheet recipe={recipe} pantry={pantry || []} onClose={() => setRecipe(null)} />}

@@ -1,0 +1,24 @@
+import { createRequire } from 'node:module';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const BASE = 'http://localhost:3000', OUT = process.argv[2];
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); const p = await ctx.newPage();
+const sweep = async () => { for (let i = 0; i < 5; i++) { for (const sel of ['.tip-ok', 'button:has-text("Maybe later")', '.popup-scrim [aria-label=Close]', '.popup-scrim button:has-text("Leave")']) { if (await p.locator(sel).count()) await p.locator(sel).first().click({ timeout: 1500 }).catch(() => {}); } await p.waitForTimeout(200); } };
+const ok = (n, v) => console.log(v ? 'PASS' : 'FAIL', n);
+await p.goto(`${BASE}/login`); await p.getByRole('radio', { name: 'Accept' }).click(); await p.getByRole('button', { name: 'Start playing' }).click(); await p.waitForURL('**/cook'); await p.waitForTimeout(2000); await sweep();
+// returning player with the old saved Cook mode still lands on the new home
+await fetch('http://localhost:54321/__e2e/sql?q=' + encodeURIComponent(`update public.profiles set ui_state = '{"cookMode":"pantry","cookFilters":true}'::jsonb`));
+await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForTimeout(2500); await sweep();
+ok('old saved mode → new Cook home', await p.getByTestId('todays-picks').count() === 1 && await p.locator('.cook-filters').count() === 0);
+ok('made for you: 3 small cards, no sideways scroll', await p.getByTestId('fy-card').count() === 3 && await p.locator('.fy-row').evaluate((e) => e.scrollWidth <= e.clientWidth + 1));
+await p.screenshot({ path: `${OUT}/nav-cook.png` });
+await p.evaluate(() => (document.scrollingElement.scrollTop = 600)); await p.waitForTimeout(400);
+await p.getByTestId('more-filters').click(); await p.waitForTimeout(900);
+console.log('scrollY after more filters', await p.evaluate(() => [window.scrollY, document.scrollingElement.scrollTop, document.scrollingElement.scrollHeight])); ok('More filters throws you to the top', await p.evaluate(() => window.scrollY) < 5);
+await p.evaluate(() => (document.scrollingElement.scrollTop = 500)); await p.waitForTimeout(300);
+await p.getByTestId('back-to-picks').click().catch(() => {}); await p.waitForTimeout(900);
+ok('Back to picks → home, at the top', await p.getByTestId('todays-picks').count() === 1 && await p.evaluate(() => window.scrollY) < 5);
+await p.getByText('See all').first().click(); await p.waitForURL('**/me/history**'); await p.waitForTimeout(1200); await sweep();
+ok('history Back says Cook', (await p.getByTestId('history-back').innerText()).includes('Cook'));
+await p.getByTestId('history-back').click(); await p.waitForURL('**/cook'); ok('Back goes to the Cook page', p.url().endsWith('/cook'));
+await b.close();

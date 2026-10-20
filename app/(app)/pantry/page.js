@@ -17,7 +17,7 @@ const AISLES = ['Produce', 'Proteins', 'Dairy & Eggs', 'Carbs & Grains', 'Canned
 
 export default function Pantry() {
   const { supabase, say, refreshProfile, ui, setUi, t } = useWhisk();
-  const tab = ui.pantryTab === 'list' ? 'list' : 'pantry'; const setTab = (t) => setUi({ pantryTab: t });   // saved recipes moved to Cook
+  const tab = ui.pantryTab === 'list' ? 'list' : 'pantry'; const setTab = (t) => { setUi({ pantryTab: t }); window.scrollTo(0, 0); requestAnimationFrame(() => window.scrollTo(0, 0)); };   // saved recipes moved to Cook
   const filter = ui.pantryFilter || 'All'; const setFilter = (f) => setUi({ pantryFilter: f });
   const [items, reloadItems, setItems] = usePantry();   // remembered between tabs (lib/cache.js)
   const [list, reloadList, setList] = useList();

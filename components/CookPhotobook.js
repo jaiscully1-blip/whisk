@@ -66,7 +66,7 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
     <section className="stack" style={{ gap: 6 }} aria-label={t('My photobook')} data-testid="photobook">
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
         <span className="eyebrow">{t('My photobook')}</span>
-        <Link href="/me/history" className="pb-all">{t('See all')} ›</Link>
+        <Link href="/me/history?from=cook" className="pb-all">{t('See all')} ›</Link>
       </div>
       <div className="pb-row" ref={row}>
         {days.map((x) => {

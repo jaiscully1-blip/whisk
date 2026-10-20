@@ -33,6 +33,7 @@ export default function Cook() {
   const [logFor, setLogFor] = useState(null);
   // Every visit opens on the Cook home (tonight's pick, made for you, photobook) for new and returning players. "More filters" goes deeper; a dish sent from the globe still opens its results.
   useEffect(() => { const cur = ui; if (cur.cookMode !== 'named' && (cur.cookMode || cur.cookFilters || cur.cookDish)) setUi({ cookMode: null, cookFilters: false, cookDish: '' }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const toTop = () => { window.scrollTo(0, 0); requestAnimationFrame(() => window.scrollTo(0, 0)); };   // buttons that change the view take you back to the top of Cook
   const [hour, setHour] = useState(() => Math.floor(Date.now() / 36e5));
   useEffect(() => { const id = setInterval(() => setHour(Math.floor(Date.now() / 36e5)), 30000); return () => clearInterval(id); }, []);   // a new dish every hour
   const router = useRouter();
@@ -87,7 +88,7 @@ export default function Cook() {
     const sweetsAll = recipes.filter((r) => fitsMeal(r, 'dessert')); const sweets = stable(sweetsAll.filter((r) => r.minutes <= 60).length >= 3 ? sweetsAll.filter((r) => r.minutes <= 60) : sweetsAll);
     return [['Protein-packed dinner', pick(dinners, 0)], ['Easy soul food', pick(soul, 1)], ['Dessert', pick(sweets, 2)]].filter(([, r]) => r);
   }, [recipes, hour]);
-  function useWhatIHave() { if (!inStock.length) { router.push('/pantry'); return; } setHand(null); setAsked(true); setUi({ cookMode: 'pantry', cookDish: '' }); }
+  function useWhatIHave() { if (!inStock.length) { router.push('/pantry'); return; } setHand(null); setAsked(true); setUi({ cookMode: 'pantry', cookDish: '' }); toTop(); }
 
   const names = inStock.filter((p) => !SKIP.includes(p.category)).map((p) => p.name);
   // Keep loading more as you scroll, until every recipe your pantry can make is on screen.
@@ -127,7 +128,7 @@ export default function Cook() {
               <div className="fr-art">
                 <Postcard iso={hero.country} cuisine={hero.cuisine} title={hero.title} ingredients={hero.key} />
                 <span className="fr-tag">{t('TONIGHT’S PICK')}</span>
-                <button type="button" className="fr-shuf" data-testid="shuffle-pick" aria-label={t('Show me another')} onClick={() => setShuffle((n) => n + 1)}><Icon name="shuffle" size={18} /></button>
+                <button type="button" className="fr-shuf" data-testid="shuffle-pick" aria-label={t('Show me another')} onClick={() => { setShuffle((n) => n + 1); toTop(); }}><Icon name="shuffle" size={18} /></button>
               </div>
               <div className="fr-in">
                 <h2>{hero.title}</h2>
@@ -138,10 +139,9 @@ export default function Cook() {
           {forYou.length > 0 && (
             <section className="stack" style={{ gap: 6 }} aria-label={t('Made for you')} data-testid="made-for-you">
               <span className="eyebrow">{t('Made for you')}</span>
-              <div className="fy-row">{forYou.map(([label, r]) => (
-                <button key={label} type="button" className="fy-card" onClick={() => setOpen(r)}>
-                  <span className="fy-art"><Postcard iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} /></span>
-                  <span className="fy-tag">{t(label)}</span>
+              <div className="fy-row">{forYou.map(([label, r], i) => (
+                <button key={label} type="button" className={`fy-card fy-${i}`} data-testid="fy-card" onClick={() => setOpen(r)}>
+                  <span className="fy-art"><Postcard iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} /><span className="fy-tag">{t(['Protein', 'Comfort', 'Sweet'][i] || label)}</span></span>
                   <b>{r.title}</b><small>{hrs(r.minutes)}</small>
                 </button>))}</div>
             </section>
@@ -150,12 +150,12 @@ export default function Cook() {
           <div className="row" style={{ justifyContent: 'center', gap: 4 }}>
             <button type="button" className="fr-more" data-testid="use-what-i-have" onClick={useWhatIHave}>{t('Use what I have')}</button>
             <span className="desc">·</span>
-            <button type="button" className="fr-more" data-testid="more-filters" onClick={() => setUi({ cookFilters: true })}>{t('More filters')}</button>
+            <button type="button" className="fr-more" data-testid="more-filters" onClick={() => { setUi({ cookFilters: true }); toTop(); }}>{t('More filters')}</button>
           </div>
         </>
       )}
 
-      {!simple && <button type="button" className="fr-more" data-testid="back-to-picks" style={{ alignSelf: 'flex-start' }} onClick={() => { setAsked(false); setHand(null); setUi({ cookFilters: false, cookMode: null, cookDish: '' }); }}>‹ {t('Back to tonight’s picks')}</button>}
+      {!simple && <button type="button" className="fr-more" data-testid="back-to-picks" style={{ alignSelf: 'flex-start' }} onClick={() => { setAsked(false); setHand(null); setUi({ cookFilters: false, cookMode: null, cookDish: '' }); toTop(); }}>‹ {t('Back to tonight’s picks')}</button>}
       {!simple && <div className="card cook-filters">
         <TimeSlider time={time || 'any'} onTime={(v) => setUi({ cookTime: v === 'any' ? '' : v })} />
         <div className="diet-pick" role="radiogroup" aria-label={t('Diet')}>

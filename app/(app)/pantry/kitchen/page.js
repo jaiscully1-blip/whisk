@@ -210,7 +210,7 @@ function Hub() {
         <h1>Kitchen</h1>
       </div>
       <div className="row tabrow" role="tablist" aria-label="Kitchen">
-        {TABS.map(([k, l]) => <button key={k} type="button" role="tab" data-testid={`kt-${k}`} aria-selected={tab === k} className={`btn sm ${tab === k ? '' : 'ghost'}`} onClick={() => setTab(k)}>{l}</button>)}
+        {TABS.map(([k, l]) => <button key={k} type="button" role="tab" data-testid={`kt-${k}`} aria-selected={tab === k} className={`btn sm ${tab === k ? '' : 'ghost'}`} onClick={() => { setTab(k); window.scrollTo(0, 0); requestAnimationFrame(() => window.scrollTo(0, 0)); }}>{l}</button>)}
       </div>
       {tab === 'food' ? <PutAway /> : tab === 'design' ? (
         <div className="stack">

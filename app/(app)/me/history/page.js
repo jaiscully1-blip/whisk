@@ -16,6 +16,8 @@ export default function History() {
   const { supabase, allRecipes, ensureRecipes, t } = useWhisk();
   const [pantry] = usePantry();
   const [rows, setRows] = useState(null);
+  const [fromCook, setFromCook] = useState(false);   // opened from the Cook photobook's "See all": Back returns there
+  useEffect(() => { setFromCook(new URLSearchParams(window.location.search).get('from') === 'cook'); }, []);
   const [q, setQ] = useState('');
   const [cuisine, setCuisine] = useState('');
   const [liked, setLiked] = useState(false);
@@ -69,7 +71,7 @@ export default function History() {
 
   return (
     <div className="stack" data-testid="history-page">
-      <div className="page-title"><h1>{t('Cooking history')}</h1><Link className="btn ghost sm" href="/me"><Icon name="back" size={16} />{t('Me')}</Link></div>
+      <div className="page-title"><h1>{t('Cooking history')}</h1><Link className="btn ghost sm" href={fromCook ? '/cook' : '/me'} data-testid="history-back"><Icon name="back" size={16} />{fromCook ? t('Cook') : t('Me')}</Link></div>
       {rows === null ? <p className="muted">{t('Loading…')}</p> : rows.length === 0 ? (
         <div className="empty"><b>{t('Nothing cooked yet')}</b>{t('Log a plate after you cook and it shows up here.')}</div>
       ) : (

@@ -111,6 +111,10 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
             ) : (
               <div className="stack" style={{ gap: 8 }} data-testid="pb-no-recipe">
                 <div className="empty" style={{ padding: 14 }}>{t('No recipe saved for this one yet')}</div>
+                {ui?.pbDrafts?.[view.id] && <>
+                  <p className="err" style={{ margin: 0 }} data-testid="pb-draft-note">{t('Your recipe didn’t save last time. It’s kept here.')}</p>
+                  <button type="button" className="btn wide" data-testid="pb-draft" onClick={() => setWriting({ prefill: view.title, draft: ui.pbDrafts[view.id], forMeal: view.id })}><Icon name="check" size={18} />{t('Save my recipe')}</button>
+                </>}
                 <button type="button" className="btn wide" data-testid="pb-write" onClick={() => setWriting({ prefill: view.title, typed: true, forMeal: view.id })}><Icon name="pencil" size={18} />{t('Write my recipe')}</button>
                 <button type="button" className="btn ghost wide" data-testid="pb-snap" onClick={() => setWriting({ prefill: view.title, forMeal: view.id })}><Icon name="camera" size={18} />{t('Snap a recipe card or page')}</button>
                 {(mine || []).length > 0 && <button type="button" className="btn ghost wide" data-testid="pb-pick" onClick={() => setPickOpen((v) => !v)}><Icon name="star" size={18} />{t('Use one of my recipes')}</button>}
@@ -120,7 +124,7 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
           </div>
         </div>
       )}
-      {writing && <RecipeImport edit={writing.id ? writing : null} prefill={writing.prefill || ''} typed={!!writing.typed} onClose={() => setWriting(null)} onSaved={(id) => { if (writing.forMeal && id) setLink(writing.forMeal, id); setWriting(null); reloadMine(); }} />}
+      {writing && <RecipeImport edit={writing.id ? writing : null} prefill={writing.prefill || ''} typed={!!writing.typed} draft={writing.draft || null} onClose={() => setWriting(null)} onSaved={(id) => { if (writing.forMeal && id) { setLink(writing.forMeal, id); if (writing.draft) setUi((cur) => { const d = { ...(cur.pbDrafts || {}) }; delete d[writing.forMeal]; return { pbDrafts: d }; }); } setWriting(null); reloadMine(); }} />}
       {reading && <MineViewer row={reading} pantry={pantry} onClose={() => setReading(null)} onEdit={() => { setWriting(reading); setReading(null); }} onDeleted={() => { setReading(null); reloadMine(); }} />}
     </section>
   );

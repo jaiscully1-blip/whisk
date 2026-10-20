@@ -15,15 +15,16 @@ async function decode(file) {
   catch { return await new Promise((ok, no) => { const u = URL.createObjectURL(file), im = new Image(); im.onload = () => { ok(im); }; im.onerror = no; im.src = u; }); }
 }
 
-export default function RecipeImport({ edit = null, prefill = '', typed = false, onClose, onSaved }) {
+export default function RecipeImport({ edit = null, prefill = '', typed = false, draft = null, onClose, onSaved }) {
   const { supabase, say } = useWhisk();
-  const [phase, setPhase] = useState(edit || typed ? 'review' : 'start');   // start → reading → review
+  const [phase, setPhase] = useState(edit || typed || draft ? 'review' : 'start');   // start → reading → review
   const [pct, setPct] = useState(0);
   const [page, setPage] = useState([0, 0]);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [f, setF] = useState(() => (edit
     ? { title: { text: edit.title, low: false }, servings: edit.servings || '', minutes: edit.minutes || '', ingredients: edit.ingredients.map((g) => ({ text: typeof g === 'string' ? g : g.item, low: false })), steps: edit.steps.map((t) => ({ text: t, low: false })) }
+    : draft ? { ...blank(), title: { text: prefill, low: false }, ingredients: (draft.ings || []).length ? draft.ings.map((text) => ({ text, low: false })) : [{ text: '', low: false }], steps: (draft.steps || []).length ? draft.steps.map((text) => ({ text, low: false })) : [{ text: '', low: false }] }
     : prefill ? { ...blank(), title: { text: prefill, low: false } } : blank()));
   const cam = useRef(null), pick = useRef(null);
   useEffect(() => { if (!edit) warmReceipts(); return () => { closeReader(); }; }, [edit]);

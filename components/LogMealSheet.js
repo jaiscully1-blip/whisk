@@ -61,7 +61,7 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
         const title = (recipe ? recipe.title : dish.name).slice(0, 120);
         const { data: row, error: re } = await supabase.from('my_recipes').insert({ title, servings: null, minutes: null, ingredients: (wIng.length ? wIng : ['Add your ingredients']).map((t) => t.slice(0, 200)).slice(0, 60), steps: (wSteps.length ? wSteps : ['Add your steps']).map((t) => t.slice(0, 1000)).slice(0, 60) }).select('id').single();
         if (!re && row?.id && data?.meal_id) setUi((cur) => ({ pbLinks: { ...(cur.pbLinks || {}), [data.meal_id]: row.id } }));
-        else say('Your meal is saved, but the recipe didn’t save. You can add it from the photobook.');
+        else { say('Your meal is saved, but the recipe didn’t save. Find it in your photobook to try again.'); if (data?.meal_id) setUi((cur) => ({ pbDrafts: { ...(cur.pbDrafts || {}), [data.meal_id]: { ings: wIng.slice(0, 60), steps: wSteps.slice(0, 60) } } })); }
       }
       await refreshProfile();
       onDone?.(data);

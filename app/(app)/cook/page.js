@@ -7,6 +7,7 @@ import { useWhisk, useDraft } from '@/components/AppShell';
 import RecipeSheet from '@/components/RecipeSheet';
 import Icon from '@/components/Icon';
 import { usePantry, useSaved } from '@/components/usePantry';
+import { useRouter } from 'next/navigation';
 
 const PAGE = 12;
 import { canon, checkRecipe, usesSoon } from '@/lib/recipes/match';
@@ -24,6 +25,7 @@ const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
 // Only real recipes from the web, and only ones your pantry can make.
 export default function Cook() {
   const { recipes, ui, setUi, say, t } = useWhisk();
+  const router = useRouter();
   const [pantry, reload] = usePantry();
   const [saved, reloadSaved] = useSaved();
   const [shown, setShown] = useState(PAGE);
@@ -52,6 +54,18 @@ export default function Cook() {
     return list;
   }, [mode, makeable, pantry, time, meal, diet, hand, ui.cookDish]);
 
+  // First visit: one question and three picks for today (same for everyone). The filters and tabs appear after "More filters" or the first search.
+  const simple = !!saved && saved.size === 0 && !mode && !asked && !ui.cookFilters;
+  const picks = useMemo(() => {
+    if (!recipes?.length) return [];
+    const ok = makeable.filter((x) => x.c.ok).map((x) => x.r);
+    const pool = (ok.length >= 3 ? ok : recipes.filter((r) => r.minutes <= 35)).slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    if (pool.length < 3) return pool;
+    const day = Math.floor(Date.now() / 864e5), step = Math.max(1, Math.floor(pool.length / 3));
+    return [0, 1, 2].map((k) => pool[(day * 7 + k * step) % pool.length]);
+  }, [recipes, makeable]);
+  function useWhatIHave() { if (!inStock.length) { router.push('/pantry'); return; } setHand(null); setAsked(true); setUi({ cookMode: 'pantry', cookDish: '' }); }
+
   const names = inStock.filter((p) => !SKIP.includes(p.category)).map((p) => p.name);
   // Keep loading more as you scroll, until every recipe your pantry can make is on screen.
   useEffect(() => { setShown(PAGE); }, [mode, time, meal, diet, hand, ui.cookDish]);
@@ -72,18 +86,42 @@ export default function Cook() {
   return (
     <div className="stack">
       <div className="page-title"><WeekGoal title={t('Cook')} /></div>
+      {simple && <h2 className="fr-q" data-testid="fr-question">{t('What do you want to make tonight?')}</h2>}
       <section className="cook-search" aria-label="Find something to cook">
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); setHand(null); setAsked(true); if (!dish.trim()) { setUi({ cookMode: 'pantry', cookDish: '' }); return; } setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>{t('Dish')}</label>
           <input id="o-dish" data-tip="search" className="input" type="search" enterKeyHint="search" autoComplete="off" aria-label={t('Search your kitchen')} maxLength={80} value={dish} onChange={(e) => setDish(e.target.value)} />
           <button data-tip="make" className="btn cs-go" type="submit" aria-label={t('Search dishes')}><Icon name="search" size={18} />{t('Search')}</button>
         </form>
-        <div className="cs-pills">
+        {!simple && <div className="cs-pills">
           <button type="button" data-tip="fridge" className={`cs-pill ${mode === 'raid' ? 'on' : ''}`} data-testid="raid-btn" onClick={raid}><RescueFridge />{t('Fridge Raid')}</button>
-        </div>
+        </div>}
       </section>
 
-      <div className="card cook-filters">
+      {simple && (
+        <>
+          <button type="button" className="fr-big" data-testid="use-what-i-have" onClick={useWhatIHave}>
+            <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true"><path d="M8 20h32l-3 18a4 4 0 0 1-4 3H15a4 4 0 0 1-4-3z" fill="#C98A4B"/><path d="M14 20c0-8 4-13 10-13s10 5 10 13" fill="none" stroke="#9C6532" strokeWidth="3" strokeLinecap="round"/><circle cx="19" cy="17" r="4" fill="#E8584A"/><circle cx="28" cy="16" r="4" fill="#8FD46A"/></svg>
+            <span><b>{t('Use what I have')}</b><small>{inStock.length ? t('Recipes you can make right now') : t('Add your groceries, we’ll find recipes')}</small></span>
+          </button>
+          {picks.length > 0 && (
+            <section className="stack" style={{ gap: 8 }} aria-label={t('Today’s picks')} data-testid="todays-picks">
+              <span className="eyebrow">{t('Today’s 3 picks')}</span>
+              <div className="fr-picks">
+                {picks.map((r) => { const mid = MEALS.find((m) => fitsMeal(r, m.id))?.id || ''; return (
+                  <button key={r.id} type="button" className="fr-pick" onClick={() => setOpen(r)}>
+                    <svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true" dangerouslySetInnerHTML={{ __html: mealArt(mid) }} />
+                    <b>{r.title}</b><small>{hrs(r.minutes)}</small>
+                  </button>
+                ); })}
+              </div>
+            </section>
+          )}
+          <button type="button" className="fr-more" data-testid="more-filters" onClick={() => setUi({ cookFilters: true })}>{t('More filters (diet, time, meal)')}</button>
+        </>
+      )}
+
+      {!simple && <div className="card cook-filters">
         <TimeSlider time={time || 'any'} onTime={(v) => setUi({ cookTime: v === 'any' ? '' : v })} />
         <div className="diet-pick" role="radiogroup" aria-label={t('Diet')}>
           {['', ...DIET_ORDER].map((d) => (
@@ -95,12 +133,12 @@ export default function Cook() {
             <button key={m.id || 'any'} type="button" role="radio" aria-checked={meal === m.id} className={`meal-tile ${meal === m.id ? 'on' : ''}`} data-testid={`meal-${m.id || 'any'}`} onClick={() => setUi({ cookMeal: m.id })}><svg viewBox="0 0 48 48" width="36" height="36" aria-hidden="true" dangerouslySetInnerHTML={{ __html: mealArt(m.id) }} />{m.label}</button>
           ))}
         </div>
-      </div>
+      </div>}
 
-      <div className="seg" role="tablist" aria-label="Your recipes">
+      {!simple && <div className="seg" role="tablist" aria-label="Your recipes">
         {[['saved', 'Saved'], ['mine', 'My recipes'], ['channels', 'Chefs']].map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={yourTab === k} className={yourTab === k ? 'on' : ''} onClick={() => setYourTab(k)} data-testid={`cook-tab-${k}`}>{l}</button>)}
-      </div>
-      <div hidden={yourTab !== 'saved'}>
+      </div>}
+      <div hidden={yourTab !== 'saved' || simple}>
         {saved && saved.size === 0 ? <div className="saved-mini" data-testid="saved-mini"><Icon name="star" size={16} />Saved recipes</div> : (
           <section className="card stack saved-box" aria-labelledby="saved-h">
             <h2 id="saved-h" style={{ fontSize: 20, margin: 0 }}><Icon name="star" size={18} /> Saved recipes</h2>

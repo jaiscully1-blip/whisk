@@ -1769,3 +1769,14 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 * { scrollbar-width: none; -ms-overflow-style: none; }
 *::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .tidy-chip { border: 0; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); font-weight: 800; padding: 6px 14px; font-size: 13px; text-decoration: none; }
+
+/* first-visit Cook + empty Pantry */
+.fr-q { font-family: var(--f-display); font-size: 28px; line-height: 1.1; margin: 4px 0 0; }
+.fr-big { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--card); color: var(--fg); border: 2px solid var(--accent); border-radius: 18px; padding: 14px; box-shadow: 0 3px 0 var(--edge-soft); }
+.fr-big svg { flex: none; } .fr-big b { display: block; font-size: 17px; } .fr-big small { display: block; color: var(--muted); font-weight: 700; font-size: 13px; }
+.fr-picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.fr-pick { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; background: var(--card); color: var(--fg); border: 1.5px solid var(--line); border-radius: 16px; padding: 12px 6px; min-width: 0; }
+.fr-pick b { font-size: 13px; line-height: 1.15; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; } .fr-pick small { color: var(--muted); font-weight: 800; font-size: 12px; }
+.fr-more { background: none; border: 0; color: var(--muted); font-size: 12px; font-weight: 800; text-decoration: underline; padding: 8px; align-self: center; min-height: 32px; }
+.basket-empty { text-align: center; display: grid; gap: 8px; justify-items: center; padding: 18px 10px 6px; }
+.basket-empty h2 { font-family: var(--f-display); font-size: 26px; margin: 0; } .basket-empty p { color: var(--muted); font-weight: 700; margin: 0; max-width: 300px; }

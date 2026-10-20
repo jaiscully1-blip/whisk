@@ -32,6 +32,14 @@ export default function Pantry() {
   const [newItem, setNewItem, clrNewItem] = useDraft('s-new');
   const [scan, setScan] = useState(null); // 'receipt' | 'barcode'
   const [sharing, setSharing] = useState(false);
+  const [typeIt, setTypeIt] = useState(false);   // empty pantry: the type-it-in form stays folded away until asked for
+  async function addBasics() {
+    const BASICS = [['Eggs', 'Dairy & Eggs'], ['Milk', 'Dairy & Eggs'], ['Butter', 'Dairy & Eggs'], ['Onion', 'Produce'], ['Garlic', 'Produce'], ['Rice', 'Carbs & Grains'], ['Pasta', 'Carbs & Grains'], ['Olive oil', 'Sauces & Oils'], ['Salt', 'Spices & Seasonings'], ['Black pepper', 'Spices & Seasonings']];
+    const { error } = await supabase.from('pantry_items').insert(BASICS.map(([name, category]) => ({ name, category })));
+    if (error) { say('Couldn’t add those. Try again'); return; }
+    say('10 basics added. Now see what you can cook'); load();
+  }
+  const bare = tab === 'pantry' && items !== null && items.length === 0;
   // ticks made on the shared link show up when you come back to the app
   useEffect(() => { const vis = () => { if (!document.hidden && tab === 'list') load(); }; document.addEventListener('visibilitychange', vis); return () => document.removeEventListener('visibilitychange', vis); }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -222,7 +230,16 @@ export default function Pantry() {
             <button type="button" data-tour="scan" data-tip="receipt" className="scan-tile receipt" onClick={() => setScan('receipt')}><ReceiptArt /><span><b>{t('Scan receipt')}</b><small>{t('Add a whole shop')}</small></span></button>
             <button type="button" className="scan-tile barcode" data-tip="barcode" onClick={() => setScan('barcode')}><BarcodeArt /><span><b>{t('Scan barcode')}</b><small>{t('Add one item')}</small></span></button>
           </div>
-          {quick.length > 0 && (
+          {bare && (
+            <section className="basket-empty" data-testid="pantry-empty">
+              <svg viewBox="0 0 96 80" width="110" height="92" aria-hidden="true"><path d="M14 36h68l-6 34a8 8 0 0 1-8 6H28a8 8 0 0 1-8-6z" fill="#C98A4B"/><path d="M14 36h68" stroke="#9C6532" strokeWidth="4" strokeLinecap="round"/><path d="M26 36c0-18 9-28 22-28s22 10 22 28" fill="none" stroke="#9C6532" strokeWidth="5" strokeLinecap="round"/><path d="M30 44v24M42 44v26M54 44v26M66 44v24" stroke="#A8702F" strokeWidth="3" strokeLinecap="round"/></svg>
+              <h2>{t('Your pantry is empty')}</h2>
+              <p>{t('Add what you bought. Then Cook shows recipes you can make right now.')}</p>
+              <button type="button" className="btn wide" data-testid="start-basics" onClick={addBasics}>{t('Start with 10 basics')}</button>
+              <button type="button" className="fr-more" data-testid="type-it-in" onClick={() => setTypeIt((v) => !v)}>{typeIt ? t('Hide the form') : t('Or type one in')}</button>
+            </section>
+          )}
+          {quick.length > 0 && !bare && (
             <section className="quick" aria-label={t('Quick add')}>
               <span className="eyebrow">{t('Quick add')}</span>
               <div className="quick-row">{quick.map((q) => { const ex = (items || []).find((i) => i.name.toLowerCase() === q.name.toLowerCase()); const stocked = ex?.status === 'stocked'; return (
@@ -230,7 +247,7 @@ export default function Pantry() {
               ); })}</div>
             </section>
           )}
-          <form className={`card stack addform k-${kind}`} onSubmit={addPantry}>
+          {(!bare || typeIt) && <form className={`card stack addform k-${kind}`} onSubmit={addPantry}>
             <div className="kindbar" role="radiogroup" aria-label={t('Type')}>
               {[['fresh', 'Fresh', 'leaf'], ['frozen', 'Frozen', 'snow'], ['canned', 'Canned', 'pantry']].map(([k, label, ic]) => (
                 <button key={k} type="button" role="radio" aria-checked={kind === k} className={`kind k-${k} ${kind === k ? 'on' : ''}`} data-testid={`kind-${k}`} onClick={() => setFKind(kind === k ? '' : k)}><Icon name={ic} size={16} />{label}</button>
@@ -242,16 +259,14 @@ export default function Pantry() {
               <div style={{ minWidth: 0 }}><label className="lbl" htmlFor="p-exp">{t('Expires')}</label><div className="date-wrap"><input id="p-exp" className={`input ${form.expires_on ? '' : 'empty'}`} type="date" value={form.expires_on} onChange={(e) => setForm({ ...form, expires_on: e.target.value })} /></div>{form.expires_on && <button type="button" className="date-reset" onClick={() => setForm({ ...form, expires_on: '' })} aria-label="Reset the expiry date">Reset</button>}</div>
             </div>
             <button data-tour="add" data-tip="add" className="btn" type="submit"><Icon name="plus" size={18} />Add to pantry</button>
-          </form>
+          </form>}
 
-          <div className="row catrow">
+          {!bare && <div className="row catrow">
             {['All', ...CATEGORIES].map((c) => <button key={c} className={`chip`} style={{ border: 0, background: filter === c ? 'var(--fg)' : 'var(--track)', color: filter === c ? 'var(--bg)' : 'var(--fg)' }} onClick={() => { setFilter(c); setTimeout(() => { const el = document.getElementById('pantry-items'); if (el) { const y = el.getBoundingClientRect().top + window.scrollY - 70; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } }, 60); }}>{c}</button>)}
-          </div>
+          </div>}
           <div id="pantry-items" style={{ height: 0 }} />
 
-          {items === null ? <p className="muted">{t('Loading your pantry…')}</p> : items.length === 0 ? (
-            <div className="empty"><b>{t('Your pantry is empty')}</b></div>
-          ) : groups.map(([cat, list], gi) => (
+          {items === null ? <p className="muted">{t('Loading your pantry…')}</p> : items.length === 0 ? null : groups.map(([cat, list], gi) => (
             <section key={cat} className="stack" style={{ gap: 8 }}>
               <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="eyebrow">{cat} · {list.length}</span>

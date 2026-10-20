@@ -154,8 +154,9 @@ export default function Kitchen3D({
   // snap to a new cell only once you're clearly past the halfway mark (no flicker between two cells)
   const settle = (cur, raw) => (Math.abs(raw - cur) > 0.7 ? Math.round(raw) : cur);
   const lift = (dy) => -dy / (HU * S * Math.max(0.35, Math.sin(camera.rx * Math.PI / 180)));
-  function update(id, fn) {
-    const next = pieces.map((b) => { if (b.id !== id) return b; const n = { ...b }; fn(n); return K.clash(pieces, n) ? b : n; });
+  // ok: an extra rule for where it may go (a faucet only slides along a sink)
+  function update(id, fn, ok) {
+    const next = pieces.map((b) => { if (b.id !== id) return b; const n = { ...b }; fn(n); return K.clash(pieces, n) || (ok && !ok(n)) ? b : n; });
     if (next.some((b, i) => b !== pieces[i])) onChange?.(next);
   }
   const dist = () => { const [a, b] = [...fingers.current.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
@@ -231,7 +232,7 @@ export default function Kitchen3D({
     if (d.mode === 'spin') { const k = build ? 0.3 : 0.4; liveCam({ ...camera, rz: d.rz - dx * k, rx: K.clamp(d.rx - dy * k * 0.6, 20, 78) }); return; }
     if (d.mode === 'move' && d.thing) {   // things slide over the floor plan and settle on whatever is under them
       const { u, v } = axisCells(dx, dy);
-      update(d.id, (n) => { n.x = K.clamp(settle(n.x, d.b0.x + u), 0, K.GW - n.w); n.y = K.clamp(settle(n.y, d.b0.y + v), 0, K.GD - n.d); n.z = K.restZ(pieces, n); });
+      update(d.id, (n) => { n.x = K.clamp(settle(n.x, d.b0.x + u), 0, K.GW - n.w); n.y = K.clamp(settle(n.y, d.b0.y + v), 0, K.GD - n.d); n.z = K.restZ(pieces, n); }, (n) => !K.AT_SINK.has(n.mid.slice(K.THING.length)) || K.onSink(pieces, n) || !pieces.some((b) => b.mid === 'sink'));
       return;
     }
     if (d.mode === 'move') {
@@ -328,14 +329,16 @@ const FLOORS = {
   teak: 'repeating-linear-gradient(90deg,rgba(40,22,6,.45) 0 1.5px,rgba(0,0,0,0) 1.5px 17px),repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 2px,rgba(0,0,0,0) 2px 8px),linear-gradient(135deg,#B98A55,#8E6234)',
   concrete: 'radial-gradient(circle at 30% 40%,rgba(255,255,255,.06),rgba(0,0,0,0) 40%),linear-gradient(135deg,#4A484C,#38363A)'
 };
-// A shop thing: a drawn cut-out standing on the counter (or floor), turned to face you; its spot in the room never changes.
+// A shop thing: a drawn cut-out standing on the counter (or floor). It turns to face you only within the front
+// quarter of the room (like a real object you'd see from the kitchen), so as you spin the kitchen it stays put on its
+// counter instead of swivelling around; its spot in the room never changes.
 function Thing({ b, selected, onDown }) {
   const m = K.MODEL[b.mid]; const C = K.C, HU = K.HU;
-  const W = b.w * C, VW = Math.round(W * 1.6), H = VW, Z = Math.round(b.z * HU);   // drawn a bit bigger than its cell so you can see it
+  const W = b.w * C, VW = Math.round(W * 1.3), H = VW, Z = Math.round(b.z * HU);   // a little bigger than its cell so you can see it, not so big it hangs off the counter
   return (
     <div className={`kthing ${selected ? 'sel' : ''}`} style={{ left: b.x * C, top: b.y * C, width: W, height: b.d * C, transform: `translateZ(${Z + 0.5}px)` }} onPointerDown={onDown} data-piece={b.id}>
       <div className="kthing-shadow" />
-      <div className="kthing-up" style={{ left: (W - VW) / 2, top: b.d * C / 2 - H, width: VW, height: H, transform: 'rotateZ(calc(var(--rz) * -1deg)) rotateX(-90deg)' }}>
+      <div className="kthing-up" style={{ left: (W - VW) / 2, top: b.d * C / 2 - H, width: VW, height: H, transform: 'rotateZ(calc(clamp(-5, var(--rz) * -1, 85) * 1deg)) rotateX(-90deg)' }}>
         <img src={itemUrl(m.item)} alt={m.nick} title={m.nick} draggable={false} />
       </div>
     </div>

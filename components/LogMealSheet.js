@@ -14,9 +14,10 @@ import { recipeCard } from '@/lib/recipes/card';
 // Photo of your plate → log_meal. Title, cuisine and nutrition come from the recipe on the server.
 // Or a dish from the search (`dish` = { name, countries }): it counts toward that country on your globe.
 export default function LogMealSheet({ recipe: recipe0 = null, dish = null, country: country0 = null, challenge = null, factor = 1, onClose, onDone }) {
-  const { supabase, profile, refreshProfile, showPopup, say, setUi, ui, allRecipes, ensureRecipes, bump } = useWhisk();
+  const { supabase, profile, refreshProfile, showPopup, say, setUi, ui, getUi, allRecipes, ensureRecipes, bump } = useWhisk();
   const [recipe, setRecipe] = useState(recipe0);   // the recipe being posted; can be switched to one you read earlier
   const [findQ, setFindQ] = useState('');
+  const [dd, setDd] = useState(false);   // the "last 3 you opened" drop-down under the search box
   const [notes, setNotes, clearNotes] = useDraft(`notes:${recipe0 ? recipe0.id : 'dish:' + dish.name}`);
   const [country, setCountry] = useState(country0 || dish?.countries?.[0] || null);
   const [file, setFile] = useState(null);
@@ -34,7 +35,7 @@ export default function LogMealSheet({ recipe: recipe0 = null, dish = null, coun
     if (!wr || have.length) return;
     supabase.from('pantry_items').select('name').limit(8).then(({ data }) => setHave((data || []).map((d) => d.name)), () => {});
   }, [wr]); // eslint-disable-line react-hooks/exhaustive-deps
-  const recents = recipe0 && !challenge ? [recipe0, ...((ui?.recentRecipes || []).map((x) => (allRecipes || []).find((r) => r.id === x.id) || x))].filter((r, i, a) => a.findIndex((y) => y.id === r.id) === i).slice(0, 8) : [];
+  const recents = recipe0 && !challenge ? [recipe0, ...(((getUi?.() || ui)?.recentRecipes || []).map((x) => (allRecipes || []).find((r) => r.id === x.id) || x))].filter((r, i, a) => a.findIndex((y) => y.id === r.id) === i).slice(0, 8) : [];
   const found = findQ.trim().length >= 2 ? (allRecipes || []).filter((r) => r.title.toLowerCase().includes(findQ.trim().toLowerCase())).slice(0, 6) : [];
   const lines = (t) => t.split('\n').map((x) => x.trim()).filter(Boolean);
   function split() {
@@ -129,9 +130,15 @@ export default function LogMealSheet({ recipe: recipe0 = null, dish = null, coun
               </button>); })}</div>
           </div>
         )}
-        {recipe0 && !challenge && (
-          <div className="stack" style={{ gap: 6 }}>
-            <input className="input" placeholder="Cooked something else? Search recipes" value={findQ} onChange={(e) => setFindQ(e.target.value)} aria-label="Search recipes" data-testid="lm-find" />
+        {!challenge && (
+          <div className="stack" style={{ gap: 6, position: 'relative' }}>
+            <input className="input" placeholder="Cooked something else? Search recipes" value={findQ} onChange={(e) => setFindQ(e.target.value)} onFocus={() => setDd(true)} onBlur={() => setTimeout(() => setDd(false), 150)} aria-label="Search recipes" aria-expanded={dd && !findQ} data-testid="lm-find" />
+            {dd && !findQ.trim() && ((getUi?.() || ui)?.recentRecipes || []).length > 0 && (
+              <div className="lm-dd" role="listbox" data-testid="lm-dd">
+                <span className="eyebrow" style={{ padding: '2px 4px' }}>Last opened</span>
+                {((getUi?.() || ui)?.recentRecipes || []).slice(0, 3).map((x) => <button key={x.id} type="button" role="option" aria-selected={recipe?.id === x.id} className="lm-dd-item" data-testid="lm-dd-item" onMouseDown={(e) => e.preventDefault()} onClick={() => { setRecipe((allRecipes || []).find((r) => r.id === x.id) || x); setDd(false); }}>{x.title}{recipe?.id === x.id && <Icon name="check" size={14} />}</button>)}
+              </div>
+            )}
             {found.map((r) => <button key={r.id} type="button" className="card" style={{ textAlign: 'left', background: 'var(--field)', color: 'var(--fg)', fontWeight: 800, padding: 10 }} onClick={() => { setRecipe(r); setFindQ(''); }}>{r.title}</button>)}
           </div>
         )}

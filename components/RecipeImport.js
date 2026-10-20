@@ -16,7 +16,8 @@ async function decode(file) {
 }
 
 export default function RecipeImport({ edit = null, prefill = '', typed = false, draft = null, onClose, onSaved }) {
-  const { supabase, say } = useWhisk();
+  const { supabase, say, ui, getUi } = useWhisk();
+  const [nameDd, setNameDd] = useState(false);
   const [phase, setPhase] = useState(edit || typed || draft ? 'review' : 'start');   // start → reading → review
   const [pct, setPct] = useState(0);
   const [page, setPage] = useState([0, 0]);
@@ -94,7 +95,13 @@ export default function RecipeImport({ edit = null, prefill = '', typed = false,
         {phase === 'review' && (
           <>
             {lowCount > 0 && <p className="import-note" role="status" data-testid="import-low">{lowCount} {lowCount === 1 ? 'line is' : 'lines are'} marked in amber: the reader wasn’t sure of {lowCount === 1 ? 'it' : 'them'}. Please check {lowCount === 1 ? 'it' : 'them'}.</p>}
-            <div><label className="lbl" htmlFor="ri-title">Name</label><input id="ri-title" className={`input ${f.title.low ? 'low' : ''}`} maxLength={120} value={f.title.text} onChange={(e) => setF((x) => ({ ...x, title: { text: e.target.value, low: false } }))} data-testid="ri-title" /></div>
+            <div style={{ position: 'relative' }}><label className="lbl" htmlFor="ri-title">Name</label><input id="ri-title" className={`input ${f.title.low ? 'low' : ''}`} maxLength={120} value={f.title.text} onChange={(e) => setF((x) => ({ ...x, title: { text: e.target.value, low: false } }))} onFocus={() => setNameDd(true)} onBlur={() => setTimeout(() => setNameDd(false), 150)} data-testid="ri-title" />
+              {nameDd && !f.title.text.trim() && ((getUi?.() || ui)?.recentRecipes || []).length > 0 && (
+                <div className="lm-dd" role="listbox" data-testid="ri-dd">
+                  <span className="eyebrow" style={{ padding: '2px 4px' }}>Last opened</span>
+                  {((getUi?.() || ui)?.recentRecipes || []).slice(0, 3).map((x) => <button key={x.id} type="button" role="option" className="lm-dd-item" data-testid="ri-dd-item" onMouseDown={(e) => e.preventDefault()} onClick={() => { setF((y) => ({ ...y, title: { text: x.title, low: false } })); setNameDd(false); }}>{x.title}</button>)}
+                </div>
+              )}</div>
             <div className="grid2">
               <div><label className="lbl" htmlFor="ri-serv">Servings</label><input id="ri-serv" className="input" inputMode="numeric" maxLength={3} value={f.servings} onChange={(e) => setF((x) => ({ ...x, servings: e.target.value.replace(/\D/g, '') }))} placeholder="4" /></div>
               <div><label className="lbl" htmlFor="ri-min">Minutes</label><input id="ri-min" className="input" inputMode="numeric" maxLength={4} value={f.minutes} onChange={(e) => setF((x) => ({ ...x, minutes: e.target.value.replace(/\D/g, '') }))} placeholder="30" /></div>

@@ -1849,3 +1849,8 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .flip-face.back { transform: rotateY(180deg); background: var(--card); padding: 14px; overflow-y: auto; }
 .flip-list { margin: 0 0 6px; padding-left: 20px; font-size: 14px; line-height: 1.4; }
 @media (prefers-reduced-motion: reduce) { .flip-in { transition: none; } }
+
+/* "Last opened" drop-down under a name / search box */
+.lm-dd { position: absolute; left: 0; right: 0; top: 100%; z-index: 5; margin-top: 4px; display: flex; flex-direction: column; gap: 2px; padding: 6px; border-radius: 16px; border: 2px solid var(--edge); background: var(--card); box-shadow: 0 6px 0 var(--edge), 0 10px 24px rgba(0, 0, 0, .35); }
+.lm-dd-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; padding: 11px 10px; border: 0; border-radius: 12px; background: transparent; color: var(--fg); font: inherit; font-weight: 800; cursor: pointer; }
+.lm-dd-item:hover, .lm-dd-item[aria-selected="true"] { background: var(--field); }

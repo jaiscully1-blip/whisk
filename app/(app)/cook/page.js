@@ -56,14 +56,18 @@ export default function Cook() {
 
   // First visit: one question and three picks for today (same for everyone). The filters and tabs appear after "More filters" or the first search.
   const simple = !!saved && saved.size === 0 && !mode && !asked && !ui.cookFilters;
-  const picks = useMemo(() => {
+  const [shuffle, setShuffle] = useState(0);
+  const pool = useMemo(() => {
     if (!recipes?.length) return [];
     const ok = makeable.filter((x) => x.c.ok).map((x) => x.r);
-    const pool = (ok.length >= 3 ? ok : recipes.filter((r) => r.minutes <= 35)).slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
-    if (pool.length < 3) return pool;
-    const day = Math.floor(Date.now() / 864e5), step = Math.max(1, Math.floor(pool.length / 3));
-    return [0, 1, 2].map((k) => pool[(day * 7 + k * step) % pool.length]);
+    return (ok.length >= 3 ? ok : recipes.filter((r) => r.minutes <= 35)).slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
   }, [recipes, makeable]);
+  // the same pick for everyone each day; the shuffle button walks on from there
+  const picks = useMemo(() => {
+    if (!pool.length) return [];
+    const base = Math.floor(Date.now() / 864e5) * 7 + shuffle;
+    return [0, 1, 2].map((k) => pool[(base + k) % pool.length]).filter((r, i, a) => a.indexOf(r) === i);
+  }, [pool, shuffle]);
   function useWhatIHave() { if (!inStock.length) { router.push('/pantry'); return; } setHand(null); setAsked(true); setUi({ cookMode: 'pantry', cookDish: '' }); }
 
   const names = inStock.filter((p) => !SKIP.includes(p.category)).map((p) => p.name);
@@ -100,24 +104,32 @@ export default function Cook() {
 
       {simple && (
         <>
-          <button type="button" className="fr-big" data-testid="use-what-i-have" onClick={useWhatIHave}>
-            <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true"><path d="M8 20h32l-3 18a4 4 0 0 1-4 3H15a4 4 0 0 1-4-3z" fill="#C98A4B"/><path d="M14 20c0-8 4-13 10-13s10 5 10 13" fill="none" stroke="#9C6532" strokeWidth="3" strokeLinecap="round"/><circle cx="19" cy="17" r="4" fill="#E8584A"/><circle cx="28" cy="16" r="4" fill="#8FD46A"/></svg>
-            <span><b>{t('Use what I have')}</b><small>{inStock.length ? t('Recipes you can make right now') : t('Add your groceries, we’ll find recipes')}</small></span>
-          </button>
-          {picks.length > 0 && (
-            <section className="stack" style={{ gap: 8 }} aria-label={t('Today’s picks')} data-testid="todays-picks">
-              <span className="eyebrow">{t('Today’s 3 picks')}</span>
-              <div className="fr-picks">
-                {picks.map((r) => { const mid = MEALS.find((m) => fitsMeal(r, m.id))?.id || ''; return (
-                  <button key={r.id} type="button" className="fr-pick" onClick={() => setOpen(r)}>
-                    <svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true" dangerouslySetInnerHTML={{ __html: mealArt(mid) }} />
-                    <b>{r.title}</b><small>{hrs(r.minutes)}</small>
-                  </button>
-                ); })}
+          {picks.length > 0 && (() => { const hero = picks[0]; const mid = (r) => MEALS.find((m) => fitsMeal(r, m.id))?.id || ''; return (
+            <section className="stack" style={{ gap: 10 }} aria-label={t('Tonight’s pick')} data-testid="todays-picks">
+              <div className="fr-hero">
+                <div className="fr-art">
+                  <span className="fr-tag">{t('TONIGHT’S PICK')}</span>
+                  <button type="button" className="fr-shuf" data-testid="shuffle-pick" aria-label={t('Show me another')} onClick={() => setShuffle((n) => n + 1)}><Icon name="shuffle" size={18} /></button>
+                  <svg viewBox="0 0 48 48" width="120" height="120" aria-hidden="true" dangerouslySetInnerHTML={{ __html: mealArt(mid(hero)) }} />
+                </div>
+                <div className="fr-in">
+                  <h2>{hero.title}</h2>
+                  <span className="desc">{[hero.cuisine, hrs(hero.minutes), hero.key?.length ? `${hero.key.length} key ingredients` : ''].filter(Boolean).join(' · ')}</span>
+                  <button type="button" className="btn wide" data-testid="cook-pick" onClick={() => setOpen(hero)}>{t('Let’s cook it')}</button>
+                </div>
               </div>
-            </section>
-          )}
-          <button type="button" className="fr-more" data-testid="more-filters" onClick={() => setUi({ cookFilters: true })}>{t('More filters (diet, time, meal)')}</button>
+              {picks.length > 1 && <><span className="eyebrow">{t('Or try')}</span>
+              <div className="fr-minis">{picks.slice(1).map((r) => (
+                <button key={r.id} type="button" className="fr-mini" onClick={() => setOpen(r)}>
+                  <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true" dangerouslySetInnerHTML={{ __html: mealArt(mid(r)) }} />
+                  <span><b>{r.title}</b><small>{hrs(r.minutes)}</small></span>
+                </button>))}</div></>}
+            </section>); })()}
+          <div className="row" style={{ justifyContent: 'center', gap: 4 }}>
+            <button type="button" className="fr-more" data-testid="use-what-i-have" onClick={useWhatIHave}>{t('Use what I have')}</button>
+            <span className="desc">·</span>
+            <button type="button" className="fr-more" data-testid="more-filters" onClick={() => setUi({ cookFilters: true })}>{t('More filters')}</button>
+          </div>
         </>
       )}
 

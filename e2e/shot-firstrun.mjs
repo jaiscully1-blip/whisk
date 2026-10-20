@@ -9,7 +9,9 @@ await p.goto(`${BASE}/login`); await p.getByRole('radio', { name: 'Accept' }).cl
 await fetch('http://localhost:54321/__e2e/sql?q=' + encodeURIComponent('delete from public.pantry_items')).then((r) => r.text());
 await p.reload(); await p.waitForTimeout(2500); await sweep();
 ok('cook shows the question', await p.getByTestId('fr-question').count() === 1);
-ok('3 picks', await p.locator('.fr-pick').count() === 3);
+ok('hero + 2 minis', await p.locator('.fr-hero').count() === 1 && await p.locator('.fr-mini').count() === 2);
+const h1 = await p.locator('.fr-in h2').innerText(); await p.getByTestId('shuffle-pick').click(); await p.waitForTimeout(300); ok('shuffle changes the pick', (await p.locator('.fr-in h2').innerText()) !== h1);
+await p.getByTestId('cook-pick').click(); await p.waitForTimeout(800); ok('recipe opens', await p.locator('[role=dialog], .sheet').count() > 0); await p.screenshot({ path: OUT + '/fr-recipe.png' }); await p.keyboard.press('Escape'); await p.reload(); await p.waitForTimeout(2000); await sweep();
 ok('no filters yet', await p.locator('.cook-filters').count() === 0);
 await p.screenshot({ path: `${OUT}/fr-cook.png` });
 await p.getByTestId('use-what-i-have').click(); await p.waitForURL('**/pantry'); await p.waitForTimeout(1500); await sweep();

@@ -18,7 +18,7 @@ const mix = (id, seed) => { let h = seed >>> 0; for (let i = 0; i < id.length; i
 // Home is "Discover a Dish": recipes you can't fully make yet (plus a defrost reminder when frozen meat is waiting).
 // Always a fresh random mix each time it opens (Shuffle for another).
 export default function Home() {
-  const { supabase, recipes, say, ui, setUiQuiet, t } = useWhisk();
+  const { supabase, recipes, say, ui, setUiQuiet, t, ensureRecipes } = useWhisk();
   const [pantry, reload] = usePantry();
   const [saved, reloadSaved] = useSaved();
   const [open, setOpen] = useState(null);
@@ -38,20 +38,45 @@ export default function Home() {
   }, []);
 
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 2 ** 31));
+  // Dishes from all over the world join the web recipes: a fresh sample each time Home opens, and another on every Shuffle.
+  const [worldPool, setWorldPool] = useState([]);
+  const fetchWorld = useCallback((sd) => {
+    fetch(`/api/world-recipe?sample=90&seed=${sd}`).then((r) => (r.ok ? r.json() : null)).then((j) => {
+      if (j?.recipes?.length) setWorldPool((cur) => { const have = new Set(cur.map((x) => x.id)); return [...cur, ...j.recipes.filter((x) => !have.has(x.id))].slice(-360); });
+    }).catch(() => {});
+  }, []);
+  useEffect(() => { fetchWorld(seed); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const seen = useMemo(() => new Set(ui?.seenDiscover || []), []); // eslint-disable-line react-hooks/exhaustive-deps  (what you saw in earlier visits)
   // Heavy part (matching every recipe to your pantry) only when the pantry or recipes change.
   const base = useMemo(() => {
     if (!pantry || !recipes) return null;
-    return recipes.map((r) => ({ r, c: checkRecipe(r, pantry), soon: usesSoon(r, pantry) })).filter((x) => x.c.missing.length >= 1)
+    const web = new Set(recipes.map((r) => r.id));
+    return [...recipes, ...worldPool.filter((r) => !web.has(r.id))].map((r) => ({ r, c: checkRecipe(r, pantry), soon: usesSoon(r, pantry) })).filter((x) => x.c.missing.length >= 1)
       .map((x) => { const main = new Set(x.c.missing.map(canon)); const needs = shoppingNeeds(x.r, pantry); return { ...x, needs: [...needs.filter((n) => main.has(canon(n))), ...needs.filter((n) => !main.has(canon(n)))] }; });
-  }, [pantry, recipes]);
+  }, [pantry, recipes, worldPool]);
   // A fresh random mix every time Home opens (and on Shuffle). Recipes that use food about to go bad still come first.
   const ordered = useMemo(() => {
     if (!base) return null;
-    const o = [...base].sort((a, b) => mix(a.r.id, seed) - mix(b.r.id, seed));
-    return [...o.filter((x) => x.soon.length), ...o.filter((x) => !x.soon.length)];
-  }, [base, seed]);
+    const rnd = (id) => mix(id, seed);
+    // new dishes first, then ones you've already seen; within each, one cuisine at a time in turn so the same place never repeats back to back
+    const diverse = (list) => {
+      const g = new Map(); [...list].sort((a, b) => rnd(a.r.id) - rnd(b.r.id)).forEach((x) => { const k = x.r.cuisine || x.r.country || '?'; if (!g.has(k)) g.set(k, []); g.get(k).push(x); });
+      const groups = [...g.values()].sort((a, b) => rnd(a[0].r.id) - rnd(b[0].r.id)); const out = [];
+      for (let i = 0; out.length < list.length; i++) for (const q of groups) if (q[i]) out.push(q[i]);
+      return out;
+    };
+    const fresh = (x) => !seen.has(x.r.id);
+    const soon = base.filter((x) => x.soon.length), rest = base.filter((x) => !x.soon.length);
+    return [...diverse(soon), ...diverse(rest.filter(fresh)), ...diverse(rest.filter((x) => !fresh(x)))];
+  }, [base, seed, seen]);
+  // remember what you've been shown, so the next visit leads with dishes you haven't seen
+  useEffect(() => {
+    if (!ordered) return;
+    const ids = ordered.slice(0, shown).map((x) => x.r.id);
+    setUiQuiet?.((cur) => ({ seenDiscover: [...new Set([...(cur.seenDiscover || []), ...ids])].slice(-900) }));
+  }, [ordered, shown]); // eslint-disable-line react-hooks/exhaustive-deps
   const almost = ordered;
-  const shuffle = () => { startTransition(() => { setSeed((x) => (x + 0x9e3779b9) >>> 0); setShown(PAGE); }); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const shuffle = () => { const ns = (seed + 0x9e3779b9) >>> 0; fetchWorld(ns); startTransition(() => { setSeed(ns); setShown(PAGE); }); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   useEffect(() => {
     const el = moreRef.current; if (!el || !almost || shown >= almost.length) return;
     const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) setShown((n) => n + PAGE); }, { rootMargin: '500px' });
@@ -60,6 +85,7 @@ export default function Home() {
   const expiring = useMemo(() => new Set((pantry || []).filter((p) => p.status !== 'out' && p.expires_on && (new Date(String(p.expires_on).slice(0, 10) + 'T00:00:00') - new Date(new Date().toDateString())) / 864e5 <= 3 && (new Date(String(p.expires_on).slice(0, 10) + 'T00:00:00') - new Date(new Date().toDateString())) / 864e5 >= 0).map((p) => canon(p.name))).size, [pantry]);
   const frozen = (pantry || []).filter((p) => { const t = thawState(p); return t && t.state !== 'thawed'; });
 
+  const openFull = async (r) => { if (r.steps || !/^w-/.test(r.id)) { setOpen(r); return; } const full = (await ensureRecipes([r.id]))[0]; if (full) setOpen(full); };
   const addToList = useCallback(async (r, missing) => { say(listMsg(await addToShoppingList(supabase, missing))); }, [supabase, say]);
 
   return (
@@ -68,7 +94,7 @@ export default function Home() {
       <div className="page-title" style={{ margin: '6px 0 0' }}><h1>{t('Discover a Dish')}</h1></div>
       {almost === null ? <p className="muted">Checking your pantry…</p> : almost.length === 0 ? (
         <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">{t('Add pantry items')}</Link><Link className="btn ghost" href="/cook">{t('What can I make?')}</Link></div></div>
-      ) : almost.slice(0, shown).map((x, i) => <DishCard key={x.r.id} x={x} first={i === 0} onOpen={setOpen} onAdd={addToList} t={t} />)}
+      ) : almost.slice(0, shown).map((x, i) => <DishCard key={x.r.id} x={x} first={i === 0} onOpen={openFull} onAdd={addToList} t={t} />)}
       {almost && almost.length > shown && <div ref={moreRef}><button className="btn ghost wide" onClick={() => setShown((n) => n + PAGE)}>{t('Show more')}</button></div>}
       {almost && almost.length > 1 && !open && <button ref={fabRef} type="button" className="fab-shuffle" data-testid="shuffle" onClick={shuffle} aria-label={t('Shuffle')} title={t('Shuffle')}><Icon name="shuffle" size={22} /></button>}
       {open && <RecipeSheet recipe={open} pantry={pantry} saved={saved?.get(open.id)} onClose={() => setOpen(null)} onChanged={() => { reload(); reloadSaved(); }} />}
@@ -86,7 +112,7 @@ const DishCard = memo(function DishCard({ x: { r, soon, needs }, first, onOpen, 
           <div className="rcard-body stack" style={{ gap: 8 }}>
           <span className="eyebrow">{r.cuisine}</span>
           <h2 style={{ fontSize: 22 }}>{r.title}</h2>
-          <span className="src"><a href={r.url} target="_blank" rel="noopener noreferrer">{t('Full recipe')}</a> · {r.minutes} min</span>
+          <span className="src">{r.url && !/^w-/.test(r.id) ? <><a href={r.url} target="_blank" rel="noopener noreferrer">{t('Full recipe')}</a> · </> : null}{r.minutes} min</span>
           {soon.length > 0 && <span className="chip soon"><Icon name="timer" size={14} />Uses your {soon.map((p) => p.name.toLowerCase()).slice(0, 2).join(' and ')} before it goes bad</span>}
           <DietTags recipe={r} max={3} />
           <div className="row">{needs.slice(0, SHOW).map((m) => <span key={m} className="chip need">+ {m}</span>)}{needs.length > SHOW && <button type="button" className="chip more-need" onClick={() => onOpen(r)} aria-label={`See all ${needs.length} you need`}>+{needs.length - SHOW} more</button>}</div>

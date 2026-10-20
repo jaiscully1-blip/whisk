@@ -85,26 +85,43 @@ function DishCard({ d, have, country, pantry }) {
       .then((r) => r.json()).then((x) => setInfo({ ingredients: x.ingredients || (d.ingredients || []).map((name) => ({ name })), video: x.video || null, configured: !!x.configured, search: x.search }))
       .catch(() => setInfo({ ingredients: (d.ingredients || []).map((name) => ({ name })), video: null, configured: false, search: `https://www.youtube.com/results?search_query=${encodeURIComponent(d.name + ' recipe')}` }));
   }
-  // when the card opens, scroll so all of it is on screen (between the top bar and the tab bar); if it's taller than that, line its top up under the bar
-  const box = useRef(null); const moved = useRef(false);
-  const reveal = () => {
+  // When a card turns over, glide the page so the whole card is on screen between the top bar and the tab bar
+  // (centred when it fits; when it is taller than the room, its top sits just under the bar). One smooth ease, starting at once.
+  const box = useRef(null); const moved = useRef(false); const raf = useRef(0);
+  const [arrive, setArrive] = useState(false);
+  const glide = (dy) => {
+    cancelAnimationFrame(raf.current);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { window.scrollBy(0, dy); return; }
+    const t0 = performance.now(), dur = Math.min(720, 380 + Math.abs(dy) * 0.25); let done = 0;
+    const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+    const tick = (now) => {
+      if (moved.current) return;
+      const k = Math.min(1, (now - t0) / dur), to = dy * ease(k); window.scrollBy(0, to - done); done = to;
+      if (k < 1) raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+  };
+  const reveal = (onlyIfHidden) => {
     const el = box.current; if (!el || moved.current) return;
-    const top = document.querySelector('.hud')?.getBoundingClientRect().bottom || 0;
-    const nav = document.querySelector('.nav')?.getBoundingClientRect().top || window.innerHeight;
-    const r = el.getBoundingClientRect(); const room = nav - top - 12;
-    const want = r.height <= room ? top + (room - r.height) / 2 + 6 : top + 8;   // where its top should end up
+    const top = (document.querySelector('.hud')?.getBoundingClientRect().bottom || 0) + 10;
+    const nav = (document.querySelector('.nav')?.getBoundingClientRect().top || window.innerHeight) - 10;
+    const room = nav - top, h = (el.querySelector('.face.back')?.scrollHeight || el.getBoundingClientRect().height) + 2;
+    const r = el.getBoundingClientRect();
+    if (onlyIfHidden && r.top >= top - 2 && r.top + h <= nav + 2) return;
+    const want = h <= room ? top + (room - h) / 2 : top;
     const dy = r.top - want;
-    if (Math.abs(dy) > 4) window.scrollBy({ top: dy, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    if (Math.abs(dy) > 4) glide(dy);
   };
   useEffect(() => {
-    if (!on) return;
-    moved.current = false;
-    const stop = () => { moved.current = true; };
-    window.addEventListener('wheel', stop, { passive: true, once: true }); window.addEventListener('touchmove', stop, { passive: true, once: true });
-    const id = setTimeout(reveal, 480);
-    return () => { clearTimeout(id); window.removeEventListener('wheel', stop); window.removeEventListener('touchmove', stop); };
+    if (!on) { cancelAnimationFrame(raf.current); return; }
+    moved.current = false; setArrive(true);
+    const stop = () => { moved.current = true; cancelAnimationFrame(raf.current); };
+    window.addEventListener('wheel', stop, { passive: true, once: true }); window.addEventListener('touchstart', stop, { passive: true, once: true });
+    const go = requestAnimationFrame(() => reveal(false));
+    const off = setTimeout(() => setArrive(false), 1200);
+    return () => { cancelAnimationFrame(go); clearTimeout(off); window.removeEventListener('wheel', stop); window.removeEventListener('touchstart', stop); };
   }, [on]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (on && info) { const id = setTimeout(reveal, 120); return () => clearTimeout(id); } }, [info]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (on && info) { const id = setTimeout(() => reveal(true), 80); return () => clearTimeout(id); } }, [info]); // eslint-disable-line react-hooks/exhaustive-deps
   const rows = (info?.ingredients || []).map((x) => ({ ...x, ok: STAPLES.has(canon(x.name)) || have.has(canon(x.name)) }));
   const missing = rows.filter((x) => !x.ok);
   async function addMissing() {
@@ -118,7 +135,7 @@ function DishCard({ d, have, country, pantry }) {
   const t = on ? 0 : -1;
 
   return (
-    <div className={`flip dflip ${on ? 'on' : ''}`} ref={box}>
+    <div className={`flip dflip ${on ? 'on' : ''} ${arrive ? 'arrive' : ''}`} ref={box}>
       <div className="flip-in">
         <button className="card face dish-row" onClick={flip} aria-label={`${d.name}: show ingredients and video`} aria-hidden={on} tabIndex={on ? -1 : 0}>
           <span className="dish-ico" aria-hidden="true">{flags[0] ? <img className="flagimg" src={`/flags/${flags[0][0].toLowerCase()}.svg`} alt="" width="29" height="22" /> : <Icon name="cook" size={18} />}</span>

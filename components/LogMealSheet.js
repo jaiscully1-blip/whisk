@@ -65,7 +65,7 @@ export default function LogMealSheet({ recipe: recipe0 = null, dish = null, coun
       const { data, error } = await supabase.rpc('log_meal', recipe
         ? { p_recipe_id: recipe.id, p_photo_path: path, p_challenge_id: challenge?.id || null, p_notes: notes.trim().slice(0, 500) || null }
         : { p_recipe_id: null, p_photo_path: path, p_notes: notes.trim().slice(0, 500) || null, p_dish: dish.name, p_country: country });
-      if (error) throw new Error('Could not save that meal.');
+      if (error) { await supabase.storage.from('meal-photos').remove([path]).catch(() => {}); throw new Error(/daily meal limit/.test(error.message || '') ? 'You’ve posted 10 meals today. Come back tomorrow.' : 'Could not save that meal.'); }
       clearNotes();
       if (wIng.length || wSteps.length) {
         const title = (recipe ? recipe.title : dish.name).slice(0, 120);

@@ -4,9 +4,9 @@ import { useWhisk } from './AppShell';
 import Icon from './Icon';
 import ShareChips, { NOT_SHARED } from './ShareChips';
 
-// Your own plate: change who can see it, or delete the post. The XP and coins it earned stay.
+// Your own plate: change who can see it, or delete the post (what it earned is taken back).
 export default function PlateManage({ mealId, photoPath, onDeleted, onShared }) {
-  const { supabase, say, bump } = useWhisk();
+  const { supabase, say, bump, refreshProfile } = useWhisk();
   const [share, setShare] = useState(null);
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -23,11 +23,16 @@ export default function PlateManage({ mealId, photoPath, onDeleted, onShared }) 
   }
   async function del() {
     setBusy(true);
-    if (photoPath) await supabase.storage.from('meal-photos').remove([photoPath]).catch(() => {});
-    const { error } = await supabase.from('meals').delete().eq('id', mealId);
+    let gone = false, lost = null, photo = photoPath;
+    const r = await supabase.rpc('delete_meal', { p_meal: mealId });
+    if (!r.error) { gone = !!r.data?.deleted; lost = r.data; photo = r.data?.photo || photoPath; }
+    else if (/function|schema cache/i.test(r.error.message || '')) {   // the database update isn't in yet: delete without taking anything back
+      const d = await supabase.from('meals').delete().eq('id', mealId); gone = !d.error;
+    }
+    if (gone && photo) await supabase.storage.from('meal-photos').remove([photo]).catch(() => {});
     setBusy(false);
-    if (error) { say('Couldn’t delete that post.'); setAsking(false); return; }
-    say('Post deleted'); bump?.(); onDeleted?.(mealId);
+    if (!gone) { say('Couldn’t delete that post.'); setAsking(false); return; }
+    say(lost && (lost.coins || lost.xp) ? `Post deleted · −${lost.coins} coins, −${lost.xp} XP` : 'Post deleted'); bump?.(); refreshProfile?.(); onDeleted?.(mealId);
   }
   return (
     <div className="stack" style={{ gap: 10 }} data-testid="plate-manage">
@@ -37,7 +42,7 @@ export default function PlateManage({ mealId, photoPath, onDeleted, onShared }) 
         : (
           <div className="card stack" style={{ gap: 8 }} role="alertdialog" aria-label="Delete this post?">
             <b>Delete this post?</b>
-            <span className="desc">The photo and recipe are removed for good. The XP and coins you earned stay.</span>
+            <span className="desc">The photo and recipe are removed for good, and the coins and XP this meal earned are taken back.</span>
             <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
               <button type="button" className="btn ghost" style={{ flex: 1 }} onClick={() => setAsking(false)} disabled={busy}>Keep it</button>
               <button type="button" className="btn pm-del-go" style={{ flex: 1 }} data-testid="plate-delete-yes" onClick={del} disabled={busy}>{busy ? 'Deleting…' : 'Delete'}</button>

@@ -10,7 +10,7 @@ import * as K from '@/lib/kitchen/models';
 import { itemUrl } from '@/lib/art/items';
 import { REAL3D_GEAR } from '@/lib/art/real3d';
 import { MAGNETS, magnetUrl } from '@/lib/art/magnets';
-import { teamColors, COUNTRY_NAME } from '@/lib/world/flair';
+import { teamColors } from '@/lib/world/flair';
 import { nextPlace } from '@/lib/art/tampa';
 import { fmt, LEVELS } from '@/lib/game';
 
@@ -235,19 +235,4 @@ export function KitchenShop({ world, setWorld, onGetCoins }) {
   );
 }
 
-// Country challenges: a recipe from a country you've started, for extra XP (harder ones once it's Gold).
-export function CountryChallenges({ challenges, onOpen }) {
-  if (!challenges?.length) return null;
-  return (
-    <section className="stack" style={{ gap: 8 }} aria-label="Country challenges">
-      <h2 style={{ fontSize: 22, margin: 0 }} data-tip="cchallenges">Country challenges</h2>
-      {challenges.map((c) => (
-        <button key={c.id} type="button" className={`card cchal ${c.xp >= 400 ? 'hard' : ''}`} onClick={() => onOpen(c)}>
-          <FlagBar iso={c.country} size={34} />
-          <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}><b>{c.title}</b><span className="desc" style={{ display: 'block' }}>{COUNTRY_NAME[c.country] || c.country}{c.xp >= 400 ? ' · Gold challenge' : ''}</span></span>
-          <span className="chip xp">+{c.xp} XP</span>
-        </button>
-      ))}
-    </section>
-  );
-}
+

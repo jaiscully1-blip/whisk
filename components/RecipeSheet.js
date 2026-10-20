@@ -14,7 +14,7 @@ import Scene from './Scene';
 import CookMode from './CookMode';
 
 // A real recipe from the web: every ingredient measured and beginner steps from the source page, scaled to any servings.
-export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChanged, challenge = null }) {
+export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChanged, challenge = null, presetGroups = null }) {
   const { supabase, say, refreshProfile, setUiQuiet } = useWhisk();
   const [isSaved, setSaved] = useState(!!saved);
   const [logging, setLogging] = useState(false);
@@ -72,7 +72,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
   }
   const finish = () => { setCooking(false); setLogging(true); };
   if (cooking) return <CookMode r={r} factor={factor} challenge={challenge} onFinish={finish} onClose={() => setCooking(false)} />;
-  if (logging) return <LogMealSheet recipe={r} challenge={challenge} factor={factor} onClose={() => { setLogging(false); onClose?.(); }} onDone={onChanged} />;
+  if (logging) return <LogMealSheet recipe={r} challenge={challenge} presetGroups={presetGroups} factor={factor} onClose={() => { setLogging(false); onClose?.(); }} onDone={onChanged} />;
 
   return (
     <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>

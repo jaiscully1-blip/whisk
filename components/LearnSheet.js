@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useWhisk } from './AppShell';
 import Icon, { Coin } from './Icon';
 import { learnState } from '@/lib/learn/levels';
+import useToday from './useToday';
 import useCountdown from './useCountdown';
 
 // Learn: a 3-question quiz. Answers stay on the server until you submit, so there is nothing to peek at.
@@ -15,7 +16,7 @@ export default function LearnSheet({ onClose }) {
   const [res, setRes] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const st = learnState(profile);
+  const st = learnState(profile, new Date(), useToday());
   const [nextAt, setNextAt] = useState(null);   // set the moment a quiz is finished, so the countdown starts without waiting for a reload
   const left = useCountdown(nextAt || profile?.learn_next, true);
 

@@ -50,27 +50,27 @@ export default function NotifySettings() {
     else say(first ? `On · at most one a day, around ${HOURS[h][1]}` : `Around ${HOURS[h][1]}`);
   }
   return (
-    <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
-      <Icon name="bell" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Notifications')}</span>
-      {env === 'ok' && <button role="switch" aria-checked={on} aria-label={t('Notifications')} disabled={busy} onClick={() => (on ? setHour(null) : turnOn())} className={`switch ${on ? 'on' : ''}`}><span /></button>}
+    <div className="set-row">
+      <span className="set-ico" aria-hidden="true"><Icon name="bell" /></span><span className="set-lab">{t('Notifications')}</span>
+      <span className="set-end">{env === 'ok' && <button role="switch" aria-checked={on} aria-label={t('Notifications')} disabled={busy} onClick={() => (on ? setHour(null) : turnOn())} className={`switch ${on ? 'on' : ''}`}><span /></button>}</span>
       {on && env === 'ok' && (
-        <div className="row" style={{ width: '100%', flexWrap: 'nowrap', gap: 8, marginTop: 6 }}>
-          <label htmlFor="n-hour" className="desc" style={{ flex: 1 }}>At most one a day, around</label>
-          <select id="n-hour" className="input" style={{ width: 110, minHeight: 38 }} value={profile.notify_hour} onChange={(e) => setHour(Number(e.target.value))}>{HOURS.map(([h, l]) => <option key={h} value={h}>{l}</option>)}</select>
+        <div className="set-sub">
+          <label htmlFor="n-hour">Around</label>
+          <select id="n-hour" className="set-select" value={profile.notify_hour} onChange={(e) => setHour(Number(e.target.value))}>{HOURS.map(([h, l]) => <option key={h} value={h}>{l}</option>)}</select>
         </div>
       )}
       {on && env === 'ok' && 'expiry_days' in (profile || {}) && (
-        <div className="row" style={{ width: '100%', flexWrap: 'nowrap', gap: 8 }}>
-          <label htmlFor="n-days" className="desc" style={{ flex: 1 }}>Warn me about food going off</label>
-          <select id="n-days" data-testid="expiry-days" className="input" style={{ width: 150, minHeight: 38 }} value={profile.expiry_days ?? 1} onChange={(e) => setDays(Number(e.target.value))}>
+        <div className="set-sub">
+          <label htmlFor="n-days">Food going off</label>
+          <select id="n-days" data-testid="expiry-days" className="set-select" value={profile.expiry_days ?? 1} onChange={(e) => setDays(Number(e.target.value))}>
             <option value={0}>The day it expires</option><option value={1}>1 day before</option><option value={2}>2 days before</option><option value={3}>3 days before</option>
           </select>
         </div>
       )}
-      <span className="desc" style={{ width: '100%' }}>
-        {env === 'install' ? 'On iPhone, add Yoke to your Home Screen first (Share → Add to Home Screen), then turn this on there.'
+      <span className="set-hint">
+        {env === 'install' ? 'iPhone: add Yoke to your Home Screen first (Share → Add to Home Screen).'
           : env === 'no' ? 'This browser can’t show notifications.'
-          : 'Only useful ones: food about to go off, “defrost the beef tonight”, a new message in a chat (mute any chat), and when a friend starts a Cook Off.'}
+          : 'One a day at most: food about to go off, chats and Cook Offs.'}
       </span>
     </div>
   );

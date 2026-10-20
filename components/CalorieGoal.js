@@ -42,19 +42,19 @@ export default function CalorieGoal() {
   }
 
   return (
-    <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }} data-testid="calorie-goal">
-      <div className="row" style={{ flexWrap: 'nowrap' }}>
-        <Icon name="cook" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Daily calorie goal')}</span>
+    <div className="set-row" data-testid="calorie-goal">
+      <span className="set-ico" aria-hidden="true"><Icon name="leaf" /></span><span className="set-lab">{t('Daily calorie goal')}</span>
+      <span className="set-end">
         {goal ? (
-          <>
-            <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Lower goal" onClick={() => save(Math.max(1200, goal - 100))}>−</button>
-            <output style={{ minWidth: 64, textAlign: 'center', fontWeight: 800 }} data-testid="cal-goal">{goal}</output>
-            <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Raise goal" onClick={() => save(Math.min(4000, goal + 100))}>+</button>
-          </>
+          <span className="set-step">
+            <button className="btn ghost sm" aria-label="Lower goal" onClick={() => save(Math.max(1200, goal - 100))}>−</button>
+            <output data-testid="cal-goal">{goal}</output>
+            <button className="btn ghost sm" aria-label="Raise goal" onClick={() => save(Math.min(4000, goal + 100))}>+</button>
+          </span>
         ) : <button className="btn sm" data-testid="cal-on" onClick={() => save(2000)}>{t('Set a goal')}</button>}
-      </div>
+      </span>
       {goal ? (
-        <div className="row" style={{ marginTop: 10, gap: 14, flexWrap: 'nowrap', alignItems: 'center' }}>
+        <div className="row set-wide" style={{ gap: 14, flexWrap: 'nowrap', alignItems: 'center' }}>
           <svg width="92" height="92" viewBox="0 0 92 92" role="img" aria-label={`${tot} of ${goal} kcal today`}>
             <circle cx="46" cy="46" r={R} fill="none" stroke="var(--line)" strokeWidth="9" />
             <circle cx="46" cy="46" r={R} fill="none" stroke={over ? 'var(--bad, #e5484d)' : inRange ? 'var(--ok, #2fb344)' : 'var(--accent, #f5b700)'} strokeWidth="9" strokeLinecap="round"
@@ -64,10 +64,10 @@ export default function CalorieGoal() {
           </svg>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p className="desc" style={{ margin: 0 }}>
-              {d?.claimed ? 'Goal reward claimed today. Nice plate work.'
+              {d?.claimed ? 'Reward claimed today.'
                 : inRange ? 'You logged today. Claim your reward.'
-                : over ? 'Over today’s range. Tomorrow’s a fresh ring.'
-                : tot ? `${tot} of ${goal} kcal so far today.` : 'Cook something and log it to fill the ring.'}
+                : over ? 'Over today’s range. Fresh ring tomorrow.'
+                : tot ? `${tot} of ${goal} kcal so far.` : 'Log a meal to fill the ring.'}
             </p>
             {inRange && !d?.claimed && <button className="btn sm" data-testid="cal-claim" disabled={busy} style={{ marginTop: 8 }} onClick={claim}>Claim 100 coins</button>}
             <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 28, marginTop: 8 }}>
@@ -76,8 +76,7 @@ export default function CalorieGoal() {
           </div>
         </div>
       ) : null}
-      {goal ? <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => save(null)}>Turn off</button> : null}
-      <p className="desc" style={{ margin: '8px 0 0' }}>Counts the calories printed on recipes you log. A fun target, not medical advice.</p>
+      <span className="set-hint">{goal ? <>Calories come from the recipes you log. Not medical advice. <button type="button" className="set-link inline" onClick={() => save(null)}>Turn off</button></> : 'Calories come from the recipes you log. Not medical advice.'}</span>
     </div>
   );
 }

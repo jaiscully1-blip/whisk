@@ -119,7 +119,7 @@ await step('log in', async () => {
   const coins1 = Number((await page.locator('header .pill').nth(1).innerText()).replace(/\D/g, ''));
   check('a knife block (800) can be bought with the starting coins', coins0 - coins1 === 800, `${coins0} → ${coins1}`);
   await ktab('design');
-  check('what you buy goes straight into your kitchen (a starter one if you had none)', await page.locator('#my-kitchen .kthing img[alt="Knife block"]').waitFor({ timeout: 8000 }).then(() => true, () => false));
+  check('what you buy goes straight into your kitchen (a starter one if you had none)', await page.locator('#my-kitchen .kthing .ksolid, #my-kitchen .kthing img[alt="Knife block"]').first().waitFor({ timeout: 8000 }).then(() => true, () => false));
   await page.locator('.tip-ok').click().catch(() => {});
   await nav('Home');
 });
@@ -155,16 +155,13 @@ await step('learn quiz', async () => {
   await shot('08-quiz-result');
   check('after a quiz, the next one waits until tomorrow', /Back tomorrow/.test(await page.getByTestId('quiz-wait').innerText()));
   await page.locator('[data-testid=learn-sheet] [aria-label=Close]').click(); await page.getByTestId('learn-sheet').waitFor({ state: 'detached' });
-  check('the Learn button says done today', /Done today/.test(await page.getByTestId('learn-btn').innerText()));
-  await learnTap();
-  check('the quiz cannot be started again today', (await page.getByTestId('quiz-start').count()) === 0 && await page.getByTestId('quiz-wait').isDisabled());
-  await page.locator('[data-testid=learn-sheet] [aria-label=Close]').click();
+  check('once you have learned today the Learn card leaves the screen', (await page.getByTestId('learn-btn').count()) === 0);
   await fetch('http://localhost:54321/__e2e/unlock-quiz'); await page.reload(); await page.locator('.nav a[href="/me"]').click(); await page.waitForURL('**/me'); await page.getByTestId('learn-btn').waitFor();
   await learnTap(); await play(2);
   check('2 out of 3 pays nothing and marks the miss', /2 \/ 3/.test(await page.getByTestId('quiz-result').innerText()) && (await page.locator('.quiz-rev.no').count()) === 1 && (await coinsNow()) === c0 + 100);
   await page.locator('.learn-sheet-close, [data-testid=learn-sheet] [aria-label=Close]').first().click();
   await page.getByTestId('learn-sheet').waitFor({ state: 'detached' });
-  check('the Learn button stays done after the second quiz', /Done today/.test(await page.getByTestId('learn-btn').innerText()));
+  check('the Learn card stays gone after the second quiz', (await page.getByTestId('learn-btn').count()) === 0);
   // Me: change level. Expert hides Learn; Novice brings it back.
   await nav('Me');
   await openSettings();
@@ -583,31 +580,7 @@ await step('cook', async () => {
 await step('compete', async () => {
   await nav('Compete');
   await page.getByTestId('party-card').waitFor();
-  await page.locator('.flip .face').first().waitFor({ timeout: 15000 });
-  const cards = await page.locator('.flip').count();
-  check('3 challenges picked from your pantry', cards === 3, `${cards}`);
-  await page.locator('.flip .face').first().click(); await page.waitForTimeout(700);
-  check('tap flips the card to instructions', (await page.locator('.flip.on').count()) === 1);
-  check('flipped challenge: numbered, measured steps + servings ×', (await page.locator('.flip.on ol.steps li').count()) >= 3 && (await page.locator('.flip.on ol.steps .amt').count()) >= 1 && (await page.locator('.flip.on .servx').count()) === 1 && (await page.locator('.flip.on .ing-list li').count()) >= 3);   // the card is a random recipe, so short ones are fine
-  await page.locator('.flip.on .servx-in input').fill('2');
-  check('tapping the servings box does not start the photo step', (await page.locator('[aria-label="Log a meal"]').count()) === 0);
-  await shot('04-flip');
-  await page.locator('.flip.on .flip-cta').click();
-  // The challenges are random. If this one uses the frozen meat added earlier, the app (correctly) says "Defrost … first": try the next card.
-  for (let k = 1; k < 3 && (await page.locator('[aria-label="Log a meal"]').count()) === 0; k++) {
-    await page.waitForTimeout(600);
-    if ((await page.locator('[aria-label="Log a meal"]').count()) > 0) break;
-    check(`challenge ${k} needs frozen meat: the app says to defrost first`, (await page.locator('.toast', { hasText: /Defrost/ }).count()) >= 1);
-    await page.locator('.flip.on').getByRole('button', { name: 'Flip back' }).click(); await page.waitForTimeout(500);
-    await page.locator('.flip').nth(k).locator('.face').first().click(); await page.waitForTimeout(700);
-    await page.locator('.flip.on .flip-cta').click();
-  }
-  await page.locator('[aria-label="Log a meal"] input[type=file]').setInputFiles(photo);
-  await page.click('text=Submit');
-  await page.getByRole('heading', { name: 'Cooked it!' }).waitFor({ timeout: 15000 });
-  await page.click('[role=dialog] >> text=Leave'); await page.waitForTimeout(600); await closePopups();
-  await page.getByText('Done · coins added').waitFor();
-  check('completing a challenge pays coins', true);
+  check('Compete no longer lists this week’s challenges (they live inside each party)', (await page.locator('.flip').count()) === 0 && (await page.getByText('This week’s challenges').count()) === 0);
   check('shop is no longer on Compete', (await page.getByRole('button', { name: 'Get coins' }).count()) === 0 && (await page.getByText('Picked from recipes').count()) === 0);
 });
 await step('me', async () => {
@@ -723,10 +696,9 @@ await step('languages', async () => {
 });
 await step('compete layout', async () => {
   await nav('Compete'); await page.getByTestId('party-card').waitFor();
-  check('Compete order: challenges, then Start a party, then chats; no globe on the page (it lives in parties)', await page.evaluate(() => { const y = (q) => document.querySelector(q)?.getBoundingClientRect().top ?? -1; const a = y('main [data-tour=challenges]'), b = y('main [data-testid=party-card]'), c = y('main [data-testid=see-all-chats]'); return a >= 0 && a < b && b < c && !document.querySelector('main .globe'); }));
+  check('Compete order: Start a party, then chats; no globe or challenges on the page (they live in parties)', await page.evaluate(() => { const y = (q) => document.querySelector(q)?.getBoundingClientRect().top ?? -1; const b = y('main [data-testid=party-card]'), c = y('main [data-testid=see-all-chats]'); return b >= 0 && b < c && !document.querySelector('main .globe') && !document.querySelector('main [data-tour=challenges]'); }));
   check('Cuisine bingo is gone from Compete', (await page.getByText('Cuisine bingo').count()) === 0 && (await page.locator('main .bingo').count()) === 0);
-  const wantD = (() => { const n = new Date(); const d = (8 - n.getDay()) % 7 || 7; const mon = new Date(n.getFullYear(), n.getMonth(), n.getDate() + d); return Math.max(1, Math.ceil((mon - n) / 864e5)); })();
-  check('one reset timer at the top, counting to Monday like the challenges', (await page.getByText(/^Resets in \d+d$/).count()) === 1 && (await page.getByText(`Resets in ${wantD}d`).count()) === 1);
+  check('no weekly reset timer on Compete any more (it is inside each party)', (await page.getByText(/^Resets in \d+d$/).count()) === 0);
   await nav('Me'); await page.locator('.pcard').waitFor();
 });
 await step('buy coins with Apple Pay (RevenueCat)', async () => {
@@ -870,7 +842,7 @@ await step('free dish search', async () => {
   // finished countries: Gold on the tier list, painted on the globe, their kitchen things in the shop
   await fetch('http://localhost:54321/__e2e/seed-meals?country=MX&n=5');
   await nav('Me'); await page.locator('.pcard').waitFor();
-  check('country challenges show up for started countries', await page.locator('.cchal').first().waitFor({ timeout: 8000 }).then(() => true, () => false));
+  check('Me has no country challenges any more', (await page.locator('.cchal').count()) === 0 && (await page.getByText('Country challenges').count()) === 0);
   await openKitchen('shop');
   await page.locator('.shop [role=tab]', { hasText: 'From your countries' }).click({ timeout: 8000 });
   await page.locator('.shop-grid .tile', { hasText: 'Molcajete' }).waitFor({ timeout: 8000 });

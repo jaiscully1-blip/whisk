@@ -13,7 +13,7 @@ import { recipeCard } from '@/lib/recipes/card';
 
 // Photo of your plate → log_meal. Title, cuisine and nutrition come from the recipe on the server.
 // Or a dish from the search (`dish` = { name, countries }): it counts toward that country on your globe.
-export default function LogMealSheet({ recipe: recipe0 = null, dish = null, country: country0 = null, challenge = null, factor = 1, onClose, onDone }) {
+export default function LogMealSheet({ recipe: recipe0 = null, dish = null, country: country0 = null, challenge = null, factor = 1, presetGroups = null, onClose, onDone }) {
   const { supabase, profile, refreshProfile, showPopup, say, setUi, ui, getUi, allRecipes, ensureRecipes, bump } = useWhisk();
   const [recipe, setRecipe] = useState(recipe0);   // the recipe being posted; can be switched to one you read earlier
   const [findQ, setFindQ] = useState('');
@@ -30,7 +30,7 @@ export default function LogMealSheet({ recipe: recipe0 = null, dish = null, coun
   const [ings, setIngs] = useState('');
   const [stepsTxt, setStepsTxt] = useState('');
   const [have, setHave] = useState([]);
-  const [share, setShare] = useState(() => ({ friends: !!ui?.lastShare?.friends, groups: Array.isArray(ui?.lastShare?.groups) ? ui.lastShare.groups : [] }));
+  const [share, setShare] = useState(() => ({ friends: !!ui?.lastShare?.friends, groups: [...new Set([...(Array.isArray(ui?.lastShare?.groups) ? ui.lastShare.groups : []), ...(presetGroups || [])])] }));   // presetGroups: opened from a party, so it's shared there to begin with
   useEffect(() => {
     if (!wr || have.length) return;
     supabase.from('pantry_items').select('name').limit(8).then(({ data }) => setHave((data || []).map((d) => d.name)), () => {});

@@ -1033,8 +1033,6 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .shop-swatch { display: block; border-radius: 10px; box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.2); margin: 6px auto; }
 .shop-big { display: grid; place-items: center; min-height: 140px; }
 .shop-teaser { display: flex; align-items: center; gap: 6px; margin: 0; }
-.cchal { display: flex; align-items: center; gap: 12px; text-align: left; }
-.cchal.hard { border-color: #E0A93B; box-shadow: inset 0 0 0 1px #E0A93B; }
 
 .pcard-next { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
 .pcard-next .bar { height: 10px; }
@@ -1277,7 +1275,36 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 /* ---------- Me › Settings page ---------- */
 .settings-page { position: fixed; inset: 0; z-index: 45; background: var(--bg); overflow-y: auto; padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px)); }
 .settings-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; background: var(--bg); border-bottom: 1px solid var(--line); }
-.settings-body { max-width: 720px; margin: 0 auto; padding: 16px 16px 0; gap: 12px; }
+.settings-body { max-width: 720px; margin: 0 auto; padding: 16px 16px 0; gap: 18px; }
+/* Settings: short labelled groups; every row is  icon · label · control, with a one-line hint underneath when needed */
+.set-sec { display: flex; flex-direction: column; gap: 6px; }
+.set-h { margin: 0 4px; font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.set-card { padding: 4px 0; gap: 0; overflow: hidden; }
+.set-row { position: relative; display: flex; flex-wrap: wrap; align-items: center; column-gap: 12px; row-gap: 2px; padding: 11px 16px; min-height: 56px; width: 100%; color: var(--fg); text-align: left; background: none; border: 0; text-decoration: none; font: inherit; }
+.set-row + .set-row::before { content: ""; position: absolute; top: 0; left: 64px; right: 0; border-top: 1px solid var(--line); }
+.set-btn { cursor: pointer; flex-wrap: nowrap; }
+.set-btn:active { background: color-mix(in srgb, var(--line) 45%, transparent); }
+.set-ico { flex: none; width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: var(--accent-soft, var(--gold-soft)); color: var(--accent-ink, var(--fg)); }
+.set-ico img, .set-ico svg { display: block; }
+.set-aa { font-family: var(--f-display); font-size: 15px; line-height: 1; }
+.set-lab { flex: 1; min-width: 0; font-weight: 700; }
+.set-end { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.set-val { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--muted); text-align: right; max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-btn .set-val { margin-left: 0; }
+b.set-val { color: var(--fg); font-size: 15px; font-weight: 800; }
+.set-hint { flex-basis: 100%; padding-left: 46px; font-size: 12.5px; line-height: 1.35; color: var(--muted); }
+.set-sub { flex-basis: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-left: 46px; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.set-wide { flex-basis: 100%; padding-left: 46px; margin-top: 8px; }
+.set-select { min-height: 38px; max-width: 170px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--fg); padding: 0 10px; font: inherit; font-weight: 700; font-size: 14px; }
+.set-step { display: inline-flex; align-items: center; gap: 4px; }
+.set-step .btn { width: 34px; min-height: 34px; padding: 0; }
+.set-step output { min-width: 40px; text-align: center; font-weight: 800; }
+.set-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 14px; font-size: 11px; color: var(--muted); }
+.set-foot .mono { flex-basis: 100%; text-align: center; overflow-wrap: anywhere; opacity: .7; }
+.set-link { background: none; border: 0; padding: 6px; min-height: 30px; font: inherit; font-size: 12px; color: var(--muted); text-decoration: underline; display: inline-flex; align-items: center; gap: 4px; }
+.set-link.inline { padding: 0; min-height: 0; color: var(--accent-ink, var(--fg)); font-size: inherit; }
+.set-link.danger-row { color: var(--bad); }
+
 
 /* ---------- my recipes / recipe import ---------- */
 .input.low { border-color: #E0A93B; background: color-mix(in srgb, #E0A93B 14%, var(--card)); }
@@ -1846,6 +1873,28 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .pp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .pp-tile { position: relative; overflow: hidden; border-radius: 16px; border: 2px solid var(--edge); box-shadow: 0 3px 0 var(--edge); height: 150px; padding: 0; background: var(--field); cursor: pointer; color: #fff; font: inherit; }
 .pp-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* party plates: a strip you swipe sideways, newest first */
+.pp-strip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 2px 8px; margin: 0 -2px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.pp-strip::-webkit-scrollbar { display: none; }
+.pp-card { flex: none; width: min(62%, 236px); aspect-ratio: 4 / 5; scroll-snap-align: start; position: relative; overflow: hidden; border-radius: 18px; border: 2px solid var(--edge); box-shadow: 0 3px 0 var(--edge); padding: 0; background: var(--field); cursor: pointer; color: #fff; font: inherit; text-align: left; }
+.pp-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pp-card.latest { border-color: var(--accent); box-shadow: 0 3px 0 var(--accent); }
+.pp-card .pp-cap { display: grid; gap: 1px; padding: 28px 12px 10px; font-size: 15px; }
+.pp-card .pp-cap small { font-size: 12px; font-weight: 700; opacity: .85; }
+.pp-time { position: absolute; top: 8px; left: 38px; background: rgba(10, 6, 6, .62); color: #fff; border-radius: 99px; font-size: 11px; font-weight: 800; padding: 3px 9px; }
+.pp-card.latest .pp-time { background: var(--accent); color: #171C16; }
+.pp-post { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; border-style: dashed; box-shadow: none; background: transparent; color: var(--fg); padding: 16px; }
+.pp-post b { font-size: 17px; } .pp-post small { color: var(--muted); font-size: 12.5px; line-height: 1.3; }
+.pp-plus { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--btn); color: var(--btn-ink); box-shadow: 0 3px 0 var(--btn-shadow); }
+.pp-pick { display: flex; align-items: center; justify-content: space-between; text-align: left; background: var(--field); color: var(--fg); font-weight: 800; padding: 12px; }
+/* party challenges */
+.pch { padding: 0; overflow: hidden; display: grid; }
+.pch-main { display: grid; gap: 8px; text-align: left; background: none; border: 0; color: inherit; font: inherit; padding: 14px 16px 10px; cursor: pointer; }
+.pch-title { font-family: var(--f-display); font-weight: 700; font-size: 20px; }
+.pch-who { display: flex; align-items: center; gap: 10px; padding: 10px 16px 12px; border-top: 1px solid var(--line); }
+.pch-avs { display: inline-flex; } .pch-avs .post-av { margin-left: -8px; border: 2px solid var(--card); font-style: normal; } .pch-avs .post-av:first-child { margin-left: 0; }
+.pch.done { border-color: var(--fresh); }
+.pch-skel { height: 140px; background: linear-gradient(90deg, var(--line) 25%, rgba(255,255,255,.10) 50%, var(--line) 75%); background-size: 200% 100%; animation: rs-shim 1.2s linear infinite; }
 .pp-ph { display: grid; place-items: center; width: 100%; height: 100%; color: var(--muted); }
 .pp-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 9px 6px; text-align: left; font-weight: 800; font-size: 12px; line-height: 1.15; background: linear-gradient(transparent, rgba(10, 6, 6, .9)); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .pp-who-dot { position: absolute; top: 6px; left: 6px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 900; color: #171C16; border: 2px solid var(--edge); }

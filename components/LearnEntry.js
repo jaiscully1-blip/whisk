@@ -5,6 +5,7 @@ import LearnSheet from './LearnSheet';
 import Icon from './Icon';
 import { learns, learnState } from '@/lib/learn/levels';
 import useCountdown from './useCountdown';
+import useToday from './useToday';
 
 // Apron patches: one is stitched on for each day of your best learning streak (1, 2, 3, 5, 7, 10).
 const PATCHES = [
@@ -17,16 +18,18 @@ const PATCHES = [
 ];
 
 // The Learn card on the Me tab. Only shown for Beginner, Novice and Advanced beginner. Lessons open only when it is pressed.
+// Once you've learned today the card leaves the screen until the next day starts (12:00 midnight in your own time zone).
 export default function LearnEntry() {
   const { profile } = useWhisk();
   const [open, setOpen] = useState(false);
   const left = useCountdown(profile?.learn_next);
+  const today = useToday();
   if (!learns(profile?.skill_level)) return null;
-  const st = learnState(profile);
+  const st = learnState(profile, new Date(), today);
   const ready = !(left > 0) && !st.doneToday;
   return (
     <>
-      <button type="button" className="card learn-card" onClick={() => setOpen(true)} data-testid="learn-btn" data-tip="learn">
+      {(!st.doneToday || open) && <button type="button" className="card learn-card" onClick={() => setOpen(true)} data-testid="learn-btn" data-tip="learn">
         <span className="lc-top">
           <span className={`lc-ico ${ready ? '' : 'done'}`} aria-hidden="true"><Icon name={ready ? 'learn' : 'check'} size={24} />{ready && <i className="lc-new" data-testid="learn-new">NEW</i>}</span>
           <span className="lc-txt">
@@ -35,7 +38,7 @@ export default function LearnEntry() {
           </span>
           <Icon name="chevron" />
         </span>
-      </button>
+      </button>}
       {open && <LearnSheet onClose={() => setOpen(false)} />}
     </>
   );

@@ -75,7 +75,7 @@ export function PartyCard() {
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setMaking(false); }}>
           <form className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label="Start a party" onSubmit={make}>
             <h2 style={{ fontSize: 24 }}>Start a party</h2>
-            <p className="desc" style={{ margin: 0 }}>Your party shares one globe. Cook a country to colour it yours; cook it more times than whoever has it to take it. Most countries at the end of the month wins.</p>
+            <p className="desc" style={{ margin: 0 }}>Your party shares plates, a globe and this week’s challenges.</p>
             <label htmlFor="pt-name" hidden>Party name</label>
             <input id="pt-name" className="input" maxLength={30} placeholder="Party name" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} />
             <span className="eyebrow">Invite friends</span>

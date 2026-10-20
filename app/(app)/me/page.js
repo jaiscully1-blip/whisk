@@ -12,7 +12,7 @@ import DailyQuest from '@/components/DailyQuest';
 import MyYouTubers from '@/components/MyYouTubers';
 import { TIPS } from '@/lib/tips';
 import AvatarPicker from '@/components/AvatarPicker';
-import { ProfileCard, CountryChallenges, MyKitchen } from '@/components/MeWorld';
+import { ProfileCard, MyKitchen } from '@/components/MeWorld';
 import ResetSheet from '@/components/ResetSheet';
 import NeverShowSheet from '@/components/NeverShowSheet';
 import { makeBackup, parseBackup, restoreBackup } from '@/lib/backupFile';
@@ -20,20 +20,33 @@ import NotifySettings from '@/components/NotifySettings';
 import CalorieGoal from '@/components/CalorieGoal';
 import LearnEntry from '@/components/LearnEntry';
 import BackupSheet from '@/components/BackupSheet';
-import RecipeSheet from '@/components/RecipeSheet';
 import { usePantry, useWorld } from '@/components/usePantry';
-import { useRouter } from 'next/navigation';
 import { levelFor, fmt } from '@/lib/game';
 import { LANGS } from '@/lib/i18n';
 
 const EMPTY_LIST = [];
 const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
 
+// Settings building blocks: a titled group, a row with a control on the right, and a row you tap to open something.
+function Sec({ title, children }) { return <section className="set-sec"><h3 className="set-h">{title}</h3><div className="card set-card">{children}</div></section>; }
+function Item({ ico, label, htmlFor, hint, testid, children }) {
+  return (
+    <div className="set-row" data-testid={testid}>
+      <span className="set-ico" aria-hidden="true">{ico}</span>
+      {htmlFor ? <label htmlFor={htmlFor} className="set-lab">{label}</label> : <span className="set-lab">{label}</span>}
+      <span className="set-end">{children}</span>
+      {hint && <span className="set-hint">{hint}</span>}
+    </div>
+  );
+}
+function Btn({ ico, label, value, onClick, testid }) {
+  return <button type="button" className="set-row set-btn" onClick={onClick} data-testid={testid}><span className="set-ico" aria-hidden="true">{ico}</span><span className="set-lab">{label}</span>{value && <span className="set-val">{value}</span>}<Icon name="chevron" size={18} /></button>;
+}
+
 export default function Me() {
-  const { account, supabase, profile, setProfile, refreshProfile, say, ui, setUi, openPrivacy, replayTour, dataVersion, allRecipes, ensureRecipes, bump, t, lang, setLang } = useWhisk();
+  const { account, supabase, profile, setProfile, refreshProfile, say, ui, setUi, openPrivacy, replayTour, dataVersion, bump, t, lang, setLang } = useWhisk();
   const [backupSet, setBackupSet] = useState(false);   // the same backup sheet, opened from Settings
   const [backupAsk, setBackupAsk] = useState(false);   // after a name change: offer to back the game up (one time: it never shows again once backed up)
-  const router = useRouter();
   const [medata] = useCached('me', () => fetchMe(supabase), [dataVersion]);   // remembered between tabs (lib/cache.js)
   const meals = medata?.meals || EMPTY_LIST, history = medata?.history || EMPTY_LIST;
   const [world, , setWorld] = useWorld();
@@ -63,7 +76,6 @@ export default function Me() {
   const [resetting, setResetting] = useState(false);
   const [never, setNever] = useState(false);
   const [backingUp, setBackingUp] = useState(false);
-    const [recipe, setRecipe] = useState(null);
   const [pantry] = usePantry();
   const [nameDraft, setNameDraft, clearName] = useDraft('nm', profile?.display_name || '');
   const scaleAt = Math.max(0, TEXT_SCALES.indexOf(ui.textScale || 1));
@@ -84,11 +96,6 @@ export default function Me() {
   const ingredients = (pantry || []).filter((p) => p.status !== 'out').length;
   const recipesCooked = world && !world.missing ? world.recipes || 0 : meals.length;
 
-  // the dart hit a country: find something to cook from there
-  async function openChallenge(c) {
-    const r = (allRecipes || []).find((x) => x.id === c.recipe_id) || (await ensureRecipes([c.recipe_id]))[0];
-    if (r) setRecipe(r); else { setUi({ cookMode: 'named', cookDish: c.title }); router.push('/cook'); }
-  }
   async function toggleVacation() {
     const on = !profile?.vacation_since;
     const { data, error } = await supabase.rpc('set_vacation', { p_on: on });
@@ -140,99 +147,84 @@ export default function Me() {
 
       <DailyQuest />
 
-      <CountryChallenges challenges={world?.challenges} onOpen={openChallenge} />
-
       <MyYouTubers />
 
       {settingsOpen && (
         <div className="settings-page" role="dialog" aria-modal="true" aria-label={t('Settings')} data-testid="settings-page">
           <div className="settings-top"><button type="button" className="btn ghost sm" onClick={() => setSettingsOpen(false)} aria-label={t('Back to Me')} data-testid="settings-back"><Icon name="chevron" size={18} style={{ transform: 'rotate(180deg)' }} />{t('Back')}</button><h2 style={{ margin: 0, fontSize: 22 }}>{t('Settings')}</h2></div>
           <div className="settings-body stack">
-      <div className="card stack" style={{ gap: 0, padding: 0 }}>
-        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }}>
-          <Icon name="moon" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Night mode')}</span>
-          <button role="switch" aria-checked={profile?.theme_pref === 'night'} aria-label={t('Night mode')} onClick={() => saveSetting({ theme_pref: profile.theme_pref === 'night' ? 'day' : 'night' })} style={{ width: 56, height: 34, borderRadius: 99, border: 0, padding: 4, background: profile?.theme_pref === 'night' ? 'var(--accent)' : 'var(--line)', display: 'flex', justifyContent: profile?.theme_pref === 'night' ? 'flex-end' : 'flex-start' }}>
-            <span style={{ width: 26, height: 26, borderRadius: 99, background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.25)' }} />
-          </button>
-        </div>
-        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }}>
-          <Icon name="globe" /><label htmlFor="lang-pick" style={{ flex: 1, fontWeight: 700 }}>{t('Language')}</label>
-          <select id="lang-pick" data-testid="lang-pick" value={lang} onChange={(e) => setLang(e.target.value)} style={{ minHeight: 40, borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--fg)', padding: '0 10px', font: 'inherit', fontWeight: 700 }}>
-            {LANGS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
-          </select>
-        </div>
-        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }}>
-          <Icon name="cook" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Weekly cooking goal')}</span>
-          <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Fewer meals" onClick={() => saveSetting({ weekly_goal: Math.max(1, goal - 1) }, `Goal: ${Math.max(1, goal - 1)} meals a week`)}>−</button>
-          <output style={{ minWidth: 28, textAlign: 'center', fontWeight: 800 }}>{goal}</output>
-          <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="More meals" onClick={() => saveSetting({ weekly_goal: Math.min(14, goal + 1) }, `Goal: ${Math.min(14, goal + 1)} meals a week`)}>+</button>
-        </div>
-        {profile?.skill_level !== undefined && (
-          <button className="row setbtn" data-testid="level-row" onClick={() => setLevelOpen(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
-            <Icon name="learn" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Cooking level')}</span><span className="desc">{levelLabel(profile.skill_level) || 'Not set'}{learns(profile.skill_level) ? ' · Learn on' : ''}</span><Icon name="chevron" />
-          </button>
-        )}
-        <button className="row setbtn" onClick={() => setNever(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
-          <Icon name="shield" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Never show me')}</span><span className="desc">{(profile?.never_show || []).length ? `${profile.never_show.length} hidden` : 'Allergies, dislikes'}</span><Icon name="chevron" />
-        </button>
-        <CalorieGoal />
-        <NotifySettings />
-        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
-          <Icon name="plane" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Vacation mode')}</span>
-          <button role="switch" aria-checked={!!profile?.vacation_since} aria-label={t('Vacation mode')} onClick={toggleVacation} className={`switch ${profile?.vacation_since ? 'on' : ''}`}><span /></button>
-          <span className="desc" style={{ width: '100%' }}>{profile?.vacation_since ? 'Your streak is paused. It picks up where you left off when you cook again or turn this off (up to 30 days).' : 'Going away? Pause your streak so the days away don’t count.'}</span>
-        </div>
-        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }}>
-          <span style={{ width: 24, textAlign: 'center', fontWeight: 900, fontFamily: 'var(--f-display)' }} aria-hidden="true">Aa</span><span style={{ flex: 1, fontWeight: 700 }}>{t('Text size')}</span>
-          <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Smaller text" disabled={scaleAt === 0} onClick={() => setUi({ textScale: TEXT_SCALES[Math.max(0, scaleAt - 1)] })}>−</button>
-          <output style={{ minWidth: 44, textAlign: 'center', fontWeight: 800 }} aria-live="polite">{Math.round(TEXT_SCALES[scaleAt] * 100)}%</output>
-          <button className="btn ghost sm" style={{ width: 36, padding: 0 }} aria-label="Bigger text" disabled={scaleAt === TEXT_SCALES.length - 1} onClick={() => setUi({ textScale: TEXT_SCALES[Math.min(TEXT_SCALES.length - 1, scaleAt + 1)] })}>+</button>
-        </div>
-        <div className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}><Icon name="snow" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Streak freezes')}</span><b>{profile?.streak_freezes ?? 1}</b><span className="desc" style={{ width: '100%' }}>You get 1 free freeze. It saves one missed day. After that, buy more with coins (1,500 each, up to 3). Lose your streak and you can revive it for $1.25.</span></div>
-        {account?.anon ? (
-          <button className="row setbtn" data-testid="set-backup" onClick={() => setBackupSet(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
-            <Icon name="shield" /><span style={{ flex: 1, fontWeight: 700 }}>Back up your game</span><span className="desc">Not backed up</span><Icon name="chevron" />
-          </button>
-        ) : (
-          <div className="row" data-testid="set-backed-up" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap' }}>
-            <Icon name="shield" /><span style={{ flex: 1, fontWeight: 700 }}>Game backed up</span><Icon name="check" />
-          </div>
-        )}
-        {backupSet && account?.anon && <BackupSheet supabase={supabase} onClose={() => setBackupSet(false)} />}
-        <button className="row setbtn" onClick={openPrivacy} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
-          <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Cookies & privacy')}</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />
-        </button>
-        <label className="row setbtn" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', color: 'var(--fg)' }}>
-          <Icon name="timer" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Time zone')}</span>
-          <select data-testid="tz-pick" aria-label={t('Time zone')} className="input" style={{ maxWidth: 170, minHeight: 36, padding: '0 8px', fontSize: 13 }} value={ui?.tzPick || ''} onChange={(e) => { setUi({ tzPick: e.target.value || null }); say(e.target.value ? 'Time zone saved' : 'Using this device’s time zone'); }}>
-            <option value="">{t('Automatic')}</option>
-            {tzOptions(ui?.tzPick).map(([z, label]) => <option key={z} value={z}>{label}</option>)}
-          </select>
-        </label>
-        <button className="row setbtn" onClick={() => setHowTo(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
-          <Icon name="flag" /><span style={{ flex: 1, fontWeight: 700 }}>{t('How Yoke works')}</span><Icon name="chevron" />
-        </button>
-        <button className="row setbtn" onClick={() => { replayTour(); say('The tips will show again as you tap things'); }} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
-          <img src="/icon.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Show tips again')}</span><Icon name="chevron" />
-        </button>
-        {profile?.is_admin && <Link href="/admin" className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', textDecoration: 'none', color: 'var(--fg)', flexWrap: 'nowrap' }}><Icon name="compete" /><span style={{ flex: 1, fontWeight: 700 }}>Backend dashboard</span><Icon name="chevron" /></Link>}
-        <div className="stack" style={{ padding: '12px 16px', gap: 4 }}>
-          <span className="desc" style={{ fontSize: 11, overflowWrap: 'anywhere' }}>Player ID: <span className="mono" style={{ userSelect: 'all' }}>{profile?.id}</span></span>
-        </div>
-      </div>
-      <button className="btn wide" data-testid="log-out" onClick={() => {
-        if (account?.anon && !window.confirm('You haven’t backed up this game. If you log out you won’t be able to get back into it. Log out anyway?')) return;
-        const f = document.createElement('form'); f.method = 'POST'; f.action = '/auth/signout'; document.body.appendChild(f); f.submit();
-      }} style={{ alignSelf: 'stretch', width: '100%' }}>{t('Log out')}</button>
-      <button className="row setbtn danger-row" data-testid="delete-data" onClick={() => setDeleting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, padding: 6, fontSize: 11, gap: 4, minHeight: 28 }}><Icon name="trash" size={12} />{t('Delete my data')}</button>
-      <button onClick={() => setResetting(true)} style={{ alignSelf: 'center', background: 'none', border: 0, color: 'var(--muted)', fontSize: 11, textDecoration: 'underline', padding: 8, minHeight: 32 }}>{t('Reset game')}</button>
+            <Sec title={t('Look & feel')}>
+              <Item ico={<Icon name="moon" />} label={t('Night mode')}>
+                <button role="switch" aria-checked={profile?.theme_pref === 'night'} aria-label={t('Night mode')} onClick={() => saveSetting({ theme_pref: profile.theme_pref === 'night' ? 'day' : 'night' })} className={`switch ${profile?.theme_pref === 'night' ? 'on' : ''}`}><span /></button>
+              </Item>
+              <Item ico={<Icon name="globe" />} label={t('Language')} htmlFor="lang-pick">
+                <select id="lang-pick" data-testid="lang-pick" className="set-select" value={lang} onChange={(e) => setLang(e.target.value)}>{LANGS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select>
+              </Item>
+              <Item ico={<b className="set-aa" aria-hidden="true">Aa</b>} label={t('Text size')}>
+                <span className="set-step">
+                  <button className="btn ghost sm" aria-label="Smaller text" disabled={scaleAt === 0} onClick={() => setUi({ textScale: TEXT_SCALES[Math.max(0, scaleAt - 1)] })}>−</button>
+                  <output aria-live="polite">{Math.round(TEXT_SCALES[scaleAt] * 100)}%</output>
+                  <button className="btn ghost sm" aria-label="Bigger text" disabled={scaleAt === TEXT_SCALES.length - 1} onClick={() => setUi({ textScale: TEXT_SCALES[Math.min(TEXT_SCALES.length - 1, scaleAt + 1)] })}>+</button>
+                </span>
+              </Item>
+            </Sec>
+
+            <Sec title="Cooking">
+              <Item ico={<Icon name="cook" />} label={t('Weekly cooking goal')}>
+                <span className="set-step">
+                  <button className="btn ghost sm" aria-label="Fewer meals" onClick={() => saveSetting({ weekly_goal: Math.max(1, goal - 1) }, `Goal: ${Math.max(1, goal - 1)} meals a week`)}>−</button>
+                  <output>{goal}</output>
+                  <button className="btn ghost sm" aria-label="More meals" onClick={() => saveSetting({ weekly_goal: Math.min(14, goal + 1) }, `Goal: ${Math.min(14, goal + 1)} meals a week`)}>+</button>
+                </span>
+              </Item>
+              {profile?.skill_level !== undefined && <Btn ico={<Icon name="learn" />} label={t('Cooking level')} value={`${levelLabel(profile.skill_level) || 'Not set'}${learns(profile.skill_level) ? ' · Learn on' : ''}`} onClick={() => setLevelOpen(true)} testid="level-row" />}
+              <Btn ico={<Icon name="shield" />} label={t('Never show me')} value={(profile?.never_show || []).length ? `${profile.never_show.length} hidden` : 'Allergies, dislikes'} onClick={() => setNever(true)} />
+              <CalorieGoal />
+              <Item ico={<Icon name="snow" />} label={t('Streak freezes')} hint="One free. Extra ones cost 1,500 coins (up to 3)."><b className="set-val">{profile?.streak_freezes ?? 1}</b></Item>
+            </Sec>
+
+            <Sec title="Alerts & time">
+              <NotifySettings />
+              <Item ico={<Icon name="plane" />} label={t('Vacation mode')} hint={profile?.vacation_since ? 'Streak paused, up to 30 days.' : 'Pause your streak while you’re away.'}>
+                <button role="switch" aria-checked={!!profile?.vacation_since} aria-label={t('Vacation mode')} onClick={toggleVacation} className={`switch ${profile?.vacation_since ? 'on' : ''}`}><span /></button>
+              </Item>
+              <Item ico={<Icon name="timer" />} label={t('Time zone')} htmlFor="tz-pick">
+                <select id="tz-pick" data-testid="tz-pick" aria-label={t('Time zone')} className="set-select" value={ui?.tzPick || ''} onChange={(e) => { setUi({ tzPick: e.target.value || null }); say(e.target.value ? 'Time zone saved' : 'Using this device’s time zone'); }}>
+                  <option value="">{t('Automatic')}</option>
+                  {tzOptions(ui?.tzPick).map(([z, label]) => <option key={z} value={z}>{label}</option>)}
+                </select>
+              </Item>
+            </Sec>
+
+            <Sec title="Account">
+              {account?.anon
+                ? <Btn ico={<Icon name="shield" />} label="Back up your game" value="Not backed up" onClick={() => setBackupSet(true)} testid="set-backup" />
+                : <Item ico={<Icon name="shield" />} label="Game backed up" testid="set-backed-up"><Icon name="check" /></Item>}
+              {backupSet && account?.anon && <BackupSheet supabase={supabase} onClose={() => setBackupSet(false)} />}
+              <Btn ico={<img src="/cookie.svg" alt="" width="20" height="20" />} label={t('Cookies & privacy')} value={profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'} onClick={openPrivacy} />
+            </Sec>
+
+            <Sec title="Help">
+              <Btn ico={<Icon name="flag" />} label={t('How Yoke works')} onClick={() => setHowTo(true)} />
+              <Btn ico={<img src="/icon.svg" alt="" width="20" height="20" />} label={t('Show tips again')} onClick={() => { replayTour(); say('The tips will show again as you tap things'); }} />
+              {profile?.is_admin && <Link href="/admin" className="set-row set-btn"><span className="set-ico"><Icon name="compete" /></span><span className="set-lab">Backend dashboard</span><Icon name="chevron" /></Link>}
+            </Sec>
+
+            <button className="btn wide" data-testid="log-out" onClick={() => {
+              if (account?.anon && !window.confirm('You haven’t backed up this game. If you log out you won’t be able to get back into it. Log out anyway?')) return;
+              const f = document.createElement('form'); f.method = 'POST'; f.action = '/auth/signout'; document.body.appendChild(f); f.submit();
+            }}>{t('Log out')}</button>
+            <div className="set-foot">
+              <button className="set-link danger-row" data-testid="delete-data" onClick={() => setDeleting(true)}><Icon name="trash" size={12} />{t('Delete my data')}</button>
+              <button className="set-link" onClick={() => setResetting(true)}>{t('Reset game')}</button>
+              <span className="mono" style={{ userSelect: 'all' }}>ID {profile?.id}</span>
+            </div>
           </div>
         </div>
       )}
       {deleting && <DeleteDataSheet onClose={() => setDeleting(false)} />}
       {resetting && <ResetSheet onClose={() => setResetting(false)} />}
       {never && <NeverShowSheet onClose={() => setNever(false)} />}
-      {recipe && <RecipeSheet recipe={recipe} pantry={pantry || []} onClose={() => setRecipe(null)} />}
       {howTo && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setHowTo(false); }}>
           <div className="sheet stack howto" role="dialog" aria-modal="true" aria-label={t('How Yoke works')}>

@@ -3,9 +3,36 @@ import { useEffect, useMemo, useState } from 'react';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
 import PlateManage from './PlateManage';
+import LogMealSheet from './LogMealSheet';
 import { seatColor } from './PartyHub';
 
-// A party's photo wall: every plate its members shared to it. Tap one to open it; flip it over to read the recipe on the back.
+const when = (t) => { const s = Math.max(1, Math.round((Date.now() - new Date(t).getTime()) / 1000)); if (s < 90) return 'Just now'; if (s < 3600) return `${Math.round(s / 60)} min ago`; if (s < 86400) return `${Math.round(s / 3600)} h ago`; const d = Math.round(s / 86400); return d === 1 ? 'Yesterday' : d < 7 ? `${d} days ago` : new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric' }); };
+
+// Post a plate to the party: pick the dish you cooked (search, or one you opened lately), then add the photo like any meal.
+function PostPlate({ gid, onClose, onDone }) {
+  const { allRecipes, ensureRecipes, ui, getUi } = useWhisk();
+  const [q, setQ] = useState('');
+  const [recipe, setRecipe] = useState(null);
+  const recents = ((getUi?.() || ui)?.recentRecipes || []).slice(0, 6);
+  const found = q.trim().length >= 2 ? (allRecipes || []).filter((r) => r.title.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 8) : [];
+  async function choose(r) { const full = (allRecipes || []).find((x) => x.id === r.id) || (await ensureRecipes([r.id]))[0]; if (full) setRecipe(full); }
+  if (recipe) return <LogMealSheet recipe={recipe} presetGroups={[gid]} onClose={onClose} onDone={onDone} />;
+  return (
+    <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="sheet stack" role="dialog" aria-modal="true" aria-label="Post a plate" data-testid="post-plate">
+        <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}><h2 style={{ fontSize: 24, margin: 0 }}>Post a plate</h2><button type="button" className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon name="x" /></button></div>
+        <span className="desc">What did you cook? Your photo goes on the party’s plates.</span>
+        <input className="input" placeholder="Search recipes" autoFocus value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search recipes" data-testid="post-find" />
+        {(q.trim() ? found : recents).map((r) => <button key={r.id} type="button" className="card pp-pick" onClick={() => choose(r)} data-testid="post-pick">{r.title}<Icon name="chevron" size={16} /></button>)}
+        {q.trim().length >= 2 && found.length === 0 && <span className="desc">Nothing found. Try another word.</span>}
+        {!q.trim() && recents.length === 0 && <span className="desc">Search for the dish you cooked.</span>}
+      </div>
+    </div>
+  );
+}
+
+// A party's photo wall: every plate its members shared to it, newest first, in a strip you swipe sideways. Anyone in the
+// party can post one. Tap a plate to open it; flip it over to read the recipe on the back.
 export default function PartyPlates({ gid }) {
   const { supabase, say, dataVersion } = useWhisk();
   const [plates, setPlates] = useState(null);
@@ -14,6 +41,7 @@ export default function PartyPlates({ gid }) {
   const [open, setOpen] = useState(null);
   const [flip, setFlip] = useState(false);
   const [reload, setReload] = useState(0);
+  const [posting, setPosting] = useState(false);
 
   useEffect(() => {
     let off = false;
@@ -50,29 +78,30 @@ export default function PartyPlates({ gid }) {
   if (plates === null) return null;
   return (
     <section className="stack" style={{ gap: 8 }} aria-label="Party plates" data-testid="party-plates">
-      <span className="eyebrow">Plates</span>
-      {plates.length === 0 ? (
-        <div className="empty">No plates yet. When you post a meal, pick this party under “Share to”.</div>
-      ) : (
-        <>
-          {people.length > 1 && (
-            <div className="row pp-who" style={{ gap: 6 }}>
-              <button type="button" className={`sc-chip ${!who ? 'on' : ''}`} onClick={() => setWho('')}>All</button>
-              {people.map((m) => <button key={m.code} type="button" className={`sc-chip ${who === m.code ? 'on' : ''}`} onClick={() => setWho(m.code)} style={who === m.code ? undefined : { borderColor: seatColor(m.seat) }}>{m.name}</button>)}
-            </div>
-          )}
-          <div className="pp-grid">
-            {shown.map((p) => (
-              <button key={p.id} type="button" className="pp-tile" data-testid="party-plate" onClick={() => { setOpen(p.id); setFlip(false); }} aria-label={`${p.mine ? 'Your' : p.name + '’s'} ${p.title}`}>
-                {urls[p.photo] ? <img src={urls[p.photo]} alt="" loading="lazy" decoding="async" /> : <span className="pp-ph"><Icon name="utensils" size={24} /></span>}
-                <span className="pp-who-dot" style={{ background: seatColor(p.seat) }} aria-hidden="true">{(p.mine ? 'Y' : p.name).slice(0, 1).toUpperCase()}</span>
-                {p.card && <span className="pp-badge"><Icon name="flip" size={11} />recipe</span>}
-                <span className="pp-cap">{p.title}</span>
-              </button>
-            ))}
-          </div>
-        </>
+      <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+        <span className="eyebrow">Plates</span>
+        {plates.length > 1 && <span className="desc">Newest first · swipe</span>}
+      </div>
+      {people.length > 1 && (
+        <div className="row pp-who" style={{ gap: 6 }}>
+          <button type="button" className={`sc-chip ${!who ? 'on' : ''}`} onClick={() => setWho('')}>All</button>
+          {people.map((m) => <button key={m.code} type="button" className={`sc-chip ${who === m.code ? 'on' : ''}`} onClick={() => setWho(m.code)} style={who === m.code ? undefined : { borderColor: seatColor(m.seat) }}>{m.name}</button>)}
+        </div>
       )}
+      <div className="pp-strip" role="list" aria-label="Plates, newest first">
+        <button type="button" role="listitem" className="pp-card pp-post" onClick={() => setPosting(true)} data-testid="post-plate-btn"><span className="pp-plus"><Icon name="camera" size={26} /></span><b>Post a plate</b><small>Cooked something? Show the party.</small></button>
+        {shown.map((p, i) => (
+          <button key={p.id} type="button" role="listitem" className={`pp-card ${i === 0 && !who ? 'latest' : ''}`} data-testid="party-plate" onClick={() => { setOpen(p.id); setFlip(false); }} aria-label={`${p.mine ? 'Your' : p.name + '’s'} ${p.title}, ${when(p.at)}`}>
+            {urls[p.photo] ? <img src={urls[p.photo]} alt="" loading="lazy" decoding="async" /> : <span className="pp-ph"><Icon name="utensils" size={28} /></span>}
+            <span className="pp-time">{i === 0 && !who ? 'Latest · ' : ''}{when(p.at)}</span>
+            <span className="pp-who-dot" style={{ background: seatColor(p.seat) }} aria-hidden="true">{(p.mine ? 'Y' : p.name).slice(0, 1).toUpperCase()}</span>
+            {p.card && <span className="pp-badge"><Icon name="flip" size={11} />recipe</span>}
+            <span className="pp-cap"><b>{p.title}</b><small>{p.mine ? 'You' : p.name}{p.loves ? ` · ♥ ${p.loves}` : ''}</small></span>
+          </button>
+        ))}
+      </div>
+      {plates.length === 0 && <span className="desc">No plates yet. Be the first!</span>}
+      {posting && <PostPlate gid={gid} onClose={() => setPosting(false)} onDone={() => setReload((n) => n + 1)} />}
       {cur && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
           <div className="sheet stack" role="dialog" aria-modal="true" aria-label={cur.title} data-testid="plate-sheet">

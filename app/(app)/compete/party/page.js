@@ -7,14 +7,15 @@ import Icon from '@/components/Icon';
 import { Crowned } from '@/components/Crown';
 import Globe from '@/components/Globe';
 import PartyPlates from '@/components/PartyPlates';
+import PartyChallenges from '@/components/PartyChallenges';
 import { useCached } from '@/lib/cache';
 import { seatColor, fetchPartyGlobe } from '@/components/PartyHub';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 
 export default function PartyPage() { return <Suspense fallback={null}><Party /></Suspense>; }
 
-// A party's shared globe for this month. Every dish a member cooks from a country counts for them; whoever has cooked a
-// country the most owns it (their colour). Cook it more times than the owner to take it. Most countries at month end wins.
+// A party: its plates (photos members post), a shared globe for the month (whoever has cooked a country the most owns it,
+// most countries at month end wins) and this week's three challenges, played together.
 function Party() {
   const { supabase, say, setUi, dataVersion } = useWhisk();
   const router = useRouter();
@@ -65,7 +66,8 @@ function Party() {
       <div data-testid="party-globe">
         <Globe paint={paint} onCook={(hit) => { setUi({ cookMode: 'named', cookDish: hit.name }); router.push('/cook'); }} />
       </div>
-      <p className="desc" style={{ margin: 0 }}>Cook a dish from a country to colour it yours. Cook it more times than whoever has it to take it. Tap the globe for a random country.</p>
+
+      {valid && <PartyChallenges gid={gid} />}
 
       {owned.length > 0 && (
         <section className="stack" style={{ gap: 6 }} aria-label="Countries">

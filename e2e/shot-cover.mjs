@@ -15,7 +15,7 @@ ok('stack badge +2', (await p.getByTestId('pb-more').first().innerText()).includ
 await p.locator('.pb-row').screenshot({ path: `${OUT}/cover-tile.png` });
 await p.locator('.pb-tile.done').last().click(); await p.waitForTimeout(800);
 ok('strip has 3', await p.getByTestId('pb-th').count() === 3);
-ok('opens on cover = first cooked (Pasta)', (await p.locator('.sheet h2').innerText()) === 'Pasta' && await p.getByTestId('pb-is-cover').count() === 1);
+ok('opens on cover = first cooked (Pasta)', (await p.locator('.sheet h2').last().innerText()) === 'Pasta' && await p.getByTestId('pb-is-cover').count() === 1);
 await p.getByTestId('pb-th').last().click(); await p.waitForTimeout(400);
 ok('selecting Curry offers make cover', await p.getByTestId('pb-make-cover').count() === 1);
 await p.screenshot({ path: `${OUT}/cover-sheet.png` });
@@ -24,5 +24,5 @@ ok('now marked as cover', await p.getByTestId('pb-is-cover').count() === 1);
 await p.keyboard.press('Escape'); await p.locator('.scrim').click({ position: { x: 5, y: 5 } }).catch(() => {}); await p.waitForTimeout(400);
 await p.reload(); await p.waitForTimeout(2500); await sweep();
 await p.locator('.pb-tile.done').last().click(); await p.waitForTimeout(700);
-ok('cover persists after reload', (await p.locator('.sheet h2').innerText()) === 'Curry' && await p.getByTestId('pb-is-cover').count() === 1);
+ok('cover persists after reload', (await p.locator('.sheet h2').last().innerText()) === 'Curry' && await p.getByTestId('pb-is-cover').count() === 1);
 await b.close();

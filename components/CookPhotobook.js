@@ -95,28 +95,48 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
       {view && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setView(null); }}>
           <div className="sheet stack" role="dialog" aria-modal="true" aria-label={view.title}>
-            <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
-              <h2 style={{ fontSize: 22, margin: 0 }}>{view.title}</h2>
-              <button type="button" className="btn ghost sm" onClick={() => setView(null)} aria-label={t('Close')}><Icon name="x" /></button>
-            </div>
-            {view.url && <img src={view.url} alt={view.title} style={{ width: '100%', borderRadius: 16, maxHeight: '38vh', objectFit: 'cover' }} />}
-            <span className="desc">{view.label}</span>
-            {view.dayMeals?.length > 1 && (
-              <div className="stack" style={{ gap: 8 }} data-testid="pb-day-strip">
-                <div className="pb-strip">
-                  {view.dayMeals.map((q) => { const u = urls[q.photo_path]; const isCover = coverOf({ k: view.day, meals: view.dayMeals.slice().reverse() })?.id === q.id;
-                    return (
-                      <button key={q.id} type="button" className={`pb-th ${q.id === view.id ? 'sel' : ''} ${isCover ? 'cov' : ''}`} data-testid="pb-th" aria-label={q.title} onClick={() => setView({ ...view, ...q, url: u })}>
-                        {u ? <img src={u} alt="" /> : <Icon name="utensils" size={18} />}
-                        {isCover && <span className="pb-star on"><Icon name="star" size={12} /></span>}
-                      </button>
-                    ); })}
+            {(() => {
+              const multi = view.dayMeals?.length > 1;
+              const cov = multi ? coverOf({ k: view.day, meals: view.dayMeals.slice().reverse() }) : null;
+              const idx = multi ? view.dayMeals.findIndex((q) => q.id === view.id) + 1 : 0;
+              const tm = (() => { try { return new Date(view.cooked_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch { return ''; } })();
+              const head = (
+                <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+                  {multi ? <span /> : <h2 style={{ fontSize: 22, margin: 0 }}>{view.title}</h2>}
+                  <button type="button" className="btn ghost sm" onClick={() => setView(null)} aria-label={t('Close')}><Icon name="x" /></button>
                 </div>
-                {coverOf({ k: view.day, meals: view.dayMeals.slice().reverse() })?.id !== view.id
-                  ? <button type="button" className="btn wide" data-testid="pb-make-cover" onClick={() => { setCover(view.day, view.id); say('Cover updated'); }}><Icon name="star" size={16} />{t('Make this the cover')}</button>
-                  : <span className="desc" data-testid="pb-is-cover">{t('This is the cover for this day')}</span>}
-              </div>
-            )}
+              );
+              const photo = view.url && (
+                <div style={{ position: 'relative' }}>
+                  <img src={view.url} alt={view.title} style={{ width: '100%', borderRadius: 16, maxHeight: '38vh', objectFit: 'cover', display: 'block' }} />
+                  {multi && <span className="pb-badge" data-testid="pb-badge">{idx} {t('of')} {view.dayMeals.length} · {view.label}</span>}
+                </div>
+              );
+              return (
+                <>
+                  {head}
+                  {photo}
+                  {multi && (
+                    <div className="stack" style={{ gap: 8 }} data-testid="pb-day-strip">
+                      <div className="pb-strip">
+                        {view.dayMeals.map((q) => { const u = urls[q.photo_path]; const isCover = cov?.id === q.id;
+                          return (
+                            <button key={q.id} type="button" className={`pb-th ${q.id === view.id ? 'sel' : ''} ${isCover ? 'cov' : ''}`} data-testid="pb-th" aria-label={q.title} onClick={() => setView({ ...view, ...q, url: u })}>
+                              {u ? <img src={u} alt="" /> : <Icon name="utensils" size={18} />}
+                              {isCover && <span className="pb-star on"><Icon name="star" size={12} /></span>}
+                            </button>
+                          ); })}
+                      </div>
+                      {cov?.id !== view.id
+                        ? <button type="button" className="btn wide" data-testid="pb-make-cover" onClick={() => { setCover(view.day, view.id); say('Cover updated'); }}><Icon name="star" size={16} />{t('Make this the cover')}</button>
+                        : <span className="desc" data-testid="pb-is-cover">{t('This is the cover for this day')}</span>}
+                    </div>
+                  )}
+                  {multi && <h2 style={{ fontSize: 20, margin: 0 }}>{view.title}</h2>}
+                  <span className="desc">{multi ? tm : view.label}</span>
+                </>
+              );
+            })()}
             {(() => { const mr = mineFor(view); return mr ? (
               <div className="stack" style={{ gap: 8 }} data-testid="pb-recipe">
                 <div className="card stack" style={{ gap: 4 }}>

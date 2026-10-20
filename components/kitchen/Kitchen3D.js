@@ -292,6 +292,7 @@ export default function Kitchen3D({
             {pieces.map((b) => {
               if (inFront(b)) return null;
               const onDown = build ? (e) => {
+                if (K.MODEL[b.mid]?.locked) return;   // the dish disaster can't be picked up
                 if (drag.current?.mode === 'pinch' || fingers.current.size > 1) return;
                 if (sel !== b.id) { tapCand.current = b.id; return; }   // not picked yet: let the view turn; a clean tap picks it
                 e.stopPropagation(); drag.current = { mode: 'move', thing: K.isThing(b), id: b.id, x: e.clientX, y: e.clientY, b0: { ...b }, t: Date.now() }; moved.current = false;

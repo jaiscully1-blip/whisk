@@ -149,6 +149,14 @@ export function KitchenShop({ world, setWorld, onGetCoins }) {
         return p;
       });
       if (!n) where = 'ready in Paint';
+    } else if (it.id === 'mess') {
+      // the dish disaster: a heap in the sink, on the table/island and on a counter, all fixed in place
+      let placed = 0;
+      for (const id of ['mess_sink', 'mess_table', 'mess_counter']) {
+        const mid = K.THING + id; if (pieces.some((p) => p.mid === mid)) { placed++; continue; }
+        const nb = K.placeMess(pieces, mid); if (nb && pieces.length < 60) { pieces = [...pieces, nb]; placed++; }
+      }
+      if (!placed) return 'ready in your things (no room to place it)';
     } else {
       const mid = it.kind === 'appliance' ? it.id : K.THING + it.id;
       if (!K.MODEL[mid]) return 'ready in your things';
@@ -214,7 +222,7 @@ export function KitchenShop({ world, setWorld, onGetCoins }) {
           <div className="sheet stack" role="dialog" aria-modal="true" aria-label={`Buy ${buying.name}`} style={{ alignItems: 'center', textAlign: 'center' }}>
             <span className="shop-big"><ItemPic it={buying} size={140} /></span>
             <h2 style={{ fontSize: 26, margin: 0 }}>{buying.name}</h2>
-            <p className="muted" style={{ margin: 0 }}>{buying.kind === 'finish' ? 'Goes on everything it fits in your kitchen. Change it any time in Paint.' : buying.kind === 'magnet' ? 'Sticks to the fridge in your kitchen.' : 'Goes straight into your kitchen. Move it around in Layout kitchen.'}</p>
+            <p className="muted" style={{ margin: 0 }}>{buying.kind === 'finish' ? 'Goes on everything it fits in your kitchen. Change it any time in Paint.' : buying.kind === 'magnet' ? 'Sticks to the fridge in your kitchen.' : 'Goes straight into your kitchen. It sits in place.'}</p>
             <p className="muted" style={{ margin: 0 }}>You have {fmt(profile?.coins)} coins.</p>
             {(profile?.coins || 0) >= buying.price
               ? <button data-tour="buy" className="btn wide" onClick={buy} disabled={busy}><Coin />{busy ? 'Buying…' : `Buy for ${fmt(buying.price)}`}</button>

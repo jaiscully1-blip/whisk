@@ -126,7 +126,7 @@ function PutAway() {
       ) : (
         <>
           <div className="pa-hud card" data-tip="putaway">
-            <div className="pa-ring" style={{ '--p': pct }}><b>{done}</b><span>/{live.length}</span></div>
+            <div className={`pa-ring ${live.length >= 10 ? 'big' : ''}`} style={{ '--p': pct }} aria-label={`${done} of ${live.length} put away`}><span className="pa-n"><b>{done}</b><span>/{live.length}</span></span></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <b className="pa-title">{todo.length === 0 ? (live.length ? 'All put away!' : 'Pantry’s empty') : `${todo.length} to put away`}</b>
               <div className="bar" style={{ marginTop: 6 }}><i style={{ width: `${pct}%`, background: 'var(--accent)' }} /></div>

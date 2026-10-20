@@ -335,10 +335,11 @@ const FLOORS = {
 function Thing({ b, selected, onDown }) {
   const m = K.MODEL[b.mid]; const C = K.C, HU = K.HU;
   const W = b.w * C, VW = Math.round(W * 1.3), H = VW, Z = Math.round(b.z * HU);   // a little bigger than its cell so you can see it, not so big it hangs off the counter
+  const R = 4;   // drawn 4× bigger and shrunk back, so the picture stays sharp when you zoom in (a 3D layer is painted at its own size)
   return (
     <div className={`kthing ${selected ? 'sel' : ''}`} style={{ left: b.x * C, top: b.y * C, width: W, height: b.d * C, transform: `translateZ(${Z + 0.5}px)` }} onPointerDown={onDown} data-piece={b.id}>
       <div className="kthing-shadow" />
-      <div className="kthing-up" style={{ left: (W - VW) / 2, top: b.d * C / 2 - H, width: VW, height: H, transform: 'rotateZ(calc(clamp(-5, var(--rz) * -1, 85) * 1deg)) rotateX(-90deg)' }}>
+      <div className="kthing-up" style={{ left: (W - VW * R) / 2, top: b.d * C / 2 - H * R, width: VW * R, height: H * R, transform: `rotateZ(calc(clamp(-5, var(--rz) * -1, 85) * 1deg)) rotateX(-90deg) scale(${1 / R})` }}>
         <img src={itemUrl(m.item)} alt={m.nick} title={m.nick} draggable={false} />
       </div>
     </div>

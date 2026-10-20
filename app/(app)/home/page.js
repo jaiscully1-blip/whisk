@@ -117,14 +117,6 @@ export default function Home() {
     const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) setShown((n) => n + PAGE); }, { rootMargin: '500px' });
     io.observe(el); return () => io.disconnect();
   }, [almost, shown]);
-  // the plain-words nudge over the block of dishes that use food about to go bad
-  const urgent = useMemo(() => {
-    const items = new Map(); (pantry || []).filter((p) => p.status !== 'out' && p.expires_on).forEach((p) => { const left = Math.round((new Date(String(p.expires_on).slice(0, 10) + 'T00:00:00') - new Date(new Date().toDateString())) / 864e5); if (left >= 0 && left <= 3) { const k = canon(p.name); if (!items.has(k) || items.get(k).left > left) items.set(k, { name: p.name.toLowerCase(), left }); } });
-    const list = [...items.values()].sort((a, b) => a.left - b.left); if (!list.length) return '';
-    const names = list.slice(0, 3).map((x) => x.name); const nm = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
-    const when = list[0].left === 0 ? 'today' : list[0].left === 1 ? 'tomorrow' : `in ${list[0].left} days`;
-    return `Your ${nm} ${list.length > 1 ? 'are' : 'is'} about to go bad (soonest ${when}). Cook one of these first, or scroll on for something else.`;
-  }, [pantry]);
   const expiring = useMemo(() => new Set((pantry || []).filter((p) => p.status !== 'out' && p.expires_on && (new Date(String(p.expires_on).slice(0, 10) + 'T00:00:00') - new Date(new Date().toDateString())) / 864e5 <= 3 && (new Date(String(p.expires_on).slice(0, 10) + 'T00:00:00') - new Date(new Date().toDateString())) / 864e5 >= 0).map((p) => canon(p.name))).size, [pantry]);
   const frozen = (pantry || []).filter((p) => { const t = thawState(p); return t && t.state !== 'thawed'; });
 
@@ -140,7 +132,7 @@ export default function Home() {
       <div className="page-title" style={{ margin: '6px 0 0' }}><h1>{t('Discover a Dish')}</h1></div>
       {almost === null || !ready ? <p className="muted">Checking your pantry…</p> : almost.length === 0 ? (
         <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">{t('Add pantry items')}</Link><Link className="btn ghost" href="/cook">{t('What can I make?')}</Link></div></div>
-      ) : almost.slice(0, shown).map((x, i) => <DishCard key={x.r.id} x={x} first={i === 0} urgent={urgent} lazy={i > 1} onOpen={openFull} onWarm={warm} onAdd={addToList} t={t} />)}
+      ) : almost.slice(0, shown).map((x, i) => <DishCard key={x.r.id} x={x} first={i === 0} lazy={i > 1} onOpen={openFull} onWarm={warm} onAdd={addToList} t={t} />)}
       {almost && almost.length > shown && <div ref={moreRef}><button className="btn ghost wide" onClick={() => setShown((n) => n + PAGE)}>{t('Show more')}</button></div>}
       {almost && almost.length > 1 && !open && <button ref={fabRef} type="button" className="fab-shuffle" data-testid="shuffle" onClick={shuffle} aria-label={t('Shuffle')} title={t('Shuffle')}><Icon name="shuffle" size={22} /></button>}
       {open && <RecipeSheet recipe={open} pantry={pantry} saved={saved?.get(open.id)} onClose={() => setOpen(null)} onChanged={() => { reload(); reloadSaved(); }} />}
@@ -149,10 +141,10 @@ export default function Home() {
 }
 
 // One recipe card. Memoised: shuffling or filtering re-uses cards that are already drawn.
-const DishCard = memo(function DishCard({ x: { r, soon, needs }, first, urgent, lazy, onOpen, onWarm, onAdd, t }) {
+const DishCard = memo(function DishCard({ x: { r, soon, needs }, first, lazy, onOpen, onWarm, onAdd, t }) {
   return (
         <div className="stack" style={{ gap: 8 }}>
-        {soon.length > 0 && first && <><h2 className="away-h soon-h">{t('Use it before it goes bad')}</h2>{urgent && <p className="soon-note" data-testid="soon-note">{urgent}</p>}</>}
+        {soon.length > 0 && first && <><h2 className="away-h soon-h">{t('Use it before it goes bad')}</h2></>}
         <div className="card stack rcard" style={{ gap: 8 }}>
           <Postcard iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} lazy={lazy} />
           <div className="rcard-body stack" style={{ gap: 8 }}>

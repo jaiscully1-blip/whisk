@@ -8,6 +8,8 @@ import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 import { compress } from '@/lib/photo';
 import { parseRecipeText } from '@/lib/recipes/parseText';
 import { planUse } from '@/lib/pantry/use';
+import ShareChips, { NOT_SHARED } from './ShareChips';
+import { recipeCard } from '@/lib/recipes/card';
 
 // Photo of your plate → log_meal. Title, cuisine and nutrition come from the recipe on the server.
 // Or a dish from the search (`dish` = { name, countries }): it counts toward that country on your globe.
@@ -27,6 +29,7 @@ export default function LogMealSheet({ recipe: recipe0 = null, dish = null, coun
   const [ings, setIngs] = useState('');
   const [stepsTxt, setStepsTxt] = useState('');
   const [have, setHave] = useState([]);
+  const [share, setShare] = useState(() => ({ friends: !!ui?.lastShare?.friends, groups: Array.isArray(ui?.lastShare?.groups) ? ui.lastShare.groups : [] }));
   useEffect(() => {
     if (!wr || have.length) return;
     supabase.from('pantry_items').select('name').limit(8).then(({ data }) => setHave((data || []).map((d) => d.name)), () => {});
@@ -68,6 +71,19 @@ export default function LogMealSheet({ recipe: recipe0 = null, dish = null, coun
         const { data: row, error: re } = await supabase.from('my_recipes').insert({ title, servings: null, minutes: null, ingredients: (wIng.length ? wIng : ['Add your ingredients']).map((t) => t.slice(0, 200)).slice(0, 60), steps: (wSteps.length ? wSteps : ['Add your steps']).map((t) => t.slice(0, 1000)).slice(0, 60) }).select('id').single();
         if (!re && row?.id && data?.meal_id) setUi((cur) => ({ pbLinks: { ...(cur.pbLinks || {}), [data.meal_id]: row.id } }));
         else { say('Your meal is saved, but the recipe didn’t save. Find it in your photobook to try again.'); if (data?.meal_id) setUi((cur) => ({ pbDrafts: { ...(cur.pbDrafts || {}), [data.meal_id]: { ings: wIng.slice(0, 60), steps: wSteps.slice(0, 60) } } })); }
+      }
+      // who sees this plate, and the recipe on its back
+      if (data?.meal_id) {
+        try {
+          let full = recipe; if (recipe && !recipe.ingredients && !recipe.amounts) full = (await ensureRecipes([recipe.id]))[0] || recipe;
+          const card = recipeCard((recipe ? recipe.title : dish.name), full, wIng, wSteps, wIng.length ? 1 : factor);
+          if (card) await supabase.rpc('set_meal_card', { p_meal: data.meal_id, p_card: card });
+          if (share.friends || share.groups.length) {
+            const r = await supabase.rpc('set_meal_sharing', { p_meal: data.meal_id, p_friends: share.friends, p_groups: share.groups });
+            if (r.error || r.data === false) say('Your meal is saved, but sharing didn’t work. Change it from your photobook.');
+          }
+          setUi({ lastShare: { friends: share.friends, groups: share.groups } });
+        } catch {}
       }
       // what you used comes off your pantry: the recipe's amounts (as scaled) or the ones you wrote yourself
       let used = 0;
@@ -124,10 +140,11 @@ export default function LogMealSheet({ recipe: recipe0 = null, dish = null, coun
             <select id="meal-country" className="input" value={country || ''} onChange={(e) => setCountry(e.target.value)}>{dish.countries.map((c) => <option key={c} value={c}>{COUNTRY_BY_ISO[c]?.[1] || c}</option>)}</select></div>
         )}
         {dish && (dish.countries || []).length === 1 && <span className="desc">Counts toward {COUNTRY_BY_ISO[country]?.[1]} on your globe</span>}
-        <label className="card" style={{ display: 'grid', placeItems: 'center', minHeight: 180, cursor: 'pointer', borderStyle: 'dashed', padding: 8 }}>
+        <label className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, minHeight: 180, cursor: 'pointer', borderStyle: 'dashed', padding: 8 }}>
           {preview ? <img src={preview} alt="Your plate" style={{ maxHeight: 260, maxWidth: '100%', borderRadius: 14 }} /> : <span className="row muted" style={{ fontWeight: 800 }}><Icon name="camera" size={24} />Add a photo of your plate</span>}
           <input type="file" accept="image/*" capture="environment" onChange={pick} hidden />
         </label>
+        {preview && <ShareChips value={share} onChange={setShare} />}
         <div>
           <label className="lbl" htmlFor="meal-notes">Notes (optional)</label>
           <textarea id="meal-notes" className="input" rows={2} maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} />

@@ -531,10 +531,7 @@ await step('cook', async () => {
   await page.locator('.usedup-row').first().getByRole('button', { name: 'Yes' }).click();
   await page.locator('.usedup-row', { hasText: 'is out' }).waitFor();
   check('Yes marks it out and puts it on the list', true);
-  const shareSw = page.getByRole('switch', { name: 'Share this plate with friends' });
-  check('plates start private (Share with friends is off)', (await shareSw.getAttribute('aria-checked')) === 'false');
-  await shareSw.click(); await page.waitForTimeout(500);
-  check('one tap shares this plate with friends', (await shareSw.getAttribute('aria-checked')) === 'true');
+  check('the old Friends slider is gone from the cooked popup (sharing is chosen when you post)', (await page.getByRole('switch', { name: 'Share this plate with friends' }).count()) === 0);
   await shot('03-cooked');
   await page.click('[role=dialog] >> text=Leave');
   await page.waitForTimeout(600); await closePopups();
@@ -659,8 +656,8 @@ await step('me', async () => {
 });
 await step('cooking history', async () => {
   await nav('Me');
-  await page.getByTestId('see-history').waitFor({ timeout: 8000 });
-  await page.getByTestId('see-history').click(); await page.getByTestId('history-page').waitFor();
+  check('Me has no Plate journal or Cooking history button', (await page.getByTestId('see-history').count()) === 0 && (await page.getByText('Plate journal').count()) === 0);
+  await page.goto(`${BASE}/me/history`); await page.getByTestId('history-page').waitFor();
   await page.getByTestId('history-row').first().waitFor({ timeout: 8000 });
   const n = await page.getByTestId('history-row').count();
   check('the history lists the meals you logged, newest first', n >= 1);

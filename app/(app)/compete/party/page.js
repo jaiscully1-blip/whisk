@@ -6,6 +6,7 @@ import { useWhisk } from '@/components/AppShell';
 import Icon from '@/components/Icon';
 import { Crowned } from '@/components/Crown';
 import Globe from '@/components/Globe';
+import PartyPlates from '@/components/PartyPlates';
 import { useCached } from '@/lib/cache';
 import { seatColor, fetchPartyGlobe } from '@/components/PartyHub';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
@@ -58,6 +59,8 @@ function Party() {
           ))}
         </section>
       )}
+
+      {valid && <PartyPlates gid={gid} />}
 
       <div data-testid="party-globe">
         <Globe paint={paint} onCook={(hit) => { setUi({ cookMode: 'named', cookDish: hit.name }); router.push('/cook'); }} />

@@ -7,6 +7,7 @@ import Icon from './Icon';
 import RecipeImport from './RecipeImport';
 import { Viewer as MineViewer } from './MyRecipes';
 import { useMine, usePantry } from './usePantry';
+import PlateManage from './PlateManage';
 
 // "My photobook": one little page per day in the player's own time zone, oldest on the left, today on the right (swipe either way).
 // A cooked day shows the plate photo; today shows the pick on the table with a camera to log your own photo; other days stay quiet.
@@ -121,6 +122,7 @@ export default function CookPhotobook({ tz, todayRecipe, onAdd, t = (x) => x }) 
                 {pickOpen && <div className="stack" style={{ gap: 6 }} data-testid="pb-pick-list">{(mine || []).map((r) => <button key={r.id} type="button" className="card" style={{ textAlign: 'left', background: 'var(--field)', color: 'var(--fg)', fontWeight: 800 }} onClick={() => { setLink(view.id, r.id); setPickOpen(false); }}>{r.title}</button>)}</div>}
               </div>
             ); })()}
+            <PlateManage key={view.id} mealId={view.id} photoPath={view.photo_path} onDeleted={(id) => { setMeals((ms) => (ms || []).filter((x) => x.id !== id)); setView(null); }} />
           </div>
         </div>
       )}

@@ -20,7 +20,6 @@ import NotifySettings from '@/components/NotifySettings';
 import CalorieGoal from '@/components/CalorieGoal';
 import LearnEntry from '@/components/LearnEntry';
 import BackupSheet from '@/components/BackupSheet';
-import ShareSwitch from '@/components/ShareSwitch';
 import RecipeSheet from '@/components/RecipeSheet';
 import { usePantry, useWorld } from '@/components/usePantry';
 import { useRouter } from 'next/navigation';
@@ -144,22 +143,6 @@ export default function Me() {
       <CountryChallenges challenges={world?.challenges} onOpen={openChallenge} />
 
       <MyYouTubers />
-
-      {meals.length > 0 && (
-        <>
-          <div className="row" style={{ justifyContent: 'space-between' }}><h2 style={{ fontSize: 22 }}>{t('Plate journal')}</h2><Link className="btn ghost sm" href="/me/history" data-testid="see-history">{t('Cooking history')}</Link></div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))', gap: 8 }}>
-            {meals.map((m) => (
-              <figure key={m.id} style={{ margin: 0, position: 'relative' }}>
-                {m.url ? <img src={m.url} alt={m.title} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 14 }} /> : <div className="card" style={{ aspectRatio: '1' }} />}
-                {m.rating && <span style={{ position: 'absolute', top: 6, right: 6, background: 'var(--card)', borderRadius: 99, padding: 3, display: 'grid', color: m.rating === 'up' ? 'var(--fresh)' : 'var(--bad)' }} aria-label={m.rating === 'up' ? 'Liked' : 'Disliked'}><Icon name={m.rating} size={16} /></span>}
-                <figcaption style={{ fontSize: 12, fontWeight: 700, marginTop: 4 }}>{m.title}<span className="muted"> · {new Date(m.cooked_at).toLocaleDateString()}</span></figcaption>
-                {'shared_at' in m && <ShareSwitch mealId={m.id} initial={!!m.shared_at} compact />}
-              </figure>
-            ))}
-          </div>
-        </>
-      )}
 
       {settingsOpen && (
         <div className="settings-page" role="dialog" aria-modal="true" aria-label={t('Settings')} data-testid="settings-page">

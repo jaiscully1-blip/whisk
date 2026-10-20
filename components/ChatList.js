@@ -3,7 +3,7 @@ import Avatar from './Avatar';
 import { useState } from 'react';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
-import { color, ago, chatError } from '@/lib/social';
+import { color, ago, chatError, dmOf, shownChats } from '@/lib/social';
 
 // Friends → Chats: your groups, newest first, with a badge for unread messages. "New group" picks a name and friends.
 export default function ChatList({ chats, friends, onOpen, onMade }) {
@@ -30,18 +30,18 @@ export default function ChatList({ chats, friends, onOpen, onMade }) {
         <h2 style={{ fontSize: 22 }}>{t('Chats')}</h2>
         <button type="button" className="btn sm" onClick={() => setMaking(true)} data-testid="new-group"><Icon name="plus" size={16} />{t('New group')}</button>
       </div>
-      {chats === null ? <p className="muted">{t('Loading…')}</p> : chats.length === 0 ? (
+      {chats === null ? <p className="muted">{t('Loading…')}</p> : shownChats(chats, friends).length === 0 ? (
         <div className="empty"><b>{t('No chats yet')}</b>{t('Make a group with your friends to text, share photos and play.')}</div>
-      ) : chats.map((c) => (
-        <button key={c.id} type="button" className="card chat-item" onClick={() => onOpen(c.id)} aria-label={`${c.name}${c.unread ? `, ${c.unread} new` : ''}`}>
-          <span className="post-av" style={{ background: color(c.name) }} aria-hidden="true">{c.name.slice(0, 1).toUpperCase()}</span>
+      ) : shownChats(chats, friends).map((c) => { const dm = dmOf(c, friends); const nm = dm ? dm.name : c.name; return (
+        <button key={c.id} type="button" className="card chat-item" onClick={() => onOpen(c.id)} aria-label={`${nm}${c.unread ? `, ${c.unread} new` : ''}`}>
+          {dm ? <Avatar className="post-av" code={dm.code} name={dm.name} aria-hidden="true" /> : <span className="post-av" style={{ background: color(c.name) }} aria-hidden="true">{c.name.slice(0, 1).toUpperCase()}</span>}
           <span className="chat-item-txt">
-            <b>{c.name}{c.muted && <Icon name="bellx" size={14} style={{ marginLeft: 6, opacity: .6 }} />}</b>
+            <b>{nm}{c.muted && <Icon name="bellx" size={14} style={{ marginLeft: 6, opacity: .6 }} />}</b>
             <small>{c.last ? `${c.last.name}: ${c.last.kind === 'photo' ? 'Photo' : c.last.kind === 'video' ? `Video: ${c.last.body}` : c.last.body}` : `${c.members} people`}</small>
           </span>
           <span className="chat-item-meta">{c.last && <small>{ago(c.last.at)}</small>}{c.unread > 0 && <span className="fr-dot">{c.unread > 99 ? '99+' : c.unread}</span>}</span>
         </button>
-      ))}
+      ); })}
 
       {making && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setMaking(false); }}>

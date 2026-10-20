@@ -217,15 +217,19 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
     say(next ? `${b.name} is on` : 'Back to the plain colour');
   }
 
+  // a 1-on-1 chat shows as the friend you're talking to (no "2 people", no adding a third person)
+  const other = d?.members?.length === 2 ? d.members.find((m) => !m.me) : null;
+  const isDM = !!other && (d.group.pair || String(d.group.name).split(' & ').map((x) => x.trim()).includes(other.name));
+  const title = isDM ? other.name : d?.group?.name;
   const memberIds = new Set((d?.members || []).map((m) => m.code));
   const addable = (friends || []).filter((f) => !memberIds.has(f.code));
 
   return (
-    <div className="chat-full" data-bg={d?.group?.bg || undefined} role="dialog" aria-modal="true" aria-label={d?.group?.name || 'Chat'} data-testid="chat-view">
+    <div className="chat-full" data-bg={d?.group?.bg || undefined} role="dialog" aria-modal="true" aria-label={title || 'Chat'} data-testid="chat-view">
       <header className="chat-top">
         <button type="button" className="chat-ico" onClick={onClose} aria-label="Back to chats"><Icon name="back" size={22} /></button>
-        <button type="button" className="chat-title" onClick={openPeople} aria-label={`${d?.group?.name || 'Chat'}: see who is in this group`}>
-          <b>{d?.group?.name || '…'}</b><small>{d ? `${d.members.length} ${d.members.length === 1 ? 'person' : 'people'}` : ''}</small>
+        <button type="button" className="chat-title" onClick={openPeople} aria-label={isDM ? `${title}: chat options` : `${title || 'Chat'}: see who is in this group`}>
+          <b>{title || '…'}</b><small>{!d ? '' : isDM ? (other.online ? 'Online now' : '') : `${d.members.length} ${d.members.length === 1 ? 'person' : 'people'}`}</small>
         </button>
         <button type="button" className="chat-ico" onClick={() => setShopList(true)} disabled={!d} aria-label="Group shopping list" data-testid="chat-listbtn"><Icon name="bag" size={22} /></button>
         <button type="button" className="chat-ico" onClick={openLooks} disabled={!d} aria-label="Chat background" data-testid="chat-bgbtn"><Icon name="palette" size={22} /></button>
@@ -325,8 +329,8 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
       {people && d && (
         <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setPeople(false); }}>
           <div className="sheet stack menu-sheet" role="dialog" aria-modal="true" aria-label="People in this group" data-testid="chat-people">
-            <h2 style={{ fontSize: 24 }}>{d.group.name}</h2>
-            {d.members.map((m) => (
+            <h2 style={{ fontSize: 24 }}>{title}</h2>
+            {d.members.filter((m) => !isDM || !m.me).map((m) => (
               <div key={m.code} className="fr-req">
                 <Avatar code={m.code} name={m.name} aria-hidden="true" />
                 <span><Crowned code={m.code} me={m.me} size={14}><b>{m.me ? 'You' : m.name}</b></Crowned>{m.owner && <span className="desc"> · made the group</span>}{m.muted && <span className="desc"> · muted</span>}</span>
@@ -334,11 +338,11 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
                 {!m.me && d.group.mine && <button className="btn ghost sm" onClick={() => removePerson(m)} aria-label={`Remove ${m.name}`}><Icon name="x" size={16} /></button>}
               </div>
             ))}
-            {addable.length > 0 && <>
+            {!isDM && addable.length > 0 && <>
               <span className="eyebrow">{t('Add a friend')}</span>
               <div className="fr-list">{addable.map((f) => <button key={f.code} type="button" className="chip fr-chip" onClick={() => addPerson(f)} aria-label={`Add ${f.name} to the group`}><Avatar className="post-av sm" code={f.code} name={f.name} aria-hidden="true" />{f.name}<Icon name="plus" size={14} /></button>)}</div>
             </>}
-            <button className="btn ghost wide" style={{ color: 'var(--bad)' }} onClick={leave}>{t('Leave group')}</button>
+            {!isDM && <button className="btn ghost wide" style={{ color: 'var(--bad)' }} onClick={leave}>{t('Leave group')}</button>}
             <button className="btn wide" onClick={() => setPeople(false)}>{t('Done')}</button>
           </div>
         </div>

@@ -8,7 +8,7 @@ import { fetchFriends, fetchChats } from './tabData';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
 import AddFriendSheet from './AddFriendSheet';
-import { color, ago, chatError } from '@/lib/social';
+import { color, ago, chatError, dmOf, shownChats } from '@/lib/social';
 
 export const fetchPartyGlobe = (supabase, gid) => supabase.rpc('get_party_globe', { p_group: gid }).then(({ data, error }) => (error ? undefined : data));
 export const fetchParties = (supabase) => supabase.rpc('get_parties').then(({ data, error }) => (error ? undefined : data || []));
@@ -99,7 +99,7 @@ export function ChatsPeek() {
   const [chats] = useCached('chats', () => fetchChats(supabase));
   const [f0] = useCached('friends', () => fetchFriends(supabase));
   const asks = f0?.requests?.length || 0;
-  const list = (chats || []).slice(0, 3);
+  const list = shownChats(chats, f0?.friends).slice(0, 3);
   return (
     <section className="stack" style={{ gap: 8 }} aria-label={t('Chats')} data-tip="friends">
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
@@ -111,10 +111,10 @@ export function ChatsPeek() {
       ) : (
         <div className="card chat-peek">
           {list.map((c) => (
-            <Link key={c.id} href={`/compete/friends?chat=${c.id}`} className="chat-item" data-testid="chat-peek-item" aria-label={`${c.name}${c.unread ? `, ${c.unread} new` : ''}`}>
-              <span className="post-av" style={{ background: color(c.name) }} aria-hidden="true">{c.name.slice(0, 1).toUpperCase()}</span>
+            <Link key={c.id} href={`/compete/friends?chat=${c.id}`} className="chat-item" data-testid="chat-peek-item" aria-label={`${dmOf(c, f0?.friends)?.name || c.name}${c.unread ? `, ${c.unread} new` : ''}`}>
+              {dmOf(c, f0?.friends) ? <Avatar className="post-av" code={dmOf(c, f0?.friends).code} name={dmOf(c, f0?.friends).name} aria-hidden="true" /> : <span className="post-av" style={{ background: color(c.name) }} aria-hidden="true">{c.name.slice(0, 1).toUpperCase()}</span>}
               <span className="chat-item-txt">
-                <b>{c.name}</b>
+                <b>{dmOf(c, f0?.friends)?.name || c.name}</b>
                 <small>{c.last ? `${c.last.name}: ${c.last.kind === 'photo' ? 'Photo' : c.last.kind === 'video' ? `Video: ${c.last.body}` : c.last.body}` : `${c.members} people`}</small>
               </span>
               <span className="chat-item-meta">{c.last && <small>{ago(c.last.at)}</small>}{c.unread > 0 && <span className="fr-dot">{c.unread > 99 ? '99+' : c.unread}</span>}</span>

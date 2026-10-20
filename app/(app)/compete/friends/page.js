@@ -34,6 +34,12 @@ export default function Friends() {
     if (error) { say('Couldn’t answer that.'); return; }
     say(yes ? `You and ${r.name} are friends. Start a shared grocery list from Your friends.` : 'Request removed'); reloadFriends();
   }
+  // tap a friend: your 1-on-1 chat with them (always the same one; it's only listed in Chats once someone writes)
+  async function message(fr) {
+    const { data, error } = await supabase.rpc('open_shared_list', { p_code: fr.code });
+    if (error) { say(chatError(error, 'Couldn’t open that chat.')); return; }
+    setOpenList(false); setOpen(data);
+  }
   async function sharedList(fr) {
     const { data, error } = await supabase.rpc('open_shared_list', { p_code: fr.code });
     if (error) { say(chatError(error, 'Couldn’t open that list.')); return; }
@@ -78,10 +84,10 @@ export default function Friends() {
           <h2 className="fr-h">{t('Friends')} · {f.friends.length}</h2>
           {f.friends.map((fr) => (
             <div key={fr.code} className="fr-swipe">
-              <button type="button" className="fr-row" onClick={(e) => { const w = e.currentTarget.parentElement; w.scrollTo({ left: w.scrollLeft > 4 ? 0 : w.scrollWidth, behavior: 'smooth' }); }} aria-label={`${fr.name}. Tap for options`}>
+              <button type="button" className="fr-row" onClick={(e) => { const w = e.currentTarget.parentElement; if (w.scrollLeft > 4) w.scrollTo({ left: 0, behavior: 'smooth' }); else message(fr); }} aria-label={`Message ${fr.name}. Swipe left for the shared list or to remove`} data-testid="friend-row">
                 <Avatar code={fr.code} name={fr.name} aria-hidden="true" />
                 <span className="fr-nm"><Crowned code={fr.code} size={14}><b>{fr.name}</b></Crowned></span>
-                <Icon name="chevron" size={16} />
+                <Icon name="send" size={18} />
               </button>
               <button type="button" className="fr-act list" onClick={() => sharedList(fr)} data-testid="shared-list"><Icon name="bag" size={18} />{t('Shared list')}</button>
               <button type="button" className="fr-act rm" onClick={() => unfriend(fr)}>{t('Remove')}</button>

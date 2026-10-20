@@ -5,6 +5,9 @@ import { stickerUrl } from '@/lib/art/food';
 import { itemUrl } from '@/lib/art/items';
 import { roomFor } from '@/lib/art/tampa';
 import Room from './Room';
+import Solid from './Solid';
+import { SOLID } from '@/lib/kitchen/solids';
+import { FIT } from '@/lib/kitchen/fit';
 import { MAGNETS, magnetUrl } from '@/lib/art/magnets';
 import { useWorld } from '@/components/usePantry';
 import { itemPx } from '@/lib/kitchen/sizes';
@@ -151,12 +154,30 @@ export default function Kitchen3D({
     const along = (a) => (dx * a[0] + dy * a[1]) / (a[0] * a[0] + a[1] * a[1] || 1);
     return { u: along(ex), v: along(ey), ex, ey };
   }
+  // the exact floor spot (in cells) under a screen move: so a thing stays under your finger as you slide it
+  function floorCells(dx, dy) {
+    const { ex, ey } = axisCells(0, 0), det = ex[0] * ey[1] - ey[0] * ex[1] || 1;
+    return { u: (dx * ey[1] - dy * ey[0]) / det, v: (ex[0] * dy - ex[1] * dx) / det };
+  }
   // snap to a new cell only once you're clearly past the halfway mark (no flicker between two cells)
   const settle = (cur, raw) => (Math.abs(raw - cur) > 0.7 ? Math.round(raw) : cur);
   const lift = (dy) => -dy / (HU * S * Math.max(0.35, Math.sin(camera.rx * Math.PI / 180)));
+  // A thing has to stand flat on one surface (no hanging off an edge); something on a counter stays up on counters
+  // (it never drops to the floor while you slide it), and a faucet stays on its sink.
+  const standsOk = (n, b0) => n.z >= 0 && (b0.z <= 0 || n.z > 0) && (!K.AT_SINK.has(n.mid.slice(K.THING.length)) || K.onSink(pieces, n) || !pieces.some((b) => b.mid === 'sink'));
+  const heap = (d) => (d.skip ??= new Set(pieces.filter((o) => o.id !== d.b0.id && K.isThing(o) && K.clash([o], d.b0)).map((o) => o.id)));
+  const spin = (b) => (e) => {
+    if (drag.current?.mode === 'pinch') return; e.stopPropagation();
+    const r = e.currentTarget.closest('.kthing')?.querySelector('.kring')?.getBoundingClientRect();
+    if (!r) return;
+    drag.current = { mode: 'rot', id: b.id, x: e.clientX, y: e.clientY, cx: r.left + r.width / 2, cy: r.top + r.height / 2, b0: { ...b } }; moved.current = true;
+    try { root.current.setPointerCapture(e.pointerId); } catch { /* fine */ }
+  };
   // ok: an extra rule for where it may go (a faucet only slides along a sink)
-  function update(id, fn, ok) {
-    const next = pieces.map((b) => { if (b.id !== id) return b; const n = { ...b }; fn(n); return K.clash(pieces, n) || (ok && !ok(n)) ? b : n; });
+  // skip: things it already overlapped when you picked it up (old saves), so it can always be moved out of the heap
+  function update(id, fn, ok, skip) {
+    const others = skip?.size ? pieces.filter((o) => !skip.has(o.id)) : pieces;
+    const next = pieces.map((b) => { if (b.id !== id) return b; const n = { ...b }; fn(n); return K.clash(others, n) || (ok && !ok(n)) ? b : n; });
     if (next.some((b, i) => b !== pieces[i])) onChange?.(next);
   }
   const dist = () => { const [a, b] = [...fingers.current.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
@@ -230,9 +251,18 @@ export default function Kitchen3D({
     }
     // swipe right → the model turns right with your finger
     if (d.mode === 'spin') { const k = build ? 0.3 : 0.4; liveCam({ ...camera, rz: d.rz - dx * k, rx: K.clamp(d.rx - dy * k * 0.6, 20, 78) }); return; }
-    if (d.mode === 'move' && d.thing) {   // things slide over the floor plan and settle on whatever is under them
-      const { u, v } = axisCells(dx, dy);
-      update(d.id, (n) => { n.x = K.clamp(settle(n.x, d.b0.x + u), 0, K.GW - n.w); n.y = K.clamp(settle(n.y, d.b0.y + v), 0, K.GD - n.d); n.z = K.restZ(pieces, n); }, (n) => !K.AT_SINK.has(n.mid.slice(K.THING.length)) || K.onSink(pieces, n) || !pieces.some((b) => b.mid === 'sink'));
+    if (d.mode === 'move' && d.thing) {   // things slide smoothly over the surface they're on, never up or down
+      const { u, v } = floorCells(dx, dy);
+      update(d.id, (n) => { n.x = Math.round(K.clamp(d.b0.x + u, 0, K.GW - n.w) * 20) / 20; n.y = Math.round(K.clamp(d.b0.y + v, 0, K.GD - n.d) * 20) / 20; n.z = K.support(pieces, n) ?? -1; }, (n) => standsOk(n, d.b0), heap(d));
+      return;
+    }
+    if (d.mode === 'rot') {   // the dot on the ring: point where the front should face
+      const { u, v } = floorCells(e.clientX - d.cx, e.clientY - d.cy);
+      if (Math.hypot(u, v) < 0.15) return;
+      let a = (Math.atan2(v, u) * 180) / Math.PI - 90;
+      a = ((Math.round(a) % 360) + 360) % 360;
+      const snap = Math.round(a / 90) * 90; if (Math.abs(a - snap) < 6) a = snap % 360;
+      update(d.id, (n) => { n.rot = a; n.z = K.support(pieces, n) ?? -1; }, (n) => standsOk(n, d.b0), heap(d));
       return;
     }
     if (d.mode === 'move') {
@@ -299,7 +329,7 @@ export default function Kitchen3D({
                 e.stopPropagation(); drag.current = { mode: 'move', thing: K.isThing(b), id: b.id, x: e.clientX, y: e.clientY, b0: { ...b }, t: Date.now() }; moved.current = false;
               } : undefined;
               return K.isThing(b)
-                ? <Thing key={b.id} b={b} selected={build && sel === b.id} onDown={onDown} />
+                ? <Thing key={b.id} b={b} selected={build && sel === b.id} onDown={onDown} onSpin={spin(b)} />
                 : K.MODEL[b.mid].gen === 'closet'
                   ? <Closet key={b.id} b={b} {...{ build, view, spot, onSpot, sel, idx, guard }} onDown={onDown} onFocus={focusFor(b)} />
                   : <Piece key={b.id} b={b} {...{ build, view, mini, open, openAll, onToggle, spot, onSpot, sel, idx, guard, grow, taught, mags, angles }} onDown={onDown} onFocus={focusFor(b)} focused={focus === b.id} />;
@@ -332,16 +362,26 @@ const FLOORS = {
 // A shop thing: a drawn cut-out standing on the counter (or floor). It turns to face you only within the front
 // quarter of the room (like a real object you'd see from the kitchen), so as you spin the kitchen it stays put on its
 // counter instead of swivelling around; its spot in the room never changes.
-function Thing({ b, selected, onDown }) {
+function Thing({ b, selected, onDown, onSpin }) {
   const m = K.MODEL[b.mid]; const C = K.C, HU = K.HU;
-  const W = b.w * C, VW = Math.round(W * 1.3), H = VW, Z = Math.round(b.z * HU);   // a little bigger than its cell so you can see it, not so big it hangs off the counter
-  const R = 4;   // drawn 4× bigger and shrunk back, so the picture stays sharp when you zoom in (a 3D layer is painted at its own size)
+  const W = b.w * C, D = b.d * C, Z = Math.round(b.z * HU), rot = b.rot || 0, solid = SOLID[m.item];
+  // a picture is sized so the item in it is its real height, and its bottom stands exactly on the surface
+  const f = FIT[m.item] || [0.04, 0.04, 0.96, 0.96], ih = b.h * HU, PH = ih / (f[3] - f[1]), PW = PH;
+  const R = 4;   // drawn 4× bigger and shrunk back, so the picture stays sharp when you zoom in
+  const ring = Math.max(W, D) * 0.78 + 14;
   return (
-    <div className={`kthing ${selected ? 'sel' : ''}`} style={{ left: b.x * C, top: b.y * C, width: W, height: b.d * C, transform: `translateZ(${Z + 0.5}px)` }} onPointerDown={onDown} data-piece={b.id}>
-      <div className="kthing-shadow" />
-      <div className="kthing-up" style={{ left: (W - VW * R) / 2, top: b.d * C / 2 - H * R, width: VW * R, height: H * R, transform: `rotateZ(calc(clamp(-5, var(--rz) * -1, 85) * 1deg)) rotateX(-90deg) scale(${1 / R})` }}>
-        <img src={itemUrl(m.item)} alt={m.nick} title={m.nick} draggable={false} />
-      </div>
+    <div className={`kthing ${selected ? 'sel' : ''}`} style={{ left: b.x * C, top: b.y * C, width: W, height: D, transform: `translateZ(${Z + 0.5}px)` }} onPointerDown={onDown} data-piece={b.id}>
+      <div className="kthing-shadow" style={{ transform: `rotateZ(${rot}deg)`, borderRadius: solid ? '30%' : '50%' }} />
+      {solid
+        ? <Solid parts={solid} w={b.w} d={b.d} rot={rot} />
+        : <div className="kthing-up" style={{ left: W / 2 - (PW * R) / 2 - (((f[0] + f[2]) / 2) - 0.5) * PW, top: D / 2 - PH * R, width: PW * R, height: PH * R, transform: `rotateZ(calc(clamp(-5, var(--rz) * -1, 85) * 1deg)) translateZ(${-(1 - f[3]) * PH}px) rotateX(-90deg) scale(${1 / R})` }}>
+          <img src={itemUrl(m.item)} alt={m.nick} title={m.nick} draggable={false} style={rot > 90 && rot < 270 ? { transform: 'scaleX(-1)' } : undefined} />
+        </div>}
+      {selected && !m.locked && (
+        <div className="kring" style={{ left: W / 2 - ring, top: D / 2 - ring, width: ring * 2, height: ring * 2 }}>
+          <button type="button" className="kring-dot" style={{ transform: `rotate(${rot}deg) translateY(${ring}px) rotate(${-rot}deg)` }} onPointerDown={onSpin} aria-label="Drag to turn it" />
+        </div>
+      )}
     </div>
   );
 }

@@ -100,16 +100,30 @@ export default function Design() {
   const removeSel = () => { setPieces((p) => p.filter((x) => x.id !== sel)); setSel(null); };
 
   if (!edit) return <p className="muted" style={{ marginTop: 24 }}>Loading your kitchen…</p>;
-  const hint = look ? 'Tap a door' : !selB ? (spun ? 'Tap a piece' : 'Drag to spin · pinch to zoom') : taught ? 'Drag it anywhere' : 'Drag it anywhere · pull a dot to stretch';
+  const hint = look ? 'Tap a door' : !selB ? (spun ? 'Tap a piece' : 'Drag to spin · pinch to zoom') : K.isThing(selB) ? 'Slide it · drag the green dot to turn' : taught ? 'Drag it anywhere' : 'Drag it anywhere · pull a dot to stretch';
   // one small button moves it toward you; at the front it flips and goes back the other way
   function nudge() {
     if (!selB) return;
-    const at = (d) => { const n = { ...selB, y: selB.y + d }; if (K.isThing(n)) n.z = K.restZ(edit.pieces, n); return K.clash(edit.pieces, n) ? null : n; };
+    const at = (d) => {
+      const n = { ...selB, y: selB.y + (K.isThing(selB) ? d / 2 : d) };
+      if (K.isThing(n)) { n.z = K.support(edit.pieces, n); if (n.z == null || (selB.z > 0 && n.z === 0)) return null; }
+      return K.clash(edit.pieces, n) ? null : n;
+    };
     let n = at(dir), d = dir;
     if (!n) { d = -dir; n = at(d); }
     if (!n) { say('Something’s in the way'); return; }
     setPieces((p) => p.map((x) => (x.id === n.id ? n : x)));
     setDir(K.clash(edit.pieces, { ...n, y: n.y + d }) ? -d : d);   // can't go further → the arrow flips
+  }
+
+  // turn a thing a quarter-ish (45°) each tap; it has to still stand flat where it is
+  function turn() {
+    if (!selB || !K.isThing(selB)) return;
+    for (const step of [45, 90, 135, 180, 225, 270, 315]) {
+      const n = { ...selB, rot: ((selB.rot || 0) + step) % 360 }; n.z = K.support(edit.pieces, n);
+      if (n.z != null && !(selB.z > 0 && n.z === 0) && !K.clash(edit.pieces, n)) { setPieces((p) => p.map((x) => (x.id === n.id ? n : x))); return; }
+    }
+    say('No room to turn it here');
   }
 
   return (
@@ -153,9 +167,10 @@ export default function Design() {
           <button type="button" className="kd-thumb" onClick={() => !K.isThing(selB) && setSheet('paint')} aria-label={K.isThing(selB) ? K.MODEL[selB.mid].desc : 'Colour and texture'}><Flat {...selB} box={[44, 48]} /></button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <b>{K.MODEL[selB.mid].desc}</b>
-            <div className="desc">{K.isThing(selB) ? (selB.z > 0 ? 'On the counter' : 'On the floor') : `${selB.w} × ${selB.d} ft · ${selB.h} ft tall`}</div>
+            <div className="desc">{K.isThing(selB) ? `${selB.z > 0 ? 'On the counter' : 'On the floor'} · ${Math.round(selB.w * 12)}″ wide` : `${selB.w} × ${selB.d} ft · ${selB.h} ft tall`}</div>
           </div>
           <div className="kd-tools">
+            {K.isThing(selB) && !K.MODEL[selB.mid].locked && <button type="button" className="kd-depth" onClick={turn} aria-label="Turn it"><Icon name="undo" size={18} style={{ transform: 'scaleX(-1)' }} /></button>}
             <button type="button" className="kd-depth" onClick={nudge} aria-label={dir > 0 ? 'Bring it toward you' : 'Push it back'}><Icon name="chevron" size={20} style={{ transform: `rotate(${dir > 0 ? 90 : -90}deg)` }} /></button>
             {!K.isThing(selB) && <button type="button" className="btn ghost sm" onClick={() => setSheet('paint')}>Paint</button>}
             {!K.isThing(selB) && <button type="button" className="btn ghost sm" onClick={copySel} aria-label="Copy it"><Icon name="plus" size={16} /></button>}

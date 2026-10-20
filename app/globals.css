@@ -957,6 +957,13 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 /* shop things standing in the 3D kitchen */
 .kthing { position: absolute; transform-style: preserve-3d; transition: left .12s ease-out, top .12s ease-out; }
 .kthing-shadow { position: absolute; inset: 4% 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(40,25,10,.5), rgba(40,25,10,.18) 70%, rgba(40,25,10,0)); }
+.ksolid { position: absolute; left: 0; top: 0; transform-style: preserve-3d; transform-origin: 50% 50%; pointer-events: none; }
+.k3.build .ksolid { pointer-events: auto; }
+.ksolid-in { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform-style: preserve-3d; }
+.ksf { position: absolute; backface-visibility: visible; overflow: hidden; }
+.kring { position: absolute; border: 2px dashed #2f8a55; border-radius: 50%; transform: translateZ(.8px); pointer-events: none; transform-style: preserve-3d; }
+.kring-dot { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px; padding: 0; border-radius: 50%; background: #2f8a55; border: 3px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); pointer-events: auto; touch-action: none; cursor: grab; }
+.kring-dot::after { content: ""; position: absolute; inset: -14px; border-radius: 50%; }
 .kthing-up { position: absolute; transform-origin: 50% 100%; backface-visibility: visible; transform-style: preserve-3d; pointer-events: none; }
 .kthing-up img { width: 100%; height: 100%; display: block; -webkit-user-drag: none; filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff) drop-shadow(0 2px 2px rgba(0,0,0,.25)); }
 .k3.build .kthing { cursor: grab; }

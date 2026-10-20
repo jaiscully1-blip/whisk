@@ -7,7 +7,6 @@ import { track } from '@/lib/activity';
 import { canon, STAPLES } from '@/lib/recipes/match';
 import { guessCategory } from '@/lib/game';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
-import LogMealSheet from './LogMealSheet';
 import RecipeSheet from './RecipeSheet';
 import { worldIdFor } from '@/lib/recipes/worldExpand';
 import { cultureStyle, motifFor } from '@/lib/culture';
@@ -64,7 +63,6 @@ export default function DishSearch({ q, pantry }) {
 }
 
 function DishCard({ d, have, country, pantry }) {
-  const [cooking, setCooking] = useState(false);
   const { supabase, say, ensureRecipes } = useWhisk();
   const [full, setFull] = useState(null);      // the dish's full recipe (ingredients with amounts + steps)
   const [loadingFull, setLoadingFull] = useState(false);
@@ -88,7 +86,6 @@ function DishCard({ d, have, country, pantry }) {
   // When a card turns over, glide the page so the whole card is on screen between the top bar and the tab bar
   // (centred when it fits; when it is taller than the room, its top sits just under the bar). One smooth ease, starting at once.
   const box = useRef(null); const moved = useRef(false); const raf = useRef(0);
-  const [arrive, setArrive] = useState(false);
   const glide = (dy) => {
     cancelAnimationFrame(raf.current);
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { window.scrollBy(0, dy); return; }
@@ -114,12 +111,11 @@ function DishCard({ d, have, country, pantry }) {
   };
   useEffect(() => {
     if (!on) { cancelAnimationFrame(raf.current); return; }
-    moved.current = false; setArrive(true);
+    moved.current = false;
     const stop = () => { moved.current = true; cancelAnimationFrame(raf.current); };
     window.addEventListener('wheel', stop, { passive: true, once: true }); window.addEventListener('touchstart', stop, { passive: true, once: true });
     const go = requestAnimationFrame(() => reveal(false));
-    const off = setTimeout(() => setArrive(false), 1200);
-    return () => { cancelAnimationFrame(go); clearTimeout(off); window.removeEventListener('wheel', stop); window.removeEventListener('touchstart', stop); };
+    return () => { cancelAnimationFrame(go); window.removeEventListener('wheel', stop); window.removeEventListener('touchstart', stop); };
   }, [on]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (on && info) { const id = setTimeout(() => reveal(true), 80); return () => clearTimeout(id); } }, [info]); // eslint-disable-line react-hooks/exhaustive-deps
   const rows = (info?.ingredients || []).map((x) => ({ ...x, ok: STAPLES.has(canon(x.name)) || have.has(canon(x.name)) }));
@@ -135,7 +131,7 @@ function DishCard({ d, have, country, pantry }) {
   const t = on ? 0 : -1;
 
   return (
-    <div className={`flip dflip ${on ? 'on' : ''} ${arrive ? 'arrive' : ''}`} ref={box}>
+    <div className={`flip dflip ${on ? 'on' : ''}`} ref={box}>
       <div className="flip-in">
         <button className="card face dish-row" onClick={flip} aria-label={`${d.name}: show ingredients and video`} aria-hidden={on} tabIndex={on ? -1 : 0}>
           <span className="dish-ico" aria-hidden="true">{flags[0] ? <img className="flagimg" src={`/flags/${flags[0][0].toLowerCase()}.svg`} alt="" width="29" height="22" /> : <Icon name="cook" size={18} />}</span>
@@ -165,14 +161,12 @@ function DishCard({ d, have, country, pantry }) {
                 <a className="ytbtn" href={info.search} target="_blank" rel="noopener noreferrer" tabIndex={t}><YouTubeLogo /><span><b>Find it on YouTube</b></span></a>
               )}
               {!d.wiki && (d.countries || []).length > 0 && <button className="btn wide" onClick={openFull} disabled={loadingFull} tabIndex={t} data-testid="dish-full-recipe"><Icon name="cook" size={18} />{loadingFull ? 'Opening…' : 'Full recipe'}</button>}
-              {!d.wiki && (d.countries || []).length > 0 && <button className="btn ghost wide" onClick={() => setCooking(true)} tabIndex={t}><Icon name="camera" size={18} />I cooked it</button>}
-            </>
+                          </>
           )}
         </div>
       </div>
       {/* the sheet goes on <body>: a fixed overlay inside the 3D flip card would be trapped in the card */}
       {full && createPortal(<RecipeSheet recipe={full} pantry={pantry || []} onClose={() => setFull(null)} />, document.body)}
-      {cooking && createPortal(<LogMealSheet dish={d} country={country && d.countries.includes(country) ? country : null} onClose={() => setCooking(false)} />, document.body)}
     </div>
   );
 }

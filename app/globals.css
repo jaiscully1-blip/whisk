@@ -1886,9 +1886,6 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .dflip.on .face.dish-row { box-shadow: none; border-width: 0; margin: 0; visibility: hidden; transition: max-height .45s ease, padding .3s, visibility 0s .45s; }
 .dflip { scroll-margin-top: 90px; }
 
-/* a card that just turned over lands with a soft glow so the eye finds it */
-.dflip.arrive .face.back { animation: df-arrive 1.1s ease-out; }
-@keyframes df-arrive { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 70%, transparent), 0 0 24px 2px color-mix(in srgb, var(--accent) 35%, transparent); } 60% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 18px 2px color-mix(in srgb, var(--accent) 18%, transparent); } 100% { box-shadow: 0 0 0 0 transparent, 0 0 0 0 transparent; } }
 .dflip.on .face.back .scene-bleed { animation: df-rise .5s .08s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes df-rise { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .dflip.arrive .face.back, .dflip.on .face.back .scene-bleed { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .dflip.on .face.back .scene-bleed { animation: none; } }

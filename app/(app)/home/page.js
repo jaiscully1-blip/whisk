@@ -130,7 +130,7 @@ export default function Home() {
     <div className="stack" style={{ paddingTop: 16 }}>
       {frozen.length > 0 && <ThawBanner items={frozen} onChanged={reload} />}
       <div className="page-title" style={{ margin: '6px 0 0' }}><h1>{t('Discover a Dish')}</h1></div>
-      {almost === null || !ready ? <p className="muted">Checking your pantry…</p> : almost.length === 0 ? (
+      {almost === null || !ready ? <div className="dish-skel" aria-busy="true" aria-label={t('Loading dishes')} data-testid="dish-skel">{[0, 1].map((i) => <div key={i} className="card"><i className="art" /><i className="ln w60" /><i className="ln w40" /><i className="ln w80" /></div>)}</div> : almost.length === 0 ? (
         <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">{t('Add pantry items')}</Link><Link className="btn ghost" href="/cook">{t('What can I make?')}</Link></div></div>
       ) : almost.slice(0, shown).map((x, i) => <DishCard key={x.r.id} x={x} first={i === 0} lazy={i > 1} onOpen={openFull} onWarm={warm} onAdd={addToList} t={t} />)}
       {almost && almost.length > shown && <div ref={moreRef}><button className="btn ghost wide" onClick={() => setShown((n) => n + PAGE)}>{t('Show more')}</button></div>}

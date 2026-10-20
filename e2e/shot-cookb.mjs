@@ -1,0 +1,17 @@
+import { createRequire } from 'node:module';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const BASE = 'http://localhost:3000', OUT = process.argv[2];
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); const p = await ctx.newPage();
+const sweep = async () => { for (let i = 0; i < 4; i++) { for (const sel of ['.tip-ok', 'button:has-text("Maybe later")', '.popup-scrim button']) { if (await p.locator(sel).count()) await p.locator(sel).first().click({ timeout: 1500 }).catch(() => {}); } await p.waitForTimeout(150); } };
+const ok = (n, v) => console.log(v ? 'PASS' : 'FAIL', n);
+await p.goto(`${BASE}/login`); await p.getByRole('radio', { name: 'Accept' }).click(); await p.getByRole('button', { name: 'Start playing' }).click(); await p.waitForURL('**/cook'); await p.waitForTimeout(3000); await sweep();
+ok('no More filters', await p.getByTestId('more-filters').count() === 0);
+await p.evaluate(() => window.scrollTo(0, 300)); const y0 = await p.evaluate(() => scrollY);
+await p.getByTestId('shuffle-pick').click().catch(async () => { await p.evaluate(() => window.scrollTo(0, 0)); await p.getByTestId('shuffle-pick').click(); });
+await p.waitForTimeout(500); 
+console.log('titles', (await p.getByTestId('fy-card').allInnerTexts()).map((t) => t.split('\n').slice(0, 2).join(' / ')).join(' | '));
+await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await p.waitForTimeout(400);
+await p.screenshot({ path: `${OUT}/cb-bottom.png` });
+await p.getByTestId('saved-chip').click(); await p.waitForTimeout(800); ok('saved view opens', await p.getByTestId('back-to-picks').count() === 1);
+await b.close();

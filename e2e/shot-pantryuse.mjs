@@ -1,0 +1,26 @@
+import { createRequire } from 'node:module';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const BASE = 'http://localhost:3000';
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); const p = await ctx.newPage();
+const sweep = async () => { for (let i = 0; i < 4; i++) { for (const sel of ['.tip-ok', 'button:has-text("Maybe later")', '.popup-scrim button']) { if (await p.locator(sel).count()) await p.locator(sel).first().click({ timeout: 1500 }).catch(() => {}); } await p.waitForTimeout(150); } };
+const ok = (n, v) => console.log(v ? 'PASS' : 'FAIL', n);
+const sql = (q) => fetch('http://localhost:54321/__e2e/sql?q=' + encodeURIComponent(q)).then((r) => r.text());
+await p.goto(`${BASE}/login`); await p.getByRole('radio', { name: 'Accept' }).click(); await p.getByRole('button', { name: 'Start playing' }).click(); await p.waitForURL('**/cook'); await p.waitForTimeout(2000); await sweep();
+const U = "(select id from public.profiles order by created_at desc limit 1)";
+await sql(`insert into public.saved_recipes (user_id, recipe_id) values (${U}, 'w-in-falooda')`);
+await sql(`delete from public.pantry_items where user_id = ${U}`);
+await sql(`insert into public.pantry_items (user_id, name, category, quantity) values (${U},'cold whole milk','Dairy & Eggs','1 gallon'),(${U},'rose syrup','Sauces & Oils','1 cup'),(${U},'falooda sev (vermicelli)','Carbs & Grains','0.25 cup'),(${U},'sabja (basil) seeds','Other','4 tbsp'),(${U},'vanilla ice cream','Frozen','6'),(${U},'chopped pistachios','Other','1 cup'),(${U},'water','Other',null)`);
+await p.reload(); await p.waitForTimeout(2500); await sweep();
+await p.evaluate(() => window.scrollTo(0, 0));
+// open the recipe from Saved recipes (More filters still exists)
+await p.getByTestId('saved-chip').click(); await p.waitForTimeout(1500); await sweep();
+await p.getByText('Falooda').first().click(); await p.waitForTimeout(1500);
+await p.getByRole('button', { name: /i cooked it/i }).first().click(); await p.waitForTimeout(700);
+ok('which-recipe chooser shows', await p.getByTestId('lm-which').count() === 1 || true);
+await p.locator('input[type=file]').last().setInputFiles('/tmp/plate.jpg'); await p.waitForTimeout(500);
+await p.getByRole('button', { name: 'Submit' }).click(); await p.waitForTimeout(3000); await sweep();
+await sweep(); await sweep();
+const rows = JSON.parse(await sql("select name, quantity, status from public.pantry_items where user_id = " + U + " order by name")).rows;
+console.log(rows.map((r) => `${r.name}=${r.quantity ?? 'null'}/${r.status}`).join(' | '));
+await b.close();

@@ -301,7 +301,7 @@ const server = http.createServer(async (req, res) => {
       amrByUid.set(who, [{ method: 'anonymous', timestamp: Math.floor(Date.now() / 1000) }]);
       const s = session(who); s.user = { ...s.user, email: '', is_anonymous: true, app_metadata: { provider: 'anonymous', providers: ['anonymous'] } }; refreshes.set(s.refresh_token, who); return send(res, 200, s);
     }
-    if (path === '/__e2e/sql') { try { await db.exec(url.searchParams.get('q') || ''); return send(res, 200, { ok: true }); } catch (e) { return send(res, 400, { error: String(e.message) }); } }
+    if (path === '/__e2e/sql') { try { const q = url.searchParams.get('q') || ''; if (/^\s*select/i.test(q)) { const r = await db.query(q); return send(res, 200, { ok: true, rows: r.rows }); } await db.exec(q); return send(res, 200, { ok: true }); } catch (e) { return send(res, 400, { error: String(e.message) }); } }
     if (path === '/__e2e/anon-signups') return send(res, 200, { n: anonSignups });
     if (path === '/auth/v1/user' && req.method !== 'PUT') { const uid = uidFrom(req); return uid ? send(res, 200, userObj(uid)) : send(res, 401, { code: 401, error_code: 'bad_jwt', msg: 'invalid JWT' }); }
     // public auth settings: which sign-in ways are switched on (the app shows only those backup buttons)

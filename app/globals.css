@@ -1777,6 +1777,7 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .fr-picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .fr-pick { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; background: var(--card); color: var(--fg); border: 1.5px solid var(--line); border-radius: 16px; padding: 12px 6px; min-width: 0; }
 .fr-pick b { font-size: 13px; line-height: 1.15; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; } .fr-pick small { color: var(--muted); font-weight: 800; font-size: 12px; }
+.uw-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--card); color: var(--fg); border: 1.5px solid var(--line); border-radius: 99px; padding: 8px 14px; min-height: 38px; font-size: 13px; font-weight: 900; box-shadow: 0 2px 0 var(--edge-s, rgba(0,0,0,.35)); }
 .fr-more { background: none; border: 0; color: var(--muted); font-size: 12px; font-weight: 800; text-decoration: underline; padding: 8px; align-self: center; min-height: 32px; }
 .basket-empty { text-align: center; display: grid; gap: 8px; justify-items: center; padding: 18px 10px 6px; }
 .basket-empty h2 { font-family: var(--f-display); font-size: 26px; margin: 0; } .basket-empty p { color: var(--muted); font-weight: 700; margin: 0; max-width: 300px; }

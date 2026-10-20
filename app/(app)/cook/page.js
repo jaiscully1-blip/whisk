@@ -28,7 +28,7 @@ const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
 
 // Only real recipes from the web, and only ones your pantry can make.
 export default function Cook() {
-  const { recipes, ui, setUi, say, t } = useWhisk();
+  const { recipes, ui, setUi, say, t , ensureRecipes } = useWhisk();
   const tz = useTimeZone();
   const [logFor, setLogFor] = useState(null);
   // Every visit opens on the Cook home (tonight's pick, made for you, photobook) for new and returning players. "More filters" goes deeper; a dish sent from the globe still opens its results.
@@ -48,6 +48,10 @@ export default function Cook() {
   const [dish, setDish] = useDraft('o-dish');
   const [hand, setHand] = useState(null);
   const [open, setOpen] = useState(null);
+  // the world's desserts (Yoke Kitchen) join the web recipes in Made for you
+  const [worldSweets, setWorldSweets] = useState([]);
+  useEffect(() => { let off = false; fetch('/api/world-recipe?type=dessert').then((r) => r.json()).then((j) => { if (!off) setWorldSweets(j.recipes || []); }).catch(() => {}); return () => { off = true; }; }, []);
+  const openFull = async (r) => { if (r.steps || !/^w-/.test(r.id)) { setOpen(r); return; } const full = (await ensureRecipes([r.id]))[0]; if (full) setOpen(full); };
   const [asked, setAsked] = useState(false);   // "Nothing fits yet" only shows right after you ask, never on its own
   const savedMode = ui.cookMode || null; const time = ui.cookTime || ''; const meal = ui.cookMeal || ''; const diet = ui.cookDiet || '';
 
@@ -85,10 +89,10 @@ export default function Cook() {
     const SOUL = /\b(mac|cheese|stew|soup|casserole|pot pie|gravy|mashed|fried chicken|biscuit|cornbread|meatloaf|chili|dumpling|collard|grits|cobbler|smothered|pot roast|jambalaya|gumbo)\b/i;
     const dinners = stable(recipes.filter((r) => fitsMeal(r, 'dinner') && fitsDiet(r, 'High protein')));
     const soul = stable(recipes.filter((r) => (SOUL.test(r.title) || /soul|southern|cajun|creole/i.test(r.cuisine || '')) && r.minutes <= 45 && !fitsMeal(r, 'dessert')));
-    const sweetsAll = recipes.filter((r) => fitsMeal(r, 'dessert')); const sweets = stable(sweetsAll.filter((r) => r.minutes <= 60).length >= 3 ? sweetsAll.filter((r) => r.minutes <= 60) : sweetsAll);
+    const sweetsAll = [...recipes.filter((r) => fitsMeal(r, 'dessert')), ...worldSweets]; const sweets = stable(sweetsAll.filter((r) => r.minutes <= 60).length >= 3 ? sweetsAll.filter((r) => r.minutes <= 60) : sweetsAll);
     const first = pick(sweets, 2); const rest = sweets.filter((r) => r.id !== first?.id);
     return [['Protein-packed dinner', pick(dinners, 0)], ['Easy soul food', pick(soul, 1)], ['Dessert', first], ['Sweet tooth', pick(rest, 3)]].filter(([, r]) => r);
-  }, [recipes, hour]);
+  }, [recipes, hour, worldSweets]);
   function useWhatIHave() { if (!inStock.length) { router.push('/pantry'); return; } setHand(null); setAsked(true); setUi({ cookMode: 'pantry', cookDish: '' }); toTop(); }
 
   const names = inStock.filter((p) => !SKIP.includes(p.category)).map((p) => p.name);
@@ -129,7 +133,7 @@ export default function Cook() {
               <div className="fr-art">
                 <Postcard iso={hero.country} cuisine={hero.cuisine} title={hero.title} ingredients={hero.key} />
                 <span className="fr-tag">{t('TONIGHT’S PICK')}</span>
-                <button type="button" className="fr-shuf" data-testid="shuffle-pick" aria-label={t('Show me another')} onClick={() => { setShuffle((n) => n + 1); toTop(); }}><Icon name="shuffle" size={18} /></button>
+                <button type="button" className="fr-shuf" data-testid="shuffle-pick" aria-label={t('Show me another')} onClick={() => setShuffle((n) => n + 1)}><Icon name="shuffle" size={18} /></button>
               </div>
               <div className="fr-in">
                 <h2>{hero.title}</h2>
@@ -141,17 +145,16 @@ export default function Cook() {
             <section className="stack" style={{ gap: 6 }} aria-label={t('Made for you')} data-testid="made-for-you">
               <span className="eyebrow">{t('Made for you')}</span>
               <div className="fy-row">{forYou.map(([label, r], i) => (
-                <button key={label} type="button" className={`fy-card fy-${i}`} data-testid="fy-card" onClick={() => setOpen(r)}>
+                <button key={label} type="button" className={`fy-card fy-${i}`} data-testid="fy-card" onClick={() => openFull(r)}>
                   <span className="fy-art"><Postcard iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} /><span className="fy-tag">{t(['Protein', 'Comfort', 'Sweet', 'Treat'][i] || label)}</span></span>
                   <b>{r.title}</b><small>{hrs(r.minutes)}</small>
                 </button>))}</div>
             </section>
           )}
           <CookPhotobook tz={tz} todayRecipe={picks[0] || null} onAdd={setLogFor} t={t} />
-          <div className="row" style={{ justifyContent: 'center', gap: 4 }}>
-            <button type="button" className="fr-more" data-testid="use-what-i-have" onClick={useWhatIHave}>{t('Use what I have')}</button>
-            <span className="desc">·</span>
-            <button type="button" className="fr-more" data-testid="more-filters" onClick={() => { setUi({ cookFilters: true }); toTop(); }}>{t('More filters')}</button>
+          <div className="row" style={{ justifyContent: 'center', gap: 8, flexWrap: 'nowrap' }}>
+            <button type="button" className="uw-chip" data-testid="use-what-i-have" onClick={useWhatIHave}><span aria-hidden>🧺</span>{t('Use what I have')}</button>
+            <button type="button" className="uw-chip" data-testid="saved-chip" onClick={() => { setUi({ cookFilters: true }); toTop(); }}><span aria-hidden>♡</span>{t('Saved')}{saved?.size ? ` ${saved.size}` : ''}</button>
           </div>
         </>
       )}

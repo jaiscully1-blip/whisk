@@ -13,7 +13,7 @@ ok('old saved mode → new Cook home', await p.getByTestId('todays-picks').count
 ok('made for you: 3 small cards, no sideways scroll', await p.getByTestId('fy-card').count() === 3 && await p.locator('.fy-row').evaluate((e) => e.scrollWidth <= e.clientWidth + 1));
 await p.screenshot({ path: `${OUT}/nav-cook.png` });
 await p.evaluate(() => (document.scrollingElement.scrollTop = 600)); await p.waitForTimeout(400);
-await p.getByTestId('more-filters').click(); await p.waitForTimeout(900);
+await p.getByTestId('saved-chip').click(); await p.waitForTimeout(900);
 console.log('scrollY after more filters', await p.evaluate(() => [window.scrollY, document.scrollingElement.scrollTop, document.scrollingElement.scrollHeight])); ok('More filters throws you to the top', await p.evaluate(() => window.scrollY) < 5);
 await p.evaluate(() => (document.scrollingElement.scrollTop = 500)); await p.waitForTimeout(300);
 await p.getByTestId('back-to-picks').click().catch(() => {}); await p.waitForTimeout(900);

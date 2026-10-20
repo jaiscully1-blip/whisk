@@ -1,6 +1,6 @@
 'use client';
 import { MacroBars, BatchCook } from './RecipeExtras';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
 import LogMealSheet from './LogMealSheet';
@@ -15,9 +15,12 @@ import CookMode from './CookMode';
 
 // A real recipe from the web: every ingredient measured and beginner steps from the source page, scaled to any servings.
 export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChanged, challenge = null }) {
-  const { supabase, say, refreshProfile } = useWhisk();
+  const { supabase, say, refreshProfile, setUiQuiet } = useWhisk();
   const [isSaved, setSaved] = useState(!!saved);
   const [logging, setLogging] = useState(false);
+  // remember the recipes you've been reading, so when you post a photo you can pick the one you actually cooked
+  const remember = () => setUiQuiet?.((cur) => ({ recentRecipes: [{ id: r.id, title: r.title }, ...(cur.recentRecipes || []).filter((x) => x.id !== r.id)].slice(0, 5) }));
+  useEffect(() => { remember(); }, [r.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [factor, setFactor] = useState(1);
   const [cooking, setCooking] = useState(false);   // Cook mode
   const [added, setAdded] = useState([]);   // ingredients just added from this sheet (shown as ✓ straight away)
@@ -56,7 +59,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
   }
   const finish = () => { if (c.frozen.length) { say(`Defrost ${c.frozen.map((p) => p.name).join(', ')} first`); return; } setCooking(false); setLogging(true); };
   if (cooking) return <CookMode r={r} factor={factor} canFinish={c.ok} onFinish={finish} onClose={() => setCooking(false)} />;
-  if (logging) return <LogMealSheet recipe={r} challenge={challenge} onClose={() => { setLogging(false); onClose?.(); }} onDone={onChanged} />;
+  if (logging) return <LogMealSheet recipe={r} challenge={challenge} factor={factor} onClose={() => { setLogging(false); onClose?.(); }} onDone={onChanged} />;
 
   return (
     <div className="scrim" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
@@ -96,7 +99,7 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         </> : <span className="chip have" style={{ alignSelf: 'flex-start' }}>✓ You have every ingredient</span>}
         <h3>Ingredients</h3>
         <IngredientList r={r} factor={factor} missing={needs} />
-        <div className="row" style={{ justifyContent: 'space-between' }}><h3>Steps</h3><button type="button" className="btn sm cm-open" onClick={() => setCooking(true)}><Icon name="play" size={16} />Cook mode</button></div>
+        <div className="row" style={{ justifyContent: 'space-between' }}><h3>Steps</h3><button type="button" className="btn sm cm-open" onClick={() => { setCooking(true); remember(); }}><Icon name="play" size={16} />Cook mode</button></div>
         <StepList r={r} factor={factor} />
         <div className="row">
           {isSaved ? <button type="button" className="btn ghost" style={{ flex: '1 1 140px' }} onClick={unsave} aria-label="Saved. Tap to unsave"><Icon name="check" size={18} />Saved · Unsave</button>

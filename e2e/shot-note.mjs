@@ -9,7 +9,7 @@ await p.goto(`${BASE}/login`); await p.getByRole('radio', { name: 'Accept' }).cl
 const sql = (q) => fetch('http://localhost:54321/__e2e/sql?q=' + encodeURIComponent(q)).then((r) => r.text());
 await sql("insert into public.saved_recipes (user_id, recipe_id) select id, 'w-in-falooda' from public.profiles order by created_at desc limit 1");
 await p.reload(); await p.waitForTimeout(2500); await sweep();
-await p.getByTestId('more-filters').click(); await p.waitForTimeout(1500); await sweep();
+await p.getByTestId('saved-chip').click(); await p.waitForTimeout(1500); await sweep();
 await p.getByText('Falooda').first().click(); await p.waitForTimeout(1500);
 console.log(await p.evaluate(async () => JSON.stringify((await (await fetch('/api/world-recipe?id=w-in-falooda')).json()).recipe.note)));
 ok('recipe note shown', await p.getByTestId('recipe-note').count() === 1);

@@ -21,7 +21,7 @@ await p.getByRole('button', { name: /^save/i }).first().click().catch(async () =
 ok('photo sheet now shows my recipe', await p.getByTestId('pb-recipe').count() === 1);
 await p.screenshot({ path: `${OUT}/pb-sheet-recipe.png` });
 await p.getByTestId('pb-open-recipe').click(); await p.waitForTimeout(600); ok('full recipe opens', await p.getByTestId('mine-view').count() === 1); await p.keyboard.press('Escape'); await p.reload(); await p.waitForTimeout(2000); await sweep();
-await p.getByTestId('more-filters').click(); await p.waitForTimeout(600);
+await p.getByTestId('saved-chip').click(); await p.waitForTimeout(600);
 ok('no recipe tabs on Cook', await p.locator('[data-testid^="cook-tab-"]').count() === 0);
 ok('saved box with my recipe in it', await p.getByTestId('mine-item').count() === 1);
 ok('New recipe button', await p.getByTestId('new-recipe').count() === 1);

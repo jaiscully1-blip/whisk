@@ -6,12 +6,15 @@ import { fmt } from '@/lib/game';
 import { COUNTRY_BY_ISO } from '@/lib/passport/countries';
 import { compress } from '@/lib/photo';
 import { parseRecipeText } from '@/lib/recipes/parseText';
+import { planUse } from '@/lib/pantry/use';
 
 // Photo of your plate → log_meal. Title, cuisine and nutrition come from the recipe on the server.
 // Or a dish from the search (`dish` = { name, countries }): it counts toward that country on your globe.
-export default function LogMealSheet({ recipe = null, dish = null, country: country0 = null, challenge = null, onClose, onDone }) {
-  const { supabase, profile, refreshProfile, showPopup, say, setUi } = useWhisk();
-  const [notes, setNotes, clearNotes] = useDraft(`notes:${recipe ? recipe.id : 'dish:' + dish.name}`);
+export default function LogMealSheet({ recipe: recipe0 = null, dish = null, country: country0 = null, challenge = null, factor = 1, onClose, onDone }) {
+  const { supabase, profile, refreshProfile, showPopup, say, setUi, ui, allRecipes, ensureRecipes, bump } = useWhisk();
+  const [recipe, setRecipe] = useState(recipe0);   // the recipe being posted; can be switched to one you read earlier
+  const [findQ, setFindQ] = useState('');
+  const [notes, setNotes, clearNotes] = useDraft(`notes:${recipe0 ? recipe0.id : 'dish:' + dish.name}`);
   const [country, setCountry] = useState(country0 || dish?.countries?.[0] || null);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState('');
@@ -27,6 +30,8 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
     if (!wr || have.length) return;
     supabase.from('pantry_items').select('name').limit(8).then(({ data }) => setHave((data || []).map((d) => d.name)), () => {});
   }, [wr]); // eslint-disable-line react-hooks/exhaustive-deps
+  const recents = recipe0 && !challenge ? [recipe0, ...((ui?.recentRecipes || []).map((x) => (allRecipes || []).find((r) => r.id === x.id) || { id: x.id, title: x.title }))].filter((r, i, a) => a.findIndex((y) => y.id === r.id) === i).slice(0, 5) : [];
+  const found = findQ.trim().length >= 2 ? (allRecipes || []).filter((r) => r.title.toLowerCase().includes(findQ.trim().toLowerCase())).slice(0, 6) : [];
   const lines = (t) => t.split('\n').map((x) => x.trim()).filter(Boolean);
   function split() {
     const r = parseRecipeText(paste.split('\n'));
@@ -63,12 +68,24 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
         if (!re && row?.id && data?.meal_id) setUi((cur) => ({ pbLinks: { ...(cur.pbLinks || {}), [data.meal_id]: row.id } }));
         else { say('Your meal is saved, but the recipe didn’t save. Find it in your photobook to try again.'); if (data?.meal_id) setUi((cur) => ({ pbDrafts: { ...(cur.pbDrafts || {}), [data.meal_id]: { ings: wIng.slice(0, 60), steps: wSteps.slice(0, 60) } } })); }
       }
+      // what you used comes off your pantry: the recipe's amounts (as scaled) or the ones you wrote yourself
+      let used = 0;
+      try {
+        let src = wIng.length ? wIng : null;
+        if (!src && recipe) { const full = recipe.ingredients ? recipe : (await ensureRecipes([recipe.id]))[0] || recipe; src = full.ingredients || null; }
+        if (src) {
+          const { data: pantry } = await supabase.from('pantry_items').select('id, name, quantity, status');
+          const plan = planUse(src, wIng.length ? 1 : factor, pantry || []);
+          await Promise.all(plan.map((x) => supabase.from('pantry_items').update(x.patch).eq('id', x.id)));
+          used = plan.length; if (used) bump?.();
+        }
+      } catch {}
       await refreshProfile();
       onDone?.(data);
       onClose?.();
       showPopup({ kind: 'cooked', mealId: data.meal_id, recipe });
       if (data.country_done) showPopup({ kind: 'country', country: data.country_done });
-      say(`+${data.xp} XP${data.coins ? ` · +${fmt(data.coins)} coins` : ''}${data.lucky ? ' · lucky meal, bonus coins!' : ''}${data.streak_coins ? ` · streak reward +${fmt(data.streak_coins)}` : ''}${data.used_freeze ? ' · streak freeze used' : ''}`);
+      say(`${used ? `Pantry updated (${used}) · ` : ''}+${data.xp} XP${data.coins ? ` · +${fmt(data.coins)} coins` : ''}${data.lucky ? ' · lucky meal, bonus coins!' : ''}${data.streak_coins ? ` · streak reward +${fmt(data.streak_coins)}` : ''}${data.used_freeze ? ' · streak freeze used' : ''}`);
       if (data.used_freeze || data.lost_streak) window.dispatchEvent(new CustomEvent('yoke-streak', { detail: data }));
     } catch (err) {
       setError(err?.message || 'Could not save that meal.');
@@ -84,6 +101,18 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
         </div>
         {challenge && <p className="ok" style={{ margin: 0 }}>Worth {fmt(challenge.coins)} coins + 50 XP</p>}
         <b style={{ fontSize: 18 }}>{recipe ? recipe.title : dish.name}</b>
+        {recents.length > 1 && (
+          <div className="stack" style={{ gap: 6 }} data-testid="lm-which">
+            <span className="lbl">Which recipe did you cook?</span>
+            <div className="row" style={{ gap: 6 }}>{recents.map((r) => <button key={r.id} type="button" className={`pill ${recipe?.id === r.id ? 'on' : ''}`} style={{ cursor: 'pointer', fontWeight: 800, outline: recipe?.id === r.id ? '2px solid var(--accent, #8bd16a)' : 'none' }} onClick={() => setRecipe(r)} data-testid="lm-recent">{r.title}</button>)}</div>
+          </div>
+        )}
+        {recipe0 && !challenge && (
+          <div className="stack" style={{ gap: 6 }}>
+            <input className="input" placeholder="Cooked something else? Search recipes" value={findQ} onChange={(e) => setFindQ(e.target.value)} aria-label="Search recipes" data-testid="lm-find" />
+            {found.map((r) => <button key={r.id} type="button" className="card" style={{ textAlign: 'left', background: 'var(--field)', color: 'var(--fg)', fontWeight: 800, padding: 10 }} onClick={() => { setRecipe(r); setFindQ(''); }}>{r.title}</button>)}
+          </div>
+        )}
         {dish && (dish.countries || []).length > 1 && (
           <div><label className="lbl" htmlFor="meal-country">Counts toward</label>
             <select id="meal-country" className="input" value={country || ''} onChange={(e) => setCountry(e.target.value)}>{dish.countries.map((c) => <option key={c} value={c}>{COUNTRY_BY_ISO[c]?.[1] || c}</option>)}</select></div>

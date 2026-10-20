@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase/server';
-import { worldCountry, worldRecipe, lite } from '@/lib/recipes/worldData';
+import { worldCountry, worldRecipe, worldByType, lite } from '@/lib/recipes/worldData';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,6 +22,7 @@ export async function GET(req) {
     const recipes = (await Promise.all(ids.map(worldRecipe))).filter(Boolean);
     return NextResponse.json({ recipes }, { headers });
   }
+  if (p.get('type')) return NextResponse.json({ recipes: await worldByType(p.get('type')) }, { headers });
   if (p.get('iso')) {
     const list = await worldCountry(p.get('iso'));
     return list ? NextResponse.json({ recipes: list.map(lite) }, { headers }) : NextResponse.json({ recipes: [] }, { headers });

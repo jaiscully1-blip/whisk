@@ -20,7 +20,7 @@ ok('split fills steps', (await p.getByTestId('lm-steps').inputValue()).includes(
 await p.screenshot({ path: `${OUT}/lr-2.png` });
 await p.locator('input[type=file]').last().setInputFiles('/tmp/plate.jpg'); await p.waitForTimeout(500);
 await p.getByRole('button', { name: 'Submit' }).click(); await p.waitForTimeout(2500); await sweep();
-await sweep(); await p.waitForTimeout(800); await sweep(); await p.getByTestId('more-filters').click(); await p.waitForTimeout(800);
+await sweep(); await p.waitForTimeout(800); await sweep(); await p.getByTestId('saved-chip').click(); await p.waitForTimeout(800);
 ok('recipe saved under Yours', await p.getByTestId('mine-item').count() === 1);
 await p.goBack().catch(()=>{}); 
 await b.close();

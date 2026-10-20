@@ -223,7 +223,7 @@ export default function Me() {
           <Icon name="timer" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Time zone')}</span>
           <select data-testid="tz-pick" aria-label={t('Time zone')} className="input" style={{ maxWidth: 170, minHeight: 36, padding: '0 8px', fontSize: 13 }} value={ui?.tzPick || ''} onChange={(e) => { setUi({ tzPick: e.target.value || null }); say(e.target.value ? 'Time zone saved' : 'Using this device’s time zone'); }}>
             <option value="">{t('Automatic')}</option>
-            {(typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Tokyo', 'Australia/Sydney']).map((z) => <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>)}
+            {tzOptions(ui?.tzPick).map(([z, label]) => <option key={z} value={z}>{label}</option>)}
           </select>
         </label>
         <button className="row setbtn" onClick={() => setHowTo(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
@@ -264,4 +264,18 @@ export default function Me() {
       {levelOpen && <LevelPicker current={profile?.skill_level} onPick={async (id) => { setLevelOpen(false); setProfile({ ...profile, skill_level: id }); const { error } = await supabase.rpc('set_skill_level', { p_level: id }); say(error ? 'Couldn’t save your level.' : (learns(id) ? 'Level saved. Learn is on in the Cook tab' : 'Level saved')); }} onLater={() => setLevelOpen(false)} />}
     </div>
   );
+}
+
+// A short, familiar list like other apps: "UTC-05:00 New York". Values stay real time zones, so daylight saving still works.
+const TZ_CITIES = [['Pacific/Honolulu', 'Honolulu'], ['America/Anchorage', 'Anchorage'], ['America/Los_Angeles', 'Los Angeles'], ['America/Denver', 'Denver'], ['America/Phoenix', 'Phoenix'], ['America/Chicago', 'Chicago'], ['America/New_York', 'New York'], ['America/Halifax', 'Halifax'], ['America/Sao_Paulo', 'São Paulo'], ['Atlantic/Azores', 'Azores'], ['Europe/London', 'London'], ['Europe/Paris', 'Paris'], ['Europe/Athens', 'Athens'], ['Europe/Moscow', 'Moscow'], ['Asia/Dubai', 'Dubai'], ['Asia/Kolkata', 'Mumbai'], ['Asia/Bangkok', 'Bangkok'], ['Asia/Shanghai', 'Beijing'], ['Asia/Tokyo', 'Tokyo'], ['Australia/Sydney', 'Sydney'], ['Pacific/Auckland', 'Auckland']];
+function offsetMin(z) {
+  try {
+    const p = new Intl.DateTimeFormat('en-US', { timeZone: z, timeZoneName: 'longOffset' }).formatToParts(new Date()).find((x) => x.type === 'timeZoneName')?.value || 'GMT';
+    const m = p.match(/([+-])(\d{2}):?(\d{2})?/); return m ? (m[1] === '-' ? -1 : 1) * (+m[2] * 60 + +(m[3] || 0)) : 0;
+  } catch { return 0; }
+}
+function tzOptions(current) {
+  const list = TZ_CITIES.slice(); if (current && !list.some(([z]) => z === current)) list.push([current, current.split('/').pop().replace(/_/g, ' ')]);
+  return list.map(([z, c]) => { const m = offsetMin(z), a = Math.abs(m); return [z, m, `UTC${m < 0 ? '-' : '+'}${String(Math.floor(a / 60)).padStart(2, '0')}:${String(a % 60).padStart(2, '0')} ${c}`]; })
+    .sort((x, y) => x[1] - y[1]).map(([z, , label]) => [z, label]);
 }

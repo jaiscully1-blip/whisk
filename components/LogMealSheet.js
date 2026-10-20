@@ -45,7 +45,6 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
     e.preventDefault();
     if (!file) { setError('Add a photo of your plate. It’s how you earn the XP.'); return; }
     const wIng = wr ? lines(ings) : [], wSteps = wr ? lines(stepsTxt) : [];
-    if (wr && (wIng.length || wSteps.length) && (!wIng.length || !wSteps.length)) { setError(!wIng.length ? 'Add at least one ingredient to your recipe, or close the recipe box.' : 'Add at least one step to your recipe, or close the recipe box.'); return; }
     setBusy(true); setError('');
     try {
       const blob = await compress(file);
@@ -58,9 +57,9 @@ export default function LogMealSheet({ recipe = null, dish = null, country: coun
         : { p_recipe_id: null, p_photo_path: path, p_notes: notes.trim().slice(0, 500) || null, p_dish: dish.name, p_country: country });
       if (error) throw new Error('Could not save that meal.');
       clearNotes();
-      if (wIng.length && wSteps.length) {
+      if (wIng.length || wSteps.length) {
         const title = (recipe ? recipe.title : dish.name).slice(0, 120);
-        const { data: row, error: re } = await supabase.from('my_recipes').insert({ title, servings: null, minutes: null, ingredients: wIng.map((t) => t.slice(0, 200)).slice(0, 60), steps: wSteps.map((t) => t.slice(0, 1000)).slice(0, 60) }).select('id').single();
+        const { data: row, error: re } = await supabase.from('my_recipes').insert({ title, servings: null, minutes: null, ingredients: (wIng.length ? wIng : ['Add your ingredients']).map((t) => t.slice(0, 200)).slice(0, 60), steps: (wSteps.length ? wSteps : ['Add your steps']).map((t) => t.slice(0, 1000)).slice(0, 60) }).select('id').single();
         if (!re && row?.id && data?.meal_id) setUi((cur) => ({ pbLinks: { ...(cur.pbLinks || {}), [data.meal_id]: row.id } }));
         else say('Your meal is saved, but the recipe didn’t save. You can add it from the photobook.');
       }

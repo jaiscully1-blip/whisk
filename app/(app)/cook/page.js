@@ -31,8 +31,8 @@ export default function Cook() {
   const { recipes, ui, setUi, say, t } = useWhisk();
   const tz = useTimeZone();
   const [logFor, setLogFor] = useState(null);
-  // Players who already had Cook open in the old layout (a saved search mode, filters) start on the new Cook home once.
-  useEffect(() => { if (!ui.cookV2) setUi({ cookV2: true, cookMode: null, cookFilters: false, cookDish: '' }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Every visit opens on the Cook home (tonight's pick, made for you, photobook) for new and returning players. "More filters" goes deeper; a dish sent from the globe still opens its results.
+  useEffect(() => { const cur = ui; if (cur.cookMode !== 'named' && (cur.cookMode || cur.cookFilters || cur.cookDish)) setUi({ cookMode: null, cookFilters: false, cookDish: '' }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [hour, setHour] = useState(() => Math.floor(Date.now() / 36e5));
   useEffect(() => { const id = setInterval(() => setHour(Math.floor(Date.now() / 36e5)), 30000); return () => clearInterval(id); }, []);   // a new dish every hour
   const router = useRouter();

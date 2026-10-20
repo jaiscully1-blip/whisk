@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useWhisk } from './AppShell';
 import Icon, { Coin } from './Icon';
@@ -8,6 +8,7 @@ import KitchenStage from './kitchen/KitchenStage';
 import { usePlace } from './kitchen/KitchenPanels';
 import * as K from '@/lib/kitchen/models';
 import { itemUrl } from '@/lib/art/items';
+import { REAL3D_GEAR } from '@/lib/art/real3d';
 import { MAGNETS, magnetUrl } from '@/lib/art/magnets';
 import { teamColors, COUNTRY_NAME } from '@/lib/world/flair';
 import { nextPlace } from '@/lib/art/tampa';
@@ -109,13 +110,15 @@ function ItemPic({ it, size = 64 }) {
     const fin = { tex, color: K.colorsFor(grp, tex)[0]?.[0] || '#ccc' };
     const s = K.skin(fin, 0); return <span className="shop-swatch" style={{ width: size * 0.86, height: size * 0.62, background: s.slice(s.indexOf(':') + 1).replace(/;$/, '') }} />;
   }
-  return <img src={itemUrl(it.id)} alt="" width={size} height={size} draggable={false} />;
+  return <img src={itemUrl(it.id)} alt="" width={size} height={size} draggable={false} decoding="sync" loading="eager" />;
 }
 
 export function KitchenShop({ world, setWorld, onGetCoins }) {
   const { supabase, profile, refreshProfile, say } = useWhisk();
   const [kitchens, reloadKitchens, setKitchens] = useKitchens();
   const [kind, setKind] = useState('kitchen');
+  // start downloading every shop picture as soon as the shop opens, so no tile is blank until you open it
+  useEffect(() => { try { const urls = [...REAL3D_GEAR].map((id) => `/food3d/gear/${id}.png`); let i = 0; const next = () => { const batch = urls.slice(i, i + 6); i += 6; batch.forEach((u) => { const im = new Image(); im.src = u; }); if (i < urls.length) t = setTimeout(next, 120); }; let t = setTimeout(next, 200); return () => clearTimeout(t); } catch { return undefined; } }, []);
   const [buying, setBuying] = useState(null);
   const [busy, setBusy] = useState(false);
   const owned = useMemo(() => new Set(world?.owned || []), [world]);

@@ -325,9 +325,9 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   // Moved to a new time zone? Days follow you (only if you allowed local time).
   useEffect(() => {
     if (!consent?.local_time) return;
-    const tz = deviceTimeZone();
+    const tz = ui?.tzPick || deviceTimeZone();   // a time zone picked in Settings wins over the device's
     if (tz && (tz !== profile?.time_zone || !profile?.first_open_date)) supabase.rpc('set_privacy', { p_preferences: !!consent.preferences, p_local_time: true, p_time_zone: tz, p_usage: !!consent.usage }).then(({ data }) => { if (data) setProfile((p) => ({ ...p, time_zone: data.time_zone, first_open_date: data.first_open_date })); });
-  }, [consent]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [consent, ui?.tzPick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fill every tab's data in the background once the app is open, so tapping a tab is instant (lib/cache.js).
   useEffect(() => {

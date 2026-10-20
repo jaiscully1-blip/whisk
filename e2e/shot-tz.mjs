@@ -1,0 +1,17 @@
+import { createRequire } from 'node:module';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const BASE = 'http://localhost:3000';
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, timezoneId: 'America/New_York' }); const p = await ctx.newPage();
+const sweep = async () => { for (let i = 0; i < 4; i++) { for (const sel of ['.tip-ok', 'button:has-text("Maybe later")']) { if (await p.locator(sel).count()) await p.locator(sel).first().click({ timeout: 1500 }).catch(() => {}); } await p.waitForTimeout(150); } };
+await p.goto(`${BASE}/login`); await p.getByRole('radio', { name: 'Accept' }).click(); await p.getByRole('button', { name: 'Start playing' }).click(); await p.waitForURL('**/cook'); await p.waitForTimeout(2000); await sweep();
+const todayBefore = await p.getByTestId('pb-today').getAttribute('data-day');
+await p.locator('.nav a[href="/me"]').click({ force: true }); await p.waitForURL('**/me'); await sweep();
+await p.locator('[aria-label*="ettings"]').first().click({ timeout: 4000 }).catch(() => {}); await p.waitForTimeout(600);
+await p.getByTestId('tz-pick').selectOption('Pacific/Kiritimati'); await p.waitForTimeout(1500);
+await p.reload(); await p.waitForTimeout(2000); await sweep();
+await p.locator('[aria-label*="ettings"]').first().click({ timeout: 4000 }).catch(() => {}); await p.waitForTimeout(600);
+console.log('picker after reload:', await p.getByTestId('tz-pick').inputValue());
+await p.goto(BASE + '/cook'); await p.waitForTimeout(2500); await sweep();
+console.log('today tile day before/after:', todayBefore, await p.getByTestId('pb-today').getAttribute('data-day'));
+await b.close();

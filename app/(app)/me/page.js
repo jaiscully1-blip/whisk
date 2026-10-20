@@ -216,6 +216,13 @@ export default function Me() {
         <button className="row setbtn" onClick={openPrivacy} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
           <img src="/cookie.svg" alt="" width="22" height="22" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Cookies & privacy')}</span><span className="desc">{profile?.consent?.local_time ? (profile?.time_zone || '').replace(/_/g, ' ') : 'UTC days'}</span><Icon name="chevron" />
         </button>
+        <label className="row setbtn" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', color: 'var(--fg)' }}>
+          <Icon name="timer" /><span style={{ flex: 1, fontWeight: 700 }}>{t('Time zone')}</span>
+          <select data-testid="tz-pick" aria-label={t('Time zone')} className="input" style={{ maxWidth: 170, minHeight: 36, padding: '0 8px', fontSize: 13 }} value={ui?.tzPick || ''} onChange={(e) => { setUi({ tzPick: e.target.value || null }); say(e.target.value ? 'Time zone saved' : 'Using this device’s time zone'); }}>
+            <option value="">{t('Automatic')}</option>
+            {(typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Tokyo', 'Australia/Sydney']).map((z) => <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>)}
+          </select>
+        </label>
         <button className="row setbtn" onClick={() => setHowTo(true)} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', flexWrap: 'nowrap', width: '100%', background: 'none', border: 0, borderBottomStyle: 'solid', textAlign: 'left', color: 'var(--fg)' }}>
           <Icon name="flag" /><span style={{ flex: 1, fontWeight: 700 }}>{t('How Yoke works')}</span><Icon name="chevron" />
         </button>

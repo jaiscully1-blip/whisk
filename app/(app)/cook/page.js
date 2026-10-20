@@ -8,6 +8,10 @@ import RecipeSheet from '@/components/RecipeSheet';
 import Icon from '@/components/Icon';
 import { usePantry, useSaved } from '@/components/usePantry';
 import { useRouter } from 'next/navigation';
+import Postcard from '@/components/Postcard';
+import CookPhotobook from '@/components/CookPhotobook';
+import LogMealSheet from '@/components/LogMealSheet';
+import { useTimeZone } from '@/components/useTimeZone';
 
 const PAGE = 12;
 import { canon, checkRecipe, usesSoon } from '@/lib/recipes/match';
@@ -25,6 +29,10 @@ const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
 // Only real recipes from the web, and only ones your pantry can make.
 export default function Cook() {
   const { recipes, ui, setUi, say, t } = useWhisk();
+  const tz = useTimeZone();
+  const [logFor, setLogFor] = useState(null);
+  const [hour, setHour] = useState(() => Math.floor(Date.now() / 36e5));
+  useEffect(() => { const id = setInterval(() => setHour(Math.floor(Date.now() / 36e5)), 30000); return () => clearInterval(id); }, []);   // a new dish every hour
   const router = useRouter();
   const [pantry, reload] = usePantry();
   const [saved, reloadSaved] = useSaved();
@@ -62,12 +70,19 @@ export default function Cook() {
     const ok = makeable.filter((x) => x.c.ok).map((x) => x.r);
     return (ok.length >= 3 ? ok : recipes.filter((r) => r.minutes <= 35)).slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
   }, [recipes, makeable]);
-  // the same pick for everyone each day; the shuffle button walks on from there
-  const picks = useMemo(() => {
-    if (!pool.length) return [];
-    const base = Math.floor(Date.now() / 864e5) * 7 + shuffle;
-    return [0, 1, 2].map((k) => pool[(base + k) % pool.length]).filter((r, i, a) => a.indexOf(r) === i);
-  }, [pool, shuffle]);
+  // a new pick every hour (the same for everyone that hour); the shuffle button walks on from there
+  const picks = useMemo(() => (pool.length ? [pool[(hour * 7 + shuffle) % pool.length]] : []), [pool, hour, shuffle]);
+  // Made for you: a protein-packed dinner, an easy soul-food comfort dish and a dessert; each rotates hourly too
+  const forYou = useMemo(() => {
+    if (!recipes?.length) return [];
+    const stable = (list) => list.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    const pick = (list, off) => (list.length ? list[(hour * 5 + off) % list.length] : null);
+    const SOUL = /\b(mac|cheese|stew|soup|casserole|pot pie|gravy|mashed|fried chicken|biscuit|cornbread|meatloaf|chili|dumpling|collard|grits|cobbler|smothered|pot roast|jambalaya|gumbo)\b/i;
+    const dinners = stable(recipes.filter((r) => fitsMeal(r, 'dinner') && fitsDiet(r, 'High protein')));
+    const soul = stable(recipes.filter((r) => (SOUL.test(r.title) || /soul|southern|cajun|creole/i.test(r.cuisine || '')) && r.minutes <= 45 && !fitsMeal(r, 'dessert')));
+    const sweetsAll = recipes.filter((r) => fitsMeal(r, 'dessert')); const sweets = stable(sweetsAll.filter((r) => r.minutes <= 60).length >= 3 ? sweetsAll.filter((r) => r.minutes <= 60) : sweetsAll);
+    return [['Protein-packed dinner', pick(dinners, 0)], ['Easy soul food', pick(soul, 1)], ['Dessert', pick(sweets, 2)]].filter(([, r]) => r);
+  }, [recipes, hour]);
   function useWhatIHave() { if (!inStock.length) { router.push('/pantry'); return; } setHand(null); setAsked(true); setUi({ cookMode: 'pantry', cookDish: '' }); }
 
   const names = inStock.filter((p) => !SKIP.includes(p.category)).map((p) => p.name);
@@ -90,7 +105,6 @@ export default function Cook() {
   return (
     <div className="stack">
       <div className="page-title"><WeekGoal title={t('Cook')} /></div>
-      {simple && <h2 className="fr-q" data-testid="fr-question">{t('What do you want to make tonight?')}</h2>}
       <section className="cook-search" aria-label="Find something to cook">
         <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); setHand(null); setAsked(true); if (!dish.trim()) { setUi({ cookMode: 'pantry', cookDish: '' }); return; } setUi({ cookMode: 'named', cookDish: dish.trim().slice(0, 80) }); }}>
           <label htmlFor="o-dish" hidden>{t('Dish')}</label>
@@ -104,27 +118,31 @@ export default function Cook() {
 
       {simple && (
         <>
-          {picks.length > 0 && (() => { const hero = picks[0]; const mid = (r) => MEALS.find((m) => fitsMeal(r, m.id))?.id || ''; return (
-            <section className="stack" style={{ gap: 10 }} aria-label={t('Tonight’s pick')} data-testid="todays-picks">
-              <div className="fr-hero">
-                <div className="fr-art">
-                  <span className="fr-tag">{t('TONIGHT’S PICK')}</span>
-                  <button type="button" className="fr-shuf" data-testid="shuffle-pick" aria-label={t('Show me another')} onClick={() => setShuffle((n) => n + 1)}><Icon name="shuffle" size={18} /></button>
-                  <svg viewBox="0 0 48 48" width="120" height="120" aria-hidden="true" dangerouslySetInnerHTML={{ __html: mealArt(mid(hero)) }} />
-                </div>
-                <div className="fr-in">
-                  <h2>{hero.title}</h2>
-                  <span className="desc">{[hero.cuisine, hrs(hero.minutes), hero.key?.length ? `${hero.key.length} key ingredients` : ''].filter(Boolean).join(' · ')}</span>
-                  <button type="button" className="btn wide" data-testid="cook-pick" onClick={() => setOpen(hero)}>{t('Let’s cook it')}</button>
-                </div>
+          {picks.length > 0 && (() => { const hero = picks[0]; return (
+            <div className="fr-hero" data-testid="todays-picks">
+              <div className="fr-art">
+                <Postcard iso={hero.country} cuisine={hero.cuisine} title={hero.title} ingredients={hero.key} />
+                <span className="fr-tag">{t('TONIGHT’S PICK')}</span>
+                <button type="button" className="fr-shuf" data-testid="shuffle-pick" aria-label={t('Show me another')} onClick={() => setShuffle((n) => n + 1)}><Icon name="shuffle" size={18} /></button>
               </div>
-              {picks.length > 1 && <><span className="eyebrow">{t('Or try')}</span>
-              <div className="fr-minis">{picks.slice(1).map((r) => (
-                <button key={r.id} type="button" className="fr-mini" onClick={() => setOpen(r)}>
-                  <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true" dangerouslySetInnerHTML={{ __html: mealArt(mid(r)) }} />
-                  <span><b>{r.title}</b><small>{hrs(r.minutes)}</small></span>
-                </button>))}</div></>}
-            </section>); })()}
+              <div className="fr-in">
+                <h2>{hero.title}</h2>
+                <span className="desc">{[hero.cuisine, hrs(hero.minutes)].filter(Boolean).join(' · ')}</span>
+                <button type="button" className="btn wide" data-testid="cook-pick" onClick={() => setOpen(hero)}>{t('Let’s cook it')}</button>
+              </div>
+            </div>); })()}
+          {forYou.length > 0 && (
+            <section className="stack" style={{ gap: 6 }} aria-label={t('Made for you')} data-testid="made-for-you">
+              <span className="eyebrow">{t('Made for you')}</span>
+              <div className="fy-row">{forYou.map(([label, r]) => (
+                <button key={label} type="button" className="fy-card" onClick={() => setOpen(r)}>
+                  <span className="fy-art"><Postcard iso={r.country} cuisine={r.cuisine} title={r.title} ingredients={r.key} /></span>
+                  <span className="fy-tag">{t(label)}</span>
+                  <b>{r.title}</b><small>{hrs(r.minutes)}</small>
+                </button>))}</div>
+            </section>
+          )}
+          <CookPhotobook tz={tz} todayRecipe={picks[0] || null} onAdd={setLogFor} t={t} />
           <div className="row" style={{ justifyContent: 'center', gap: 4 }}>
             <button type="button" className="fr-more" data-testid="use-what-i-have" onClick={useWhatIHave}>{t('Use what I have')}</button>
             <span className="desc">·</span>
@@ -188,6 +206,7 @@ export default function Cook() {
       {mode === 'named' && ui.cookDish && <DishSearch q={ui.cookDish} pantry={pantry} />}
       </div>
 
+      {logFor && <LogMealSheet recipe={logFor} onClose={() => setLogFor(null)} onDone={() => { reload(); reloadSaved(); }} />}
       {open && <RecipeSheet recipe={open} pantry={pantry || []} saved={saved?.get(open.id)} onClose={() => setOpen(null)} onChanged={() => { reload(); reloadSaved(); }} />}
     </div>
   );

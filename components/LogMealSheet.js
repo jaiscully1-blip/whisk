@@ -10,6 +10,7 @@ import { parseRecipeText } from '@/lib/recipes/parseText';
 import { planUse } from '@/lib/pantry/use';
 import ShareChips, { NOT_SHARED } from './ShareChips';
 import { recipeCard } from '@/lib/recipes/card';
+import { findRecipes } from '@/lib/recipes/find';
 
 // Photo of your plate → log_meal. Title, cuisine and nutrition come from the recipe on the server.
 // Or a dish from the search (`dish` = { name, countries }): it counts toward that country on your globe.
@@ -36,7 +37,10 @@ export default function LogMealSheet({ recipe: recipe0 = null, dish = null, coun
     supabase.from('pantry_items').select('name').limit(8).then(({ data }) => setHave((data || []).map((d) => d.name)), () => {});
   }, [wr]); // eslint-disable-line react-hooks/exhaustive-deps
   const recents = recipe0 && !challenge ? [recipe0, ...(((getUi?.() || ui)?.recentRecipes || []).map((x) => (allRecipes || []).find((r) => r.id === x.id) || x))].filter((r, i, a) => a.findIndex((y) => y.id === r.id) === i).slice(0, 8) : [];
-  const found = findQ.trim().length >= 2 ? (allRecipes || []).filter((r) => r.title.toLowerCase().includes(findQ.trim().toLowerCase())).slice(0, 6) : [];
+  // key words ("steak") match the name, the main ingredients and the cuisine; recipes you opened lately come first
+  const recentList = (getUi?.() || ui)?.recentRecipes || [];
+  const found = findQ.trim().length >= 2 ? findRecipes(findQ, allRecipes || [], recentList.map((x) => (allRecipes || []).find((r) => r.id === x.id) || x), 8) : [];
+  const isRecent = (id) => recentList.some((x) => x.id === id);
   const lines = (t) => t.split('\n').map((x) => x.trim()).filter(Boolean);
   function split() {
     const r = parseRecipeText(paste.split('\n'));
@@ -132,14 +136,14 @@ export default function LogMealSheet({ recipe: recipe0 = null, dish = null, coun
         )}
         {!challenge && (
           <div className="stack" style={{ gap: 6, position: 'relative' }}>
-            <input className="input" placeholder="Cooked something else? Search recipes" value={findQ} onChange={(e) => setFindQ(e.target.value)} onFocus={() => setDd(true)} onBlur={() => setTimeout(() => setDd(false), 150)} aria-label="Search recipes" aria-expanded={dd && !findQ} data-testid="lm-find" />
+            <input className="input" placeholder="Search by name or ingredient" value={findQ} onChange={(e) => setFindQ(e.target.value)} onFocus={() => setDd(true)} onBlur={() => setTimeout(() => setDd(false), 150)} aria-label="Search recipes" aria-expanded={dd && !findQ} data-testid="lm-find" />
             {dd && !findQ.trim() && ((getUi?.() || ui)?.recentRecipes || []).length > 0 && (
               <div className="lm-dd" role="listbox" data-testid="lm-dd">
                 <span className="eyebrow" style={{ padding: '2px 4px' }}>Last opened</span>
                 {((getUi?.() || ui)?.recentRecipes || []).slice(0, 3).map((x) => <button key={x.id} type="button" role="option" aria-selected={recipe?.id === x.id} className="lm-dd-item" data-testid="lm-dd-item" onMouseDown={(e) => e.preventDefault()} onClick={() => { setRecipe((allRecipes || []).find((r) => r.id === x.id) || x); setDd(false); }}>{x.title}{recipe?.id === x.id && <Icon name="check" size={14} />}</button>)}
               </div>
             )}
-            {found.map((r) => <button key={r.id} type="button" className="card" style={{ textAlign: 'left', background: 'var(--field)', color: 'var(--fg)', fontWeight: 800, padding: 10 }} onClick={() => { setRecipe(r); setFindQ(''); }}>{r.title}</button>)}
+            {found.map((r) => <button key={r.id} type="button" className="card" style={{ textAlign: 'left', background: 'var(--field)', color: 'var(--fg)', fontWeight: 800, padding: 10 }} onClick={() => { setRecipe(r); setFindQ(''); }} data-testid="lm-found">{r.title}{isRecent(r.id) && <span className="desc" style={{ marginLeft: 8, fontWeight: 600 }}>Opened lately</span>}</button>)}
           </div>
         )}
         {dish && (dish.countries || []).length > 1 && (

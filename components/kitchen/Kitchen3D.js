@@ -80,7 +80,7 @@ export default function Kitchen3D({
   const paint = () => {
     raf.current = 0; const c = live.current, el = camEl.current, r = root.current; if (!c || !el) return;
     el.style.transform = camTransform(c, scale);
-    if (r) { r.style.setProperty('--rz', c.rz); const f = facing(c.rz); r.classList.toggle('fb', f.back); r.classList.toggle('fr', f.right); }
+    if (r) { r.style.setProperty('--rz', c.rz); r.style.setProperty('--rx', c.rx); const f = facing(c.rz); r.classList.toggle('fb', f.back); r.classList.toggle('fr', f.right); }
   };
   const liveCam = (c) => { live.current = c; if (!raf.current) raf.current = requestAnimationFrame(paint); };
   const commit = () => { const c = live.current; if (!c) return; live.current = null; cancelAnimationFrame(raf.current); raf.current = 0; setCam(c); };
@@ -315,7 +315,7 @@ export default function Kitchen3D({
     : { background: FLOORS.wood, borderRadius: 6, boxShadow: '0 0 0 8px rgba(120,90,50,.14)' };
 
   return (
-    <div ref={root} className={`k3 ${mode} ${float ? 'floaty' : ''} ${edge ? `edge-${edge}` : ''} ${place ? `placed at-${place}` : ''} ${face.back ? 'fb' : ''} ${face.right ? 'fr' : ''} ${focus ? 'focused' : ''} ${className}`} style={{ height, '--rz': camera.rz }} onPointerDownCapture={capDown} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={tapFloor}>
+    <div ref={root} className={`k3 ${mode} ${float ? 'floaty' : ''} ${edge ? `edge-${edge}` : ''} ${place ? `placed at-${place}` : ''} ${face.back ? 'fb' : ''} ${face.right ? 'fr' : ''} ${focus ? 'focused' : ''} ${className}`} style={{ height, '--rz': camera.rz, '--rx': camera.rx }} onPointerDownCapture={capDown} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={tapFloor}>
       <div ref={camEl} className="k3-cam" style={{ transform: camTransform(camera, scale) }}>
         <div className="k3-sway">
           <div className="k3-floor" style={{ width: K.GW * C, height: K.GD * C, marginLeft: -K.GW * C / 2, marginTop: -K.GD * C / 2, ...floor }}>
@@ -378,7 +378,7 @@ function Thing({ b, selected, onDown, onSpin }) {
       <div className="kthing-shadow" style={{ transform: `rotateZ(${rot}deg)`, borderRadius: solid ? '30%' : '50%' }} />
       {solid
         ? <Solid parts={solid} w={b.w} d={b.d} rot={rot} />
-        : <div className="kthing-up" style={{ left: W / 2 - (PW * R) / 2 - (((f[0] + f[2]) / 2) - 0.5) * PW, top: D / 2 - PH * R, width: PW * R, height: PH * R, transform: `rotateZ(calc(clamp(-5, var(--rz) * -1, 85) * 1deg)) translateZ(${-(1 - f[3]) * PH}px) rotateX(-90deg) scale(${1 / R})` }}>
+        : <div className="kthing-up" style={{ left: W / 2 - (PW * R) / 2 - (((f[0] + f[2]) / 2) - 0.5) * PW, top: D / 2 - PH * R, width: PW * R, height: PH * R, transform: `rotateZ(calc(clamp(-5, var(--rz) * -1, 85) * 1deg)) translateZ(${-(1 - f[3]) * PH}px) rotateX(calc(clamp(40, var(--rx) * 0.6 + 40, 90) * -1deg)) scale(${1 / R})` }}>
           <img src={itemUrl(m.item)} alt={m.nick} title={m.nick} draggable={false} style={rot > 90 && rot < 270 ? { transform: 'scaleX(-1)' } : undefined} />
         </div>}
       {selected && !m.locked && (

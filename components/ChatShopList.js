@@ -41,7 +41,7 @@ export default function ChatShopList({ group, onClose, onChanged }) {
         <h2 style={{ fontSize: 24, margin: 0 }}>{t('Shopping list')}</h2>
         <p className="desc" style={{ margin: 0 }}>{t('Shared with everyone in this chat. Only the list is shared, never your pantry.')}</p>
         <form className="row" style={{ flexWrap: 'nowrap', gap: 8 }} onSubmit={add}>
-          <input id="gl-add" className="chat-in" style={{ flex: 1 }} maxLength={60} autoComplete="off" placeholder={t('Add things (commas for several)')} value={text} onChange={(e) => setText(e.target.value)} />
+          <input id="gl-add" className="chat-in" style={{ flex: 1 }} maxLength={60} autoComplete="off" aria-label={t('Add things (commas for several)')} value={text} onChange={(e) => setText(e.target.value)} />
           <button className="btn sm" type="submit" disabled={!text.trim()} data-testid="gl-add-btn">{t('Add')}</button>
         </form>
         {items === null ? <p className="muted">{t('Loading…')}</p> : items.length === 0 ? <p className="muted">{t('Nothing on the list yet.')}</p> : (

@@ -1,6 +1,7 @@
 'use client';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWhisk } from './AppShell';
+import { timedFetch } from '@/lib/netFetch';
 import { COUNTRIES, STAMPS_PER_PAGE, STAMP_GOAL, flagCode } from '@/lib/passport/countries';
 
 // Stamp album: all 193 UN member states, 20 stamps a page, swipe across like a real album.
@@ -46,7 +47,7 @@ export default function Passport({ counts, onOpenRecipe }) {
   useEffect(() => {
     if (!open || world[open[0]]) return;
     const iso = open[0]; let off = false;
-    fetch(`/api/world-recipe?iso=${iso}`).then((r) => r.json()).then((j) => { if (!off) setWorld((w) => ({ ...w, [iso]: j.recipes || [] })); }).catch(() => { if (!off) setWorld((w) => ({ ...w, [iso]: [] })); });
+    timedFetch(`/api/world-recipe?iso=${iso}`).then((r) => r.json()).then((j) => { if (!off) setWorld((w) => ({ ...w, [iso]: j.recipes || [] })); }).catch(() => { if (!off) setWorld((w) => ({ ...w, [iso]: [] })); });
     return () => { off = true; };
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const fromHere = open ? [...(recipes || []).filter((r) => r.country === open[0]), ...(world[open[0]] || [])] : [];

@@ -13,6 +13,7 @@ import Tips from './Tips';
 import CookieConsent, { CONSENT_KEY, LOGIN_CHOICE_KEY, deviceTimeZone } from './CookieConsent';
 import { startActivity, setPage as trackPage } from '@/lib/activity';
 import { timerApi } from '@/lib/timers';
+import { timedFetch } from '@/lib/netFetch';
 import Icon, { Coin, Flame } from './Icon';
 import OfflineNote from './OfflineNote';
 import { translate, guessLang, LANG_CODES } from '@/lib/i18n';
@@ -102,7 +103,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
       const batch = fresh.slice(i, i + 40);
       const job = (async () => {
         try {
-          const r = await fetch(`/api/world-recipe?ids=${encodeURIComponent(batch.join(','))}`);
+          const r = await timedFetch(`/api/world-recipe?ids=${encodeURIComponent(batch.join(','))}`);
           const j = await r.json().catch(() => ({}));
           for (const x of j.recipes || []) worldHave.current.set(x.id, x);
         } catch {}
@@ -324,6 +325,16 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
     return true;
   }, [supabase, say]);
   const savePrivacyRef = useRef(savePrivacy); savePrivacyRef.current = savePrivacy;
+  // A new version of Yoke went live while this tab was open: the old version's code files are gone, so a part that
+  // loads on demand fails and taps on it do nothing. Reload once (at most every 30 s) to pick up the new version.
+  useEffect(() => {
+    const stale = (m) => /ChunkLoadError|Loading chunk [\w-]+ failed|Failed to fetch dynamically imported module|Importing a module script failed/i.test(String(m || ''));
+    const reload = () => { try { const at = +sessionStorage.getItem('yoke-reload') || 0; if (Date.now() - at < 30000) return; sessionStorage.setItem('yoke-reload', String(Date.now())); } catch {} window.location.reload(); };
+    const onErr = (e) => { if (stale(e?.message) || stale(e?.error?.name) || stale(e?.error?.message)) reload(); };
+    const onRej = (e) => { const r = e?.reason; if (stale(r?.name) || stale(r?.message) || stale(r)) reload(); };
+    window.addEventListener('error', onErr); window.addEventListener('unhandledrejection', onRej);
+    return () => { window.removeEventListener('error', onErr); window.removeEventListener('unhandledrejection', onRej); };
+  }, []);
   // Warm up the 3D engine in the background once the app is idle, so opening Me (or a popup) doesn't stall.
   useEffect(() => {
     const go = () => { import('@/lib/whisk3d/engine').catch(() => {}); };

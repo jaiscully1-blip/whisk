@@ -13,6 +13,7 @@ import Postcard from '@/components/Postcard';
 import CookPhotobook from '@/components/CookPhotobook';
 import LogMealSheet from '@/components/LogMealSheet';
 import { useTimeZone } from '@/components/useTimeZone';
+import { timedFetch } from '@/lib/netFetch';
 
 const PAGE = 12;
 import { canon, checkRecipe, usesSoon } from '@/lib/recipes/match';
@@ -51,7 +52,7 @@ export default function Cook() {
   const [open, setOpen] = useState(null);
   // the world's desserts (Yoke Kitchen) join the web recipes in Made for you
   const [worldSweets, setWorldSweets] = useState([]);
-  useEffect(() => { let off = false; fetch('/api/world-recipe?type=dessert').then((r) => r.json()).then((j) => { if (!off) setWorldSweets(j.recipes || []); }).catch(() => {}); return () => { off = true; }; }, []);
+  useEffect(() => { let off = false; timedFetch('/api/world-recipe?type=dessert').then((r) => r.json()).then((j) => { if (!off) setWorldSweets(j.recipes || []); }).catch(() => {}); return () => { off = true; }; }, []);
   const openFull = (r) => openRecipe(r, { setOpen, ensureRecipes, peekRecipe, say });
   const [asked, setAsked] = useState(false);   // "Nothing fits yet" only shows right after you ask, never on its own
   const savedMode = ui.cookMode || null; const time = ui.cookTime || ''; const meal = ui.cookMeal || ''; const diet = ui.cookDiet || '';

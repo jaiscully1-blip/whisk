@@ -1,5 +1,5 @@
 'use client';
-import { memo, startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import DietTags from '@/components/DietTags';
 import Link from 'next/link';
 import { useWhisk } from '@/components/AppShell';
@@ -11,6 +11,7 @@ import { addToShoppingList, listMsg } from '@/lib/shoplist';
 import { checkRecipe, thawState, usesSoon, shoppingNeeds, canon } from '@/lib/recipes/match';
 import Postcard from '@/components/Postcard';
 import { openRecipe, warmRecipes } from '@/lib/openRecipe';
+import { timedFetch } from '@/lib/netFetch';
 
 const PAGE = 10;
 const SHOW = 3;   // missing ingredients shown on a card; the recipe lists them all
@@ -50,7 +51,7 @@ export default function Home() {
   // Dishes from all over the world join the web recipes. They're fetched once, before the first card is drawn, so nothing reshuffles afterwards.
   const [worldPool, setWorldPool] = useState(sess.pool);
   const [ready, setReady] = useState(sess.ready);
-  const grab = useCallback((sd) => fetch(`/api/world-recipe?sample=90&seed=${sd}`).then((r) => (r.ok ? r.json() : null)).then((j) => j?.recipes || []).catch(() => []), []);
+  const grab = useCallback((sd) => timedFetch(`/api/world-recipe?sample=90&seed=${sd}`).then((r) => (r.ok ? r.json() : null)).then((j) => j?.recipes || []).catch(() => []), []);
   useEffect(() => {
     if (sess.ready) { return undefined; }
     let off = false;
@@ -61,11 +62,25 @@ export default function Home() {
   useEffect(() => { sess.shown = shown; }, [shown, sess]);
   const seen = sess.seen;   // what you saw in earlier visits
   // Heavy part (matching every recipe to your pantry) only when the pantry or recipes change.
+  // Each recipe is matched once per pantry and remembered, so Shuffle (which adds a batch of new world dishes) only
+  // matches the new ones instead of redoing every recipe: it stays instant however long you've been on the page.
+  const checked = useRef({ pantry: null, map: new Map() });
   const base = useMemo(() => {
     if (!pantry || !recipes) return null;
+    if (checked.current.pantry !== pantry) checked.current = { pantry, map: new Map() };
+    const memo = checked.current.map;
+    const one = (r) => {
+      let x = memo.get(r);
+      if (x === undefined) {
+        const c = checkRecipe(r, pantry);
+        if (c.missing.length < 1) x = null;
+        else { const main = new Set(c.missing.map(canon)); const needs = shoppingNeeds(r, pantry); x = { r, c, soon: usesSoon(r, pantry), needs: [...needs.filter((n) => main.has(canon(n))), ...needs.filter((n) => !main.has(canon(n)))] }; }
+        memo.set(r, x);
+      }
+      return x;
+    };
     const web = new Set(recipes.map((r) => r.id));
-    return [...recipes, ...worldPool.filter((r) => !web.has(r.id))].map((r) => ({ r, c: checkRecipe(r, pantry), soon: usesSoon(r, pantry) })).filter((x) => x.c.missing.length >= 1)
-      .map((x) => { const main = new Set(x.c.missing.map(canon)); const needs = shoppingNeeds(x.r, pantry); return { ...x, needs: [...needs.filter((n) => main.has(canon(n))), ...needs.filter((n) => !main.has(canon(n)))] }; });
+    return [...recipes, ...worldPool.filter((r) => !web.has(r.id))].map(one).filter(Boolean);
   }, [pantry, recipes, worldPool]);
   // A fresh random mix every time Home opens (and on Shuffle). Recipes that use food about to go bad still come first.
   const ordered = useMemo(() => {
@@ -110,7 +125,7 @@ export default function Home() {
     const ns = (seed + 0x9e3779b9) >>> 0;
     const have = new Set(sess.pool.map((x) => x.id)); sess.pool = [...sess.pool, ...sess.next.filter((x) => !have.has(x.id))].slice(-360); sess.next = []; sess.seed = ns; sess.shown = PAGE;
     grab((ns + 0x9e3779b9) >>> 0).then((n) => { sess.next = n; });   // ready for the next press
-    startTransition(() => { setWorldPool(sess.pool); setSeed(ns); setShown(PAGE); }); window.scrollTo({ top: 0, behavior: 'smooth' });
+    setWorldPool(sess.pool); setSeed(ns); setShown(PAGE); window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   useEffect(() => {
     const el = moreRef.current; if (!el || !almost || shown >= almost.length) return;

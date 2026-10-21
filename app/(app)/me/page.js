@@ -144,7 +144,7 @@ export default function Me() {
         <div className="bar" style={{ height: 10, marginTop: 4 }}><i style={{ width: `${lvl.pct}%` }} /></div>
       </div>
 
-      <ProfileCard level={lvl} xp={profile?.xp || 0} recipes={recipesCooked} ingredients={ingredients} countries={countries.length} streak={liveStreak(profile, tz)} />
+      <ProfileCard level={lvl} xp={profile?.xp || 0} recipes={recipesCooked} ingredients={ingredients} countries={countries.length} streak={liveStreak(profile, tz)} best={profile?.best_streak || 0} prevBest={profile?.streak_prev_best || 0} freezes={profile?.streak_freezes || 0} />
       <MyKitchen shop />
       <LearnEntry />
 

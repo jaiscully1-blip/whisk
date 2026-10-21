@@ -22,10 +22,13 @@ export function FlagBar({ iso, size = 22 }) {
 }
 
 // Level, where your kitchen is, and what you've collected.
-export function ProfileCard({ level, xp, recipes, ingredients, countries, streak }) {
+export function ProfileCard({ level, xp, recipes, ingredients, countries, streak, best = 0, prevBest = 0, freezes = 0 }) {
   const place = usePlace();
   const next = nextPlace(level.level);
-  const stats = [['Level', `${level.level}`], ['Recipes', fmt(recipes)], ['Ingredients', fmt(ingredients)], ['Countries', fmt(countries)], ['Streak', `${streak} ${streak === 1 ? 'day' : 'days'}`]];
+  const stats = [['Level', `${level.level}`], ['Recipes', fmt(recipes)], ['Ingredients', fmt(ingredients)], ['Countries', fmt(countries)]];
+  // your best streak sits beside the streak in small type, so a short one looks like it's chasing something; at a tie or a record it turns gold
+  const top = Math.max(best, streak), tied = streak > 1 && streak === top && prevBest > 0 && streak === prevBest, rec = streak > 1 && streak === top && prevBest > 0 && streak > prevBest;
+  const streakCell = <span className={`pc-streak ${tied || rec ? 'gold' : ''}`}>{streak} {streak === 1 ? 'day' : 'days'}{tied ? <em className="pc-tag">tied best</em> : rec ? <em className="pc-tag"><Icon name="compete" size={12} />new best</em> : top > streak ? <small className="pc-best" title="Your best streak"><Icon name="compete" size={12} />{top}</small> : null}{freezes > 0 && <small className="pc-frz" title={`${freezes} streak freeze${freezes === 1 ? '' : 's'}`}><Icon name="snow" size={12} />{freezes}</small>}</span>;
   // progress toward the next home
   const xpAt = (lv) => (LEVELS.find((l) => l[0] === lv) || [0, 0])[1];
   const a = xpAt(place.from), b = next ? xpAt(next.from) : 0;
@@ -34,6 +37,7 @@ export function ProfileCard({ level, xp, recipes, ingredients, countries, streak
     <section className="card pcard" aria-label="Profile" data-tip="profile">
       <dl className="pcard-grid">
         {stats.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+        <div className="wide"><dt>Streak</dt><dd>{streakCell}</dd></div>
       </dl>
       {next && (
         <div className="pcard-next" aria-label={`${pct}% of the way to ${next.name}`}>

@@ -1034,6 +1034,11 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .shop-big { display: grid; place-items: center; min-height: 140px; }
 .shop-teaser { display: flex; align-items: center; gap: 6px; margin: 0; }
 
+.pc-streak { display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.pc-streak.gold { color: #F6C445; }
+.pc-best, .pc-frz { display: inline-flex; align-items: center; gap: 3px; font: 800 13px var(--f-body); color: var(--muted); }
+.pc-best svg, .pc-frz svg, .pc-tag svg { align-self: center; }
+.pc-tag { display: inline-flex; align-items: center; gap: 3px; font: 800 12px var(--f-body); font-style: normal; background: rgba(246,196,69,.18); color: #F6C445; border-radius: 9px; padding: 2px 8px; }
 .pcard-next { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
 .pcard-next .bar { height: 10px; }
 .pcard-next b { font-family: var(--f-display); font-size: 15px; white-space: nowrap; }

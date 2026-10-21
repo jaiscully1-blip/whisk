@@ -14,14 +14,15 @@ function Box({ p, rot }) {
   const x = p.x * C * R, y = p.y * C * R, w = p.w * C * R, d = p.d * C * R, h = Math.max(1, p.h * HU * R), z = p.z * HU * R;
   const rad = Math.min((p.rad || 0) * R, h / 3, w / 3, d / 3), g = p.grain ? GRAIN : '';
   // light comes from the front-left of the room, so sides darken as the model turns away from it
+  // every face is turned so it points OUT of the box: faces are one-sided (that halves the drawing work), so a face that pointed in left a hole when the model was turned
   const lit = (a) => 0.18 * Math.cos(((a + rot) * Math.PI) / 180 + 0.6);
   const f = (k, st, kids) => <div className="ksf" style={{ ...st, background: `${g}${shade(p.c, k)}` }}>{kids}</div>;
   return <>
     {f(0.16, { left: x, top: y, width: w, height: d, transform: `translateZ(${z + h}px)`, borderRadius: rad }, deco(p.top, 't'))}
     {f(lit(0) - 0.04, { left: x, top: y + d - h, width: w, height: h, transformOrigin: '50% 100%', transform: `translateZ(${z}px) rotateX(-90deg)`, borderRadius: `${rad}px ${rad}px 2px 2px` }, deco(p.front, 'f'))}
-    {f(lit(180) - 0.1, { left: x, top: y - h, width: w, height: h, transformOrigin: '50% 100%', transform: `translateZ(${z}px) rotateX(-90deg)`, borderRadius: `${rad}px ${rad}px 2px 2px` })}
-    {f(lit(90) - 0.08, { left: x - h, top: y, width: h, height: d, transformOrigin: '100% 50%', transform: `translateZ(${z}px) rotateY(90deg)`, borderRadius: `${rad}px 2px 2px ${rad}px` })}
-    {f(lit(-90) - 0.08, { left: x + w, top: y, width: h, height: d, transformOrigin: '0 50%', transform: `translateZ(${z}px) rotateY(-90deg)`, borderRadius: `2px ${rad}px ${rad}px 2px` })}
+    {f(lit(180) - 0.1, { left: x, top: y - h, width: w, height: h, transformOrigin: '50% 100%', transform: `translateZ(${z}px) rotateX(-90deg) rotateY(180deg)`, borderRadius: `${rad}px ${rad}px 2px 2px` })}
+    {f(lit(90) - 0.08, { left: x - h, top: y, width: h, height: d, transformOrigin: '100% 50%', transform: `translateZ(${z}px) rotateY(90deg) rotateX(180deg)`, borderRadius: `${rad}px 2px 2px ${rad}px` })}
+    {f(lit(-90) - 0.08, { left: x + w, top: y, width: h, height: d, transformOrigin: '0 50%', transform: `translateZ(${z}px) rotateY(-90deg) rotateX(180deg)`, borderRadius: `2px ${rad}px ${rad}px 2px` })}
   </>;
 }
 

@@ -960,7 +960,7 @@ button.card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tile-
 .ksolid { position: absolute; left: 0; top: 0; transform-style: preserve-3d; transform-origin: 50% 50%; pointer-events: none; }
 .k3.build .ksolid { pointer-events: auto; }
 .ksolid-in { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform-style: preserve-3d; }
-.ksf { position: absolute; backface-visibility: visible; overflow: hidden; }
+.ksf { position: absolute; backface-visibility: hidden; overflow: hidden; }
 .kring { position: absolute; border: 2px dashed #2f8a55; border-radius: 50%; transform: translateZ(.8px); pointer-events: none; transform-style: preserve-3d; }
 .kring-dot { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px; padding: 0; border-radius: 50%; background: #2f8a55; border: 3px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); pointer-events: auto; touch-action: none; cursor: grab; }
 .kring-dot::after { content: ""; position: absolute; inset: -14px; border-radius: 50%; }

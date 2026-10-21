@@ -4,7 +4,7 @@
 // sharp when you zoom in (a 3D layer is painted at its own size). `rot` turns it around its own middle.
 import { C, HU } from '@/lib/kitchen/models';
 
-const R = 3;
+const R = 2;
 const shade = (c, k) => `linear-gradient(rgba(${k < 0 ? '0,0,0' : '255,255,255'},${Math.abs(k)}),rgba(${k < 0 ? '0,0,0' : '255,255,255'},${Math.abs(k)})),${c}`;
 const deco = (list = [], key) => list.map((d, i) => <i key={`${key}${i}`} style={{ position: 'absolute', left: `${d[0] * 100}%`, top: `${d[1] * 100}%`, width: `${d[2] * 100}%`, height: `${d[3] * 100}%`, ...css(d[4]) }} />);
 function css(s) { const o = {}; String(s || '').split(';').forEach((kv) => { const i = kv.indexOf(':'); if (i < 0) return; const k = kv.slice(0, i).trim().replace(/-([a-z])/g, (_, c) => c.toUpperCase()); o[k] = kv.slice(i + 1).trim(); }); return o; }
@@ -25,8 +25,10 @@ function Box({ p, rot }) {
   </>;
 }
 
-const N = 16;
+// fewer sides on small round things (a 3-inch jar doesn't need 16): the kitchen draws thousands of faces, and each one costs a phone
+const sidesFor = (r) => (r < 0.12 ? 6 : r < 0.3 ? 8 : 10);
 function Cyl({ p, rot }) {
+  const N = sidesFor(p.r);
   const cx = p.x * C * R, cy = p.y * C * R, r = p.r * C * R, h = Math.max(1, p.h * HU * R), z = p.z * HU * R;
   const s = 2 * r * Math.tan(Math.PI / N) + 1.5;
   return <>

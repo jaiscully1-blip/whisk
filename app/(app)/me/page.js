@@ -23,6 +23,8 @@ import BackupSheet from '@/components/BackupSheet';
 import { usePantry, useWorld } from '@/components/usePantry';
 import { levelFor, fmt } from '@/lib/game';
 import { LANGS } from '@/lib/i18n';
+import { liveStreak } from '@/lib/streak';
+import { useTimeZone } from '@/components/useTimeZone';
 
 const EMPTY_LIST = [];
 const TEXT_SCALES = [.85, .92, 1, 1.1, 1.2, 1.3];
@@ -93,6 +95,7 @@ export default function Me() {
     const m = new Map(); history.forEach((x) => { if (x.country) m.set(x.country, (m.get(x.country) || 0) + 1); });
     return [...m].map(([country, n]) => ({ country, n, done: n >= 5 })).sort((a, b) => b.n - a.n);
   }, [world, history]);
+  const tz = useTimeZone();
   const ingredients = (pantry || []).filter((p) => p.status !== 'out').length;
   const recipesCooked = world && !world.missing ? world.recipes || 0 : meals.length;
 
@@ -141,7 +144,7 @@ export default function Me() {
         <div className="bar" style={{ height: 10, marginTop: 4 }}><i style={{ width: `${lvl.pct}%` }} /></div>
       </div>
 
-      <ProfileCard level={lvl} xp={profile?.xp || 0} recipes={recipesCooked} ingredients={ingredients} countries={countries.length} streak={profile?.streak_days || 0} />
+      <ProfileCard level={lvl} xp={profile?.xp || 0} recipes={recipesCooked} ingredients={ingredients} countries={countries.length} streak={liveStreak(profile, tz)} />
       <MyKitchen shop />
       <LearnEntry />
 

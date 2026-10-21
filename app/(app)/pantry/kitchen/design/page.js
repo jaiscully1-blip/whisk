@@ -97,6 +97,8 @@ export default function Design() {
     say(`+ ${m.nick}`);
   }
   const copySel = () => { if (!selB) return; if (K.isThing(selB)) { say('You have one of those'); return; } const nb = K.placeFree(edit.pieces, { ...selB, id: K.newId() }); if (!nb) { say('No room left on the floor.'); return; } setPieces((p) => [...p, nb]); setSel(nb.id); };
+  // put every loose thing where it belongs in a real kitchen (faucet on the sink, pans on the stove, plug-ins along the counter…)
+  const tidy = () => { const next = K.arrangeThings(edit.pieces); setPieces(next); setSel(null); say('Everything is back where it belongs'); };
   const removeSel = () => { setPieces((p) => p.filter((x) => x.id !== sel)); setSel(null); };
 
   if (!edit) return <p className="muted" style={{ marginTop: 24 }}>Loading your kitchen…</p>;
@@ -188,6 +190,7 @@ export default function Design() {
             <button type="button" className="btn ghost" onClick={() => setSheet('add')}><Icon name="plus" size={18} />Add</button>
             <Link href="/pantry/kitchen" className="btn">Put food away</Link>
           </div>
+          {edit.pieces.some((p) => K.isThing(p) && !K.MODEL[p.mid].locked) && <button type="button" className="btn ghost" data-testid="tidy-things" onClick={tidy}><Icon name="shuffle" size={18} />Tidy up my things</button>}
         </div>
       )}
       <p className="desc" style={{ margin: 0, textAlign: 'center' }}>{edit.pieces.length} pieces · {K.index(edit.pieces).total} spots{isShown ? ' · on display in your Pantry' : ''}</p>

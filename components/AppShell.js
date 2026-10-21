@@ -14,6 +14,7 @@ import CookieConsent, { CONSENT_KEY, LOGIN_CHOICE_KEY, deviceTimeZone } from './
 import { startActivity, setPage as trackPage } from '@/lib/activity';
 import { timerApi } from '@/lib/timers';
 import { timedFetch } from '@/lib/netFetch';
+import { liveStreak } from '@/lib/streak';
 import Icon, { Coin, Flame } from './Icon';
 import OfflineNote from './OfflineNote';
 import { translate, guessLang, LANG_CODES } from '@/lib/i18n';
@@ -288,6 +289,14 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
       });
   }, [supabase, say, showPopup, refreshProfile]);
 
+  // the streak in the top bar goes to 0 as soon as a day is missed: look again when the phone wakes and at midnight
+  const [, setDayTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setDayTick((n) => n + 1);
+    const t = setInterval(bump, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', bump);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', bump); };
+  }, []);
   const night = profile?.theme_pref === 'night';
   useEffect(() => {
     document.documentElement.className = night ? 'theme-night' : 'theme-day';
@@ -401,7 +410,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
             </div>}
             <div className={`pills ${helloOn ? 'away' : ''}`}>
               <RunningTimer />
-              <span className="pill" data-tip="streak" title={profile?.vacation_since ? 'Vacation mode: your streak is paused' : 'Cooking streak'}>{profile?.vacation_since ? <Icon name="plane" size={16} /> : <Flame />}{profile?.streak_days || 0}d</span>
+              <span className="pill" data-tip="streak" title={profile?.vacation_since ? 'Vacation mode: your streak is paused' : 'Cooking streak'}>{profile?.vacation_since ? <Icon name="plane" size={16} /> : <Flame />}{liveStreak(profile, ui?.tzPick || profile?.time_zone || deviceTimeZone() || undefined)}d</span>
               <Link href="/pantry/kitchen?tab=shop" prefetch className="pill" data-tip="coins" title={`${fmt(profile?.coins)} coins`} style={{ textDecoration: 'none' }}><Coin />{short(profile?.coins)}</Link>
               <Link href="/me" prefetch className="pill gear" title={t('Settings')} aria-label={t('Settings')} data-testid="hud-settings" onClick={(e) => { if ((pathname || '').startsWith('/me')) { e.preventDefault(); window.dispatchEvent(new Event('yoke-settings')); } else { try { sessionStorage.setItem('yoke-settings', '1'); } catch {} } }}><Icon name="gear" size={18} /></Link>
             </div>

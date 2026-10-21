@@ -346,11 +346,16 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
               </div>
             ))}
             {!isDM && <>
-              <span className="eyebrow">{t('Add people')}</span>
-              {addable.length > 0 && <>              
-              <div className="fr-list">{addable.map((f) => <button key={f.code} type="button" className="chip fr-chip" onClick={() => addPerson(f)} aria-label={`Add ${f.name} to the group`}><Avatar className="post-av sm" code={f.code} name={f.name} aria-hidden="true" />{f.name}<Icon name="plus" size={14} /></button>)}</div>
-            </>}
-              <button type="button" className="btn ghost wide" onClick={() => setByCode(true)} data-testid="chat-add-code"><Icon name="plus" size={16} />{t('Add someone by friend code')}</button>
+              {friends && addable.length > 0 && <>
+                <span className="eyebrow">{t('Add people')}</span>
+                <div className="fr-list">{addable.map((f) => <button key={f.code} type="button" className="chip fr-chip" onClick={() => addPerson(f)} aria-label={`Add ${f.name} to the group`}><Avatar className="post-av sm" code={f.code} name={f.name} aria-hidden="true" />{f.name}<Icon name="plus" size={14} /></button>)}</div>
+              </>}
+              {/* only your friends can be added; the friend code box shows up when there's no one left to add */}
+              {friends && addable.length === 0 && <>
+                <span className="eyebrow">{t('Add people')}</span>
+                <p className="desc" style={{ margin: 0 }}>{t('Everyone on your friends list is already here.')}</p>
+                <button type="button" className="btn ghost wide" onClick={() => setByCode(true)} data-testid="chat-add-code"><Icon name="plus" size={16} />{t('Add someone by friend code')}</button>
+              </>}
             </>}
             {!isDM && <button className="btn ghost wide" style={{ color: 'var(--bad)' }} onClick={leave}>{t('Leave group')}</button>}
             <button className="btn wide" onClick={() => setPeople(false)}>{t('Done')}</button>

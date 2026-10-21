@@ -44,7 +44,7 @@ function Party() {
   return (
     <div className="stack">
       <div className="page-title party-title">
-        <span><h1>{d?.group?.name || 'Party'}</h1><span className="muted">{d ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : ''}</span></span>
+        <span><h1>{d?.group?.name || 'Party'}</h1><span className="muted">{d ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} left in this month’s race` : ''}</span></span>
         <Link href="/compete" className="title-link"><Icon name="chevron" size={18} style={{ transform: 'rotate(180deg)' }} />Compete</Link>
       </div>
 

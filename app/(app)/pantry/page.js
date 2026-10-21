@@ -273,12 +273,12 @@ export default function Pantry() {
                 {gi === 0 && <button type="button" className="chip tidy-chip" data-testid="tidy-aisles" onClick={tidyAisles}>Tidy up</button>}
               </div>
               {list.map((i) => {
-                const f = freshness(i);
+                const f = freshness(i), gone = f?.label === 'Expired';   // past its date: crossed off, stamped, not good to eat
                 return (
-                  <div key={i.id} className="card" style={{ padding: '10px 12px', borderColor: i.status === 'out' ? 'var(--bad)' : i.status === 'low' ? 'var(--warn-bar)' : 'var(--line)' }}>
+                  <div key={i.id} className={`card ${gone ? 'is-expired' : ''}`} data-expired={gone ? '1' : undefined} style={{ padding: '10px 12px', borderColor: i.status === 'out' ? 'var(--bad)' : i.status === 'low' ? 'var(--warn-bar)' : 'var(--line)' }}>
                     <div className="row" style={{ flexWrap: 'nowrap' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <b style={{ textDecoration: i.status === 'out' ? 'line-through' : 'none' }}>{i.name}</b>{i.quantity && <span className="muted"> · {i.quantity}</span>}
+                        <b className={gone ? 'exp-name' : undefined} style={i.status === 'out' ? { textDecoration: 'line-through' } : undefined}>{i.name}</b>{i.quantity && <span className="muted"> · {i.quantity}</span>}{gone && <span className="exp-stamp" role="note" aria-label={`${i.name} is expired, throw it out`}>THROW OUT</span>}
                         {(() => { const t = thawState(i); if (!t) return null; return <div style={{ marginTop: 4 }}>{t.state === 'frozen' ? <button className="chip ice" onClick={() => startThaw(i)}><Icon name="snow" size={14} />Frozen meat · tap to start thawing</button> : t.state === 'thawing' ? <span className="chip ice"><Icon name="snow" size={14} />Thawing · ~{t.hoursLeft} h left</span> : <span className="chip ice drip"><Drip />Thawed · use by {useBy(i)}</span>}</div>; })()}
                         <div className="row exp-row">
                           <button type="button" className="chip aisle-chip" data-testid="aisle-chip" onClick={() => setMoving(i)} aria-label={`${i.name} is in ${i.category}. Tap to move it to another aisle`}>{i.category}<Icon name="chevron" size={12} /></button>

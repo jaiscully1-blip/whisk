@@ -322,13 +322,13 @@ await step('home', async () => {
   check('home no longer groups by "1 item away / 2 items away"', (await page.locator('.away-h', { hasText: /away/ }).count()) === 0 && (await page.getByText(/\d+ items? away/).count()) === 0);
   const homeTitles = async () => page.locator('main .rcard h2').allTextContents();
   const t1 = (await homeTitles()).slice(0, 6).join('|');
-  let differs = false; for (let i = 0; i < 4 && !differs; i++) { await nav('Pantry'); await nav('Home'); await page.locator('main .rcard h2').first().waitFor(); differs = (await homeTitles()).slice(0, 6).join('|') !== t1; }
-  check('opening Home again brings a new random mix of recipes', differs);
+  await nav('Pantry'); await nav('Home'); await page.locator('main .rcard h2').first().waitFor();
+  check('Home keeps one stable mix while you move between tabs (Shuffle gives a new one)', (await homeTitles()).slice(0, 6).join('|') === t1);
   await page.evaluate(() => window.scrollTo(0, 0));
   check('pantry hint is the short version', (await page.getByText('Yoke reads').count()) === 0);
   // open one: tap a single missing ingredient under "What you have" to put it in the pantry
   check('postcards are all drawn by Yoke (no emoji pictures)', (await page.locator('main .rcard-art image').count()) === 0);
-  check('every recipe card has a postcard of where the dish comes from (landmark + dish)', (await page.locator('main .rcard .rcard-art svg').count()) === (await page.locator('main .rcard').count()) && (await page.locator('main .rcard').count()) > 0);
+  check('every recipe card has a postcard of where the dish comes from (landmark + dish)', (await page.locator('main .rcard .rcard-art').count()) === (await page.locator('main .rcard').count()) && (await page.locator('main .rcard .rcard-art svg').count()) > 0);   // pictures further down draw when they scroll near
   const chipCounts = await page.locator('main .rcard').evaluateAll((cs) => cs.map((c) => c.querySelectorAll('.chip.need').length));
   check('home shows at most 3 missing ingredients per card', chipCounts.every((n) => n <= 3), JSON.stringify(chipCounts.slice(0, 12)));
   const withMore = page.locator('main .rcard', { has: page.locator('.more-need') });

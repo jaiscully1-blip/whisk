@@ -24,10 +24,12 @@ export async function fetchMe(supabase) {
   return { meals, history: h.data || [] };
 }
 // Your world map, country tiers and challenges, plus the Kitchen shop (setup SQL 17). { missing: true } until that's run.
+// items taken out of the game: gone from the shop even before their SQL is run (setup 53)
+const RETIRED = new Set(['fruit_bowl']);
 export async function fetchWorld(supabase) {
   const [w, shop] = await Promise.all([supabase.rpc('get_world'), supabase.from('kitchen_items').select('id, name, kind, price, country, sort').order('sort')]);
   if (w.error || shop.error) return /get_world|kitchen_items|42883|42P01|PGRST20[02]/.test(`${w.error?.code} ${w.error?.message} ${shop.error?.code} ${shop.error?.message}`) ? { missing: true, countries: [], challenges: [], recipes: 0, owned: [], shop: [] } : undefined;
-  return { ...w.data, shop: shop.data || [] };
+  return { ...w.data, shop: (shop.data || []).filter((r) => !RETIRED.has(r.id)) };
 }
 export const fetchChats = (supabase) => supabase.rpc('get_chats').then(({ data, error }) => (error ? undefined : data || []));
 export const fetchFriends = (supabase) => supabase.rpc('get_friends').then(({ data, error }) => (error ? false : data));

@@ -14,6 +14,8 @@ import CookPhotobook from '@/components/CookPhotobook';
 import LogMealSheet from '@/components/LogMealSheet';
 import { useTimeZone } from '@/components/useTimeZone';
 import { timedFetch } from '@/lib/netFetch';
+import { holidayPicks } from '@/lib/holidays';
+import { useSpecialDays } from '@/components/useSpecialDays';
 
 const PAGE = 12;
 import { canon, checkRecipe, usesSoon } from '@/lib/recipes/match';
@@ -82,8 +84,19 @@ export default function Cook() {
     const ok = makeable.filter((x) => x.c.ok).map((x) => x.r);
     return (ok.length >= 3 ? ok : recipes.filter((r) => r.minutes <= 35)).slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
   }, [recipes, makeable]);
+  // Special days (a holiday, a country's national day, a food holiday like National Spaghetti Day): tonight's pick walks through dishes
+  // for today's special days, one day after another, dishes you can make right now first. Any other day: the usual pick.
+  const { days: specials, world: worldDay } = useSpecialDays(tz, hour);
+  const okIds = useMemo(() => new Set(makeable.filter((x) => x.c.ok).map((x) => x.r.id)), [makeable]);
+  const special = useMemo(() => {
+    if (!specials.length || !recipes?.length) return [];
+    const seen = new Set(); const all = [];
+    for (const r of [...recipes, ...worldSweets, ...worldDay]) if (!seen.has(r.id)) { seen.add(r.id); all.push(r); }
+    return holidayPicks(all, specials, (r) => okIds.has(r.id));
+  }, [specials, recipes, worldSweets, worldDay, okIds]);
+  const sp = special.length ? special[(hour + shuffle) % special.length] : null;   // the next dish each hour (and on every shuffle)
   // a new pick every hour (the same for everyone that hour); the shuffle button walks on from there
-  const picks = useMemo(() => (pool.length ? [pool[(hour * 7 + shuffle) % pool.length]] : []), [pool, hour, shuffle]);
+  const picks = useMemo(() => (sp ? [sp.r] : pool.length ? [pool[(hour * 7 + shuffle) % pool.length]] : []), [sp, pool, hour, shuffle]);
   // Made for you: a protein-packed dinner, an easy soul-food comfort dish and a dessert; each rotates hourly too
   const forYou = useMemo(() => {
     if (!recipes?.length) return [];
@@ -139,6 +152,7 @@ export default function Cook() {
                 <button type="button" className="fr-shuf" data-testid="shuffle-pick" aria-label={t('Show me another')} onClick={() => setShuffle((n) => n + 1)}><Icon name="shuffle" size={18} /></button>
               </div>
               <div className="fr-in">
+                {sp && <span className="chip hol" data-testid="holiday-chip">{sp.day.name}</span>}
                 <h2>{hero.title}</h2>
                 <span className="desc">{[hero.cuisine, hrs(hero.minutes)].filter(Boolean).join(' · ')}</span>
                 <button type="button" className="btn wide" data-testid="cook-pick" onPointerDown={() => warmRecipes([hero.id], ensureRecipes)} onClick={() => openFull(hero)}>{t('Let’s cook it')}</button>

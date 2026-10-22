@@ -74,6 +74,7 @@ h1, h2, h3 { font-family: var(--f-display); margin: 0; letter-spacing: -.01em; t
 label.lbl, span.lbl { font-size: 13px; font-weight: 800; color: var(--muted); display: block; margin-bottom: 4px; }
 .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 99px; background: var(--track); font-size: 13px; font-weight: 700; }
 .chip.xp { background: var(--gold-soft); font-weight: 800; }
+.chip.hol { justify-self: start; background: var(--gold-soft); font-weight: 800; font-size: 12.5px; padding: 3px 10px; }
 .chip.have { background: var(--fresh-soft); color: var(--fresh); font-weight: 800; }
 .chip.need { background: var(--bad-soft); color: var(--bad); font-weight: 800; border: 1.5px dashed var(--bad); }
 .bar { height: 8px; border-radius: 99px; background: var(--track); overflow: hidden; }
@@ -1973,3 +1974,10 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .dish-skel .w60 { width: 60%; height: 20px; } .dish-skel .w40 { width: 40%; } .dish-skel .w80 { width: 80%; }
 @media (prefers-reduced-motion: reduce) { .dish-skel i { animation: none; } }
 .chat-full .scrim.top { z-index: 90; }
+
+/* Home: today's special days (holidays, national days, food holidays) */
+.today-sp { display: grid; gap: 6px; padding: 12px 14px; }
+.today-sp h2 { margin: 0; font-size: 19px; line-height: 1.2; }
+.sp-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; background: var(--track); color: var(--fg); border: 0; border-radius: 12px; padding: 9px 12px; font: inherit; cursor: pointer; }
+.sp-row span:first-child { display: grid; gap: 1px; min-width: 0; } .sp-row b { font-size: 14.5px; line-height: 1.2; } .sp-row small { color: var(--muted); font-weight: 700; font-size: 12px; }
+.sp-row:active { transform: scale(.98); }

@@ -15,6 +15,7 @@
     "test:prep": "node lib/recipes/prep.test.mjs",
     "test:subs": "node lib/recipes/subs.test.mjs",
     "test:parse": "node lib/recipes/parseText.test.mjs",
+    "test:holidays": "node lib/holidays.test.mjs",
     "test:pantry": "node lib/pantry/tags.test.mjs && node lib/pantry/measure.mjs"
   },
   "dependencies": {

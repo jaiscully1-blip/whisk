@@ -13,13 +13,13 @@ export default function ResetSheet({ onClose }) {
   async function reset(e) {
     e.preventDefault(); if (word.trim().toUpperCase() !== 'RESET') return;
     setBusy(true); setError('');
-    // Remove plate photos, then reset progress (coins and shop items stay).
+    // Reset progress first (coins and shop items stay; the server allows one reset a week), then remove plate photos.
+    const { error: re } = await supabase.rpc('reset_game');
+    if (re) { setBusy(false); setError(/once a week/.test(String(re.message)) ? 'You can reset once a week. Try again in a few days.' : 'Couldn’t reset. Try again.'); return; }
     try {
       const { data: files } = await supabase.storage.from('meal-photos').list(profile.id, { limit: 1000 });
       if (files?.length) await supabase.storage.from('meal-photos').remove(files.map((f) => `${profile.id}/${f.name}`));
     } catch {}
-    const { error: re } = await supabase.rpc('reset_game');
-    if (re) { setBusy(false); setError('Couldn’t reset. Try again.'); return; }
     try { localStorage.removeItem('whisk-ui'); } catch {}
     window.location.assign('/cook');
   }
@@ -31,7 +31,7 @@ export default function ResetSheet({ onClose }) {
           <h2 style={{ fontSize: 24 }}>Reset game</h2>
           <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Cancel"><Icon name="x" /></button>
         </div>
-        <p className="err" style={{ margin: 0 }}>This erases your pantry, meals, photos, XP, streak and challenges. Your coins and shop items stay. It can’t be undone.</p>
+        <p className="err" style={{ margin: 0 }}>This erases your pantry, meals, photos, XP, streak and challenges. Your coins and shop items stay. It can’t be undone, and you can reset once a week.</p>
         <div><label className="lbl" htmlFor="rs-word">Type RESET to erase your game</label><input id="rs-word" className="input" autoComplete="off" autoCapitalize="characters" value={word} onChange={(e) => setWord(e.target.value)} required /></div>
         <button className="btn wide" type="submit" disabled={busy || word.trim().toUpperCase() !== 'RESET'} style={{ background: 'var(--bad)', boxShadow: 'none' }}>{busy ? 'Resetting…' : 'Reset my game'}</button>
         {error && <p className="err" role="alert" style={{ margin: 0 }}>{error}</p>}

@@ -24,6 +24,8 @@ jobs:
         run: npm audit --audit-level=high
       - name: Database security tests (RLS + server functions)
         run: npm install --no-save @electric-sql/pglite && node supabase/tests/rls.test.mjs | tee rls.txt && ! grep -q '^FAIL' rls.txt
+      - name: Hardening tests (every migration; reset farming, push targets, economy writes)
+        run: node supabase/tests/hardening.test.mjs
       - name: Build
         run: npm run build
         env:

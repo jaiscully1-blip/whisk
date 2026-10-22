@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Icon from './Icon';
 import { backupMethods, backupError, emailTaken, confirmUrl } from '@/lib/backup';
+import { passwordProblem } from '@/lib/password';
 
 // One sheet for every way into an account. Email + password, nothing to verify (Supabase → Authentication → Email →
 // "Confirm email" is switched off).
@@ -33,7 +34,8 @@ export default function BackupSheet({ supabase, mode: start = 'backup', onClose 
     e.preventDefault();
     const v = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { setErr('That email doesn’t look right.'); return; }
-    if (pw.length < 8) { setErr('Pick a longer password (at least 8 characters).'); return; }
+    if (!login) { const bad = passwordProblem(pw, v); if (bad) { setErr(bad); return; } }
+    else if (pw.length < 8) { setErr('That password is too short.'); return; }
     setBusy('email'); setErr(''); setTaken(false);
     let error = null;
     if (backup) ({ error } = await supabase.auth.updateUser({ email: v, password: pw }));
@@ -71,7 +73,7 @@ export default function BackupSheet({ supabase, mode: start = 'backup', onClose 
                 <label htmlFor="bk-email" hidden>Email</label>
                 <input id="bk-email" className="input" type="email" inputMode="email" autoComplete="email" placeholder="you@example.com" maxLength={120} value={email} onChange={(e) => { setEmail(e.target.value); setTaken(false); }} />
                 <label htmlFor="bk-pw" hidden>Password</label>
-                <input id="bk-pw" className="input" type="password" autoComplete={login ? 'current-password' : 'new-password'} placeholder="Password (8+ characters)" maxLength={72} value={pw} onChange={(e) => setPw(e.target.value)} />
+                <input id="bk-pw" className="input" type="password" autoComplete={login ? 'current-password' : 'new-password'} placeholder={login ? 'Password' : 'Password (8+ characters, letters and numbers)'} maxLength={72} value={pw} onChange={(e) => setPw(e.target.value)} />
                 <button className="btn wide" type="submit" disabled={!!busy} data-testid="bk-submit">{busy === 'email' ? 'One moment…' : backup ? 'Back up my game' : login ? 'Log in' : 'Create account'}</button>
               </form>
             )}

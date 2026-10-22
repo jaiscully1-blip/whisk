@@ -1,6 +1,6 @@
 # Yoke security review
 
-Last reviewed: Oct 3, 2026. Checked against the **OWASP Top 10 (2021)**. OWASP published a 2025 edition; its two new themes (software supply chain, mishandling exceptional conditions) are covered under A06/A08 and A09 below.
+Last reviewed: Oct 22, 2026 (full re-check of everything added since Oct 3: chats, parties, kitchen shop, streaks, push). Checked against the **OWASP Top 10 (2021)**. OWASP published a 2025 edition; its two new themes (software supply chain, mishandling exceptional conditions) are covered under A06/A08 and A09 below.
 
 ## What's in place
 
@@ -16,6 +16,18 @@ Last reviewed: Oct 3, 2026. Checked against the **OWASP Top 10 (2021)**. OWASP p
 | A08 | Software & data integrity | Lockfile committed; CI uses `npm ci`. AI responses are schema-validated (zod) and bounded in size before anyone sees or saves them. Recipe JSON size capped in DB. | Code review |
 | A09 | Logging & monitoring | Logins recorded (`login_events`), XP ledger (`xp_events`), Supabase auth logs, Vercel function logs. AI errors logged server-side without user data. Errors shown to users are generic. | Code review |
 | A10 | SSRF | The server calls a few fixed hosts only (plus RevenueCat's API, `api.revenuecat.com`, to confirm purchases): `world.openfoodfacts.org` (`/api/barcode`). The barcode route accepts only 8–14 digits, which are placed in a fixed URL path, with a 6 s timeout. No user-supplied URLs are fetched. Video links are search links built from the recipe title, opened by the user's browser. | Code review |
+
+## Oct 22, 2026 review: what changed
+Found and fixed:
+- **Reset game could farm coins.** Coins survive a reset, but a reset deleted the records that make rewards pay once (country bonus 2,000, cuisine stamps, this week's challenges, today's quest/bingo, the XP history behind daily caps). Now `reward_ledger` remembers one-time payouts through resets, a reset keeps the current week/day/round and recent XP history, and a reset is allowed once every 7 days (SQL 56 / migration 0063).
+- **Push subscriptions accepted any web address** (server-side request forgery: the server would POST to it). The database and the server now accept only Apple, Google, Mozilla and Microsoft push services.
+- **Next.js 15.5.27 had a critical advisory** (image optimizer RCE, server-action DoS). Now 15.5.28; `npm audit` 0.
+- Defense in depth: no player role can TRUNCATE any table; login-only functions can't be called signed out; the retired coin-order functions can't be called.
+- New passwords: 8+ characters with letters and numbers, not a common password, not the email (`lib/password.js`). Mirror it in Supabase so the server enforces it too.
+
+Verified (no change needed): RLS on every table with own-row write policies; coins/XP/is_admin not writable by players; every SECURITY DEFINER function pins `search_path`; no function takes a coin/XP amount from the client; spam limits on chat, friends, groups, videos, reports, events; storage buckets private with type/size limits and per-user folders; secret-gated webhook/push functions; no secrets in code, git history or the browser bundle; no HTML injection of user text; https-only outside links.
+
+`supabase/tests/hardening.test.mjs` runs 26 attacks against the full current schema (CI runs it on every push).
 
 ## Rate limiting
 - **100 requests / minute / IP** on every `/api/*` route (middleware). Production uses Upstash Redis so the limit holds across all Vercel instances; without Upstash it falls back to per-instance memory (fine for localhost, **not** for production).

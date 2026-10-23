@@ -30,7 +30,8 @@ const mix = (id, seed) => { let h = seed >>> 0; for (let i = 0; i < id.length; i
 // Home is "Discover a Dish": recipes you can't fully make yet (plus a defrost reminder when frozen meat is waiting).
 // Always a fresh random mix each time it opens (Shuffle for another).
 export default function Home() {
-  const { supabase, recipes, say, ui, setUiQuiet, t, ensureRecipes, peekRecipe } = useWhisk();
+  const { supabase, recipes, say, ui, setUiQuiet, t, ensureRecipes, peekRecipe, nv, keep } = useWhisk();
+  if (SESSION && SESSION.nv !== nv) SESSION = null;   // Never show me changed: deal a fresh mix that follows it
   const [pantry, reload] = usePantry();
   const [saved, reloadSaved] = useSaved();
   const tz = useTimeZone();
@@ -50,12 +51,13 @@ export default function Home() {
     return () => { window.removeEventListener('scroll', on); clearTimeout(t); };
   }, []);
 
-  const [sess] = useState(() => (SESSION ||= { seed: Math.floor(Math.random() * 2 ** 31), topSeed: Math.floor(Math.random() * 2 ** 31), pool: [], next: [], seen: new Set(ui?.seenDiscover || []), ready: false, shown: PAGE }));
+  const [sess] = useState(() => (SESSION ||= { seed: Math.floor(Math.random() * 2 ** 31), topSeed: Math.floor(Math.random() * 2 ** 31), pool: [], next: [], seen: new Set(ui?.seenDiscover || []), ready: false, shown: PAGE, nv }));
   const [seed, setSeed] = useState(sess.seed);
   // Dishes from all over the world join the web recipes. They're fetched once, before the first card is drawn, so nothing reshuffles afterwards.
   const [worldPool, setWorldPool] = useState(sess.pool);
   const [ready, setReady] = useState(sess.ready);
-  const grab = useCallback((sd) => timedFetch(`/api/world-recipe?sample=90&seed=${sd}`).then((r) => (r.ok ? r.json() : null)).then((j) => j?.recipes || []).catch(() => []), []);
+  const pool = useMemo(() => keep(worldPool), [worldPool, keep]);   // the server already left them out; this covers a list fetched just before a change
+  const grab = useCallback((sd) => timedFetch(`/api/world-recipe?sample=90&seed=${sd}${nv ? `&nv=${nv}` : ''}`).then((r) => (r.ok ? r.json() : null)).then((j) => j?.recipes || []).catch(() => []), [nv]);
   useEffect(() => {
     if (sess.ready) { return undefined; }
     let off = false;
@@ -84,8 +86,8 @@ export default function Home() {
       return x;
     };
     const web = new Set(recipes.map((r) => r.id));
-    return [...recipes, ...worldPool.filter((r) => !web.has(r.id))].map(one).filter(Boolean);
-  }, [pantry, recipes, worldPool]);
+    return [...recipes, ...pool.filter((r) => !web.has(r.id))].map(one).filter(Boolean);
+  }, [pantry, recipes, pool]);
   // A fresh random mix every time Home opens (and on Shuffle). Recipes that use food about to go bad still come first.
   const ordered = useMemo(() => {
     if (!base) return null;
@@ -131,13 +133,13 @@ export default function Home() {
   const todaySpecial = useMemo(() => {
     if (!pantry || !recipes || !ready || !specialToday.length) return [];
     const seenId = new Set(); const all = [];
-    for (const r of [...recipes, ...worldPool, ...worldDay]) if (!seenId.has(r.id)) { seenId.add(r.id); all.push(r); }
+    for (const r of [...recipes, ...pool, ...worldDay]) if (!seenId.has(r.id)) { seenId.add(r.id); all.push(r); }
     const close = (r) => { const m = checkRecipe(r, pantry).missing.length; return m >= 1 && m <= 3; };
     const list = holidayPicks(all, specialToday, close, 10).map((x) => ({ ...x, c: checkRecipe(x.r, pantry) })).filter((x) => x.c.missing.length >= 1);
     if (!list.length) return [];
     const off = mix('today', seed) % list.length;   // Shuffle walks on to the next ones
     return [...list.slice(off), ...list.slice(0, off)].slice(0, 3);
-  }, [pantry, recipes, worldPool, worldDay, specialToday, seed, ready]);
+  }, [pantry, recipes, pool, worldDay, specialToday, seed, ready]);
   const shuffle = () => {
     const ns = (seed + 0x9e3779b9) >>> 0;
     const have = new Set(sess.pool.map((x) => x.id)); sess.pool = [...sess.pool, ...sess.next.filter((x) => !have.has(x.id))].slice(-360); sess.next = []; sess.seed = ns; sess.shown = PAGE;

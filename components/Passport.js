@@ -29,7 +29,7 @@ const Stamp = memo(function Stamp({ c, i, n, onOpen, preview = false }) {
 });
 
 export default function Passport({ counts, onOpenRecipe }) {
-  const { getUi, setUiQuiet, recipes, ensureRecipes } = useWhisk();
+  const { getUi, setUiQuiet, recipes, ensureRecipes, nv, keep } = useWhisk();
   const [world, setWorld] = useState({});   // iso → Yoke world recipes (light rows), fetched when a country is opened
   const scroller = useRef(null);
   const [page, setPage] = useState(() => getUi().passportPage || 0);
@@ -47,10 +47,11 @@ export default function Passport({ counts, onOpenRecipe }) {
   useEffect(() => {
     if (!open || world[open[0]]) return;
     const iso = open[0]; let off = false;
-    timedFetch(`/api/world-recipe?iso=${iso}`).then((r) => r.json()).then((j) => { if (!off) setWorld((w) => ({ ...w, [iso]: j.recipes || [] })); }).catch(() => { if (!off) setWorld((w) => ({ ...w, [iso]: [] })); });
+    timedFetch(`/api/world-recipe?iso=${iso}${nv ? `&nv=${nv}` : ''}`).then((r) => r.json()).then((j) => { if (!off) setWorld((w) => ({ ...w, [iso]: j.recipes || [] })); }).catch(() => { if (!off) setWorld((w) => ({ ...w, [iso]: [] })); });
     return () => { off = true; };
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-  const fromHere = open ? [...(recipes || []).filter((r) => r.country === open[0]), ...(world[open[0]] || [])] : [];
+  useEffect(() => { setWorld({}); }, [nv]);   // Never show me changed: ask again
+  const fromHere = open ? [...(recipes || []).filter((r) => r.country === open[0]), ...keep(world[open[0]] || [])] : [];
   async function openOne(r) { setOpen(null); const full = r.steps ? r : (await ensureRecipes([r.id]))[0]; if (full) onOpenRecipe?.(full); }
 
   return (

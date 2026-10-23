@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import PullToRefresh from './PullToRefresh';
 import UsedUp from './UsedUp';
-import { allowed } from '@/lib/recipes/never';
+import { adapt, fitAll, allowed, nvTag, setActiveNever } from '@/lib/recipes/never';
 import { loadProfile } from '@/lib/profile';
 import { warmCache } from './tabData';
 import LevelPicker from './LevelPicker';
@@ -377,8 +377,14 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
     bump(); setRefreshKey((k) => k + 1);
   }, [refreshProfile, refreshLoadout, bump]);
   // "Never show me": recipes using anything the player listed are gone from every list in the app.
+  // Recipes that need a swap stay, rewritten with it (gluten-free spaghetti, tamari …); the rest are hidden.
+  // never / nv / fit / keep go to every screen so lists fetched elsewhere (world dishes, holidays) follow the same list.
   const neverKey = (profile?.never_show || []).join('|');
-  const shownRecipes = useMemo(() => (recipes && neverKey ? recipes.filter((r) => allowed(r, profile.never_show)) : recipes), [recipes, neverKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const never = useMemo(() => { const n = neverKey ? neverKey.split('|') : []; setActiveNever(n); return n; }, [neverKey]);
+  const nv = useMemo(() => nvTag(never), [never]);
+  const shownRecipes = useMemo(() => fitAll(recipes, never), [recipes, never]);
+  const fit = useCallback((r) => adapt(r, never), [never]);
+  const keep = useCallback((list) => (never.length && list ? list.filter((r) => allowed(r, never)) : list), [never]);
   // The language starts as English on the server and in the first client render (so the page hydrates cleanly),
   // then switches to this phone's saved choice, or the one saved on the account.
   const [lang, setLangState] = useState('en');
@@ -395,8 +401,8 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   }, [setUi]);
   const t = useCallback((text, vars) => translate(lang, text, vars), [lang]);
   useEffect(() => { try { document.documentElement.lang = lang; } catch {} }, [lang]);
-  const value = useMemo(() => ({ lang, setLang, t, profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, recipes: shownRecipes, allRecipes, ensureRecipes, peekRecipe, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, dataVersion, bump }),
-    [lang, setLang, t, profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, shownRecipes, allRecipes, ensureRecipes, peekRecipe, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, dataVersion, bump]);
+  const value = useMemo(() => ({ lang, setLang, t, profile, setProfile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, recipes: shownRecipes, allRecipes, never, nv, fit, keep, ensureRecipes, peekRecipe, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, dataVersion, bump }),
+    [lang, setLang, t, profile, refreshProfile, loadout, refreshLoadout, showPopup, say, email, account, supabase, shownRecipes, allRecipes, never, nv, fit, keep, ensureRecipes, peekRecipe, ui, setUi, setUiQuiet, getUi, openPrivacy, replayTour, lastPlayed, dataVersion, bump]);
 
   return (
     <Ctx.Provider value={value}>

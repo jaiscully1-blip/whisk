@@ -32,7 +32,7 @@ const hrs = (m) => (m >= 90 ? `${Math.round(m / 6) / 10} hr` : `${m} min`);
 
 // Only real recipes from the web, and only ones your pantry can make.
 export default function Cook() {
-  const { recipes, ui, setUi, say, t , ensureRecipes, peekRecipe } = useWhisk();
+  const { recipes, ui, setUi, say, t , ensureRecipes, peekRecipe, nv, keep } = useWhisk();
   const tz = useTimeZone();
   const [logFor, setLogFor] = useState(null);
   // Every visit opens on the Cook home (tonight's pick, made for you, photobook) for new and returning players. "More filters" goes deeper; a dish sent from the globe still opens its results.
@@ -54,7 +54,7 @@ export default function Cook() {
   const [open, setOpen] = useState(null);
   // the world's desserts (Yoke Kitchen) join the web recipes in Made for you
   const [worldSweets, setWorldSweets] = useState([]);
-  useEffect(() => { let off = false; timedFetch('/api/world-recipe?type=dessert').then((r) => r.json()).then((j) => { if (!off) setWorldSweets(j.recipes || []); }).catch(() => {}); return () => { off = true; }; }, []);
+  useEffect(() => { let off = false; timedFetch(`/api/world-recipe?type=dessert${nv ? `&nv=${nv}` : ''}`).then((r) => r.json()).then((j) => { if (!off) setWorldSweets(keep(j.recipes || [])); }).catch(() => {}); return () => { off = true; }; }, [nv, keep]);
   const openFull = (r) => openRecipe(r, { setOpen, ensureRecipes, peekRecipe, say });
   const [asked, setAsked] = useState(false);   // "Nothing fits yet" only shows right after you ask, never on its own
   const savedMode = ui.cookMode || null; const time = ui.cookTime || ''; const meal = ui.cookMeal || ''; const diet = ui.cookDiet || '';

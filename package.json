@@ -16,7 +16,8 @@
     "test:subs": "node lib/recipes/subs.test.mjs",
     "test:parse": "node lib/recipes/parseText.test.mjs",
     "test:holidays": "node lib/holidays.test.mjs",
-    "test:pantry": "node lib/pantry/tags.test.mjs && node lib/pantry/measure.mjs"
+    "test:pantry": "node lib/pantry/tags.test.mjs && node lib/pantry/measure.mjs",
+    "test:never": "node lib/recipes/never.test.mjs && node e2e/never-sql.test.mjs"
   },
   "dependencies": {
     "@fontsource/fredoka": "5.3.0",

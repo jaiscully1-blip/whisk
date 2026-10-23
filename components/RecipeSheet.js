@@ -14,8 +14,13 @@ import Scene from './Scene';
 import CookMode from './CookMode';
 
 // A real recipe from the web: every ingredient measured and beginner steps from the source page, scaled to any servings.
-export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChanged, challenge = null, presetGroups = null }) {
-  const { supabase, say, refreshProfile, setUiQuiet } = useWhisk();
+export default function RecipeSheet({ recipe: r0, pantry, saved, onClose, onChanged, challenge = null, presetGroups = null }) {
+  const { supabase, say, refreshProfile, setUiQuiet, fit } = useWhisk();
+  // Never show me: the recipe rewritten with the player's swaps (lists already hand it over rewritten; a saved
+  // recipe or a party's dish may come straight from the database), or a plain warning when nothing safe replaces it.
+  const f = r0 && !r0.pending && fit ? fit(r0) : { ok: true, swaps: [], recipe: r0 };
+  const r = f.recipe;
+  const fitSwaps = f.swaps.length ? f.swaps : (r?.adapted || []);
   const [isSaved, setSaved] = useState(!!saved);
   const [logging, setLogging] = useState(false);
   // remember the recipes you've been reading, so when you post a photo you can pick the one you actually cooked
@@ -98,6 +103,14 @@ export default function RecipeSheet({ recipe: r, pantry, saved, onClose, onChang
         <MacroBars nutrition={r.nutrition} />
         {r.note && <div className="card stack" style={{ gap: 4, padding: 12 }} data-testid="recipe-note"><span><b>How it's cooked:</b> {r.note.how}</span>{r.note.swap && <span><b>Best swap:</b> {r.note.swap}</span>}</div>}
         <DietTags recipe={r} />
+        {!f.ok && <div className="card stack never-warn" role="alert" data-testid="never-warn"><b><Icon name="shield" size={16} /> This one has {String(f.why || 'something').toLowerCase()}</b><span>It’s on your Never show me list and there’s no safe swap for it, so it’s hidden from your lists. Change the list in Me → Never show me.</span></div>}
+        {f.ok && fitSwaps.length > 0 && (
+          <div className="card stack never-fit" data-testid="never-fit">
+            <b><Icon name="shield" size={16} /> Made to fit your Never show me list</b>
+            <ul>{fitSwaps.map((x) => <li key={x.from}>{x.leave ? <>Leave out <b>{x.from.toLowerCase()}</b></> : <><b>{x.to}</b> instead of {x.from.toLowerCase()}<span className="muted"> · {x.why}</span></>}</li>)}</ul>
+            <span className="muted">Packaged foods can still contain it, so check the labels.</span>
+          </div>
+        )}
         {c.frozen.length > 0 && <ThawBanner items={c.frozen} onChanged={onChanged} />}
         <BatchCook base={r.servings} factor={factor} onChange={setFactor} kcal={r.nutrition?.calories} />
         <ServingsX base={r.servings} factor={factor} onChange={setFactor} id={`sx-${r.id}`} />

@@ -1981,3 +1981,10 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .sp-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; background: var(--track); color: var(--fg); border: 0; border-radius: 12px; padding: 9px 12px; font: inherit; cursor: pointer; }
 .sp-row span:first-child { display: grid; gap: 1px; min-width: 0; } .sp-row b { font-size: 14.5px; line-height: 1.2; } .sp-row small { color: var(--muted); font-weight: 700; font-size: 12px; }
 .sp-row:active { transform: scale(.98); }
+/* Never show me, on the recipe sheet: what was swapped to fit the list, or why it's hidden */
+.never-fit, .never-warn { gap: 6px; padding: 12px 14px; font-size: 14px; }
+.never-fit { background: var(--fresh-soft); border-color: transparent; }
+.never-warn { background: var(--warn-soft); border-color: transparent; }
+.never-fit > b, .never-warn > b { display: flex; align-items: center; gap: 6px; }
+.never-fit ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.never-fit .muted { font-size: 13px; }

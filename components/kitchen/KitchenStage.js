@@ -65,6 +65,7 @@ export default function KitchenStage({ pieces, title = 'Kitchen', cam: camIn, on
 
   return (
     <div className="kstage" ref={box}>
+      <div className="kstage-view">
       <Kitchen3D {...rest} pieces={pieces} cam={cam} onCam={setCam} scale={scale} open={open} onToggle={toggle}
         focus={focus} onFocusPiece={view ? focusOn : undefined} spinRange={spinRange} className={`${className} ${glide ? 'glide' : ''}`} />
       {view && (focus || anyOpen) && (
@@ -73,6 +74,7 @@ export default function KitchenStage({ pieces, title = 'Kitchen', cam: camIn, on
           {(focus || anyOpen) && <button type="button" className="kbar-btn wide main" onClick={back}><Icon name="chevron" size={16} style={{ transform: 'rotate(180deg)' }} />Back</button>}
         </div>
       )}
+      </div>
       {stops.length > 1 && <>
         <button type="button" className="kstage-arrow l" onClick={() => go(at - 1)} aria-label={`Show ${stops[(at - 1 + stops.length) % stops.length].label}`}><Icon name="chevron" size={20} style={{ transform: 'rotate(180deg)' }} /></button>
         <button type="button" className="kstage-arrow r" onClick={() => go(at + 1)} aria-label={`Show ${stops[(at + 1) % stops.length].label}`}><Icon name="chevron" size={20} /></button>

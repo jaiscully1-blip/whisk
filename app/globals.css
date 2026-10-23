@@ -1996,3 +1996,11 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .nav a[aria-current="page"] .nav-badge { top: -22px; left: calc(50% + 12px); }
 @keyframes navnew { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 @media (prefers-reduced-motion: reduce) { .nav a.has-new svg { animation: none !important; } }
+
+/* Doors open: the Close doors / Back buttons float over the bottom of the kitchen, big and in thumb reach (they used to sit below the fold, behind the tab bar) */
+.kstage-view { position: relative; }
+/* sticky: the buttons ride along at the bottom of the screen (just above the tab bar) for as long as the kitchen is on screen */
+.kstage-view .kstage-bar { position: sticky; bottom: calc(100px + env(safe-area-inset-bottom, 0px)); z-index: 6; height: 48px; margin-top: -60px; pointer-events: none; flex-wrap: nowrap; }
+.kstage-view .kstage-bar .kbar-btn { pointer-events: auto; height: 48px; padding: 0 20px; font-size: 16px; box-shadow: 0 3px 0 var(--tile-edge), 0 6px 14px rgba(0,0,0,.35); }
+/* the little X on an open door: a small dot you see, a 44px target you press */
+.kclose::after { content: ''; position: absolute; inset: -16px; border-radius: 50%; }

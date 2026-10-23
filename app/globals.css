@@ -1988,3 +1988,11 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .never-fit > b, .never-warn > b { display: flex; align-items: center; gap: 6px; }
 .never-fit ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
 .never-fit .muted { font-size: 13px; }
+
+/* Unopened messages: a count badge on the Compete tab, and the tab turns red-orange until they're read */
+.nav a.has-new:not([aria-current="page"]) { color: var(--bad); }
+.nav a.has-new:not([aria-current="page"]) svg { animation: navnew 1.6s ease-in-out infinite; }
+.nav-badge { position: absolute; top: 4px; left: calc(50% + 4px); min-width: 20px; height: 20px; padding: 0 5px; border-radius: 99px; background: var(--bad); color: #fff; font-size: 12px; font-weight: 800; line-height: 20px; text-align: center; box-shadow: 0 0 0 2px var(--card, #fff); }
+.nav a[aria-current="page"] .nav-badge { top: -22px; left: calc(50% + 12px); }
+@keyframes navnew { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { .nav a.has-new svg { animation: none !important; } }

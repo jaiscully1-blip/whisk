@@ -12,8 +12,6 @@ import { checkRecipe, thawState, usesSoon, shoppingNeeds, canon } from '@/lib/re
 import Postcard from '@/components/Postcard';
 import { openRecipe, warmRecipes } from '@/lib/openRecipe';
 import { timedFetch } from '@/lib/netFetch';
-import { holidayPicks } from '@/lib/holidays';
-import { useSpecialDays } from '@/components/useSpecialDays';
 import { useTimeZone } from '@/components/useTimeZone';
 
 const PAGE = 10;
@@ -127,19 +125,6 @@ export default function Home() {
     setUiQuiet?.((cur) => ({ seenDiscover: [...new Set([...(cur.seenDiscover || []), ...ids])].slice(-900) }));
   }, [ordered, shown]); // eslint-disable-line react-hooks/exhaustive-deps
   const almost = ordered;
-  // Today's special days get their own card above the feed (the feed's order is untouched): up to three dishes you're close to making,
-  // rotating through today's special days one after another. Dishes you can already make are on the Cook tab.
-  const { days: specialToday, world: worldDay } = useSpecialDays(tz);
-  const todaySpecial = useMemo(() => {
-    if (!pantry || !recipes || !ready || !specialToday.length) return [];
-    const seenId = new Set(); const all = [];
-    for (const r of [...recipes, ...pool, ...worldDay]) if (!seenId.has(r.id)) { seenId.add(r.id); all.push(r); }
-    const close = (r) => { const m = checkRecipe(r, pantry).missing.length; return m >= 1 && m <= 3; };
-    const list = holidayPicks(all, specialToday, close, 10).map((x) => ({ ...x, c: checkRecipe(x.r, pantry) })).filter((x) => x.c.missing.length >= 1);
-    if (!list.length) return [];
-    const off = mix('today', seed) % list.length;   // Shuffle walks on to the next ones
-    return [...list.slice(off), ...list.slice(0, off)].slice(0, 3);
-  }, [pantry, recipes, pool, worldDay, specialToday, seed, ready]);
   const shuffle = () => {
     const ns = (seed + 0x9e3779b9) >>> 0;
     const have = new Set(sess.pool.map((x) => x.id)); sess.pool = [...sess.pool, ...sess.next.filter((x) => !have.has(x.id))].slice(-360); sess.next = []; sess.seed = ns; sess.shown = PAGE;
@@ -164,18 +149,6 @@ export default function Home() {
     <div className="stack" style={{ paddingTop: 16 }}>
       {frozen.length > 0 && <ThawBanner items={frozen} onChanged={reload} />}
       <div className="page-title" style={{ margin: '6px 0 0' }}><h1>{t('Discover a Dish')}</h1></div>
-      {todaySpecial.length > 0 && (
-        <section className="today-sp card" aria-label={t('Today')} data-testid="today-special">
-          <span className="eyebrow">{t('Today')}</span>
-          <h2>{(() => { const n = [...new Set(todaySpecial.map((x) => x.day.name))]; return n.slice(0, 2).join(' · ') + (n.length > 2 ? ` +${n.length - 2}` : ''); })()}</h2>
-          {todaySpecial.map(({ r, day, c }) => (
-            <button key={r.id} type="button" className="sp-row" data-testid="sp-row" onPointerDown={() => warm(r)} onClick={() => openFull(r)}>
-              <span><b>{r.title}</b><small>{day.name} · {r.minutes} min · {c.missing.length === 1 ? 'need 1 thing' : `need ${c.missing.length} things`}</small></span>
-              <span aria-hidden>›</span>
-            </button>
-          ))}
-        </section>
-      )}
       {almost === null || !ready ? <div className="dish-skel" aria-busy="true" aria-label={t('Loading dishes')} data-testid="dish-skel">{[0, 1].map((i) => <div key={i} className="card"><i className="art" /><i className="ln w60" /><i className="ln w40" /><i className="ln w80" /></div>)}</div> : almost.length === 0 ? (
         <div className="empty"><b>Nothing almost ready</b>Add more to your pantry, or see what you can make right now.<div className="row" style={{ justifyContent: 'center', marginTop: 12 }}><Link className="btn" href="/pantry">{t('Add pantry items')}</Link><Link className="btn ghost" href="/cook">{t('What can I make?')}</Link></div></div>
       ) : almost.slice(0, shown).map((x, i) => <DishCard key={x.r.id} x={x} first={i === 0} lazy={i > 1} onOpen={openFull} onWarm={warm} onAdd={addToList} t={t} />)}

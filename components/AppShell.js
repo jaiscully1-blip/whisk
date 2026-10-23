@@ -7,7 +7,8 @@ import PullToRefresh from './PullToRefresh';
 import UsedUp from './UsedUp';
 import { adapt, fitAll, allowed, nvTag, setActiveNever } from '@/lib/recipes/never';
 import { loadProfile } from '@/lib/profile';
-import { warmCache } from './tabData';
+import { warmCache, fetchChats } from './tabData';
+import { useCached } from '@/lib/cache';
 import LevelPicker from './LevelPicker';
 import Tips from './Tips';
 import CookieConsent, { CONSENT_KEY, LOGIN_CHOICE_KEY, deviceTimeZone } from './CookieConsent';
@@ -48,6 +49,16 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
   const supabase = supabaseBrowser();
   const pathname = usePathname();
   const [pendingTab, setPendingTab] = useState(null);
+  // Unopened messages: summed from the chat list, refreshed when you switch tabs, come back to the app, and every 30 s.
+  const [navChats, , reloadChats] = useCached('chats', () => fetchChats(supabase));
+  const unreadMsgs = (navChats || []).reduce((n, c) => n + (c.unread || 0), 0);
+  useEffect(() => { reloadChats?.(); }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const go = () => { if (document.visibilityState === 'visible') reloadChats?.(); };
+    const iv = setInterval(go, 30000);
+    document.addEventListener('visibilitychange', go);
+    return () => { clearInterval(iv); document.removeEventListener('visibilitychange', go); };
+  }, [reloadChats]);
   useEffect(() => { setPendingTab(null); }, [pathname]);
   useEffect(() => { if (!pendingTab) return undefined; const t = setTimeout(() => setPendingTab(null), 4000); return () => clearTimeout(t); }, [pendingTab]);   // never leave a tab lit if the page doesn't change
   // No zooming the whole app: iOS Safari ignores user-scalable=no, so stop its pinch gestures and ctrl+wheel /
@@ -428,7 +439,7 @@ export default function AppShell({ initialProfile, initialLoadout, email, accoun
             {NAV.map(([href, label, icon]) => (
               // prefetch: each tab is fetched ahead of time, so a tap switches straight away instead of waiting on the server.
               // The tab lights up the moment it's touched (pendingTab), not when the page arrives.
-              <Link key={href} href={href} prefetch data-tab-link={href.slice(1)} data-tip={`tab-${href.slice(1)}`} onClick={() => { setPendingTab(href); setUiQuiet((c) => ({ scroll: { ...(c.scroll || {}), [href]: 0 } })); }} aria-current={(pendingTab ? pendingTab === href : pathname.startsWith(href)) ? 'page' : undefined}><Icon name={icon} size={24} />{t(label)}</Link>
+              <Link key={href} href={href} prefetch data-tab-link={href.slice(1)} data-tip={`tab-${href.slice(1)}`} onClick={() => { setPendingTab(href); setUiQuiet((c) => ({ scroll: { ...(c.scroll || {}), [href]: 0 } })); }} aria-current={(pendingTab ? pendingTab === href : pathname.startsWith(href)) ? 'page' : undefined} className={href === '/compete' && unreadMsgs > 0 ? 'has-new' : undefined} aria-label={href === '/compete' && unreadMsgs > 0 ? `${t(label)}, ${unreadMsgs} unread ${unreadMsgs === 1 ? 'message' : 'messages'}` : undefined}><Icon name={icon} size={24} />{t(label)}{href === '/compete' && unreadMsgs > 0 && <b className="nav-badge" data-testid="nav-unread" aria-hidden="true">{unreadMsgs > 9 ? '9+' : unreadMsgs}</b>}</Link>
             ))}
           </div>
         </nav>

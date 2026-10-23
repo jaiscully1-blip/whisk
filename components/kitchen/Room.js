@@ -147,14 +147,14 @@ function Room({ room, place, pieces }) {
       {beam}
       {(
         <div className="kwall-turn on-b" style={{ left: 0, top: -1, transform: 'rotateZ(0deg)' }}>
-          <div className="kw" style={{ left: 0, top: -WH, width: W, height: WH, backgroundImage: spot?.wall === 'back' ? sideBack : back }}>
+          <div className="kw" style={{ left: 0, top: -WH, width: W + 2, height: WH, backgroundSize: `${W}px 100%`, backgroundRepeat: 'repeat-x', backgroundImage: spot?.wall === 'back' ? sideBack : back }}>
             {spot?.wall === 'back' && <Win spot={spot} place={place} hour={hour} WH={WH} />}
           </div>
         </div>
       )}
       {(
-        <div className="kwall-turn on-r" style={{ left: W + 1, top: 0, transform: 'rotateZ(90deg)' }}>
-          <div className="kw" style={{ left: 0, top: -WH, width: D, height: WH, backgroundImage: side }}>
+        <div className="kwall-turn on-r" style={{ left: W + 1, top: -2, transform: 'rotateZ(90deg)' }}>
+          <div className="kw" style={{ left: 0, top: -WH, width: D + 2, height: WH, backgroundSize: `${D + 2}px 100%`, backgroundImage: side }}>
             {spot?.wall === 'right' && <Win spot={spot} place={place} hour={hour} WH={WH} />}
           </div>
         </div>

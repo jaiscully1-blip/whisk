@@ -2004,3 +2004,45 @@ img[src^="/food3d/"] { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)); objec
 .kstage-view .kstage-bar .kbar-btn { pointer-events: auto; height: 48px; padding: 0 20px; font-size: 16px; box-shadow: 0 3px 0 var(--tile-edge), 0 6px 14px rgba(0,0,0,.35); }
 /* the little X on an open door: a small dot you see, a 44px target you press */
 .kclose::after { content: ''; position: absolute; inset: -16px; border-radius: 50%; }
+
+/* Scan a receipt: the groceries it read sit on a paper receipt you can edit line by line */
+.rcpt { background: #F8F2E3; color: #3A2E22; font-family: ui-monospace, Menlo, monospace; padding: 16px 14px 28px; display: flex; flex-direction: column; gap: 8px; clip-path: polygon(0 0,100% 0,100% calc(100% - 9px),97% 100%,94% calc(100% - 9px),91% 100%,88% calc(100% - 9px),85% 100%,82% calc(100% - 9px),79% 100%,76% calc(100% - 9px),73% 100%,70% calc(100% - 9px),67% 100%,64% calc(100% - 9px),61% 100%,58% calc(100% - 9px),55% 100%,52% calc(100% - 9px),49% 100%,46% calc(100% - 9px),43% 100%,40% calc(100% - 9px),37% 100%,34% calc(100% - 9px),31% 100%,28% calc(100% - 9px),25% 100%,22% calc(100% - 9px),19% 100%,16% calc(100% - 9px),13% 100%,10% calc(100% - 9px),7% 100%,4% calc(100% - 9px),1% 100%,0 calc(100% - 9px)); }
+.rcpt-head { display: flex; flex-direction: column; align-items: center; gap: 2px; padding-bottom: 8px; border-bottom: 2px dashed #BFB197; }
+.rcpt-head b { font: 600 20px var(--f-display, 'Fredoka', sans-serif); }
+.rcpt-head span, .rcpt .scan-count { font-size: 11px; color: #6E5F4D; }
+.rcpt .scan-count { letter-spacing: .06em; }
+.rcpt .scan-row { background: transparent; border: 0; border-bottom: 1.5px dashed #D3C7AC; border-radius: 0; padding: 6px 0; animation: none; }
+.rcpt .scan-row input[type=checkbox] { accent-color: #3F7A2A; }
+.rcpt .scan-row-main .input { background: transparent; color: #3A2E22; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 4px 2px; font-family: inherit; font-weight: 800; box-shadow: none; }
+.rcpt .scan-row-main .input:focus { background: #FFF6C9; border-bottom-color: #3F7A2A; outline: none; }
+.rcpt .scan-row-sub select, .rcpt .scan-row-sub input { color: #5E4F3D; border-color: #D3C7AC; background: transparent; font-family: inherit; }
+.rcpt .scan-raw { color: #8A7A66; }
+.rcpt .scan-ico { color: #6E5F4D; background: transparent; }
+.rcpt-total { display: flex; justify-content: space-between; font-weight: 800; padding-top: 4px; }
+.rcpt .btn.ghost { background: #EFE6CF; color: #3A2E22; box-shadow: 0 2px 0 #CDBF9E; }
+.rcpt-text { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.rcpt-toggle { background: none; border: 0; padding: 6px 0; text-align: left; font-weight: 800; font-size: 12px; font-family: inherit; color: #3F7A2A; text-decoration: underline; cursor: pointer; }
+.rcpt-text textarea { width: 100%; box-sizing: border-box; border: 2px dashed #BFB197; border-radius: 8px; background: #FFFCF2; color: #3A2E22; font: 12px/1.5 ui-monospace, Menlo, monospace; padding: 8px; resize: vertical; }
+.rcpt-note { font-size: 11px; color: #6E5F4D; }
+
+/* Daily quest as a kitchen order ticket, Learn as a cookbook with a bookmark */
+.ticket { background: #F8F2E3; color: #3A2E22; padding: 20px 14px 14px; display: grid; gap: 8px; clip-path: polygon(0 8px,3% 0,6% 8px,9% 0,12% 8px,15% 0,18% 8px,21% 0,24% 8px,27% 0,30% 8px,33% 0,36% 8px,39% 0,42% 8px,45% 0,48% 8px,51% 0,54% 8px,57% 0,60% 8px,63% 0,66% 8px,69% 0,72% 8px,75% 0,78% 8px,81% 0,84% 8px,87% 0,90% 8px,93% 0,96% 8px,100% 0,100% 100%,0 100%); }
+.ticket-top { display: flex; justify-content: space-between; font: 700 11px ui-monospace, Menlo, monospace; letter-spacing: .08em; border-bottom: 2px dashed #BFB197; padding-bottom: 7px; }
+.ticket-line { display: flex; justify-content: space-between; gap: 10px; font-weight: 800; font-size: 15px; }
+.ticket-line span { font-family: ui-monospace, Menlo, monospace; }
+.ticket-bar { height: 9px; border-radius: 6px; background: #E3D9BF; overflow: hidden; }
+.ticket-bar i { display: block; height: 100%; background: #3F7A2A; border-radius: 6px; }
+.ticket-foot { display: flex; }
+.ticket-stamp { border: 2px solid #C4493F; color: #C4493F; border-radius: 6px; padding: 1px 8px; font-weight: 800; font-size: 12px; transform: rotate(-2deg); }
+.learn-card { position: relative; overflow: hidden; padding-left: 28px; }
+.learn-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 14px; background: #5A9A3C; }
+.learn-card::after { content: ''; position: absolute; right: 16px; top: -1px; width: 14px; height: 26px; background: #FF5A4E; clip-path: polygon(0 0,100% 0,100% 100%,50% 75%,0 100%); }
+
+/* Chat faces: overlapping photos on group/party rows, and who's in the chat across the top of a group */
+.chat-faces { display: inline-flex; align-items: center; flex: none; height: 40px; }
+.chat-faces .post-av.cf { border: 2px solid var(--card); box-sizing: border-box; flex: none; position: relative; }
+.chat-faces-bar { display: flex; gap: 12px; overflow-x: auto; padding: 8px 14px 10px; border-bottom: 1px solid var(--line); background: var(--bg); scrollbar-width: none; }
+.chat-faces-bar::-webkit-scrollbar { display: none; }
+.cfb { display: grid; justify-items: center; gap: 3px; background: none; border: 0; padding: 0; color: var(--fg); min-width: 48px; cursor: pointer; font: inherit; }
+.cfb small { font-size: 11px; font-weight: 800; color: var(--muted); max-width: 54px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cfb .cfb-av { width: 42px; height: 42px; font-size: 17px; }

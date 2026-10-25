@@ -237,6 +237,16 @@ export default function ChatView({ id, onClose, onChanged, startList = false }) 
         <button type="button" className="chat-ico" onClick={openLooks} disabled={!d} aria-label="Chat background" data-testid="chat-bgbtn"><Icon name="palette" size={22} /></button>
         <button type="button" className={`chat-ico ${d?.group?.muted ? 'off' : ''}`} onClick={toggleBell} disabled={!d} aria-pressed={!!d?.group?.muted} aria-label={d?.group?.muted ? 'Turn notifications on for this chat' : 'Turn notifications off for this chat'} data-testid="chat-bell"><Icon name={d?.group?.muted ? 'bellx' : 'bell'} size={22} /></button>
       </header>
+      {d && !isDM && d.members.length > 0 && (
+        <div className="chat-faces-bar" role="group" aria-label="Who is in this chat" data-testid="chat-faces">
+          {d.members.slice(0, 12).map((m) => (
+            <button key={m.code} type="button" className="cfb" onClick={openPeople} aria-label={`${m.me ? 'You' : m.name}${m.online ? ', online' : ''}`}>
+              <Avatar className={`post-av cfb-av ${m.online ? 'on' : ''}`} code={m.code} name={m.name} aria-hidden="true" />
+              <small>{m.me ? 'You' : String(m.name).split(' ')[0]}</small>
+            </button>
+          ))}
+        </div>
+      )}
 
       <OfflineNote />
       <div className="chat-list" ref={listRef} onScroll={onScroll} data-testid="chat-list">

@@ -1,5 +1,5 @@
 'use client';
-import Avatar from './Avatar';
+import Avatar, { ChatFaces } from './Avatar';
 import { useState } from 'react';
 import { useWhisk } from './AppShell';
 import Icon from './Icon';
@@ -34,7 +34,7 @@ export default function ChatList({ chats, friends, onOpen, onMade }) {
         <div className="empty"><b>{t('No chats yet')}</b>{t('Make a group with your friends to text, share photos and play.')}</div>
       ) : shownChats(chats, friends).map((c) => { const dm = dmOf(c, friends); const nm = dm ? dm.name : c.name; return (
         <button key={c.id} type="button" className="card chat-item" onClick={() => onOpen(c.id)} aria-label={`${nm}${c.unread ? `, ${c.unread} new` : ''}`}>
-          {dm ? <Avatar className="post-av" code={dm.code} name={dm.name} aria-hidden="true" /> : <span className="post-av" style={{ background: color(c.name) }} aria-hidden="true">{c.name.slice(0, 1).toUpperCase()}</span>}
+          <ChatFaces chat={c} dm={dm} />
           <span className="chat-item-txt">
             <b>{nm}{c.muted && <Icon name="bellx" size={14} style={{ marginLeft: 6, opacity: .6 }} />}</b>
             <small>{c.last ? `${c.last.name}: ${c.last.kind === 'photo' ? 'Photo' : c.last.kind === 'video' ? `Video: ${c.last.body}` : c.last.body}` : `${c.members} people`}</small>

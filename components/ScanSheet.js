@@ -199,6 +199,7 @@ function ReceiptScan({ onAdd, onClose }) {
   const [shot, setShot] = useState('');
   const [list, setList] = useState([]);
   const [raw, setRaw] = useState('');
+  const [showText, setShowText] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -275,13 +276,26 @@ function ReceiptScan({ onAdd, onClose }) {
       <Top title="Check your groceries" onClose={onClose} />
       <div className="scan-panel full">
         {err && <p className="err" role="alert" style={{ margin: 0 }}>{err}</p>}
-        {list.length > 0 && <span className="scan-count">{picked.length} of {list.length} ticked · fix any name that’s off</span>}
-        {list.map((it) => <Row key={it.id} it={it} onChange={(p) => edit(it.id, p)} onRemove={() => setList((l) => l.filter((x) => x.id !== it.id))} />)}
-        <div className="row" style={{ gap: 8 }}>
-          <button type="button" className="btn ghost sm" onClick={() => setList((l) => [...l, { id: `m${Date.now()}`, name: '', category: 'Other', quantity: '', on: true }])}><Icon name="plus" size={16} />Add an item</button>
-          <button type="button" className="btn ghost sm" onClick={() => setStage('camera')}><Icon name="receipt" size={16} />Scan more of it</button>
+        <div className="rcpt" data-testid="receipt-paper">
+          <div className="rcpt-head"><b>Receipt</b><span>{new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · tap a line to edit</span></div>
+          {list.length > 0 && <span className="scan-count">{picked.length} of {list.length} ticked</span>}
+          {list.map((it) => <Row key={it.id} it={it} onChange={(p) => edit(it.id, p)} onRemove={() => setList((l) => l.filter((x) => x.id !== it.id))} />)}
+          <div className="rcpt-total"><span>{picked.length} {picked.length === 1 ? 'grocery' : 'groceries'}</span></div>
+          <div className="row" style={{ gap: 8 }}>
+            <button type="button" className="btn ghost sm" onClick={() => setList((l) => [...l, { id: `m${Date.now()}`, name: '', category: 'Other', quantity: '', on: true }])}><Icon name="plus" size={16} />Add an item</button>
+            <button type="button" className="btn ghost sm" onClick={() => setStage('camera')}><Icon name="receipt" size={16} />Scan more</button>
+          </div>
+          <div className="rcpt-text">
+            <button type="button" className="rcpt-toggle" aria-expanded={showText} onClick={() => setShowText((v) => !v)}>{showText ? 'Hide the text' : 'See and edit the text it read'}</button>
+            {showText && (
+              <>
+                <textarea aria-label="Text read from the receipt" spellCheck={false} value={raw} onChange={(e) => setRaw(e.target.value)} rows={8} placeholder="Type or paste your receipt lines here" />
+                <button type="button" className="btn ghost sm" onClick={() => { const found = parseReceipt(raw); setList(found.map((x, i) => ({ ...x, id: `t${Date.now()}${i}` }))); setErr(found.length ? '' : 'No groceries found in that text.'); }}>Read it again</button>
+                <span className="rcpt-note">Reading again replaces the list above.</span>
+              </>
+            )}
+          </div>
         </div>
-        {raw && <details className="scan-rawtext"><summary>What Yoke read</summary><pre>{raw}</pre></details>}
       </div>
       <div className="scan-foot">
         <button type="button" className="btn wide" disabled={busy || !picked.length} onClick={async () => { setBusy(true); try { await onAdd(picked); onClose(); } finally { setBusy(false); } }}>

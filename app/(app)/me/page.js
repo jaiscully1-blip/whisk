@@ -146,9 +146,8 @@ export default function Me() {
 
       <ProfileCard level={lvl} xp={profile?.xp || 0} recipes={recipesCooked} ingredients={ingredients} countries={countries.length} streak={liveStreak(profile, tz)} best={profile?.best_streak || 0} prevBest={profile?.streak_prev_best || 0} freezes={profile?.streak_freezes || 0} />
       <MyKitchen shop />
-      <LearnEntry />
-
       <DailyQuest />
+      <LearnEntry />
 
       <MyYouTubers />
 

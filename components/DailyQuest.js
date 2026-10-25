@@ -19,12 +19,14 @@ export default function DailyQuest() {
     if (error) { say('Finish the quest first.'); return; }
     setCdata((x) => ({ ...(x || {}), quest: { ...x?.quest, claimed: true } })); say(`Quest done · +${data?.xp ?? 40} XP${data?.coins ? ` · +${data.coins} coins` : ''}`); refreshProfile();
   }
+  const done = quest.progress >= quest.target;
   return (
-    <div className="card stack" data-tip="quest" style={{ gap: 8, background: 'var(--gold-soft)' }}>
-      <div className="row" style={{ justifyContent: 'space-between' }}><span className="eyebrow">Daily quest</span><span className="chip xp">+40 XP · 100 coins</span></div>
-      <b style={{ fontSize: 16 }}>{quest.label}</b>
-      <div className="row" style={{ flexWrap: 'nowrap' }}><div className="bar" style={{ flex: 1 }}><i style={{ width: `${Math.round((quest.progress / quest.target) * 100)}%` }} /></div><span style={{ fontWeight: 800, fontSize: 13 }}>{quest.progress}/{quest.target}</span></div>
-      {quest.progress >= quest.target ? <button className="btn" onClick={claimQuest}>Claim +40 XP · 100 coins</button> : null}
+    <div className="ticket" data-tip="quest" data-testid="daily-quest">
+      <div className="ticket-top"><span>ORDER · DAILY QUEST</span><span>{done ? 'READY' : 'TO GO'}</span></div>
+      <div className="ticket-line"><b>{quest.label}</b><span>{quest.progress}/{quest.target}</span></div>
+      <div className="ticket-bar" role="progressbar" aria-valuenow={quest.progress} aria-valuemin={0} aria-valuemax={quest.target}><i style={{ width: `${Math.min(100, Math.round((quest.progress / quest.target) * 100))}%` }} /></div>
+      <div className="ticket-foot"><span className="ticket-stamp">+40 XP · 100 coins</span></div>
+      {done ? <button className="btn" onClick={claimQuest}>Claim +40 XP · 100 coins</button> : null}
     </div>
   );
 }

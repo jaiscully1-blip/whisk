@@ -1,5 +1,5 @@
 'use client';
-import Avatar from './Avatar';
+import Avatar, { ChatFaces } from './Avatar';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -112,7 +112,7 @@ export function ChatsPeek() {
         <div className="card chat-peek">
           {list.map((c) => (
             <Link key={c.id} href={`/compete/friends?chat=${c.id}`} className="chat-item" data-testid="chat-peek-item" aria-label={`${dmOf(c, f0?.friends)?.name || c.name}${c.unread ? `, ${c.unread} new` : ''}`}>
-              {dmOf(c, f0?.friends) ? <Avatar className="post-av" code={dmOf(c, f0?.friends).code} name={dmOf(c, f0?.friends).name} aria-hidden="true" /> : <span className="post-av" style={{ background: color(c.name) }} aria-hidden="true">{c.name.slice(0, 1).toUpperCase()}</span>}
+              <ChatFaces chat={c} dm={dmOf(c, f0?.friends)} />
               <span className="chat-item-txt">
                 <b>{dmOf(c, f0?.friends)?.name || c.name}</b>
                 <small>{c.last ? `${c.last.name}: ${c.last.kind === 'photo' ? 'Photo' : c.last.kind === 'video' ? `Video: ${c.last.body}` : c.last.body}` : `${c.members} people`}</small>
